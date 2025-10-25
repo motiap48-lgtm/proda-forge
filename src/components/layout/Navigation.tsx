@@ -14,6 +14,15 @@ const navigationItems = [
 export const Navigation = () => {
   const [active, setActive] = useState("dashboard");
 
+  const handleNavigation = (id: string) => {
+    setActive(id);
+    if (id === "production") {
+      window.location.href = "/production-orders";
+    } else if (id === "dashboard") {
+      window.location.href = "/";
+    }
+  };
+
   return (
     <nav className="sticky top-16 z-40 w-full border-b bg-card/95 backdrop-blur">
       <div className="container">
@@ -25,7 +34,7 @@ export const Navigation = () => {
             return (
               <button
                 key={item.id}
-                onClick={() => setActive(item.id)}
+                onClick={() => handleNavigation(item.id)}
                 className={cn(
                   "flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all",
                   isActive
