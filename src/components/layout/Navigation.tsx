@@ -1,50 +1,108 @@
-import { Home, Package, Calendar, TrendingUp, Warehouse, DollarSign } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Package,
+  Calendar,
+  Warehouse,
+  BarChart3,
+  DollarSign,
+  FileText,
+  GitBranch,
+  Factory,
+  ChevronDown,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navigationItems = [
-  { id: "dashboard", label: "Главная", icon: Home },
-  { id: "production", label: "Производство", icon: Package },
-  { id: "planning", label: "Планирование", icon: Calendar },
-  { id: "warehouse", label: "Склад", icon: Warehouse },
-  { id: "analytics", label: "Аналитика", icon: TrendingUp },
-  { id: "finance", label: "Финансы", icon: DollarSign },
+  { name: "Дашборд", path: "/", icon: LayoutDashboard },
+  { name: "Производство", path: "/production-orders", icon: Package },
+  { 
+    name: "Планирование", 
+    icon: Calendar,
+    submenu: [
+      { name: "MRP Планирование", path: "/planning/mrp", icon: Calendar },
+    ]
+  },
+  { 
+    name: "Справочники", 
+    icon: FileText,
+    submenu: [
+      { name: "Спецификации", path: "/references/specifications", icon: FileText },
+      { name: "Техмаршруты", path: "/references/routing-sheets", icon: GitBranch },
+      { name: "Рабочие центры", path: "/references/work-centers", icon: Factory },
+    ]
+  },
+  { name: "Склад", path: "/warehouse", icon: Warehouse },
+  { name: "Аналитика", path: "/analytics", icon: BarChart3 },
+  { name: "Финансы", path: "/finance", icon: DollarSign },
 ];
 
 export const Navigation = () => {
-  const [active, setActive] = useState("dashboard");
-
-  const handleNavigation = (id: string) => {
-    setActive(id);
-    if (id === "production") {
-      window.location.href = "/production-orders";
-    } else if (id === "dashboard") {
-      window.location.href = "/";
-    }
-  };
+  const location = useLocation();
 
   return (
-    <nav className="sticky top-16 z-40 w-full border-b bg-card/95 backdrop-blur">
+    <nav className="border-b bg-card">
       <div className="container">
-        <div className="flex items-center gap-1 overflow-x-auto py-2">
+        <div className="flex h-14 items-center space-x-1 overflow-x-auto">
           {navigationItems.map((item) => {
             const Icon = item.icon;
-            const isActive = active === item.id;
             
+            if ('submenu' in item && item.submenu) {
+              const isActive = item.submenu.some(sub => location.pathname === sub.path);
+              return (
+                <DropdownMenu key={item.name}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.name}
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {item.submenu.map((subItem) => {
+                      const SubIcon = subItem.icon;
+                      return (
+                        <DropdownMenuItem key={subItem.path} asChild>
+                          <Link
+                            to={subItem.path}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <SubIcon className="h-4 w-4" />
+                            {subItem.name}
+                          </Link>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              );
+            }
+
+            const isActive = location.pathname === item.path;
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavigation(item.id)}
-                className={cn(
-                  "flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all",
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
                   isActive
-                    ? "bg-gradient-to-r from-primary to-primary-glow text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
               >
                 <Icon className="h-4 w-4" />
-                {item.label}
-              </button>
+                {item.name}
+              </Link>
             );
           })}
         </div>
