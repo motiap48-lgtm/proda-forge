@@ -11,6 +11,9 @@ import MRPPlanning from "./pages/MRPPlanning";
 import Specifications from "./pages/Specifications";
 import RoutingSheets from "./pages/RoutingSheets";
 import WorkCenters from "./pages/WorkCenters";
+import Inventory from "./pages/Inventory";
+import MaterialReservations from "./pages/MaterialReservations";
+import MaterialIssues from "./pages/MaterialIssues";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +33,9 @@ const App = () => (
           <Route path="/references/specifications" element={<Specifications />} />
           <Route path="/references/routing-sheets" element={<RoutingSheets />} />
           <Route path="/references/work-centers" element={<WorkCenters />} />
+          <Route path="/warehouse/inventory" element={<Inventory />} />
+          <Route path="/warehouse/reservations" element={<MaterialReservations />} />
+          <Route path="/warehouse/issues" element={<MaterialIssues />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

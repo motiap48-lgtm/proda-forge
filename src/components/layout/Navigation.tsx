@@ -37,7 +37,15 @@ const navigationItems = [
       { name: "Рабочие центры", path: "/references/work-centers", icon: Factory },
     ]
   },
-  { name: "Склад", path: "/warehouse", icon: Warehouse },
+  { 
+    name: "Склад", 
+    icon: Warehouse,
+    submenu: [
+      { name: "Остатки", path: "/warehouse/inventory", icon: Warehouse },
+      { name: "Резервирование", path: "/warehouse/reservations", icon: Warehouse },
+      { name: "Выдача материалов", path: "/warehouse/issues", icon: Warehouse },
+    ]
+  },
   { name: "Аналитика", path: "/analytics", icon: BarChart3 },
   { name: "Финансы", path: "/finance", icon: DollarSign },
 ];
