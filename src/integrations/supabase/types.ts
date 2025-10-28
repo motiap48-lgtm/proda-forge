@@ -14,7 +14,559 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      inventory: {
+        Row: {
+          available_quantity: number | null
+          id: string
+          last_updated: string
+          product_id: string
+          quantity: number
+          reserved_quantity: number
+          warehouse_id: string
+        }
+        Insert: {
+          available_quantity?: number | null
+          id?: string
+          last_updated?: string
+          product_id: string
+          quantity?: number
+          reserved_quantity?: number
+          warehouse_id: string
+        }
+        Update: {
+          available_quantity?: number | null
+          id?: string
+          last_updated?: string
+          product_id?: string
+          quantity?: number
+          reserved_quantity?: number
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_issue_lines: {
+        Row: {
+          created_at: string
+          id: string
+          material_issue_id: string
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          material_issue_id: string
+          product_id: string
+          quantity: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          material_issue_id?: string
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_issue_lines_material_issue_id_fkey"
+            columns: ["material_issue_id"]
+            isOneToOne: false
+            referencedRelation: "material_issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_issue_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_issues: {
+        Row: {
+          created_at: string
+          id: string
+          issue_date: string
+          issue_number: string
+          issued_by: string | null
+          production_order_id: string
+          status: string
+          updated_at: string
+          warehouse_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issue_date?: string
+          issue_number: string
+          issued_by?: string | null
+          production_order_id: string
+          status?: string
+          updated_at?: string
+          warehouse_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issue_date?: string
+          issue_number?: string
+          issued_by?: string | null
+          production_order_id?: string
+          status?: string
+          updated_at?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_issues_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_issues_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_reservations: {
+        Row: {
+          created_at: string
+          id: string
+          issued_quantity: number
+          product_id: string
+          production_order_id: string
+          reserved_quantity: number
+          status: string
+          updated_at: string
+          warehouse_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issued_quantity?: number
+          product_id: string
+          production_order_id: string
+          reserved_quantity: number
+          status?: string
+          updated_at?: string
+          warehouse_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issued_quantity?: number
+          product_id?: string
+          production_order_id?: string
+          reserved_quantity?: number
+          status?: string
+          updated_at?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_reservations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_reservations_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_reservations_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_orders: {
+        Row: {
+          actual_end_date: string | null
+          actual_start_date: string | null
+          completed_quantity: number
+          created_at: string
+          id: string
+          order_number: string
+          planned_end_date: string
+          planned_start_date: string
+          priority: string
+          product_id: string
+          quantity: number
+          responsible_person: string | null
+          routing_sheet_id: string | null
+          specification_id: string | null
+          status: string
+          updated_at: string
+          work_center_id: string | null
+        }
+        Insert: {
+          actual_end_date?: string | null
+          actual_start_date?: string | null
+          completed_quantity?: number
+          created_at?: string
+          id?: string
+          order_number: string
+          planned_end_date: string
+          planned_start_date: string
+          priority?: string
+          product_id: string
+          quantity: number
+          responsible_person?: string | null
+          routing_sheet_id?: string | null
+          specification_id?: string | null
+          status?: string
+          updated_at?: string
+          work_center_id?: string | null
+        }
+        Update: {
+          actual_end_date?: string | null
+          actual_start_date?: string | null
+          completed_quantity?: number
+          created_at?: string
+          id?: string
+          order_number?: string
+          planned_end_date?: string
+          planned_start_date?: string
+          priority?: string
+          product_id?: string
+          quantity?: number
+          responsible_person?: string | null
+          routing_sheet_id?: string | null
+          specification_id?: string | null
+          status?: string
+          updated_at?: string
+          work_center_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_routing_sheet_id_fkey"
+            columns: ["routing_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "routing_sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_specification_id_fkey"
+            columns: ["specification_id"]
+            isOneToOne: false
+            referencedRelation: "specifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_work_center_id_fkey"
+            columns: ["work_center_id"]
+            isOneToOne: false
+            referencedRelation: "work_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          product_type: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          product_type?: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          product_type?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      routing_operations: {
+        Row: {
+          created_at: string
+          cycle_time_minutes: number
+          id: string
+          name: string
+          routing_sheet_id: string
+          sequence: number
+          setup_time_minutes: number
+          work_center_id: string
+        }
+        Insert: {
+          created_at?: string
+          cycle_time_minutes: number
+          id?: string
+          name: string
+          routing_sheet_id: string
+          sequence: number
+          setup_time_minutes?: number
+          work_center_id: string
+        }
+        Update: {
+          created_at?: string
+          cycle_time_minutes?: number
+          id?: string
+          name?: string
+          routing_sheet_id?: string
+          sequence?: number
+          setup_time_minutes?: number
+          work_center_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routing_operations_routing_sheet_id_fkey"
+            columns: ["routing_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "routing_sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routing_operations_work_center_id_fkey"
+            columns: ["work_center_id"]
+            isOneToOne: false
+            referencedRelation: "work_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routing_sheets: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routing_sheets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      specification_materials: {
+        Row: {
+          created_at: string
+          id: string
+          material_id: string
+          quantity: number
+          specification_id: string
+          waste_rate: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          material_id: string
+          quantity: number
+          specification_id: string
+          waste_rate?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          material_id?: string
+          quantity?: number
+          specification_id?: string
+          waste_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "specification_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "specification_materials_specification_id_fkey"
+            columns: ["specification_id"]
+            isOneToOne: false
+            referencedRelation: "specifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      specifications: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          product_id: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          product_id: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          product_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "specifications_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouses: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          location: string | null
+          name: string
+          updated_at: string
+          warehouse_type: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          name: string
+          updated_at?: string
+          warehouse_type?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          name?: string
+          updated_at?: string
+          warehouse_type?: string
+        }
+        Relationships: []
+      }
+      work_centers: {
+        Row: {
+          capacity_minutes_per_day: number
+          code: string
+          created_at: string
+          department: string | null
+          efficiency_percent: number
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          capacity_minutes_per_day?: number
+          code: string
+          created_at?: string
+          department?: string | null
+          efficiency_percent?: number
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          capacity_minutes_per_day?: number
+          code?: string
+          created_at?: string
+          department?: string | null
+          efficiency_percent?: number
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
