@@ -5,52 +5,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, FileText, Package } from "lucide-react";
-
-const mockSpecifications = [
-  {
-    id: "SPEC-001",
-    product: "Деталь А-125",
-    version: "v2",
-    is_active: true,
-    materials_count: 5,
-    created_date: "2024-01-10",
-    materials: [
-      { name: "Сталь листовая 3мм", quantity: 2.5, unit: "кг", waste_rate: 5 },
-      { name: "Болт М8х20", quantity: 4, unit: "шт", waste_rate: 2 },
-    ],
-  },
-  {
-    id: "SPEC-002",
-    product: "Узел Б-340",
-    version: "v1",
-    is_active: true,
-    materials_count: 8,
-    created_date: "2024-01-15",
-    materials: [
-      { name: "Алюминиевый профиль", quantity: 1.2, unit: "м", waste_rate: 3 },
-      { name: "Винт М6х15", quantity: 8, unit: "шт", waste_rate: 1 },
-    ],
-  },
-  {
-    id: "SPEC-003",
-    product: "Деталь А-125",
-    version: "v1",
-    is_active: false,
-    materials_count: 5,
-    created_date: "2023-12-01",
-    materials: [],
-  },
-];
+import { Plus, Search, FileText, Package, Loader2 } from "lucide-react";
+import { useSpecifications } from "@/hooks/useSpecifications";
 
 const Specifications = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: specifications, isLoading } = useSpecifications();
 
-  const filteredSpecs = mockSpecifications.filter(
-    (spec) =>
-      spec.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      spec.product.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSpecs = (specifications || []).filter(
+    (spec: any) =>
+      spec.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      spec.products?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <Navigation />
+        <div className="container py-8 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,7 +70,7 @@ const Specifications = () => {
 
         {/* Specifications List */}
         <div className="space-y-4">
-          {filteredSpecs.map((spec) => (
+          {filteredSpecs.map((spec: any) => (
             <Card
               key={spec.id}
               className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
@@ -105,7 +83,7 @@ const Specifications = () => {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-foreground">{spec.id}</h3>
+                        <h3 className="font-semibold text-foreground">{spec.code}</h3>
                         <Badge variant={spec.is_active ? "default" : "secondary"}>
                           {spec.version}
                         </Badge>
@@ -115,9 +93,9 @@ const Specifications = () => {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm font-medium text-foreground">{spec.product}</p>
+                      <p className="text-sm font-medium text-foreground">{spec.products?.name || "N/A"}</p>
                       <p className="text-xs text-muted-foreground">
-                        Создана: {spec.created_date} • Материалов: {spec.materials_count}
+                        Создана: {new Date(spec.created_at).toLocaleDateString()} • Материалов: {spec.specification_materials?.length || 0}
                       </p>
                     </div>
                   </div>
@@ -126,18 +104,18 @@ const Specifications = () => {
                   </Button>
                 </div>
 
-                {spec.materials.length > 0 && (
+                {spec.specification_materials && spec.specification_materials.length > 0 && (
                   <div className="mt-4 border-t pt-4">
                     <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                       <Package className="h-4 w-4 text-muted-foreground" />
                       Материалы:
                     </p>
                     <div className="grid gap-2 md:grid-cols-2">
-                      {spec.materials.map((material, idx) => (
+                      {spec.specification_materials.map((material: any, idx: number) => (
                         <div key={idx} className="text-sm bg-muted/50 rounded-lg p-3">
-                          <p className="font-medium text-foreground">{material.name}</p>
+                          <p className="font-medium text-foreground">{material.products?.name || "N/A"}</p>
                           <p className="text-xs text-muted-foreground">
-                            {material.quantity} {material.unit} • Отходы: {material.waste_rate}%
+                            {material.quantity} {material.products?.unit || ""} • Отходы: {material.waste_rate}%
                           </p>
                         </div>
                       ))}

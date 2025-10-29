@@ -5,81 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Filter, Download } from "lucide-react";
+import { Plus, Search, Filter, Download, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const mockOrders = [
-  {
-    id: "PO-2024-001",
-    product: "Деталь А-125",
-    specification: "SPEC-А-125-v2",
-    quantity: 500,
-    completed: 325,
-    status: "in_progress",
-    priority: "normal",
-    planned_start: "2024-01-15",
-    planned_end: "2024-02-15",
-    actual_start: "2024-01-15",
-    work_center: "Цех №1",
-    responsible: "Иванов И.И.",
-  },
-  {
-    id: "PO-2024-002",
-    product: "Узел Б-340",
-    specification: "SPEC-Б-340-v1",
-    quantity: 200,
-    completed: 0,
-    status: "planned",
-    priority: "high",
-    planned_start: "2024-02-01",
-    planned_end: "2024-02-20",
-    actual_start: null,
-    work_center: "Цех №2",
-    responsible: "Петров П.П.",
-  },
-  {
-    id: "PO-2024-003",
-    product: "Компонент В-89",
-    specification: "SPEC-В-89-v3",
-    quantity: 1000,
-    completed: 350,
-    status: "in_progress",
-    priority: "normal",
-    planned_start: "2024-01-20",
-    planned_end: "2024-02-18",
-    actual_start: "2024-01-22",
-    work_center: "Цех №1",
-    responsible: "Сидоров С.С.",
-  },
-  {
-    id: "PO-2024-004",
-    product: "Изделие Г-456",
-    specification: "SPEC-Г-456-v1",
-    quantity: 150,
-    completed: 150,
-    status: "completed",
-    priority: "normal",
-    planned_start: "2024-01-10",
-    planned_end: "2024-01-28",
-    actual_start: "2024-01-10",
-    work_center: "Цех №3",
-    responsible: "Козлов К.К.",
-  },
-  {
-    id: "PO-2024-005",
-    product: "Деталь Д-789",
-    specification: "SPEC-Д-789-v2",
-    quantity: 750,
-    completed: 0,
-    status: "planned",
-    priority: "urgent",
-    planned_start: "2024-02-05",
-    planned_end: "2024-02-25",
-    actual_start: null,
-    work_center: "Цех №2",
-    responsible: "Новиков Н.Н.",
-  },
-];
+import { useProductionOrders } from "@/hooks/useProductionOrders";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const statusConfig = {
   planned: { label: "Запланировано", variant: "secondary" as const },
@@ -95,18 +24,32 @@ const priorityConfig = {
   urgent: { label: "Срочный", variant: "destructive" as const },
 };
 
-const ProductionOrders = () => {
+const ProductionOrdersContent = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { data: orders, isLoading } = useProductionOrders();
 
-  const filteredOrders = mockOrders.filter((order) => {
+  const filteredOrders = (orders || []).filter((order) => {
+    const productName = order.products?.name || "";
     const matchesSearch =
-      order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.product.toLowerCase().includes(searchQuery.toLowerCase());
+      order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      productName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <Navigation />
+        <div className="container py-8 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -190,35 +133,37 @@ const ProductionOrders = () => {
         {/* Orders List */}
         <div className="space-y-4">
           {filteredOrders.map((order) => {
-            const progress = (order.completed / order.quantity) * 100;
+            const progress = (order.completed_quantity / order.quantity) * 100;
             return (
               <Card
                 key={order.id}
                 className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
-                onClick={() => navigate(`/production-orders/${order.id}`)}
+                onClick={() => navigate(`/production-orders/${order.order_number}`)}
               >
                 <CardContent className="p-6">
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {/* Order Info */}
                     <div>
                       <div className="mb-2 flex items-center gap-2">
-                        <h3 className="font-semibold text-foreground">{order.id}</h3>
-                        <Badge variant={statusConfig[order.status].variant}>
-                          {statusConfig[order.status].label}
+                        <h3 className="font-semibold text-foreground">{order.order_number}</h3>
+                        <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"}>
+                          {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
                         </Badge>
-                        <Badge variant={priorityConfig[order.priority].variant}>
-                          {priorityConfig[order.priority].label}
+                        <Badge variant={priorityConfig[order.priority as keyof typeof priorityConfig]?.variant || "secondary"}>
+                          {priorityConfig[order.priority as keyof typeof priorityConfig]?.label || order.priority}
                         </Badge>
                       </div>
-                      <p className="text-sm font-medium text-foreground">{order.product}</p>
-                      <p className="text-xs text-muted-foreground">Спецификация: {order.specification}</p>
+                      <p className="text-sm font-medium text-foreground">{order.products?.name || "N/A"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Спецификация: {order.specifications?.code || "N/A"}
+                      </p>
                     </div>
 
                     {/* Production Info */}
                     <div>
                       <p className="mb-1 text-xs text-muted-foreground">Производство</p>
                       <p className="text-sm font-medium text-foreground">
-                        {order.completed} / {order.quantity} шт
+                        {order.completed_quantity} / {order.quantity} шт
                       </p>
                       {order.status === "in_progress" && (
                         <div className="mt-2">
@@ -237,18 +182,22 @@ const ProductionOrders = () => {
                     <div>
                       <p className="mb-1 text-xs text-muted-foreground">Сроки</p>
                       <p className="text-sm text-foreground">
-                        Начало: {order.planned_start}
+                        Начало: {new Date(order.planned_start_date).toLocaleDateString()}
                       </p>
                       <p className="text-sm text-foreground">
-                        Окончание: {order.planned_end}
+                        Окончание: {new Date(order.planned_end_date).toLocaleDateString()}
                       </p>
                     </div>
 
                     {/* Responsible */}
                     <div>
                       <p className="mb-1 text-xs text-muted-foreground">Исполнение</p>
-                      <p className="text-sm font-medium text-foreground">{order.work_center}</p>
-                      <p className="text-xs text-muted-foreground">{order.responsible}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {order.work_centers?.name || "N/A"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {order.responsible_person || "Не назначен"}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -266,6 +215,14 @@ const ProductionOrders = () => {
         )}
       </main>
     </div>
+  );
+};
+
+const ProductionOrders = () => {
+  return (
+    <ProtectedRoute>
+      <ProductionOrdersContent />
+    </ProtectedRoute>
   );
 };
 

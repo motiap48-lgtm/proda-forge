@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import ProductionOrders from "./pages/ProductionOrders";
 import NewProductionOrder from "./pages/NewProductionOrder";
@@ -29,17 +30,17 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={<Index />} />
-            <Route path="/production-orders" element={<ProductionOrders />} />
-            <Route path="/production-orders/new" element={<NewProductionOrder />} />
-            <Route path="/production-orders/:id" element={<ProductionOrderDetails />} />
-            <Route path="/planning/mrp" element={<MRPPlanning />} />
-            <Route path="/references/specifications" element={<Specifications />} />
-            <Route path="/references/routing-sheets" element={<RoutingSheets />} />
-            <Route path="/references/work-centers" element={<WorkCenters />} />
-            <Route path="/warehouse/inventory" element={<Inventory />} />
-            <Route path="/warehouse/reservations" element={<MaterialReservations />} />
-            <Route path="/warehouse/issues" element={<MaterialIssues />} />
+            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/production-orders" element={<ProtectedRoute><ProductionOrders /></ProtectedRoute>} />
+            <Route path="/production-orders/new" element={<ProtectedRoute><NewProductionOrder /></ProtectedRoute>} />
+            <Route path="/production-orders/:id" element={<ProtectedRoute><ProductionOrderDetails /></ProtectedRoute>} />
+            <Route path="/planning/mrp" element={<ProtectedRoute><MRPPlanning /></ProtectedRoute>} />
+            <Route path="/references/specifications" element={<ProtectedRoute><Specifications /></ProtectedRoute>} />
+            <Route path="/references/routing-sheets" element={<ProtectedRoute><RoutingSheets /></ProtectedRoute>} />
+            <Route path="/references/work-centers" element={<ProtectedRoute><WorkCenters /></ProtectedRoute>} />
+            <Route path="/warehouse/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+            <Route path="/warehouse/reservations" element={<ProtectedRoute><MaterialReservations /></ProtectedRoute>} />
+            <Route path="/warehouse/issues" element={<ProtectedRoute><MaterialIssues /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

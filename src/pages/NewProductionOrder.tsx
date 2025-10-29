@@ -8,11 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useProducts } from "@/hooks/useProducts";
+import { useActiveSpecifications } from "@/hooks/useSpecifications";
+import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
+import { useCreateProductionOrder } from "@/hooks/useProductionOrders";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
-const NewProductionOrder = () => {
+const NewProductionOrderContent = () => {
   const navigate = useNavigate();
+  const { data: products, isLoading: productsLoading } = useProducts();
+  const { data: specifications, isLoading: specificationsLoading } = useActiveSpecifications();
+  const { data: workCenters, isLoading: workCentersLoading } = useActiveWorkCenters();
+  const createOrder = useCreateProductionOrder();
+
   const [formData, setFormData] = useState({
     product: "",
     specification: "",
@@ -22,18 +32,53 @@ const NewProductionOrder = () => {
     responsible: "",
     planned_start: "",
     planned_end: "",
-    notes: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Производственный заказ создан успешно");
+    
+    if (!formData.product || !formData.quantity || !formData.planned_start || !formData.planned_end) {
+      toast.error("Пожалуйста, заполните все обязательные поля");
+      return;
+    }
+
+    const orderNumber = `PO-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
+
+    await createOrder.mutateAsync({
+      order_number: orderNumber,
+      product_id: formData.product,
+      specification_id: formData.specification || null,
+      work_center_id: formData.work_center || null,
+      routing_sheet_id: null,
+      quantity: Number(formData.quantity),
+      completed_quantity: 0,
+      status: "planned",
+      priority: formData.priority,
+      planned_start_date: formData.planned_start,
+      planned_end_date: formData.planned_end,
+      actual_start_date: null,
+      actual_end_date: null,
+      responsible_person: formData.responsible || null,
+    });
+
     navigate("/production-orders");
   };
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  if (productsLoading || specificationsLoading || workCentersLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <Navigation />
+        <div className="container py-8 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -71,27 +116,30 @@ const NewProductionOrder = () => {
                         <SelectValue placeholder="Выберите продукт" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="detail-a-125">Деталь А-125</SelectItem>
-                        <SelectItem value="node-b-340">Узел Б-340</SelectItem>
-                        <SelectItem value="component-v-89">Компонент В-89</SelectItem>
-                        <SelectItem value="product-g-456">Изделие Г-456</SelectItem>
+                        {products?.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.code} - {product.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="specification">Спецификация *</Label>
+                    <Label htmlFor="specification">Спецификация</Label>
                     <Select
                       value={formData.specification}
                       onValueChange={(value) => handleChange("specification", value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Выберите спецификацию" />
+                        <SelectValue placeholder="Выберите спецификацию (опционально)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="spec-1">SPEC-А-125-v2</SelectItem>
-                        <SelectItem value="spec-2">SPEC-Б-340-v1</SelectItem>
-                        <SelectItem value="spec-3">SPEC-В-89-v3</SelectItem>
+                        {specifications?.map((spec) => (
+                          <SelectItem key={spec.id} value={spec.id}>
+                            {spec.code} {spec.version}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -118,37 +166,33 @@ const NewProductionOrder = () => {
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="work_center">Рабочий центр *</Label>
+                      <Label htmlFor="work_center">Рабочий центр</Label>
                       <Select
                         value={formData.work_center}
                         onValueChange={(value) => handleChange("work_center", value)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Выберите цех" />
+                          <SelectValue placeholder="Выберите рабочий центр (опционально)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="shop-1">Цех №1</SelectItem>
-                          <SelectItem value="shop-2">Цех №2</SelectItem>
-                          <SelectItem value="shop-3">Цех №3</SelectItem>
+                          {workCenters?.map((center) => (
+                            <SelectItem key={center.id} value={center.id}>
+                              {center.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="responsible">Ответственный *</Label>
-                      <Select
+                      <Label htmlFor="responsible">Ответственный</Label>
+                      <Input
+                        id="responsible"
+                        type="text"
+                        placeholder="ФИО ответственного"
                         value={formData.responsible}
-                        onValueChange={(value) => handleChange("responsible", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите ответственного" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ivanov">Иванов И.И.</SelectItem>
-                          <SelectItem value="petrov">Петров П.П.</SelectItem>
-                          <SelectItem value="sidorov">Сидоров С.С.</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        onChange={(e) => handleChange("responsible", e.target.value)}
+                      />
                     </div>
                   </div>
 
@@ -174,17 +218,6 @@ const NewProductionOrder = () => {
                         required
                       />
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Примечания</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Дополнительная информация о заказе"
-                      value={formData.notes}
-                      onChange={(e) => handleChange("notes", e.target.value)}
-                      rows={4}
-                    />
                   </div>
                 </CardContent>
               </Card>
@@ -231,9 +264,19 @@ const NewProductionOrder = () => {
                     type="submit"
                     className="w-full bg-gradient-to-r from-primary to-primary-glow"
                     size="lg"
+                    disabled={createOrder.isPending}
                   >
-                    <Save className="mr-2 h-4 w-4" />
-                    Создать заказ
+                    {createOrder.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Создание...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Создать заказ
+                      </>
+                    )}
                   </Button>
                   <Button
                     type="button"
@@ -250,6 +293,14 @@ const NewProductionOrder = () => {
         </form>
       </main>
     </div>
+  );
+};
+
+const NewProductionOrder = () => {
+  return (
+    <ProtectedRoute>
+      <NewProductionOrderContent />
+    </ProtectedRoute>
   );
 };
 

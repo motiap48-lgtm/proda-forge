@@ -5,68 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Factory, Users, Calendar, BarChart3 } from "lucide-react";
+import { Plus, Search, Factory, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-
-const mockWorkCenters = [
-  {
-    id: "WC-001",
-    name: "Участок резки металла",
-    department: "Цех №1",
-    capacity: 480,
-    current_load: 360,
-    efficiency: 85,
-    status: "active",
-    equipment: ["Гильотина ГН-3", "Плазморез CNC"],
-    workers: 4,
-    shift: "2 смены",
-  },
-  {
-    id: "WC-002",
-    name: "Участок механообработки",
-    department: "Цех №1",
-    capacity: 960,
-    current_load: 840,
-    efficiency: 92,
-    status: "active",
-    equipment: ["Токарный станок 16К20", "Фрезерный станок 6Р12", "Сверлильный станок 2Н135"],
-    workers: 8,
-    shift: "3 смены",
-  },
-  {
-    id: "WC-003",
-    name: "Участок сварки",
-    department: "Цех №2",
-    capacity: 480,
-    current_load: 120,
-    efficiency: 78,
-    status: "active",
-    equipment: ["Сварочный аппарат MIG/MAG", "Полуавтомат TIG"],
-    workers: 3,
-    shift: "2 смены",
-  },
-  {
-    id: "WC-004",
-    name: "Участок покраски",
-    department: "Цех №3",
-    capacity: 240,
-    current_load: 0,
-    efficiency: 0,
-    status: "maintenance",
-    equipment: ["Камера порошковой покраски"],
-    workers: 2,
-    shift: "1 смена",
-  },
-];
+import { useWorkCenters } from "@/hooks/useWorkCenters";
 
 const WorkCenters = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: workCenters, isLoading } = useWorkCenters();
 
-  const filteredCenters = mockWorkCenters.filter(
-    (center) =>
-      center.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      center.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      center.department.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCenters = (workCenters || []).filter(
+    (center: any) =>
+      center.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      center.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      center.department?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStatusBadge = (status: string) => {
@@ -82,11 +33,17 @@ const WorkCenters = () => {
     }
   };
 
-  const getLoadColor = (loadPercent: number) => {
-    if (loadPercent >= 90) return "text-red-600";
-    if (loadPercent >= 75) return "text-amber-600";
-    return "text-green-600";
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <Navigation />
+        <div className="container py-8 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -128,8 +85,8 @@ const WorkCenters = () => {
 
         {/* Work Centers List */}
         <div className="grid gap-4 md:grid-cols-2">
-          {filteredCenters.map((center) => {
-            const loadPercent = (center.current_load / center.capacity) * 100;
+          {filteredCenters.map((center: any) => {
+            const loadPercent = 0; // TODO: Calculate from production orders
             return (
               <Card
                 key={center.id}
@@ -143,11 +100,11 @@ const WorkCenters = () => {
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-foreground">{center.id}</h3>
+                          <h3 className="font-semibold text-foreground">{center.code}</h3>
                           {getStatusBadge(center.status)}
                         </div>
                         <p className="text-sm font-medium text-foreground">{center.name}</p>
-                        <p className="text-xs text-muted-foreground">{center.department}</p>
+                        <p className="text-xs text-muted-foreground">{center.department || "N/A"}</p>
                       </div>
                     </div>
                   </div>
@@ -156,44 +113,25 @@ const WorkCenters = () => {
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-muted-foreground">Загрузка</span>
-                      <span className={`text-sm font-bold ${getLoadColor(loadPercent)}`}>
+                      <span className="text-sm font-bold text-green-600">
                         {loadPercent.toFixed(0)}%
                       </span>
                     </div>
                     <Progress value={loadPercent} className="h-2" />
                     <p className="text-xs text-muted-foreground mt-1">
-                      {center.current_load} из {center.capacity} мин/день
+                      0 из {center.capacity_minutes_per_day} мин/день
                     </p>
                   </div>
 
                   {/* Metrics */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="text-center p-2 bg-muted/50 rounded-lg">
-                      <BarChart3 className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
                       <p className="text-xs text-muted-foreground">Эффективность</p>
-                      <p className="text-sm font-bold text-foreground">{center.efficiency}%</p>
+                      <p className="text-sm font-bold text-foreground">{center.efficiency_percent}%</p>
                     </div>
                     <div className="text-center p-2 bg-muted/50 rounded-lg">
-                      <Users className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
-                      <p className="text-xs text-muted-foreground">Рабочих</p>
-                      <p className="text-sm font-bold text-foreground">{center.workers}</p>
-                    </div>
-                    <div className="text-center p-2 bg-muted/50 rounded-lg">
-                      <Calendar className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
-                      <p className="text-xs text-muted-foreground">Режим</p>
-                      <p className="text-sm font-bold text-foreground">{center.shift}</p>
-                    </div>
-                  </div>
-
-                  {/* Equipment */}
-                  <div className="border-t pt-3">
-                    <p className="text-xs text-muted-foreground mb-2">Оборудование:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {center.equipment.map((eq, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-xs">
-                          {eq}
-                        </Badge>
-                      ))}
+                      <p className="text-xs text-muted-foreground">Мощность</p>
+                      <p className="text-sm font-bold text-foreground">{center.capacity_minutes_per_day} мин</p>
                     </div>
                   </div>
                 </CardContent>
