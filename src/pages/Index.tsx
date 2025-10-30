@@ -4,19 +4,28 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ProductionOrders } from "@/components/dashboard/ProductionOrders";
 import { ProductionChart } from "@/components/dashboard/ProductionChart";
 import { Package, Clock, TrendingUp, AlertTriangle } from "lucide-react";
+import { useProductionOrders } from "@/hooks/useProductionOrders";
 
 const Index = () => {
+  const { data: orders } = useProductionOrders();
+  
+  const activeOrders = orders?.filter(o => o.status === 'in_progress' || o.status === 'released').length || 0;
+  const completedOrders = orders?.filter(o => o.status === 'completed').length || 0;
+  const urgentOrders = orders?.filter(o => {
+    const daysUntilDeadline = Math.ceil((new Date(o.planned_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntilDeadline <= 3 && o.status !== 'completed';
+  }).length || 0;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <Navigation />
       
       <main className="container py-8">
-        {/* Metrics */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <MetricCard
             title="Заказов в работе"
-            value="24"
+            value={activeOrders.toString()}
             change="+3 за неделю"
             trend="up"
             icon={Package}
@@ -24,7 +33,7 @@ const Index = () => {
           />
           <MetricCard
             title="Выполнено"
-            value="156"
+            value={completedOrders.toString()}
             change="+12% к плану"
             trend="up"
             icon={TrendingUp}
@@ -32,9 +41,9 @@ const Index = () => {
           />
           <MetricCard
             title="Срочных заказов"
-            value="5"
-            change="2 с задержкой"
-            trend="down"
+            value={urgentOrders.toString()}
+            change="требуют внимания"
+            trend={urgentOrders > 0 ? "down" : "up"}
             icon={Clock}
             variant="warning"
           />

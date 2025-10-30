@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Calculator, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useMRPCalculation, usePurchaseRequisitions } from "@/hooks/useMRPPlanning";
 
 const mockMRPData = {
   requirements: [
@@ -61,7 +62,10 @@ const mockMRPData = {
 };
 
 const MRPPlanning = () => {
-  const [planningHorizon, setPlanningHorizon] = useState("30");
+  const [planningHorizon, setPlanningHorizon] = useState(30);
+  
+  const { data: requirements, isLoading, refetch } = useMRPCalculation(planningHorizon);
+  const { data: purchaseReqs } = usePurchaseRequisitions();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -106,7 +110,7 @@ const MRPPlanning = () => {
                   id="horizon"
                   type="number"
                   value={planningHorizon}
-                  onChange={(e) => setPlanningHorizon(e.target.value)}
+                  onChange={(e) => setPlanningHorizon(parseInt(e.target.value) || 30)}
                   className="mt-1"
                 />
               </div>
@@ -115,9 +119,13 @@ const MRPPlanning = () => {
                 <Input id="startDate" type="date" defaultValue="2024-02-01" className="mt-1" />
               </div>
               <div className="flex items-end">
-                <Button className="w-full bg-gradient-to-r from-primary to-primary-glow">
+                <Button 
+                  className="w-full bg-gradient-to-r from-primary to-primary-glow"
+                  onClick={() => refetch()}
+                  disabled={isLoading}
+                >
                   <Calculator className="mr-2 h-4 w-4" />
-                  Выполнить расчет
+                  {isLoading ? "Расчет..." : "Выполнить расчет"}
                 </Button>
               </div>
               <div className="flex items-end">
@@ -147,40 +155,57 @@ const MRPPlanning = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {mockMRPData.requirements.map((item) => (
-                    <Card key={item.id} className="border-l-4 border-l-primary">
-                      <CardContent className="p-4">
-                        <div className="grid gap-4 md:grid-cols-6">
-                          <div className="md:col-span-2">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <p className="font-semibold text-foreground">{item.material}</p>
-                                {getStatusBadge(item.status)}
+                {isLoading ? (
+                  <p className="text-center py-8 text-muted-foreground">Загрузка...</p>
+                ) : requirements && requirements.length > 0 ? (
+                  <div className="space-y-3">
+                    {requirements.map((item) => (
+                      <Card key={item.product_id} className="border-l-4 border-l-primary">
+                        <CardContent className="p-4">
+                          <div className="grid gap-4 md:grid-cols-6">
+                            <div className="md:col-span-2">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <p className="font-semibold text-foreground">{item.product_name}</p>
+                                  <p className="text-xs text-muted-foreground">{item.product_code}</p>
+                                  {getStatusBadge(item.status)}
+                                </div>
                               </div>
                             </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Валовая потребность</p>
+                              <p className="text-sm font-medium text-foreground">
+                                {item.gross_requirement.toFixed(2)} {item.unit}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">На складе</p>
+                              <p className="text-sm font-medium text-foreground">
+                                {item.on_hand.toFixed(2)} {item.unit}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Доступно</p>
+                              <p className="text-sm font-medium text-foreground">
+                                {item.available.toFixed(2)} {item.unit}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Чистая потребность</p>
+                              <p className="text-sm font-bold text-primary">
+                                {item.net_requirement.toFixed(2)} {item.unit}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Валовая потребность</p>
-                            <p className="text-sm font-medium text-foreground">{item.gross_requirement} шт</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Ожидается поступление</p>
-                            <p className="text-sm font-medium text-foreground">{item.scheduled_receipts} шт</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Текущий остаток</p>
-                            <p className="text-sm font-medium text-foreground">{item.projected_available} шт</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Чистая потребность</p>
-                            <p className="text-sm font-bold text-primary">{item.net_requirement} шт</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">
+                    Нет данных для отображения. Выполните расчет.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -191,40 +216,48 @@ const MRPPlanning = () => {
                 <CardTitle>Сформированные заявки на закупку</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {mockMRPData.purchaseRequisitions.map((pr) => (
-                    <Card key={pr.id} className="hover:border-primary transition-all cursor-pointer">
-                      <CardContent className="p-4">
-                        <div className="grid gap-4 md:grid-cols-4">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Номер заявки</p>
-                            <p className="font-semibold text-foreground">{pr.id}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Материал</p>
-                            <p className="text-sm text-foreground">{pr.material}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Количество</p>
-                            <p className="text-sm font-medium text-foreground">{pr.quantity} шт</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Требуемая дата</p>
-                            <p className="text-sm text-foreground">{pr.required_date}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                <div className="mt-4 flex gap-2">
+                {purchaseReqs && purchaseReqs.length > 0 ? (
+                  <>
+                    <div className="space-y-3">
+                      {purchaseReqs.map((pr: any) => (
+                        <Card key={pr.id} className="hover:border-primary transition-all cursor-pointer">
+                          <CardContent className="p-4">
+                            <div className="grid gap-4 md:grid-cols-4">
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Номер заявки</p>
+                                <p className="font-semibold text-foreground">{pr.id}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Материал</p>
+                                <p className="text-sm text-foreground">{pr.material}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Количество</p>
+                                <p className="text-sm font-medium text-foreground">{pr.quantity} шт</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Требуемая дата</p>
+                                <p className="text-sm text-foreground">{pr.required_date}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex gap-2">
                   <Button>
                     Создать заказы поставщикам
                   </Button>
-                  <Button variant="outline">
-                    Экспортировать
-                  </Button>
-                </div>
+                      <Button variant="outline">
+                        Экспортировать
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">
+                    Заявки на закупку отсутствуют
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

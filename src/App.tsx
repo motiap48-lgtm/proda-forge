@@ -8,7 +8,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import ProductionOrders from "./pages/ProductionOrders";
 import NewProductionOrder from "./pages/NewProductionOrder";
-import ProductionOrderDetails from "./pages/ProductionOrderDetails";
+import ProductionOrderDetailsNew from "./pages/ProductionOrderDetailsNew";
+import UserManagement from "./pages/UserManagement";
 import MRPPlanning from "./pages/MRPPlanning";
 import Specifications from "./pages/Specifications";
 import RoutingSheets from "./pages/RoutingSheets";
@@ -33,7 +34,8 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/production-orders" element={<ProtectedRoute><ProductionOrders /></ProtectedRoute>} />
             <Route path="/production-orders/new" element={<ProtectedRoute><NewProductionOrder /></ProtectedRoute>} />
-            <Route path="/production-orders/:id" element={<ProtectedRoute><ProductionOrderDetails /></ProtectedRoute>} />
+            <Route path="/production-orders/:id" element={<ProtectedRoute><ProductionOrderDetailsNew /></ProtectedRoute>} />
+            <Route path="/user-management" element={<ProtectedRoute requiredRole="admin"><UserManagement /></ProtectedRoute>} />
             <Route path="/planning/mrp" element={<ProtectedRoute><MRPPlanning /></ProtectedRoute>} />
             <Route path="/references/specifications" element={<ProtectedRoute><Specifications /></ProtectedRoute>} />
             <Route path="/references/routing-sheets" element={<ProtectedRoute><RoutingSheets /></ProtectedRoute>} />

@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   Package,
@@ -10,6 +11,7 @@ import {
   GitBranch,
   Factory,
   ChevronDown,
+  Users,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -52,6 +54,7 @@ const navigationItems = [
 
 export const Navigation = () => {
   const location = useLocation();
+  const { hasRole } = useAuth();
 
   return (
     <nav className="border-b bg-card">
@@ -113,6 +116,19 @@ export const Navigation = () => {
               </Link>
             );
           })}
+          {hasRole('admin') && (
+            <Link
+              to="/user-management"
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                location.pathname === "/user-management"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              Пользователи
+            </Link>
+          )}
         </div>
       </div>
     </nav>

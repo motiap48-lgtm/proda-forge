@@ -207,6 +207,133 @@ export type Database = {
           },
         ]
       }
+      production_order_history: {
+        Row: {
+          change_type: string
+          created_at: string
+          description: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          production_order_id: string
+          user_id: string
+        }
+        Insert: {
+          change_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          production_order_id: string
+          user_id: string
+        }
+        Update: {
+          change_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          production_order_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_order_history_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_order_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_order_operations: {
+        Row: {
+          actual_end_date: string | null
+          actual_start_date: string | null
+          completed_quantity: number
+          created_at: string
+          cycle_time_actual: number | null
+          id: string
+          notes: string | null
+          operator_id: string | null
+          planned_end_date: string | null
+          planned_start_date: string | null
+          production_order_id: string
+          routing_operation_id: string
+          sequence: number
+          setup_time_actual: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_end_date?: string | null
+          actual_start_date?: string | null
+          completed_quantity?: number
+          created_at?: string
+          cycle_time_actual?: number | null
+          id?: string
+          notes?: string | null
+          operator_id?: string | null
+          planned_end_date?: string | null
+          planned_start_date?: string | null
+          production_order_id: string
+          routing_operation_id: string
+          sequence: number
+          setup_time_actual?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_end_date?: string | null
+          actual_start_date?: string | null
+          completed_quantity?: number
+          created_at?: string
+          cycle_time_actual?: number | null
+          id?: string
+          notes?: string | null
+          operator_id?: string | null
+          planned_end_date?: string | null
+          planned_start_date?: string | null
+          production_order_id?: string
+          routing_operation_id?: string
+          sequence?: number
+          setup_time_actual?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_order_operations_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_order_operations_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_order_operations_routing_operation_id_fkey"
+            columns: ["routing_operation_id"]
+            isOneToOne: false
+            referencedRelation: "routing_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_orders: {
         Row: {
           actual_end_date: string | null
