@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import ProductionOrders from "./pages/ProductionOrders";
 import NewProductionOrder from "./pages/NewProductionOrder";
 import ProductionOrderDetailsNew from "./pages/ProductionOrderDetailsNew";
+import EditProductionOrder from "./pages/EditProductionOrder";
 import UserManagement from "./pages/UserManagement";
 import MRPPlanning from "./pages/MRPPlanning";
 import Specifications from "./pages/Specifications";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/production-orders" element={<ProtectedRoute><ProductionOrders /></ProtectedRoute>} />
             <Route path="/production-orders/new" element={<ProtectedRoute><NewProductionOrder /></ProtectedRoute>} />
             <Route path="/production-orders/:id" element={<ProtectedRoute><ProductionOrderDetailsNew /></ProtectedRoute>} />
+            <Route path="/production-orders/:id/edit" element={<ProtectedRoute><EditProductionOrder /></ProtectedRoute>} />
             <Route path="/user-management" element={<ProtectedRoute requiredRole="admin"><UserManagement /></ProtectedRoute>} />
             <Route path="/planning/mrp" element={<ProtectedRoute><MRPPlanning /></ProtectedRoute>} />
             <Route path="/references/specifications" element={<ProtectedRoute><Specifications /></ProtectedRoute>} />

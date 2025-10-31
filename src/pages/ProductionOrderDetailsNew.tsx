@@ -88,7 +88,10 @@ const ProductionOrderDetailsNew = () => {
               <p className="text-muted-foreground">Спецификация: {order.specifications?.code}</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline">
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/production-orders/${order.order_number}/edit`)}
+              >
                 <Edit className="mr-2 h-4 w-4" />
                 Редактировать
               </Button>

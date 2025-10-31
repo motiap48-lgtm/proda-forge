@@ -23,15 +23,25 @@ const UserManagement = () => {
   const { data: users, isLoading } = useQuery({
     queryKey: ["users-with-roles"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Получаем профили
+      const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select(`
-          *,
-          user_roles(role)
-        `);
+        .select("*");
 
-      if (error) throw error;
-      return data;
+      if (profilesError) throw profilesError;
+
+      // Получаем роли для каждого пользователя
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+
+      if (rolesError) throw rolesError;
+
+      // Объединяем данные
+      return profiles.map(profile => ({
+        ...profile,
+        user_roles: roles.filter(r => r.user_id === profile.id)
+      }));
     },
   });
 
