@@ -1,4 +1,4 @@
-import { Bell, Settings, User, LogOut, UserCircle } from "lucide-react";
+import { Settings, LogOut, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { NotificationPopover } from "@/components/notifications/NotificationPopover";
 
 export const Header = () => {
   const { user, userRoles, signOut, loading } = useAuth();
@@ -75,11 +76,12 @@ export const Header = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent"></span>
-          </Button>
-          <Button variant="ghost" size="icon">
+          <NotificationPopover />
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate("/settings")}
+          >
             <Settings className="h-5 w-5" />
           </Button>
           
@@ -105,11 +107,11 @@ export const Header = () => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
                 <UserCircle className="mr-2 h-4 w-4" />
                 Профиль
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
                 <Settings className="mr-2 h-4 w-4" />
                 Настройки
               </DropdownMenuItem>
