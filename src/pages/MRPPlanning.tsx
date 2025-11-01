@@ -8,7 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Calculator, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useMRPCalculation, usePurchaseRequisitions } from "@/hooks/useMRPPlanning";
+import { useMRPCalculation, usePurchaseRequisitions, useSaveMRPCalculation } from "@/hooks/useMRPPlanning";
+import { MRPHistoryDialog } from "@/components/mrp/MRPHistoryDialog";
+import { format } from "date-fns";
 
 const mockMRPData = {
   requirements: [
@@ -63,9 +65,23 @@ const mockMRPData = {
 
 const MRPPlanning = () => {
   const [planningHorizon, setPlanningHorizon] = useState(30);
+  const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   
   const { data: requirements, isLoading, refetch } = useMRPCalculation(planningHorizon);
   const { data: purchaseReqs } = usePurchaseRequisitions();
+  const saveMutation = useSaveMRPCalculation();
+
+  const handleCalculate = async () => {
+    const result = await refetch();
+    if (result.data && result.data.length > 0) {
+      // Сохраняем результаты расчета
+      saveMutation.mutate({
+        planningHorizonDays: planningHorizon,
+        startDate: startDate,
+        requirements: result.data,
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -116,23 +132,26 @@ const MRPPlanning = () => {
               </div>
               <div>
                 <Label htmlFor="startDate">Дата начала</Label>
-                <Input id="startDate" type="date" defaultValue="2024-02-01" className="mt-1" />
+                <Input 
+                  id="startDate" 
+                  type="date" 
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="mt-1" 
+                />
               </div>
               <div className="flex items-end">
                 <Button 
                   className="w-full bg-gradient-to-r from-primary to-primary-glow"
-                  onClick={() => refetch()}
-                  disabled={isLoading}
+                  onClick={handleCalculate}
+                  disabled={isLoading || saveMutation.isPending}
                 >
                   <Calculator className="mr-2 h-4 w-4" />
-                  {isLoading ? "Расчет..." : "Выполнить расчет"}
+                  {isLoading || saveMutation.isPending ? "Расчет..." : "Выполнить расчет"}
                 </Button>
               </div>
               <div className="flex items-end">
-                <Button variant="outline" className="w-full">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  История расчетов
-                </Button>
+                <MRPHistoryDialog />
               </div>
             </div>
           </CardContent>
@@ -222,22 +241,28 @@ const MRPPlanning = () => {
                       {purchaseReqs.map((pr: any) => (
                         <Card key={pr.id} className="hover:border-primary transition-all cursor-pointer">
                           <CardContent className="p-4">
-                            <div className="grid gap-4 md:grid-cols-4">
+                            <div className="grid gap-4 md:grid-cols-5">
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1">Номер заявки</p>
-                                <p className="font-semibold text-foreground">{pr.id}</p>
+                                <p className="font-semibold text-foreground">{pr.requisition_number}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1">Материал</p>
-                                <p className="text-sm text-foreground">{pr.material}</p>
+                                <p className="text-sm text-foreground">{pr.products?.code} - {pr.products?.name}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1">Количество</p>
-                                <p className="text-sm font-medium text-foreground">{pr.quantity} шт</p>
+                                <p className="text-sm font-medium text-foreground">{Number(pr.quantity).toFixed(2)} {pr.products?.unit}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1">Требуемая дата</p>
-                                <p className="text-sm text-foreground">{pr.required_date}</p>
+                                <p className="text-sm text-foreground">{format(new Date(pr.required_date), "dd.MM.yyyy")}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Статус</p>
+                                <Badge variant={pr.status === 'pending' ? 'default' : 'outline'}>
+                                  {pr.status === 'pending' ? 'Ожидает' : pr.status}
+                                </Badge>
                               </div>
                             </div>
                           </CardContent>

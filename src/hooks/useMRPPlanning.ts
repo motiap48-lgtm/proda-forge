@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface MRPRequirement {
   product_id: string;
@@ -128,8 +129,142 @@ export const usePurchaseRequisitions = () => {
   return useQuery({
     queryKey: ["purchase-requisitions"],
     queryFn: async () => {
-      // Это заглушка - в будущем здесь будет реальная таблица закупок
-      return [];
+      const { data, error } = await supabase
+        .from("purchase_requisitions")
+        .select(`
+          *,
+          products:product_id(code, name, unit)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+};
+
+export const useSaveMRPCalculation = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({
+      planningHorizonDays,
+      startDate,
+      requirements,
+    }: {
+      planningHorizonDays: number;
+      startDate: string;
+      requirements: MRPRequirement[];
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Создаем запись расчета
+      const { data: calculation, error: calcError } = await supabase
+        .from("mrp_calculations")
+        .insert({
+          planning_horizon_days: planningHorizonDays,
+          start_date: startDate,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+
+      if (calcError) throw calcError;
+
+      // Сохраняем результаты
+      const results = requirements.map(req => ({
+        calculation_id: calculation.id,
+        product_id: req.product_id,
+        gross_requirement: req.gross_requirement,
+        on_hand: req.on_hand,
+        reserved: req.reserved,
+        available: req.available,
+        net_requirement: req.net_requirement,
+        status: req.status,
+      }));
+
+      const { error: resultsError } = await supabase
+        .from("mrp_calculation_results")
+        .insert(results);
+
+      if (resultsError) throw resultsError;
+
+      // Создаем заявки на закупку для материалов с дефицитом
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const purchaseReqs = requirements
+        .filter(req => req.net_requirement > 0)
+        .map((req, index) => {
+          const reqDate = new Date(startDate);
+          reqDate.setDate(reqDate.getDate() + 7); // +7 дней от начала
+          
+          return {
+            requisition_number: `PR-${calculation.id.substring(0, 8)}-${index + 1}`,
+            calculation_id: calculation.id,
+            product_id: req.product_id,
+            quantity: req.net_requirement,
+            required_date: reqDate.toISOString().split('T')[0],
+            created_by: currentUser?.id,
+          };
+        });
+
+      if (purchaseReqs.length > 0) {
+        const { error: reqsError } = await supabase
+          .from("purchase_requisitions")
+          .insert(purchaseReqs);
+
+        if (reqsError) throw reqsError;
+      }
+
+      return { calculation, purchaseReqsCount: purchaseReqs.length };
+    },
+    onSuccess: (data) => {
+      toast.success(`Расчет сохранен. Создано заявок на закупку: ${data.purchaseReqsCount}`);
+      queryClient.invalidateQueries({ queryKey: ["mrp-history"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-requisitions"] });
+    },
+    onError: (error) => {
+      toast.error("Ошибка при сохранении расчета: " + error.message);
+    },
+  });
+};
+
+export const useMRPHistory = () => {
+  return useQuery({
+    queryKey: ["mrp-history"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mrp_calculations")
+        .select(`
+          *,
+          mrp_calculation_results(count)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+};
+
+export const useDeleteMRPCalculation = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (calculationId: string) => {
+      const { error } = await supabase
+        .from("mrp_calculations")
+        .delete()
+        .eq("id", calculationId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Расчет удален");
+      queryClient.invalidateQueries({ queryKey: ["mrp-history"] });
+    },
+    onError: (error) => {
+      toast.error("Ошибка при удалении: " + error.message);
     },
   });
 };

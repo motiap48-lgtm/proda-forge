@@ -207,6 +207,87 @@ export type Database = {
           },
         ]
       }
+      mrp_calculation_results: {
+        Row: {
+          available: number
+          calculation_id: string
+          created_at: string
+          gross_requirement: number
+          id: string
+          net_requirement: number
+          on_hand: number
+          product_id: string
+          reserved: number
+          status: string
+        }
+        Insert: {
+          available?: number
+          calculation_id: string
+          created_at?: string
+          gross_requirement?: number
+          id?: string
+          net_requirement?: number
+          on_hand?: number
+          product_id: string
+          reserved?: number
+          status: string
+        }
+        Update: {
+          available?: number
+          calculation_id?: string
+          created_at?: string
+          gross_requirement?: number
+          id?: string
+          net_requirement?: number
+          on_hand?: number
+          product_id?: string
+          reserved?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mrp_calculation_results_calculation_id_fkey"
+            columns: ["calculation_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_calculations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mrp_calculation_results_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mrp_calculations: {
+        Row: {
+          calculation_date: string
+          created_at: string
+          created_by: string | null
+          id: string
+          planning_horizon_days: number
+          start_date: string
+        }
+        Insert: {
+          calculation_date?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          planning_horizon_days: number
+          start_date: string
+        }
+        Update: {
+          calculation_date?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          planning_horizon_days?: number
+          start_date?: string
+        }
+        Relationships: []
+      }
       production_order_history: {
         Row: {
           change_type: string
@@ -491,6 +572,63 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      purchase_requisitions: {
+        Row: {
+          calculation_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          required_date: string
+          requisition_number: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          calculation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity: number
+          required_date: string
+          requisition_number: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          calculation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          required_date?: string
+          requisition_number?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_requisitions_calculation_id_fkey"
+            columns: ["calculation_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_calculations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisitions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       routing_operations: {
         Row: {
