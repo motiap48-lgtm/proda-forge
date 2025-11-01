@@ -2,45 +2,38 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export const useWorkCenters = () => {
+export const useEquipment = (workCenterId?: string) => {
   return useQuery({
-    queryKey: ["work-centers"],
+    queryKey: ["equipment", workCenterId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("work_centers")
-        .select("*")
+      let query = supabase
+        .from("equipment")
+        .select(`
+          *,
+          work_centers:work_center_id(code, name)
+        `)
         .order("code");
 
+      if (workCenterId) {
+        query = query.eq("work_center_id", workCenterId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: !workCenterId || !!workCenterId,
   });
 };
 
-export const useActiveWorkCenters = () => {
-  return useQuery({
-    queryKey: ["work-centers", "active"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("work_centers")
-        .select("*")
-        .eq("status", "active")
-        .order("name");
-
-      if (error) throw error;
-      return data;
-    },
-  });
-};
-
-export const useCreateWorkCenter = () => {
+export const useCreateEquipment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (workCenter: any) => {
+    mutationFn: async (equipment: any) => {
       const { data, error } = await supabase
-        .from("work_centers")
-        .insert(workCenter)
+        .from("equipment")
+        .insert(equipment)
         .select()
         .single();
 
@@ -48,8 +41,8 @@ export const useCreateWorkCenter = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["work-centers"] });
-      toast.success("Рабочий центр создан");
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      toast.success("Оборудование добавлено");
     },
     onError: (error: any) => {
       toast.error("Ошибка: " + error.message);
@@ -57,13 +50,13 @@ export const useCreateWorkCenter = () => {
   });
 };
 
-export const useUpdateWorkCenter = () => {
+export const useUpdateEquipment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: any) => {
       const { data, error } = await supabase
-        .from("work_centers")
+        .from("equipment")
         .update(updates)
         .eq("id", id)
         .select()
@@ -73,8 +66,8 @@ export const useUpdateWorkCenter = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["work-centers"] });
-      toast.success("Рабочий центр обновлен");
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      toast.success("Оборудование обновлено");
     },
     onError: (error: any) => {
       toast.error("Ошибка: " + error.message);
@@ -82,21 +75,21 @@ export const useUpdateWorkCenter = () => {
   });
 };
 
-export const useDeleteWorkCenter = () => {
+export const useDeleteEquipment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("work_centers")
+        .from("equipment")
         .delete()
         .eq("id", id);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["work-centers"] });
-      toast.success("Рабочий центр удален");
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      toast.success("Оборудование удалено");
     },
     onError: (error: any) => {
       toast.error("Ошибка: " + error.message);

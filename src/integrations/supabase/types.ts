@@ -14,6 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      equipment: {
+        Row: {
+          code: string
+          created_at: string
+          equipment_type: string
+          id: string
+          last_maintenance_date: string | null
+          manufacturer: string | null
+          model: string | null
+          name: string
+          next_maintenance_date: string | null
+          notes: string | null
+          purchase_date: string | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+          work_center_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          equipment_type?: string
+          id?: string
+          last_maintenance_date?: string | null
+          manufacturer?: string | null
+          model?: string | null
+          name: string
+          next_maintenance_date?: string | null
+          notes?: string | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          work_center_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          equipment_type?: string
+          id?: string
+          last_maintenance_date?: string | null
+          manufacturer?: string | null
+          model?: string | null
+          name?: string
+          next_maintenance_date?: string | null
+          notes?: string | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          work_center_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_work_center_id_fkey"
+            columns: ["work_center_id"]
+            isOneToOne: false
+            referencedRelation: "work_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           available_quantity: number | null

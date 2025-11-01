@@ -5,13 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Factory, Loader2 } from "lucide-react";
+import { Plus, Search, Factory, Loader2, Edit, Trash2, Wrench } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useWorkCenters } from "@/hooks/useWorkCenters";
+import { useWorkCenters, useDeleteWorkCenter } from "@/hooks/useWorkCenters";
+import { WorkCenterDialog } from "@/components/work-centers/WorkCenterDialog";
+import { EquipmentManagement } from "@/components/work-centers/EquipmentManagement";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const WorkCenters = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false);
+  const [selectedWorkCenter, setSelectedWorkCenter] = useState<any>(null);
+  
   const { data: workCenters, isLoading } = useWorkCenters();
+  const deleteMutation = useDeleteWorkCenter();
 
   const filteredCenters = (workCenters || []).filter(
     (center: any) =>
@@ -62,6 +75,10 @@ const WorkCenters = () => {
           <Button
             size="lg"
             className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
+            onClick={() => {
+              setSelectedWorkCenter(null);
+              setDialogOpen(true);
+            }}
           >
             <Plus className="mr-2 h-5 w-5" />
             Добавить рабочий центр
@@ -90,7 +107,7 @@ const WorkCenters = () => {
             return (
               <Card
                 key={center.id}
-                className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
+                className="transition-all hover:border-primary hover:shadow-md"
               >
                 <CardContent className="p-6">
                   <div className="mb-4 flex items-start justify-between">
@@ -107,6 +124,42 @@ const WorkCenters = () => {
                         <p className="text-xs text-muted-foreground">{center.department || "N/A"}</p>
                       </div>
                     </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">⋮</Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedWorkCenter(center);
+                            setEquipmentDialogOpen(true);
+                          }}
+                        >
+                          <Wrench className="mr-2 h-4 w-4" />
+                          Оборудование
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedWorkCenter(center);
+                            setDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Редактировать
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (confirm("Удалить рабочий центр?")) {
+                              deleteMutation.mutate(center.id);
+                            }
+                          }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Удалить
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   {/* Capacity and Load */}
@@ -147,6 +200,18 @@ const WorkCenters = () => {
             </CardContent>
           </Card>
         )}
+
+        <WorkCenterDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          workCenter={selectedWorkCenter}
+        />
+
+        <EquipmentManagement
+          open={equipmentDialogOpen}
+          onOpenChange={setEquipmentDialogOpen}
+          workCenter={selectedWorkCenter}
+        />
       </main>
     </div>
   );
