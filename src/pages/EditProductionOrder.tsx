@@ -217,7 +217,6 @@ const EditProductionOrder = () => {
                         <SelectValue placeholder="Выберите спецификацию" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Не выбрано</SelectItem>
                         {specifications?.map((spec) => (
                           <SelectItem key={spec.id} value={spec.id}>
                             {spec.code}
@@ -239,7 +238,6 @@ const EditProductionOrder = () => {
                         <SelectValue placeholder="Выберите техмаршрут" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Не выбрано</SelectItem>
                         {routingSheets?.map((sheet) => (
                           <SelectItem key={sheet.id} value={sheet.id}>
                             {sheet.code} - {sheet.name}
@@ -261,7 +259,6 @@ const EditProductionOrder = () => {
                         <SelectValue placeholder="Выберите рабочий центр" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Не выбрано</SelectItem>
                         {workCenters?.map((wc) => (
                           <SelectItem key={wc.id} value={wc.id}>
                             {wc.code} - {wc.name}
