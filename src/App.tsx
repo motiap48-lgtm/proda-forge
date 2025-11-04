@@ -22,6 +22,7 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ProductionReports from "./pages/ProductionReports";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/warehouse/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
             <Route path="/warehouse/reservations" element={<ProtectedRoute><MaterialReservations /></ProtectedRoute>} />
             <Route path="/warehouse/issues" element={<ProtectedRoute><MaterialIssues /></ProtectedRoute>} />
+            <Route path="/analytics/production-reports" element={<ProtectedRoute><ProductionReports /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

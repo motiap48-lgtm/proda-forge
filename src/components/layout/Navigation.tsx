@@ -48,7 +48,13 @@ const navigationItems = [
       { name: "Выдача материалов", path: "/warehouse/issues", icon: Warehouse },
     ]
   },
-  { name: "Аналитика", path: "/analytics", icon: BarChart3 },
+  { 
+    name: "Аналитика", 
+    icon: BarChart3,
+    submenu: [
+      { name: "Отчеты производства", path: "/analytics/production-reports", icon: BarChart3 },
+    ]
+  },
   { name: "Финансы", path: "/finance", icon: DollarSign },
 ];
 
