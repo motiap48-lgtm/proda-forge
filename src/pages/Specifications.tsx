@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, FileText, Package, Loader2 } from "lucide-react";
 import { useSpecifications } from "@/hooks/useSpecifications";
+import { SpecificationDialog } from "@/components/specifications/SpecificationDialog";
 
 const Specifications = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { data: specifications, isLoading } = useSpecifications();
 
   const filteredSpecs = (specifications || []).filter(
@@ -47,11 +49,14 @@ const Specifications = () => {
           <Button
             size="lg"
             className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
+            onClick={() => setDialogOpen(true)}
           >
             <Plus className="mr-2 h-5 w-5" />
             Создать спецификацию
           </Button>
         </div>
+
+        <SpecificationDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
         {/* Search */}
         <Card className="mb-6">

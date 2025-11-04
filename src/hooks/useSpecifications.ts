@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const useSpecifications = () => {
   return useQuery({
@@ -37,6 +38,114 @@ export const useActiveSpecifications = () => {
 
       if (error) throw error;
       return data;
+    },
+  });
+};
+
+export const useCreateSpecification = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (specification: {
+      code: string;
+      product_id: string;
+      version: string;
+      is_active: boolean;
+      materials: Array<{
+        material_id: string;
+        quantity: number;
+        waste_rate: number;
+      }>;
+    }) => {
+      const { materials, ...specData } = specification;
+      
+      const { data: spec, error: specError } = await supabase
+        .from("specifications")
+        .insert(specData)
+        .select()
+        .single();
+
+      if (specError) throw specError;
+
+      if (materials.length > 0) {
+        const materialsWithSpecId = materials.map(m => ({
+          ...m,
+          specification_id: spec.id,
+        }));
+
+        const { error: materialsError } = await supabase
+          .from("specification_materials")
+          .insert(materialsWithSpecId);
+
+        if (materialsError) throw materialsError;
+      }
+
+      return spec;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["specifications"] });
+      toast.success("Спецификация создана");
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка при создании: " + error.message);
+    },
+  });
+};
+
+export const useUpdateSpecification = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: {
+        code?: string;
+        product_id?: string;
+        version?: string;
+        is_active?: boolean;
+      };
+    }) => {
+      const { data: updated, error } = await supabase
+        .from("specifications")
+        .update(data)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return updated;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["specifications"] });
+      toast.success("Спецификация обновлена");
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка при обновлении: " + error.message);
+    },
+  });
+};
+
+export const useDeleteSpecification = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("specifications")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["specifications"] });
+      toast.success("Спецификация удалена");
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка при удалении: " + error.message);
     },
   });
 };
