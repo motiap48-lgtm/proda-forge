@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Header } from "@/components/layout/Header";
+import { Navigation } from "@/components/layout/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProductionReports, useProductionSummary } from "@/hooks/useProductionReports";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, TrendingDown, TrendingUp } from "lucide-react";
+import { CalendarIcon, TrendingDown, TrendingUp, BarChart3, Building2, Package, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -62,13 +64,36 @@ const ProductionReportsContent = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <Navigation />
       <main className="container py-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Отчеты производства</h1>
-            <p className="text-muted-foreground">План-факт анализ производственных заказов</p>
+            <p className="text-muted-foreground">Аналитика и отчетность по производственным процессам</p>
           </div>
         </div>
+
+        <Tabs defaultValue="plan-fact" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+            <TabsTrigger value="plan-fact" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">План-факт</span>
+            </TabsTrigger>
+            <TabsTrigger value="work-centers" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              <span className="hidden sm:inline">По участкам</span>
+            </TabsTrigger>
+            <TabsTrigger value="products" className="gap-2">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">По изделиям</span>
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="gap-2">
+              <Clock className="h-4 w-4" />
+              <span className="hidden sm:inline">Временная</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="plan-fact" className="space-y-6">
 
         {/* Filters */}
         <Card>
@@ -279,6 +304,50 @@ const ProductionReportsContent = () => {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="work-centers" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Отчет по рабочим центрам</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12 text-muted-foreground">
+                  <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Отчетность по рабочим центрам в разработке</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="products" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Отчет по изделиям</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Отчетность по изделиям в разработке</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="timeline" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Временная аналитика</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12 text-muted-foreground">
+                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Временная аналитика в разработке</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
