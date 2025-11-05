@@ -14,18 +14,22 @@ import { useProducts } from "@/hooks/useProducts";
 import { useActiveSpecifications } from "@/hooks/useSpecifications";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { useCreateProductionOrder } from "@/hooks/useProductionOrders";
+import { useActiveRoutingSheets } from "@/hooks/useRoutingSheets";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { supabase } from "@/integrations/supabase/client";
 
 const NewProductionOrderContent = () => {
   const navigate = useNavigate();
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: specifications, isLoading: specificationsLoading } = useActiveSpecifications();
   const { data: workCenters, isLoading: workCentersLoading } = useActiveWorkCenters();
+  const { data: routingSheets } = useActiveRoutingSheets();
   const createOrder = useCreateProductionOrder();
 
   const [formData, setFormData] = useState({
     product: "",
     specification: "",
+    routing_sheet: "",
     quantity: "",
     priority: "normal",
     work_center: "",
@@ -44,24 +48,53 @@ const NewProductionOrderContent = () => {
 
     const orderNumber = `PO-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
 
-    await createOrder.mutateAsync({
-      order_number: orderNumber,
-      product_id: formData.product,
-      specification_id: formData.specification || null,
-      work_center_id: formData.work_center || null,
-      routing_sheet_id: null,
-      quantity: Number(formData.quantity),
-      completed_quantity: 0,
-      status: "planned",
-      priority: formData.priority,
-      planned_start_date: formData.planned_start,
-      planned_end_date: formData.planned_end,
-      actual_start_date: null,
-      actual_end_date: null,
-      responsible_person: formData.responsible || null,
-    });
+    try {
+      // Создаем заказ
+      const order = await createOrder.mutateAsync({
+        order_number: orderNumber,
+        product_id: formData.product,
+        specification_id: formData.specification || null,
+        work_center_id: formData.work_center || null,
+        routing_sheet_id: formData.routing_sheet || null,
+        quantity: Number(formData.quantity),
+        completed_quantity: 0,
+        status: "planned",
+        priority: formData.priority,
+        planned_start_date: formData.planned_start,
+        planned_end_date: formData.planned_end,
+        actual_start_date: null,
+        actual_end_date: null,
+        responsible_person: formData.responsible || null,
+      });
 
-    navigate("/production-orders");
+      // Создаем операции если выбран техмаршрут
+      if (formData.routing_sheet && order) {
+        const { data: operations } = await supabase
+          .from("routing_operations")
+          .select("*")
+          .eq("routing_sheet_id", formData.routing_sheet)
+          .order("sequence");
+
+        if (operations && operations.length > 0) {
+          const orderOperations = operations.map(op => ({
+            production_order_id: order.id,
+            routing_operation_id: op.id,
+            sequence: op.sequence,
+            status: "pending",
+            planned_start_date: formData.planned_start,
+            planned_end_date: formData.planned_end,
+          }));
+
+          await supabase
+            .from("production_order_operations")
+            .insert(orderOperations);
+        }
+      }
+
+      navigate("/production-orders");
+    } catch (error) {
+      console.error("Error creating order:", error);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -138,6 +171,25 @@ const NewProductionOrderContent = () => {
                         {specifications?.map((spec) => (
                           <SelectItem key={spec.id} value={spec.id}>
                             {spec.code} {spec.version}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="routing_sheet">Техмаршрут</Label>
+                    <Select
+                      value={formData.routing_sheet}
+                      onValueChange={(value) => handleChange("routing_sheet", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите техмаршрут (опционально)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {routingSheets?.map((sheet) => (
+                          <SelectItem key={sheet.id} value={sheet.id}>
+                            {sheet.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
