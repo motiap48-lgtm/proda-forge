@@ -2,10 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export const useProductionOrderOperations = (orderId: string) => {
+export const useProductionOrderOperations = (orderId?: string) => {
   return useQuery({
     queryKey: ["production-order-operations", orderId],
     queryFn: async () => {
+      if (!orderId) return [];
+      
       const { data, error } = await supabase
         .from("production_order_operations")
         .select(`
@@ -28,10 +30,12 @@ export const useProductionOrderOperations = (orderId: string) => {
   });
 };
 
-export const useProductionOrderHistory = (orderId: string) => {
+export const useProductionOrderHistory = (orderId?: string) => {
   return useQuery({
     queryKey: ["production-order-history", orderId],
     queryFn: async () => {
+      if (!orderId) return [];
+      
       const { data, error } = await supabase
         .from("production_order_history")
         .select(`
