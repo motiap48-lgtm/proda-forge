@@ -6,15 +6,40 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Package } from "lucide-react";
-import { useProducts } from "@/hooks/useProducts";
+import { Plus, Search, Package, Pencil, Trash2 } from "lucide-react";
+import { useProducts, useDeleteProduct } from "@/hooks/useProducts";
 import { ProductDialog } from "@/components/products/ProductDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+interface Product {
+  id: string;
+  code: string;
+  name: string;
+  product_type: string;
+  unit: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 const Products = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const { data: products, isLoading } = useProducts();
+  const deleteMutation = useDeleteProduct();
 
   const filteredProducts = products?.filter(
     (product) =>
@@ -24,6 +49,23 @@ const Products = () => {
 
   const finishedProducts = filteredProducts?.filter(p => p.product_type === "finished") || [];
   const materials = filteredProducts?.filter(p => p.product_type === "material") || [];
+
+  const handleEdit = (product: Product) => {
+    setEditingProduct(product);
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (deletingProduct) {
+      await deleteMutation.mutateAsync(deletingProduct.id);
+      setDeletingProduct(null);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditingProduct(null);
+  };
 
   if (isLoading) {
     return (
@@ -78,7 +120,22 @@ const Products = () => {
                         <CardTitle className="text-lg">{product.name}</CardTitle>
                         <p className="text-sm text-muted-foreground mt-1">{product.code}</p>
                       </div>
-                      <Package className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeletingProduct(product)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -115,7 +172,22 @@ const Products = () => {
                         <CardTitle className="text-lg">{product.name}</CardTitle>
                         <p className="text-sm text-muted-foreground mt-1">{product.code}</p>
                       </div>
-                      <Package className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeletingProduct(product)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -146,7 +218,22 @@ const Products = () => {
                         <CardTitle className="text-lg">{product.name}</CardTitle>
                         <p className="text-sm text-muted-foreground mt-1">{product.code}</p>
                       </div>
-                      <Package className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeletingProduct(product)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -178,7 +265,29 @@ const Products = () => {
         )}
       </main>
 
-      <ProductDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <ProductDialog 
+        open={dialogOpen} 
+        onOpenChange={handleCloseDialog}
+        product={editingProduct}
+      />
+
+      <AlertDialog open={!!deletingProduct} onOpenChange={() => setDeletingProduct(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить продукт?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить продукт "{deletingProduct?.name}" ({deletingProduct?.code})?
+              Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

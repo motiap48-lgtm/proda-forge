@@ -5,14 +5,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreateProduct } from "@/hooks/useProducts";
+import { useCreateProduct, useUpdateProduct } from "@/hooks/useProducts";
+
+interface Product {
+  id: string;
+  code: string;
+  name: string;
+  product_type: string;
+  unit: string;
+  description: string | null;
+}
 
 interface ProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  product?: Product | null;
 }
 
-export const ProductDialog = ({ open, onOpenChange }: ProductDialogProps) => {
+export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProps) => {
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -22,9 +32,18 @@ export const ProductDialog = ({ open, onOpenChange }: ProductDialogProps) => {
   });
 
   const createMutation = useCreateProduct();
+  const updateMutation = useUpdateProduct();
 
   useEffect(() => {
-    if (!open) {
+    if (open && product) {
+      setFormData({
+        code: product.code,
+        name: product.name,
+        product_type: product.product_type,
+        unit: product.unit,
+        description: product.description || "",
+      });
+    } else if (!open) {
       setFormData({
         code: "",
         name: "",
@@ -33,7 +52,7 @@ export const ProductDialog = ({ open, onOpenChange }: ProductDialogProps) => {
         description: "",
       });
     }
-  }, [open]);
+  }, [open, product]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,15 +61,25 @@ export const ProductDialog = ({ open, onOpenChange }: ProductDialogProps) => {
       return;
     }
 
-    await createMutation.mutateAsync(formData);
+    if (product) {
+      await updateMutation.mutateAsync({
+        id: product.id,
+        data: formData,
+      });
+    } else {
+      await createMutation.mutateAsync(formData);
+    }
+    
     onOpenChange(false);
   };
+
+  const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Добавить продукт</DialogTitle>
+          <DialogTitle>{product ? "Редактировать продукт" : "Добавить продукт"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -129,8 +158,8 @@ export const ProductDialog = ({ open, onOpenChange }: ProductDialogProps) => {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Отмена
             </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Создание..." : "Создать"}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (product ? "Сохранение..." : "Создание...") : (product ? "Сохранить" : "Создать")}
             </Button>
           </div>
         </form>

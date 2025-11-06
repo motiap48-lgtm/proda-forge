@@ -64,3 +64,62 @@ export const useCreateProduct = () => {
     },
   });
 };
+
+export const useUpdateProduct = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: {
+        code?: string;
+        name?: string;
+        product_type?: string;
+        unit?: string;
+        description?: string;
+      };
+    }) => {
+      const { data: updated, error } = await supabase
+        .from("products")
+        .update(data)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return updated;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Продукт обновлен");
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка при обновлении: " + error.message);
+    },
+  });
+};
+
+export const useDeleteProduct = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Продукт удален");
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка при удалении: " + error.message);
+    },
+  });
+};
