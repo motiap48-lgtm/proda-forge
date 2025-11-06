@@ -15,6 +15,7 @@ import MRPPlanning from "./pages/MRPPlanning";
 import Specifications from "./pages/Specifications";
 import RoutingSheets from "./pages/RoutingSheets";
 import WorkCenters from "./pages/WorkCenters";
+import Products from "./pages/Products";
 import Inventory from "./pages/Inventory";
 import MaterialReservations from "./pages/MaterialReservations";
 import MaterialIssues from "./pages/MaterialIssues";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/production-orders/:id/edit" element={<ProtectedRoute><EditProductionOrder /></ProtectedRoute>} />
             <Route path="/user-management" element={<ProtectedRoute requiredRole="admin"><UserManagement /></ProtectedRoute>} />
             <Route path="/planning/mrp" element={<ProtectedRoute><MRPPlanning /></ProtectedRoute>} />
+            <Route path="/references/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
             <Route path="/references/specifications" element={<ProtectedRoute><Specifications /></ProtectedRoute>} />
             <Route path="/references/routing-sheets" element={<ProtectedRoute><RoutingSheets /></ProtectedRoute>} />
             <Route path="/references/work-centers" element={<ProtectedRoute><WorkCenters /></ProtectedRoute>} />
