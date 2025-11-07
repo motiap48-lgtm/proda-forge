@@ -117,6 +117,8 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="material">Материал</SelectItem>
+                  <SelectItem value="semi-finished">Полуфабрикат</SelectItem>
+                  <SelectItem value="assembly">Сборочный узел</SelectItem>
                   <SelectItem value="finished">Готовая продукция</SelectItem>
                 </SelectContent>
               </Select>

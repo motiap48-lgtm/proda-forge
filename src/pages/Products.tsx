@@ -49,6 +49,8 @@ const Products = () => {
 
   const finishedProducts = filteredProducts?.filter(p => p.product_type === "finished") || [];
   const materials = filteredProducts?.filter(p => p.product_type === "material") || [];
+  const semiFinished = filteredProducts?.filter(p => p.product_type === "semi-finished") || [];
+  const assemblies = filteredProducts?.filter(p => p.product_type === "assembly") || [];
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
@@ -106,8 +108,10 @@ const Products = () => {
         <Tabs defaultValue="all" className="space-y-4">
           <TabsList>
             <TabsTrigger value="all">Все ({filteredProducts?.length || 0})</TabsTrigger>
-            <TabsTrigger value="finished">Готовая продукция ({finishedProducts.length})</TabsTrigger>
             <TabsTrigger value="materials">Материалы ({materials.length})</TabsTrigger>
+            <TabsTrigger value="semi-finished">Полуфабрикаты ({semiFinished.length})</TabsTrigger>
+            <TabsTrigger value="assembly">Сборочные узлы ({assemblies.length})</TabsTrigger>
+            <TabsTrigger value="finished">Готовая продукция ({finishedProducts.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-4">
@@ -142,8 +146,16 @@ const Products = () => {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Тип:</span>
-                        <Badge variant={product.product_type === "finished" ? "default" : "secondary"}>
-                          {product.product_type === "finished" ? "Готовая продукция" : "Материал"}
+                        <Badge variant={
+                          product.product_type === "finished" ? "default" : 
+                          product.product_type === "semi-finished" ? "outline" : 
+                          product.product_type === "assembly" ? "outline" : 
+                          "secondary"
+                        }>
+                          {product.product_type === "finished" ? "Готовая продукция" : 
+                           product.product_type === "semi-finished" ? "Полуфабрикат" :
+                           product.product_type === "assembly" ? "Сборочный узел" :
+                           "Материал"}
                         </Badge>
                       </div>
                       <div className="flex justify-between text-sm">
@@ -211,6 +223,98 @@ const Products = () => {
           <TabsContent value="materials" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {materials.map((product) => (
+                <Card key={product.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{product.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">{product.code}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeletingProduct(product)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Ед. изм.:</span>
+                        <span>{product.unit}</span>
+                      </div>
+                      {product.description && (
+                        <p className="text-sm text-muted-foreground pt-2 border-t">
+                          {product.description}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="semi-finished" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {semiFinished.map((product) => (
+                <Card key={product.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{product.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">{product.code}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeletingProduct(product)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Ед. изм.:</span>
+                        <span>{product.unit}</span>
+                      </div>
+                      {product.description && (
+                        <p className="text-sm text-muted-foreground pt-2 border-t">
+                          {product.description}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="assembly" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {assemblies.map((product) => (
                 <Card key={product.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
