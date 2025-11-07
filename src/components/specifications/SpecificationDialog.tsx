@@ -26,8 +26,16 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
   const { data: products } = useProducts();
   const createMutation = useCreateSpecification();
 
-  const finishedProducts = products?.filter(p => p.product_type === "finished") || [];
-  const materialProducts = products?.filter(p => p.product_type === "material") || [];
+  const producibleProducts = products?.filter(p => 
+    p.product_type === "finished" || 
+    p.product_type === "semi-finished" || 
+    p.product_type === "assembly"
+  ) || [];
+  const componentProducts = products?.filter(p => 
+    p.product_type === "material" || 
+    p.product_type === "semi-finished" || 
+    p.product_type === "assembly"
+  ) || [];
 
   useEffect(() => {
     if (!open) {
@@ -106,9 +114,12 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
                   <SelectValue placeholder="Выберите продукт" />
                 </SelectTrigger>
                 <SelectContent>
-                  {finishedProducts.map((product) => (
+                  {producibleProducts.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
-                      {product.name} ({product.code})
+                      {product.name} ({product.code}) - {
+                        product.product_type === "finished" ? "ГП" : 
+                        product.product_type === "semi-finished" ? "ПФ" : "СУ"
+                      }
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -137,28 +148,31 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label>Материалы</Label>
+              <Label>Компоненты</Label>
               <Button type="button" onClick={handleAddMaterial} size="sm" variant="outline">
                 <Plus className="h-4 w-4 mr-2" />
-                Добавить материал
+                Добавить компонент
               </Button>
             </div>
 
             {materials.map((material, index) => (
               <div key={index} className="grid gap-4 p-4 border rounded-lg md:grid-cols-[1fr,120px,120px,auto]">
                 <div className="space-y-2">
-                  <Label>Материал</Label>
+                  <Label>Компонент</Label>
                   <Select
                     value={material.material_id}
                     onValueChange={(value) => handleMaterialChange(index, "material_id", value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Выберите материал" />
+                      <SelectValue placeholder="Выберите компонент" />
                     </SelectTrigger>
                     <SelectContent>
-                      {materialProducts.map((product) => (
+                      {componentProducts.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.name} ({product.code})
+                          {product.name} ({product.code}) - {
+                            product.product_type === "material" ? "Материал" : 
+                            product.product_type === "semi-finished" ? "ПФ" : "СУ"
+                          }
                         </SelectItem>
                       ))}
                     </SelectContent>
