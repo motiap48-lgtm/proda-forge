@@ -31,11 +31,32 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
     p.product_type === "semi-finished" || 
     p.product_type === "assembly"
   ) || [];
-  const componentProducts = products?.filter(p => 
+  
+  const allComponentProducts = products?.filter(p => 
     p.product_type === "material" || 
     p.product_type === "semi-finished" || 
     p.product_type === "assembly"
   ) || [];
+
+  // Фильтруем компоненты в зависимости от типа выбранного продукта
+  const selectedProduct = products?.find(p => p.id === productId);
+  const componentProducts = selectedProduct
+    ? allComponentProducts.filter(p => {
+        switch (selectedProduct.product_type) {
+          case "finished":
+            // Готовая продукция состоит из сборочных узлов или полуфабрикатов
+            return p.product_type === "assembly" || p.product_type === "semi-finished";
+          case "assembly":
+            // Сборочный узел состоит из полуфабрикатов и материалов
+            return p.product_type === "semi-finished" || p.product_type === "material";
+          case "semi-finished":
+            // Полуфабрикат состоит из материалов
+            return p.product_type === "material";
+          default:
+            return true;
+        }
+      })
+    : allComponentProducts;
 
   useEffect(() => {
     if (!open) {
