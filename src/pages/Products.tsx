@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Package, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Package, Pencil, Trash2, GitBranch } from "lucide-react";
 import { useProducts, useDeleteProduct } from "@/hooks/useProducts";
 import { ProductDialog } from "@/components/products/ProductDialog";
+import { ProductTreeDialog } from "@/components/products/ProductTreeDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -38,6 +39,8 @@ const Products = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [treeDialogOpen, setTreeDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { data: products, isLoading } = useProducts();
   const deleteMutation = useDeleteProduct();
 
@@ -55,6 +58,11 @@ const Products = () => {
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setDialogOpen(true);
+  };
+
+  const handleViewTree = (product: Product) => {
+    setSelectedProduct(product);
+    setTreeDialogOpen(true);
   };
 
   const handleDelete = async () => {
@@ -125,6 +133,18 @@ const Products = () => {
                         <p className="text-sm text-muted-foreground mt-1">{product.code}</p>
                       </div>
                       <div className="flex gap-2">
+                        {(product.product_type === "finished" || 
+                          product.product_type === "semi-finished" || 
+                          product.product_type === "assembly") && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleViewTree(product)}
+                            title="Показать состав"
+                          >
+                            <GitBranch className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -185,6 +205,14 @@ const Products = () => {
                         <p className="text-sm text-muted-foreground mt-1">{product.code}</p>
                       </div>
                       <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewTree(product)}
+                          title="Показать состав"
+                        >
+                          <GitBranch className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -280,6 +308,14 @@ const Products = () => {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => handleViewTree(product)}
+                          title="Показать состав"
+                        >
+                          <GitBranch className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleEdit(product)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -323,6 +359,14 @@ const Products = () => {
                         <p className="text-sm text-muted-foreground mt-1">{product.code}</p>
                       </div>
                       <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewTree(product)}
+                          title="Показать состав"
+                        >
+                          <GitBranch className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -374,6 +418,15 @@ const Products = () => {
         onOpenChange={handleCloseDialog}
         product={editingProduct}
       />
+
+      {selectedProduct && (
+        <ProductTreeDialog
+          open={treeDialogOpen}
+          onOpenChange={setTreeDialogOpen}
+          productId={selectedProduct.id}
+          productName={selectedProduct.name}
+        />
+      )}
 
       <AlertDialog open={!!deletingProduct} onOpenChange={() => setDeletingProduct(null)}>
         <AlertDialogContent>
