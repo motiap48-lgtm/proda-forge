@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { Loader2, Package, ChevronRight, ChevronDown } from "lucide-react";
 import { useState } from "react";
@@ -125,6 +125,9 @@ export const ProductTreeDialog = ({
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Состав продукта: {productName}</DialogTitle>
+          <DialogDescription>
+            Иерархическая структура компонентов и материалов
+          </DialogDescription>
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto pr-2">

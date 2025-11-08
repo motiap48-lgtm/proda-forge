@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -30,6 +31,9 @@ export const MRPHistoryDialog = () => {
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>История расчетов MRP</DialogTitle>
+          <DialogDescription>
+            Просмотр и управление предыдущими расчетами планирования материальных потребностей
+          </DialogDescription>
         </DialogHeader>
         
         {isLoading ? (
