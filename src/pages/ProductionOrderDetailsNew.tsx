@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
   useUpdateOperationStatus 
 } from "@/hooks/useProductionOrderDetails";
 import { useAuth } from "@/contexts/AuthContext";
+import { CompleteOperationDialog } from "@/components/production/CompleteOperationDialog";
 
 const statusConfig = {
   planned: { label: "Запланировано", variant: "secondary" as const },
@@ -33,6 +35,9 @@ const ProductionOrderDetailsNew = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [selectedOperation, setSelectedOperation] = useState<any>(null);
   
   const { data: order, isLoading } = useProductionOrder(id || "");
   const { data: operations } = useProductionOrderOperations(order?.id || "");
@@ -198,11 +203,10 @@ const ProductionOrderDetailsNew = () => {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => updateStatus.mutate({ 
-                            id: operation.id, 
-                            status: "completed",
-                            completedQuantity: order.quantity
-                          })}
+                          onClick={() => {
+                            setSelectedOperation(operation);
+                            setCompleteDialogOpen(true);
+                          }}
                         >
                           <CheckCircle className="mr-2 h-4 w-4" />
                           Завершить
@@ -289,6 +293,31 @@ const ProductionOrderDetailsNew = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {selectedOperation && (
+          <CompleteOperationDialog
+            open={completeDialogOpen}
+            onOpenChange={setCompleteDialogOpen}
+            onConfirm={(quantity) => {
+              updateStatus.mutate(
+                {
+                  id: selectedOperation.id,
+                  status: "completed",
+                  completedQuantity: quantity,
+                },
+                {
+                  onSuccess: () => {
+                    setCompleteDialogOpen(false);
+                    setSelectedOperation(null);
+                  },
+                }
+              );
+            }}
+            maxQuantity={order.quantity - Number(selectedOperation.completed_quantity)}
+            operationName={selectedOperation.routing_operations?.name || ""}
+            isLoading={updateStatus.isPending}
+          />
+        )}
       </main>
     </div>
   );

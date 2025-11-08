@@ -65,20 +65,47 @@ export const useUpdateOperationStatus = () => {
       status: string; 
       completedQuantity?: number 
     }) => {
-      const updates: any = { status };
+      const updates: any = {};
       
-      if (status === 'in_progress' && !updates.actual_start_date) {
+      // Получаем текущую операцию и заказ
+      const { data: currentOp } = await supabase
+        .from("production_order_operations")
+        .select("completed_quantity, production_order_id, status, actual_start_date")
+        .eq("id", id)
+        .single();
+
+      const { data: productionOrder } = await supabase
+        .from("production_orders")
+        .select("quantity")
+        .eq("id", currentOp?.production_order_id)
+        .single();
+
+      const currentCompleted = Number(currentOp?.completed_quantity) || 0;
+      const orderQuantity = Number(productionOrder?.quantity) || 0;
+      
+      if (status === 'in_progress' && !currentOp?.actual_start_date) {
         updates.actual_start_date = new Date().toISOString();
+        updates.status = 'in_progress';
       }
       
-      if (status === 'completed') {
-        updates.actual_end_date = new Date().toISOString();
-        if (completedQuantity !== undefined) {
-          updates.completed_quantity = completedQuantity;
+      if (status === 'completed' && completedQuantity !== undefined) {
+        // Добавляем к текущему значению
+        const newCompleted = currentCompleted + completedQuantity;
+        updates.completed_quantity = newCompleted;
+        
+        // Устанавливаем статус "завершено" только если выполнено все количество
+        if (newCompleted >= orderQuantity) {
+          updates.status = 'completed';
+          updates.actual_end_date = new Date().toISOString();
+        } else {
+          // Если не все выполнено, оставляем "в процессе"
+          updates.status = 'in_progress';
         }
+      } else if (status !== 'in_progress') {
+        updates.status = status;
       }
 
-      const { data, error } = await supabase
+      const { data: operation, error } = await supabase
         .from("production_order_operations")
         .update(updates)
         .eq("id", id)
@@ -86,11 +113,53 @@ export const useUpdateOperationStatus = () => {
         .single();
 
       if (error) throw error;
-      return data;
+
+      // Обновляем прогресс производственного заказа
+      if (operation && completedQuantity !== undefined) {
+        // Получаем все операции заказа
+        const { data: allOperations } = await supabase
+          .from("production_order_operations")
+          .select("completed_quantity, status")
+          .eq("production_order_id", operation.production_order_id);
+
+        if (allOperations && productionOrder) {
+          // Вычисляем минимальное completed_quantity среди всех операций
+          const minCompleted = Math.min(
+            ...allOperations.map(op => Number(op.completed_quantity) || 0)
+          );
+
+          // Проверяем, все ли операции завершены
+          const allOperationsCompleted = allOperations.every(op => op.status === 'completed');
+          
+          // Определяем статус заказа
+          let orderStatus = 'in_progress';
+          if (allOperationsCompleted && minCompleted >= productionOrder.quantity) {
+            orderStatus = 'completed';
+          } else if (minCompleted > 0) {
+            orderStatus = 'in_progress';
+          } else {
+            orderStatus = 'released';
+          }
+
+          // Обновляем производственный заказ
+          await supabase
+            .from("production_orders")
+            .update({ 
+              completed_quantity: minCompleted,
+              status: orderStatus,
+              actual_end_date: orderStatus === 'completed' ? new Date().toISOString().split('T')[0] : null
+            })
+            .eq("id", operation.production_order_id);
+        }
+      }
+
+      return operation;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["production-order-operations"] });
-      toast.success("Статус операции обновлен");
+      queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["production-order"] });
+      toast.success("Операция обновлена");
     },
     onError: (error) => {
       toast.error("Ошибка при обновлении: " + error.message);
