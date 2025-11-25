@@ -44,7 +44,7 @@ const Products = () => {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [treeDialogOpen, setTreeDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isInstructionOpen, setIsInstructionOpen] = useState(true);
+  const [isInstructionOpen, setIsInstructionOpen] = useState(false);
   const { data: products, isLoading } = useProducts();
   const deleteMutation = useDeleteProduct();
 
