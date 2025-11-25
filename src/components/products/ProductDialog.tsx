@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Trash2 } from "lucide-react";
 import { useCreateProduct, useUpdateProduct } from "@/hooks/useProducts";
+import { toast } from "sonner";
 
 interface Product {
   id: string;
@@ -22,7 +25,16 @@ interface ProductDialogProps {
   product?: Product | null;
 }
 
+interface BatchProduct {
+  id: string;
+  code: string;
+  name: string;
+  product_type: string;
+  unit: string;
+}
+
 export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProps) => {
+  const [mode, setMode] = useState<"single" | "batch">("single");
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -30,12 +42,17 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     unit: "шт",
     description: "",
   });
+  const [batchProducts, setBatchProducts] = useState<BatchProduct[]>([
+    { id: crypto.randomUUID(), code: "", name: "", product_type: "material", unit: "шт" }
+  ]);
+  const [isCreating, setIsCreating] = useState(false);
 
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
 
   useEffect(() => {
     if (open && product) {
+      setMode("single");
       setFormData({
         code: product.code,
         name: product.name,
@@ -44,6 +61,7 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
         description: product.description || "",
       });
     } else if (!open) {
+      setMode("single");
       setFormData({
         code: "",
         name: "",
@@ -51,6 +69,9 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
         unit: "шт",
         description: "",
       });
+      setBatchProducts([
+        { id: crypto.randomUUID(), code: "", name: "", product_type: "material", unit: "шт" }
+      ]);
     }
   }, [open, product]);
 
@@ -73,11 +94,64 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     onOpenChange(false);
   };
 
-  const isLoading = createMutation.isPending || updateMutation.isPending;
+  const handleBatchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const validProducts = batchProducts.filter(p => p.code && p.name);
+    
+    if (validProducts.length === 0) {
+      toast.error("Заполните хотя бы один продукт");
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      await Promise.all(
+        validProducts.map(p => 
+          createMutation.mutateAsync({
+            code: p.code,
+            name: p.name,
+            product_type: p.product_type,
+            unit: p.unit,
+          })
+        )
+      );
+      toast.success(`Создано продуктов: ${validProducts.length}`);
+      onOpenChange(false);
+    } catch (error) {
+      toast.error("Ошибка при создании продуктов");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const addBatchRow = () => {
+    setBatchProducts([...batchProducts, { 
+      id: crypto.randomUUID(), 
+      code: "", 
+      name: "", 
+      product_type: "material", 
+      unit: "шт" 
+    }]);
+  };
+
+  const removeBatchRow = (id: string) => {
+    if (batchProducts.length > 1) {
+      setBatchProducts(batchProducts.filter(p => p.id !== id));
+    }
+  };
+
+  const updateBatchProduct = (id: string, field: keyof BatchProduct, value: string) => {
+    setBatchProducts(batchProducts.map(p => 
+      p.id === id ? { ...p, [field]: value } : p
+    ));
+  };
+
+  const isLoading = createMutation.isPending || updateMutation.isPending || isCreating;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{product ? "Редактировать продукт" : "Добавить продукт"}</DialogTitle>
           <DialogDescription>
@@ -85,89 +159,281 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+        {product ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="code">Код *</Label>
+                <Input
+                  id="code"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  placeholder="PROD-001"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="name">Название *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Название продукта"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="product_type">Тип продукта *</Label>
+                <Select
+                  value={formData.product_type}
+                  onValueChange={(value) => setFormData({ ...formData, product_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="material">Материал</SelectItem>
+                    <SelectItem value="semi-finished">Полуфабрикат</SelectItem>
+                    <SelectItem value="assembly">Сборочный узел</SelectItem>
+                    <SelectItem value="finished">Готовая продукция</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="unit">Единица измерения *</Label>
+                <Select
+                  value={formData.unit}
+                  onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="шт">шт</SelectItem>
+                    <SelectItem value="кг">кг</SelectItem>
+                    <SelectItem value="л">л</SelectItem>
+                    <SelectItem value="м">м</SelectItem>
+                    <SelectItem value="м²">м²</SelectItem>
+                    <SelectItem value="м³">м³</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="code">Код *</Label>
-              <Input
-                id="code"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                placeholder="PROD-001"
-                required
+              <Label htmlFor="description">Описание</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Описание продукта"
+                rows={3}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Название *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Название продукта"
-                required
-              />
+            <div className="flex justify-end gap-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Отмена
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Сохранение..." : "Сохранить"}
+              </Button>
             </div>
+          </form>
+        ) : (
+          <Tabs value={mode} onValueChange={(v) => setMode(v as "single" | "batch")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="single">Одиночный</TabsTrigger>
+              <TabsTrigger value="batch">Массовый</TabsTrigger>
+            </TabsList>
 
-            <div className="space-y-2">
-              <Label htmlFor="product_type">Тип продукта *</Label>
-              <Select
-                value={formData.product_type}
-                onValueChange={(value) => setFormData({ ...formData, product_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="material">Материал</SelectItem>
-                  <SelectItem value="semi-finished">Полуфабрикат</SelectItem>
-                  <SelectItem value="assembly">Сборочный узел</SelectItem>
-                  <SelectItem value="finished">Готовая продукция</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <TabsContent value="single" className="mt-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="code">Код *</Label>
+                    <Input
+                      id="code"
+                      value={formData.code}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                      placeholder="PROD-001"
+                      required
+                    />
+                  </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="unit">Единица измерения *</Label>
-              <Select
-                value={formData.unit}
-                onValueChange={(value) => setFormData({ ...formData, unit: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="шт">шт</SelectItem>
-                  <SelectItem value="кг">кг</SelectItem>
-                  <SelectItem value="л">л</SelectItem>
-                  <SelectItem value="м">м</SelectItem>
-                  <SelectItem value="м²">м²</SelectItem>
-                  <SelectItem value="м³">м³</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Название *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Название продукта"
+                      required
+                    />
+                  </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Описание</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Описание продукта"
-              rows={3}
-            />
-          </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="product_type">Тип продукта *</Label>
+                    <Select
+                      value={formData.product_type}
+                      onValueChange={(value) => setFormData({ ...formData, product_type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="material">Материал</SelectItem>
+                        <SelectItem value="semi-finished">Полуфабрикат</SelectItem>
+                        <SelectItem value="assembly">Сборочный узел</SelectItem>
+                        <SelectItem value="finished">Готовая продукция</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-          <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (product ? "Сохранение..." : "Создание...") : (product ? "Сохранить" : "Создать")}
-            </Button>
-          </div>
-        </form>
+                  <div className="space-y-2">
+                    <Label htmlFor="unit">Единица измерения *</Label>
+                    <Select
+                      value={formData.unit}
+                      onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="шт">шт</SelectItem>
+                        <SelectItem value="кг">кг</SelectItem>
+                        <SelectItem value="л">л</SelectItem>
+                        <SelectItem value="м">м</SelectItem>
+                        <SelectItem value="м²">м²</SelectItem>
+                        <SelectItem value="м³">м³</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Описание</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Описание продукта"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-4">
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    Отмена
+                  </Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? "Создание..." : "Создать"}
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="batch" className="mt-4">
+              <form onSubmit={handleBatchSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>Список продуктов</Label>
+                    <Button type="button" size="sm" onClick={addBatchRow}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Добавить строку
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {batchProducts.map((product, index) => (
+                      <div key={product.id} className="grid gap-2 grid-cols-[1fr_2fr_1.5fr_1fr_auto] items-end p-3 border rounded-lg bg-card">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Код *</Label>
+                          <Input
+                            value={product.code}
+                            onChange={(e) => updateBatchProduct(product.id, "code", e.target.value)}
+                            placeholder="PROD-001"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">Название *</Label>
+                          <Input
+                            value={product.name}
+                            onChange={(e) => updateBatchProduct(product.id, "name", e.target.value)}
+                            placeholder="Название продукта"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">Тип *</Label>
+                          <Select
+                            value={product.product_type}
+                            onValueChange={(value) => updateBatchProduct(product.id, "product_type", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="material">Материал</SelectItem>
+                              <SelectItem value="semi-finished">Полуфабрикат</SelectItem>
+                              <SelectItem value="assembly">Сборочный узел</SelectItem>
+                              <SelectItem value="finished">Готовая продукция</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">Ед. изм. *</Label>
+                          <Select
+                            value={product.unit}
+                            onValueChange={(value) => updateBatchProduct(product.id, "unit", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="шт">шт</SelectItem>
+                              <SelectItem value="кг">кг</SelectItem>
+                              <SelectItem value="л">л</SelectItem>
+                              <SelectItem value="м">м</SelectItem>
+                              <SelectItem value="м²">м²</SelectItem>
+                              <SelectItem value="м³">м³</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeBatchRow(product.id)}
+                          disabled={batchProducts.length === 1}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-4">
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    Отмена
+                  </Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? "Создание..." : `Создать (${batchProducts.filter(p => p.code && p.name).length})`}
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+          </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );
