@@ -46,6 +46,18 @@ export const useCreateProduct = () => {
       unit: string;
       description?: string;
     }) => {
+      // Проверка на дублирование по коду
+      const { data: existing } = await supabase
+        .from("products")
+        .select("code")
+        .eq("code", product.code)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error(`Продукт с кодом "${product.code}" уже существует`);
+      }
+
       const { data, error } = await supabase
         .from("products")
         .insert(product)
