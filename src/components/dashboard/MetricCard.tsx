@@ -5,8 +5,6 @@ import { cn } from "@/lib/utils";
 interface MetricCardProps {
   title: string;
   value: string;
-  change?: string;
-  trend?: "up" | "down";
   icon: LucideIcon;
   variant?: "default" | "accent" | "warning";
 }
@@ -14,8 +12,6 @@ interface MetricCardProps {
 export const MetricCard = ({
   title,
   value,
-  change,
-  trend,
   icon: Icon,
   variant = "default",
 }: MetricCardProps) => {
@@ -26,17 +22,6 @@ export const MetricCard = ({
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <p className="text-3xl font-bold text-foreground">{value}</p>
-            {change && (
-              <p
-                className={cn(
-                  "text-sm font-medium",
-                  trend === "up" && "text-accent",
-                  trend === "down" && "text-destructive"
-                )}
-              >
-                {change}
-              </p>
-            )}
           </div>
           <div
             className={cn(
