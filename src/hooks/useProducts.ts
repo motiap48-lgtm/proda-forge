@@ -109,17 +109,17 @@ export const useDeleteProduct = () => {
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from("products")
-        .delete()
+        .update({ is_active: false })
         .eq("id", id);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Продукт удален");
+      toast.success("Продукт деактивирован");
     },
     onError: (error: Error) => {
-      toast.error("Ошибка при удалении: " + error.message);
+      toast.error("Ошибка при деактивации: " + error.message);
     },
   });
 };
