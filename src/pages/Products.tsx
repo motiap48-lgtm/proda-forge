@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Package, Pencil, Trash2, GitBranch } from "lucide-react";
+import { Plus, Search, Package, Pencil, Trash2, GitBranch, Info, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useProducts, useDeleteProduct } from "@/hooks/useProducts";
 import { ProductDialog } from "@/components/products/ProductDialog";
 import { ProductTreeDialog } from "@/components/products/ProductTreeDialog";
@@ -100,6 +102,48 @@ const Products = () => {
             Добавить продукт
           </Button>
         </div>
+
+        <Alert className="border-primary/20 bg-primary/5">
+          <Info className="h-5 w-5 text-primary" />
+          <AlertDescription>
+            <div className="font-medium mb-3 text-foreground">Порядок работы со спецификациями:</div>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                  1
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-foreground">Создайте материалы</div>
+                  <div className="text-sm text-muted-foreground">Внесите все сырье и материалы, которые используются в производстве</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                  2
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-foreground">Создайте полуфабрикат</div>
+                  <div className="text-sm text-muted-foreground">Добавьте продукт с типом "Полуфабрикат"</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                  3
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-foreground">Укажите расход материалов</div>
+                  <div className="text-sm text-muted-foreground mb-2">Перейдите в раздел "Спецификации" и создайте спецификацию с составом и расходом материалов</div>
+                  <Link to="/references/specifications">
+                    <Button variant="outline" size="sm" className="h-8">
+                      Перейти к спецификациям
+                      <ArrowRight className="ml-2 h-3 w-3" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
 
         <div className="flex gap-4">
           <div className="relative flex-1">
