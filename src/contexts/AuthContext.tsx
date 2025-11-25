@@ -24,38 +24,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Defer role fetching with setTimeout to avoid deadlock
-        if (session?.user) {
-          setTimeout(() => {
-            fetchUserRoles(session.user.id);
-          }, 0);
-        } else {
-          setUserRoles([]);
-        }
-        
-        setLoading(false);
-      }
-    );
+    let mounted = true;
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Check for existing session first
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!mounted) return;
+      
+      if (error) {
+        console.error("Session error:", error);
+        setLoading(false);
+        return;
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
         fetchUserRoles(session.user.id);
+      } else {
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchUserRoles(session.user.id);
+        } else {
+          setUserRoles([]);
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUserRoles = async (userId: string) => {
@@ -65,11 +76,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .select("role")
         .eq("user_id", userId);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching user roles:", error);
+        setUserRoles([]);
+        return;
+      }
+      
       setUserRoles(data?.map(r => r.role) || []);
     } catch (error) {
-      console.error("Error fetching user roles:", error);
+      console.error("Error in fetchUserRoles:", error);
       setUserRoles([]);
+    } finally {
+      setLoading(false);
     }
   };
 
