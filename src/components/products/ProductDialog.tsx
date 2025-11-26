@@ -150,15 +150,30 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     // Тип продукта изменился - генерируем новый код
     const generateNewCode = async () => {
       try {
+        console.log('Generating new code for type:', formData.product_type);
         const { data, error } = await supabase
           .rpc('generate_product_code', { p_product_type: formData.product_type });
         
-        if (!error && data) {
-          setFormData(prev => ({ ...prev, code: data }));
+        console.log('Generated code result:', { data, error });
+        
+        if (error) {
+          console.error('Error from RPC:', error);
+          toast.error('Ошибка генерации кода: ' + error.message);
+          return;
+        }
+        
+        if (data) {
+          console.log('Setting new code:', data);
+          setFormData(prev => {
+            console.log('Previous code:', prev.code, 'New code:', data);
+            return { ...prev, code: data };
+          });
           setShowTypeChangeWarning(true);
+          toast.success(`Код обновлен: ${product.code} → ${data}`);
         }
       } catch (error) {
         console.error("Error generating new code:", error);
+        toast.error('Ошибка генерации кода');
       }
     };
 
@@ -322,14 +337,26 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="code">Код *</Label>
+                <Label htmlFor="code">
+                  Код * 
+                  {showTypeChangeWarning && (
+                    <span className="text-xs text-amber-600 ml-2">(обновлен автоматически)</span>
+                  )}
+                </Label>
                 <Input
                   id="code"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   placeholder="PROD-001"
                   required
+                  disabled={showTypeChangeWarning}
+                  className={showTypeChangeWarning ? "bg-muted" : ""}
                 />
+                {showTypeChangeWarning && (
+                  <p className="text-xs text-muted-foreground">
+                    Код заблокирован, так как тип продукта был изменен
+                  </p>
+                )}
               </div>
 
                   <div className="space-y-2">
