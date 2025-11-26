@@ -10,7 +10,7 @@ import { Plus, Search, Package, Pencil, Trash2, GitBranch, Info, ArrowRight, Che
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useProducts, useDeleteProduct } from "@/hooks/useProducts";
+import { useProducts, useDeleteProduct, useBulkDeleteProducts } from "@/hooks/useProducts";
 import { ProductDialog } from "@/components/products/ProductDialog";
 import { ProductTreeDialog } from "@/components/products/ProductTreeDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,8 +45,10 @@ const Products = () => {
   const [treeDialogOpen, setTreeDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isInstructionOpen, setIsInstructionOpen] = useState(false);
+  const [bulkDeletingType, setBulkDeletingType] = useState<string | null>(null);
   const { data: products, isLoading } = useProducts();
   const deleteMutation = useDeleteProduct();
+  const bulkDeleteMutation = useBulkDeleteProducts();
 
   const filteredProducts = products?.filter(
     (product) =>
@@ -73,6 +75,13 @@ const Products = () => {
     if (deletingProduct) {
       await deleteMutation.mutateAsync(deletingProduct.id);
       setDeletingProduct(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (bulkDeletingType) {
+      await bulkDeleteMutation.mutateAsync(bulkDeletingType);
+      setBulkDeletingType(null);
     }
   };
 
@@ -310,6 +319,17 @@ const Products = () => {
           </TabsContent>
 
           <TabsContent value="materials" className="space-y-4">
+            <div className="flex justify-end mb-4">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBulkDeletingType("material")}
+                disabled={materials.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Удалить все материалы
+              </Button>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {materials.map((product) => (
                 <Card key={product.id}>
@@ -502,6 +522,23 @@ const Products = () => {
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!bulkDeletingType} onOpenChange={() => setBulkDeletingType(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить все материалы?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить все материалы? Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Удалить все
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
