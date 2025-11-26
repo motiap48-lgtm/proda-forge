@@ -8,15 +8,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useProducts } from "@/hooks/useProducts";
 import { Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
-import { useCreateSpecification } from "@/hooks/useSpecifications";
+import { useCreateSpecification, useUpdateSpecification } from "@/hooks/useSpecifications";
 import { cn } from "@/lib/utils";
 
 interface SpecificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  specification?: any;
 }
 
-export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogProps) => {
+export const SpecificationDialog = ({ open, onOpenChange, specification }: SpecificationDialogProps) => {
   const [code, setCode] = useState("");
   const [productId, setProductId] = useState("");
   const [version, setVersion] = useState("v1");
@@ -30,6 +31,7 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
 
   const { data: products } = useProducts();
   const createMutation = useCreateSpecification();
+  const updateMutation = useUpdateSpecification();
 
   const producibleProducts = products?.filter(p => 
     p.product_type === "finished" || 
@@ -70,8 +72,26 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
       setVersion("v1");
       setIsActive(true);
       setMaterials([{ material_id: "", quantity: "", waste_rate: "0" }]);
+    } else if (specification) {
+      // Загружаем данные для редактирования
+      setCode(specification.code);
+      setProductId(specification.product_id);
+      setVersion(specification.version);
+      setIsActive(specification.is_active);
+      
+      if (specification.specification_materials && specification.specification_materials.length > 0) {
+        setMaterials(
+          specification.specification_materials.map((m: any) => ({
+            material_id: m.material_id,
+            quantity: m.quantity.toString(),
+            waste_rate: m.waste_rate.toString(),
+          }))
+        );
+      } else {
+        setMaterials([{ material_id: "", quantity: "", waste_rate: "0" }]);
+      }
     }
-  }, [open]);
+  }, [open, specification]);
 
   const handleAddMaterial = () => {
     setMaterials([...materials, { material_id: "", quantity: "", waste_rate: "0" }]);
@@ -106,13 +126,26 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
         waste_rate: parseFloat(m.waste_rate) || 0,
       }));
 
-    await createMutation.mutateAsync({
-      code,
-      product_id: productId,
-      version,
-      is_active: isActive,
-      materials: validMaterials,
-    });
+    if (specification) {
+      // Режим редактирования
+      await updateMutation.mutateAsync({
+        id: specification.id,
+        code,
+        product_id: productId,
+        version,
+        is_active: isActive,
+        materials: validMaterials,
+      });
+    } else {
+      // Режим создания
+      await createMutation.mutateAsync({
+        code,
+        product_id: productId,
+        version,
+        is_active: isActive,
+        materials: validMaterials,
+      });
+    }
 
     onOpenChange(false);
   };
@@ -121,7 +154,7 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Создать спецификацию</DialogTitle>
+          <DialogTitle>{specification ? "Редактировать спецификацию" : "Создать спецификацию"}</DialogTitle>
           <DialogDescription>
             Определите состав продукта, указав необходимые компоненты и их количество
           </DialogDescription>
@@ -334,8 +367,11 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Отмена
             </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Создание..." : "Создать"}
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              {specification 
+                ? (updateMutation.isPending ? "Сохранение..." : "Сохранить")
+                : (createMutation.isPending ? "Создание..." : "Создать")
+              }
             </Button>
           </div>
         </form>

@@ -12,6 +12,7 @@ import { SpecificationDialog } from "@/components/specifications/SpecificationDi
 const Specifications = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedSpec, setSelectedSpec] = useState<any>(null);
   const { data: specifications, isLoading } = useSpecifications();
 
   const filteredSpecs = (specifications || []).filter(
@@ -56,7 +57,14 @@ const Specifications = () => {
           </Button>
         </div>
 
-        <SpecificationDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+        <SpecificationDialog 
+          open={dialogOpen} 
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) setSelectedSpec(null);
+          }}
+          specification={selectedSpec}
+        />
 
         {/* Search */}
         <Card className="mb-6">
@@ -114,7 +122,14 @@ const Specifications = () => {
                       </p>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSelectedSpec(spec);
+                      setDialogOpen(true);
+                    }}
+                  >
                     Редактировать
                   </Button>
                 </div>
