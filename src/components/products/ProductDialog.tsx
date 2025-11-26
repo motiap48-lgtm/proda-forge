@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { useCreateProduct, useUpdateProduct } from "@/hooks/useProducts";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Product {
   id: string;
@@ -31,6 +32,7 @@ interface BatchProduct {
   name: string;
   product_type: string;
   unit: string;
+  isDuplicate?: boolean;
 }
 
 export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProps) => {
@@ -46,10 +48,12 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "material", unit: "шт" }
   ]);
   const [isCreating, setIsCreating] = useState(false);
+  const [nameDuplicate, setNameDuplicate] = useState(false);
 
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
   const batchRowsEndRef = useRef<HTMLDivElement>(null);
+  const checkTimeoutRef = useRef<NodeJS.Timeout>();
   useEffect(() => {
     if (open && product) {
       setMode("single");
@@ -86,6 +90,84 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
       ]);
     }
   }, [open, product]);
+
+  // Проверка дубликата названия для одиночного режима
+  useEffect(() => {
+    if (!open || mode !== "single" || !formData.name.trim()) {
+      setNameDuplicate(false);
+      return;
+    }
+
+    if (checkTimeoutRef.current) {
+      clearTimeout(checkTimeoutRef.current);
+    }
+
+    checkTimeoutRef.current = setTimeout(async () => {
+      try {
+        const query = supabase
+          .from("products")
+          .select("name, id")
+          .eq("name", formData.name)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        const { data: existing } = await query;
+        
+        // Если редактируем, исключаем текущий продукт
+        if (existing && (!product || existing.id !== product.id)) {
+          setNameDuplicate(true);
+        } else {
+          setNameDuplicate(false);
+        }
+      } catch (error) {
+        console.error("Error checking duplicate:", error);
+      }
+    }, 500);
+
+    return () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+    };
+  }, [formData.name, open, mode, product]);
+
+  // Проверка дубликатов для массового режима
+  useEffect(() => {
+    if (!open || mode !== "batch") return;
+
+    if (checkTimeoutRef.current) {
+      clearTimeout(checkTimeoutRef.current);
+    }
+
+    checkTimeoutRef.current = setTimeout(async () => {
+      const updatedProducts = await Promise.all(
+        batchProducts.map(async (p) => {
+          if (!p.name.trim()) return { ...p, isDuplicate: false };
+
+          try {
+            const { data: existing } = await supabase
+              .from("products")
+              .select("name")
+              .eq("name", p.name)
+              .eq("is_active", true)
+              .maybeSingle();
+
+            return { ...p, isDuplicate: !!existing };
+          } catch (error) {
+            return { ...p, isDuplicate: false };
+          }
+        })
+      );
+
+      setBatchProducts(updatedProducts);
+    }, 500);
+
+    return () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+    };
+  }, [batchProducts.map(p => p.name).join(","), open, mode]);
 
   // Дополнительный эффект не нужен — коды генерируются в базе данных
 
@@ -201,16 +283,23 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Название *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Название продукта"
-                  required
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Название *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Название продукта"
+                      required
+                      className={nameDuplicate ? "border-destructive focus-visible:ring-destructive" : ""}
+                    />
+                    {nameDuplicate && (
+                      <div className="flex items-center gap-1 text-xs text-destructive">
+                        <AlertCircle className="h-3 w-3" />
+                        <span>Продукт с таким названием уже существует</span>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="product_type">Тип продукта *</Label>
@@ -299,16 +388,23 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Название *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Название продукта"
-                      required
-                    />
-                  </div>
+                   <div className="space-y-2">
+                     <Label htmlFor="name">Название *</Label>
+                     <Input
+                       id="name"
+                       value={formData.name}
+                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                       placeholder="Название продукта"
+                       required
+                       className={nameDuplicate ? "border-destructive focus-visible:ring-destructive" : ""}
+                     />
+                     {nameDuplicate && (
+                       <div className="flex items-center gap-1 text-xs text-destructive">
+                         <AlertCircle className="h-3 w-3" />
+                         <span>Продукт с таким названием уже существует</span>
+                       </div>
+                     )}
+                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="product_type">Тип продукта *</Label>
@@ -402,7 +498,14 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                             onChange={(e) => updateBatchProduct(product.id, "name", e.target.value)}
                             placeholder="Название продукта"
                             required
+                            className={product.isDuplicate ? "border-destructive focus-visible:ring-destructive" : ""}
                           />
+                          {product.isDuplicate && (
+                            <div className="flex items-center gap-1 text-xs text-destructive">
+                              <AlertCircle className="h-3 w-3" />
+                              <span>Дубликат</span>
+                            </div>
+                          )}
                         </div>
 
                         <div className="space-y-1">
