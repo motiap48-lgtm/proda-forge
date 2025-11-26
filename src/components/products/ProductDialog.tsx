@@ -94,7 +94,7 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     const nextCode = await getNextCode(productType);
     
     if (isSingle) {
-      setFormData({ ...formData, product_type: productType, code: nextCode });
+      setFormData(prev => ({ ...prev, product_type: productType, code: nextCode }));
     } else {
       // For batch, we'll update the last item's code
       const updatedBatch = [...batchProducts];
