@@ -143,17 +143,19 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
                     variant="outline"
                     role="combobox"
                     aria-expanded={productOpen}
-                    className="w-full justify-between"
+                    className="w-full justify-between text-left"
                   >
-                    {productId
-                      ? (() => {
-                          const selected = producibleProducts.find((p) => p.id === productId);
-                          return selected ? `${selected.code} ${selected.name} - ${
-                            selected.product_type === "finished" ? "ГП" : 
-                            selected.product_type === "semi-finished" ? "ПФ" : "СУ"
-                          }` : "Выберите продукт";
-                        })()
-                      : "Выберите продукт"}
+                    <span className="truncate">
+                      {productId
+                        ? (() => {
+                            const selected = producibleProducts.find((p) => p.id === productId);
+                            return selected ? `${selected.code} ${selected.name} - ${
+                              selected.product_type === "finished" ? "ГП" : 
+                              selected.product_type === "semi-finished" ? "ПФ" : "СУ"
+                            }` : "Выберите продукт";
+                          })()
+                        : "Выберите продукт"}
+                    </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -233,17 +235,19 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
                         variant="outline"
                         role="combobox"
                         aria-expanded={materialOpen[index]}
-                        className="w-full justify-between"
+                        className="w-full justify-between text-left"
                       >
-                        {material.material_id
-                          ? (() => {
-                              const selected = componentProducts.find((p) => p.id === material.material_id);
-                              return selected ? `${selected.code} ${selected.name} - ${
-                                selected.product_type === "material" ? "Материал" : 
-                                selected.product_type === "semi-finished" ? "ПФ" : "СУ"
-                              }` : "Выберите компонент";
-                            })()
-                          : "Выберите компонент"}
+                        <span className="truncate">
+                          {material.material_id
+                            ? (() => {
+                                const selected = componentProducts.find((p) => p.id === material.material_id);
+                                return selected ? `${selected.code} ${selected.name} - ${
+                                  selected.product_type === "material" ? "Материал" : 
+                                  selected.product_type === "semi-finished" ? "ПФ" : "СУ"
+                                }` : "Выберите компонент";
+                              })()
+                            : "Выберите компонент"}
+                        </span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
