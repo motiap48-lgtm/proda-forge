@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
   ]);
   const [productOpen, setProductOpen] = useState(false);
   const [materialOpen, setMaterialOpen] = useState<{ [key: number]: boolean }>({});
+  const materialsEndRef = useRef<HTMLDivElement>(null);
 
   const { data: products } = useProducts();
   const createMutation = useCreateSpecification();
@@ -74,6 +75,10 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
 
   const handleAddMaterial = () => {
     setMaterials([...materials, { material_id: "", quantity: "", waste_rate: "0" }]);
+    // Прокрутка к новому компоненту
+    setTimeout(() => {
+      materialsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 100);
   };
 
   const handleRemoveMaterial = (index: number) => {
@@ -89,7 +94,7 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!code || !productId) {
+    if (!productId) {
       return;
     }
 
@@ -322,6 +327,7 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
                 </div>
               </div>
             ))}
+            <div ref={materialsEndRef} />
           </div>
 
           <div className="flex justify-end gap-4">
