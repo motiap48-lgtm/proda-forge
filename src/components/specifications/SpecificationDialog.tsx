@@ -82,7 +82,8 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
       if (specification.specification_materials && specification.specification_materials.length > 0) {
         setMaterials(
           specification.specification_materials.map((m: any) => ({
-            material_id: m.material_id,
+            // Используем id из связанной таблицы для получения material_id
+            material_id: m.material_id || (m.products?.id),
             quantity: m.quantity.toString(),
             waste_rate: m.waste_rate.toString(),
           }))
