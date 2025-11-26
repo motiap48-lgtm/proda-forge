@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, AlertCircle, Info } from "lucide-react";
 import { useCreateProduct, useUpdateProduct } from "@/hooks/useProducts";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Product {
   id: string;
@@ -49,6 +50,8 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
   ]);
   const [isCreating, setIsCreating] = useState(false);
   const [nameDuplicate, setNameDuplicate] = useState(false);
+  const [originalProductType, setOriginalProductType] = useState<string>("");
+  const [showTypeChangeWarning, setShowTypeChangeWarning] = useState(false);
 
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
@@ -64,6 +67,8 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
         unit: product.unit,
         description: product.description || "",
       });
+      setOriginalProductType(product.product_type);
+      setShowTypeChangeWarning(false);
     } else if (open && !product) {
       setMode("single");
       setFormData({
@@ -76,6 +81,8 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
       setBatchProducts([
         { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "material", unit: "шт" }
       ]);
+      setOriginalProductType("");
+      setShowTypeChangeWarning(false);
     } else if (!open) {
       setMode("single");
       setFormData({
@@ -88,6 +95,8 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
       setBatchProducts([
         { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "material", unit: "шт" }
       ]);
+      setOriginalProductType("");
+      setShowTypeChangeWarning(false);
     }
   }, [open, product]);
 
@@ -130,6 +139,31 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
       }
     };
   }, [formData.name, open, mode, product]);
+
+  // Автоматическая генерация нового кода при изменении типа продукта
+  useEffect(() => {
+    if (!product || !originalProductType || formData.product_type === originalProductType) {
+      setShowTypeChangeWarning(false);
+      return;
+    }
+
+    // Тип продукта изменился - генерируем новый код
+    const generateNewCode = async () => {
+      try {
+        const { data, error } = await supabase
+          .rpc('generate_product_code', { p_product_type: formData.product_type });
+        
+        if (!error && data) {
+          setFormData(prev => ({ ...prev, code: data }));
+          setShowTypeChangeWarning(true);
+        }
+      } catch (error) {
+        console.error("Error generating new code:", error);
+      }
+    };
+
+    generateNewCode();
+  }, [formData.product_type, originalProductType, product]);
 
   // Проверка дубликатов для массового режима
   useEffect(() => {
@@ -356,6 +390,15 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                 </Select>
               </div>
             </div>
+
+            {showTypeChangeWarning && (
+              <Alert className="border-amber-500/50 bg-amber-500/10">
+                <Info className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-sm text-foreground">
+                  Тип продукта изменен. Код автоматически обновлен с <span className="font-mono font-semibold">{product.code}</span> на <span className="font-mono font-semibold">{formData.code}</span> для соответствия новому типу.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="description">Описание</Label>
