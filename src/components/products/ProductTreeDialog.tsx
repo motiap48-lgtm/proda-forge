@@ -13,12 +13,13 @@ interface ProductTreeDialogProps {
 
 interface TreeNodeProps {
   productId: string;
+  productData?: any; // Данные о продукте, если уже загружены
   quantity?: number;
   wasteRate?: number;
   level: number;
 }
 
-const TreeNode = ({ productId, quantity, wasteRate, level }: TreeNodeProps) => {
+const TreeNode = ({ productId, productData, quantity, wasteRate, level }: TreeNodeProps) => {
   const [isExpanded, setIsExpanded] = useState(level === 0);
   const { data: specifications, isLoading } = useSpecifications();
 
@@ -26,7 +27,8 @@ const TreeNode = ({ productId, quantity, wasteRate, level }: TreeNodeProps) => {
     (spec) => spec.product_id === productId && spec.is_active
   );
 
-  const product = specification?.products as any;
+  // Используем переданные данные о продукте или берем из спецификации
+  const product = productData || (specification?.products as any);
   const materials = (specification?.specification_materials || []) as any[];
 
   const hasChildren = materials.length > 0;
@@ -35,7 +37,7 @@ const TreeNode = ({ productId, quantity, wasteRate, level }: TreeNodeProps) => {
     switch (type) {
       case "finished": return "ГП";
       case "semi-finished": return "ПФ";
-      case "assembly": return "СУ";
+      case "assembly": return "СБ";
       case "material": return "Материал";
       default: return type;
     }
@@ -105,6 +107,7 @@ const TreeNode = ({ productId, quantity, wasteRate, level }: TreeNodeProps) => {
         <TreeNode
           key={material.id}
           productId={material.material_id}
+          productData={material.products}
           quantity={material.quantity}
           wasteRate={material.waste_rate}
           level={level + 1}

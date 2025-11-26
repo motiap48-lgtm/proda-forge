@@ -10,13 +10,13 @@ export const useSpecifications = () => {
         .from("specifications")
         .select(`
           *,
-          products:product_id(name, code),
+          products:product_id(name, code, product_type, unit),
           specification_materials(
             id,
             material_id,
             quantity,
             waste_rate,
-            products:material_id(name, code, unit)
+            products:material_id(name, code, unit, product_type)
           )
         `)
         .order("created_at", { ascending: false });
