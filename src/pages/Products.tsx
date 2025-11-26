@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Package, Pencil, Trash2, GitBranch, Info, ArrowRight, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Plus, Search, Package, Pencil, Trash2, GitBranch, Info, ArrowRight, ChevronDown, ChevronUp, X, FileText, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -14,6 +14,8 @@ import { useProducts, useDeleteProduct, useBulkDeleteProducts } from "@/hooks/us
 import { ProductDialog } from "@/components/products/ProductDialog";
 import { ProductTreeDialog } from "@/components/products/ProductTreeDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSpecifications } from "@/hooks/useSpecifications";
+import { SpecificationDialog } from "@/components/specifications/SpecificationDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,7 +49,10 @@ const Products = () => {
   const [isInstructionOpen, setIsInstructionOpen] = useState(false);
   const [bulkDeletingType, setBulkDeletingType] = useState<string | null>(null);
   const [codeFilter, setCodeFilter] = useState<string | null>(null);
+  const [specDialogOpen, setSpecDialogOpen] = useState(false);
+  const [selectedProductForSpec, setSelectedProductForSpec] = useState<Product | null>(null);
   const { data: products, isLoading } = useProducts();
+  const { data: specifications } = useSpecifications();
   const deleteMutation = useDeleteProduct();
   const bulkDeleteMutation = useBulkDeleteProducts();
 
@@ -98,6 +103,17 @@ const Products = () => {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingProduct(null);
+  };
+
+  // Проверка наличия активной спецификации для продукта
+  const getProductSpecification = (productId: string) => {
+    return specifications?.find(spec => spec.product_id === productId && spec.is_active);
+  };
+
+  // Обработчик создания спецификации для продукта
+  const handleCreateSpec = (product: Product) => {
+    setSelectedProductForSpec(product);
+    setSpecDialogOpen(true);
   };
 
   if (isLoading) {
@@ -156,8 +172,8 @@ const Products = () => {
                       2
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-foreground">Создайте полуфабрикат</div>
-                      <div className="text-sm text-muted-foreground">Добавьте продукт с типом "Полуфабрикат"</div>
+                      <div className="font-medium text-foreground">Создайте продукт</div>
+                      <div className="text-sm text-muted-foreground">Добавьте полуфабрикат, сборочный узел или готовую продукцию</div>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -165,8 +181,8 @@ const Products = () => {
                       3
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-foreground">Укажите расход материалов</div>
-                      <div className="text-sm text-muted-foreground mb-2">Перейдите в раздел "Спецификации" и создайте спецификацию с составом и расходом материалов</div>
+                      <div className="font-medium text-foreground">Создайте спецификацию</div>
+                      <div className="text-sm text-muted-foreground mb-2">Нажмите кнопку "Создать спецификацию" в карточке продукта или перейдите в раздел "Спецификации"</div>
                       <Link to="/references/specifications">
                         <Button variant="outline" size="sm" className="h-8">
                           Перейти к спецификациям
@@ -313,6 +329,37 @@ const Products = () => {
                         <span className="text-muted-foreground">Ед. изм.:</span>
                         <span>{product.unit}</span>
                       </div>
+                      
+                      {/* Индикация наличия спецификации */}
+                      {(product.product_type === "finished" || 
+                        product.product_type === "semi-finished" || 
+                        product.product_type === "assembly") && (
+                        <div className="pt-2 border-t">
+                          {getProductSpecification(product.id) ? (
+                            <div className="flex items-center gap-2 text-sm text-green-600">
+                              <FileText className="h-4 w-4" />
+                              <span>Спецификация создана</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-sm text-amber-600">
+                                <AlertCircle className="h-4 w-4" />
+                                <span>Нет спецификации</span>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full h-8"
+                                onClick={() => handleCreateSpec(product)}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Создать спецификацию
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       {product.description && (
                         <p className="text-sm text-muted-foreground pt-2 border-t">
                           {product.description}
@@ -378,6 +425,33 @@ const Products = () => {
                         <span className="text-muted-foreground">Ед. изм.:</span>
                         <span>{product.unit}</span>
                       </div>
+                      
+                      {/* Индикация наличия спецификации */}
+                      <div className="pt-2 border-t">
+                        {getProductSpecification(product.id) ? (
+                          <div className="flex items-center gap-2 text-sm text-green-600">
+                            <FileText className="h-4 w-4" />
+                            <span>Спецификация создана</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-amber-600">
+                              <AlertCircle className="h-4 w-4" />
+                              <span>Нет спецификации</span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full h-8"
+                              onClick={() => handleCreateSpec(product)}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Создать спецификацию
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      
                       {product.description && (
                         <p className="text-sm text-muted-foreground pt-2 border-t">
                           {product.description}
@@ -500,6 +574,33 @@ const Products = () => {
                         <span className="text-muted-foreground">Ед. изм.:</span>
                         <span>{product.unit}</span>
                       </div>
+                      
+                      {/* Индикация наличия спецификации */}
+                      <div className="pt-2 border-t">
+                        {getProductSpecification(product.id) ? (
+                          <div className="flex items-center gap-2 text-sm text-green-600">
+                            <FileText className="h-4 w-4" />
+                            <span>Спецификация создана</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-amber-600">
+                              <AlertCircle className="h-4 w-4" />
+                              <span>Нет спецификации</span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full h-8"
+                              onClick={() => handleCreateSpec(product)}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Создать спецификацию
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      
                       {product.description && (
                         <p className="text-sm text-muted-foreground pt-2 border-t">
                           {product.description}
@@ -565,6 +666,33 @@ const Products = () => {
                         <span className="text-muted-foreground">Ед. изм.:</span>
                         <span>{product.unit}</span>
                       </div>
+                      
+                      {/* Индикация наличия спецификации */}
+                      <div className="pt-2 border-t">
+                        {getProductSpecification(product.id) ? (
+                          <div className="flex items-center gap-2 text-sm text-green-600">
+                            <FileText className="h-4 w-4" />
+                            <span>Спецификация создана</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-amber-600">
+                              <AlertCircle className="h-4 w-4" />
+                              <span>Нет спецификации</span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full h-8"
+                              onClick={() => handleCreateSpec(product)}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Создать спецификацию
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      
                       {product.description && (
                         <p className="text-sm text-muted-foreground pt-2 border-t">
                           {product.description}
@@ -601,6 +729,27 @@ const Products = () => {
           productId={selectedProduct.id}
           productName={selectedProduct.name}
           productCode={selectedProduct.code}
+        />
+      )}
+
+      {selectedProductForSpec && (
+        <SpecificationDialog
+          open={specDialogOpen}
+          onOpenChange={(open) => {
+            setSpecDialogOpen(open);
+            if (!open) setSelectedProductForSpec(null);
+          }}
+          specification={
+            selectedProductForSpec
+              ? {
+                  product_id: selectedProductForSpec.id,
+                  code: "",
+                  version: "v1",
+                  is_active: true,
+                  specification_materials: []
+                }
+              : undefined
+          }
         />
       )}
 
