@@ -33,6 +33,18 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
+    --product-finished: 210 100% 45%;
+    --product-finished-foreground: 0 0% 100%;
+
+    --product-assembly: 270 70% 55%;
+    --product-assembly-foreground: 0 0% 100%;
+
+    --product-semi-finished: 30 90% 50%;
+    --product-semi-finished-foreground: 0 0% 100%;
+
+    --product-material: 142 76% 40%;
+    --product-material-foreground: 0 0% 100%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
@@ -90,6 +102,18 @@ All colors MUST be HSL.
 
     --warning: 38 92% 55%;
     --warning-foreground: 0 0% 100%;
+
+    --product-finished: 210 100% 55%;
+    --product-finished-foreground: 0 0% 100%;
+
+    --product-assembly: 270 70% 60%;
+    --product-assembly-foreground: 0 0% 100%;
+
+    --product-semi-finished: 30 90% 55%;
+    --product-semi-finished-foreground: 0 0% 100%;
+
+    --product-material: 142 76% 45%;
+    --product-material-foreground: 0 0% 100%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;

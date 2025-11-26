@@ -43,15 +43,6 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level }: TreeNo
     }
   };
 
-  const getProductTypeVariant = (type: string): "default" | "secondary" | "outline" => {
-    switch (type) {
-      case "finished": return "default";
-      case "semi-finished": return "secondary";
-      case "assembly": return "secondary";
-      default: return "outline";
-    }
-  };
-
   return (
     <div className="space-y-2">
       <div
@@ -79,7 +70,14 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level }: TreeNo
             ({product?.code})
           </span>
           {product?.product_type && (
-            <Badge variant={getProductTypeVariant(product.product_type)} className="text-xs">
+            <Badge 
+              className={`text-xs ${
+                product.product_type === "finished" ? "bg-product-finished text-product-finished-foreground" :
+                product.product_type === "assembly" ? "bg-product-assembly text-product-assembly-foreground" :
+                product.product_type === "semi-finished" ? "bg-product-semi-finished text-product-semi-finished-foreground" :
+                "bg-product-material text-product-material-foreground"
+              }`}
+            >
               {getProductTypeLabel(product.product_type)}
             </Badge>
           )}

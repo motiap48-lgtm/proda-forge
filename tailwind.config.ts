@@ -57,6 +57,22 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "product-finished": {
+          DEFAULT: "hsl(var(--product-finished))",
+          foreground: "hsl(var(--product-finished-foreground))",
+        },
+        "product-assembly": {
+          DEFAULT: "hsl(var(--product-assembly))",
+          foreground: "hsl(var(--product-assembly-foreground))",
+        },
+        "product-semi-finished": {
+          DEFAULT: "hsl(var(--product-semi-finished))",
+          foreground: "hsl(var(--product-semi-finished-foreground))",
+        },
+        "product-material": {
+          DEFAULT: "hsl(var(--product-material))",
+          foreground: "hsl(var(--product-material-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
