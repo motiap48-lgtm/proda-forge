@@ -328,7 +328,13 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs">Количество</Label>
+                  <Label className="text-xs">
+                    Количество
+                    {material.material_id && (() => {
+                      const selected = componentProducts.find((p) => p.id === material.material_id);
+                      return selected ? `, ${selected.unit}` : "";
+                    })()}
+                  </Label>
                   <Input
                     type="number"
                     step="0.01"
