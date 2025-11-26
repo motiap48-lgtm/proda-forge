@@ -54,8 +54,8 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
             // Готовая продукция состоит из сборочных узлов или полуфабрикатов
             return p.product_type === "assembly" || p.product_type === "semi-finished";
           case "assembly":
-            // Сборочный узел состоит из полуфабрикатов и материалов
-            return p.product_type === "semi-finished" || p.product_type === "material";
+            // Сборочный узел состоит из других узлов, полуфабрикатов и материалов
+            return p.product_type === "assembly" || p.product_type === "semi-finished" || p.product_type === "material";
           case "semi-finished":
             // Полуфабрикат состоит из материалов
             return p.product_type === "material";
