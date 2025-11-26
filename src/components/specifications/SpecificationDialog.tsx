@@ -3,11 +3,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useProducts } from "@/hooks/useProducts";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { useCreateSpecification } from "@/hooks/useSpecifications";
+import { cn } from "@/lib/utils";
 
 interface SpecificationDialogProps {
   open: boolean;
@@ -22,6 +24,8 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
   const [materials, setMaterials] = useState<Array<{ material_id: string; quantity: string; waste_rate: string }>>([
     { material_id: "", quantity: "", waste_rate: "0" }
   ]);
+  const [productOpen, setProductOpen] = useState(false);
+  const [materialOpen, setMaterialOpen] = useState<{ [key: number]: boolean }>({});
 
   const { data: products } = useProducts();
   const createMutation = useCreateSpecification();
@@ -133,21 +137,58 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
 
             <div className="space-y-2">
               <Label htmlFor="product">Продукт *</Label>
-              <Select value={productId} onValueChange={setProductId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите продукт" />
-                </SelectTrigger>
-                <SelectContent>
-                  {producibleProducts.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name} ({product.code}) - {
-                        product.product_type === "finished" ? "ГП" : 
-                        product.product_type === "semi-finished" ? "ПФ" : "СУ"
-                      }
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={productOpen} onOpenChange={setProductOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={productOpen}
+                    className="w-full justify-between"
+                  >
+                    {productId
+                      ? (() => {
+                          const selected = producibleProducts.find((p) => p.id === productId);
+                          return selected ? `${selected.code} ${selected.name} - ${
+                            selected.product_type === "finished" ? "ГП" : 
+                            selected.product_type === "semi-finished" ? "ПФ" : "СУ"
+                          }` : "Выберите продукт";
+                        })()
+                      : "Выберите продукт"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[500px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Поиск продукта..." />
+                    <CommandList>
+                      <CommandEmpty>Продукт не найден</CommandEmpty>
+                      <CommandGroup>
+                        {producibleProducts.map((product) => (
+                          <CommandItem
+                            key={product.id}
+                            value={`${product.code} ${product.name}`}
+                            onSelect={() => {
+                              setProductId(product.id);
+                              setProductOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                productId === product.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {product.code} {product.name} ({
+                              product.product_type === "finished" ? "ГП" : 
+                              product.product_type === "semi-finished" ? "ПФ" : "СУ"
+                            })
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
@@ -183,24 +224,61 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
               <div key={index} className="grid gap-4 p-4 border rounded-lg md:grid-cols-[1fr,120px,120px,auto]">
                 <div className="space-y-2">
                   <Label>Компонент</Label>
-                  <Select
-                    value={material.material_id}
-                    onValueChange={(value) => handleMaterialChange(index, "material_id", value)}
+                  <Popover 
+                    open={materialOpen[index]} 
+                    onOpenChange={(open) => setMaterialOpen({ ...materialOpen, [index]: open })}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите компонент" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {componentProducts.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name} ({product.code}) - {
-                            product.product_type === "material" ? "Материал" : 
-                            product.product_type === "semi-finished" ? "ПФ" : "СУ"
-                          }
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={materialOpen[index]}
+                        className="w-full justify-between"
+                      >
+                        {material.material_id
+                          ? (() => {
+                              const selected = componentProducts.find((p) => p.id === material.material_id);
+                              return selected ? `${selected.code} ${selected.name} - ${
+                                selected.product_type === "material" ? "Материал" : 
+                                selected.product_type === "semi-finished" ? "ПФ" : "СУ"
+                              }` : "Выберите компонент";
+                            })()
+                          : "Выберите компонент"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[500px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Поиск компонента..." />
+                        <CommandList>
+                          <CommandEmpty>Компонент не найден</CommandEmpty>
+                          <CommandGroup>
+                            {componentProducts.map((product) => (
+                              <CommandItem
+                                key={product.id}
+                                value={`${product.code} ${product.name}`}
+                                onSelect={() => {
+                                  handleMaterialChange(index, "material_id", product.id);
+                                  setMaterialOpen({ ...materialOpen, [index]: false });
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    material.material_id === product.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {product.code} {product.name} ({
+                                  product.product_type === "material" ? "Материал" : 
+                                  product.product_type === "semi-finished" ? "ПФ" : "СУ"
+                                })
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="space-y-2">
