@@ -140,9 +140,9 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     }
 
     checkTimeoutRef.current = setTimeout(async () => {
-      const updatedProducts = await Promise.all(
+      const duplicateChecks = await Promise.all(
         batchProducts.map(async (p) => {
-          if (!p.name.trim()) return { ...p, isDuplicate: false };
+          if (!p.name.trim()) return { id: p.id, isDuplicate: false };
 
           try {
             const { data: existing } = await supabase
@@ -152,14 +152,18 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
               .eq("is_active", true)
               .maybeSingle();
 
-            return { ...p, isDuplicate: !!existing };
+            return { id: p.id, isDuplicate: !!existing };
           } catch (error) {
-            return { ...p, isDuplicate: false };
+            return { id: p.id, isDuplicate: false };
           }
         })
       );
 
-      setBatchProducts(updatedProducts);
+      // Обновляем только флаг isDuplicate, сохраняя все остальные поля
+      setBatchProducts(prev => prev.map(p => {
+        const check = duplicateChecks.find(c => c.id === p.id);
+        return check ? { ...p, isDuplicate: check.isDuplicate } : p;
+      }));
     }, 500);
 
     return () => {
@@ -201,7 +205,7 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
   const handleBatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validProducts = batchProducts.filter(p => p.code && p.name);
+    const validProducts = batchProducts.filter(p => p.name.trim());
     
     if (validProducts.length === 0) {
       toast.error("Заполните хотя бы один продукт");
@@ -209,24 +213,35 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     }
 
     setIsCreating(true);
-    try {
-      await Promise.all(
-        validProducts.map(p => 
-          createMutation.mutateAsync({
-            code: p.code,
-            name: p.name,
-            product_type: p.product_type,
-            unit: p.unit,
-          })
-        )
-      );
-      toast.success(`Создано продуктов: ${validProducts.length}`);
-      onOpenChange(false);
-    } catch (error) {
-      toast.error("Ошибка при создании продуктов");
-    } finally {
-      setIsCreating(false);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const p of validProducts) {
+      try {
+        await createMutation.mutateAsync({
+          code: p.code,
+          name: p.name,
+          product_type: p.product_type,
+          unit: p.unit,
+        });
+        successCount++;
+      } catch (error) {
+        errorCount++;
+        console.error("Failed to create product:", p.name, error);
+      }
     }
+
+    setIsCreating(false);
+    
+    if (successCount > 0) {
+      toast.success(`Создано продуктов: ${successCount}${errorCount > 0 ? `, ошибок: ${errorCount}` : ''}`);
+    }
+    if (errorCount > 0 && successCount === 0) {
+      toast.error("Не удалось создать продукты");
+    }
+    
+    // Закрываем диалог в любом случае
+    onOpenChange(false);
   };
 
   const addBatchRow = () => {
