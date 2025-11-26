@@ -135,3 +135,32 @@ export const useDeleteProduct = () => {
     },
   });
 };
+
+export const useBulkDeleteProducts = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (productType: string) => {
+      const { error } = await supabase
+        .from("products")
+        .update({ is_active: false })
+        .eq("product_type", productType)
+        .eq("is_active", true);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, productType) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      const typeNames: Record<string, string> = {
+        material: "материалов",
+        "semi-finished": "полуфабрикатов",
+        assembly: "сборочных узлов",
+        finished: "готовой продукции",
+      };
+      toast.success(`Все ${typeNames[productType]} деактивированы`);
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка при массовой деактивации: " + error.message);
+    },
+  });
+};

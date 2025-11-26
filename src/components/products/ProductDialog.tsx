@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2 } from "lucide-react";
 import { useCreateProduct, useUpdateProduct } from "@/hooks/useProducts";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Product {
@@ -50,29 +51,104 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
 
-  useEffect(() => {
-    if (open && product) {
-      setMode("single");
-      setFormData({
-        code: product.code,
-        name: product.name,
-        product_type: product.product_type,
-        unit: product.unit,
-        description: product.description || "",
-      });
-    } else if (!open) {
-      setMode("single");
-      setFormData({
-        code: "",
-        name: "",
-        product_type: "material",
-        unit: "шт",
-        description: "",
-      });
-      setBatchProducts([
-        { id: crypto.randomUUID(), code: "", name: "", product_type: "material", unit: "шт" }
-      ]);
+  const getNextCode = async (productType: string) => {
+    const prefixMap: Record<string, string> = {
+      'material': 'МАТ',
+      'semi-finished': 'ПФ',
+      'assembly': 'СБ',
+      'finished': 'ГП',
+    };
+
+    const prefix = prefixMap[productType];
+    
+    const { data, error } = await supabase
+      .from('products')
+      .select('code')
+      .eq('product_type', productType)
+      .eq('is_active', true)
+      .ilike('code', `${prefix}%`)
+      .order('code', { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error('Error fetching last code:', error);
+      return `${prefix}-001`;
     }
+
+    if (!data || data.length === 0) {
+      return `${prefix}-001`;
+    }
+
+    const lastCode = data[0].code;
+    const match = lastCode.match(/(\d+)$/);
+    
+    if (match) {
+      const nextNumber = parseInt(match[1]) + 1;
+      return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+    }
+
+    return `${prefix}-001`;
+  };
+
+  const handleProductTypeChange = async (productType: string, isSingle: boolean = true) => {
+    const nextCode = await getNextCode(productType);
+    
+    if (isSingle) {
+      setFormData({ ...formData, product_type: productType, code: nextCode });
+    } else {
+      // For batch, we'll update the last item's code
+      const updatedBatch = [...batchProducts];
+      const lastIndex = updatedBatch.length - 1;
+      updatedBatch[lastIndex] = { 
+        ...updatedBatch[lastIndex], 
+        product_type: productType, 
+        code: nextCode 
+      };
+      setBatchProducts(updatedBatch);
+    }
+  };
+
+  useEffect(() => {
+    const initializeDialog = async () => {
+      if (open && product) {
+        setMode("single");
+        setFormData({
+          code: product.code,
+          name: product.name,
+          product_type: product.product_type,
+          unit: product.unit,
+          description: product.description || "",
+        });
+      } else if (open && !product) {
+        setMode("single");
+        const nextCode = await getNextCode("material");
+        setFormData({
+          code: nextCode,
+          name: "",
+          product_type: "material",
+          unit: "шт",
+          description: "",
+        });
+        const batchCode = await getNextCode("material");
+        setBatchProducts([
+          { id: crypto.randomUUID(), code: batchCode, name: "", product_type: "material", unit: "шт" }
+        ]);
+      } else if (!open) {
+        setMode("single");
+        setFormData({
+          code: "",
+          name: "",
+          product_type: "material",
+          unit: "шт",
+          description: "",
+        });
+        setBatchProducts([
+          { id: crypto.randomUUID(), code: "", name: "", product_type: "material", unit: "шт" }
+        ]);
+      }
+    };
+    
+    initializeDialog();
   }, [open, product]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -125,12 +201,14 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     }
   };
 
-  const addBatchRow = () => {
+  const addBatchRow = async () => {
+    const lastProductType = batchProducts[batchProducts.length - 1]?.product_type || "material";
+    const nextCode = await getNextCode(lastProductType);
     setBatchProducts([...batchProducts, { 
       id: crypto.randomUUID(), 
-      code: "", 
+      code: nextCode, 
       name: "", 
-      product_type: "material", 
+      product_type: lastProductType, 
       unit: "шт" 
     }]);
   };
@@ -141,10 +219,17 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     }
   };
 
-  const updateBatchProduct = (id: string, field: keyof BatchProduct, value: string) => {
-    setBatchProducts(batchProducts.map(p => 
-      p.id === id ? { ...p, [field]: value } : p
-    ));
+  const updateBatchProduct = async (id: string, field: keyof BatchProduct, value: string) => {
+    if (field === 'product_type') {
+      const nextCode = await getNextCode(value);
+      setBatchProducts(batchProducts.map(p => 
+        p.id === id ? { ...p, product_type: value, code: nextCode } : p
+      ));
+    } else {
+      setBatchProducts(batchProducts.map(p => 
+        p.id === id ? { ...p, [field]: value } : p
+      ));
+    }
   };
 
   const isLoading = createMutation.isPending || updateMutation.isPending || isCreating;
@@ -184,23 +269,23 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="product_type">Тип продукта *</Label>
-                <Select
-                  value={formData.product_type}
-                  onValueChange={(value) => setFormData({ ...formData, product_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="material">Материал</SelectItem>
-                    <SelectItem value="semi-finished">Полуфабрикат</SelectItem>
-                    <SelectItem value="assembly">Сборочный узел</SelectItem>
-                    <SelectItem value="finished">Готовая продукция</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="product_type">Тип продукта *</Label>
+                    <Select
+                      value={formData.product_type}
+                      onValueChange={(value) => handleProductTypeChange(value, true)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="material">Материал</SelectItem>
+                        <SelectItem value="semi-finished">Полуфабрикат</SelectItem>
+                        <SelectItem value="assembly">Сборочный узел</SelectItem>
+                        <SelectItem value="finished">Готовая продукция</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
               <div className="space-y-2">
                 <Label htmlFor="unit">Единица измерения *</Label>
