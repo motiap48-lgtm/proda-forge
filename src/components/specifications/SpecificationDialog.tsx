@@ -380,10 +380,10 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Отмена
             </Button>
-            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || validMaterials.length === 0}>
               {specification 
-                ? (updateMutation.isPending ? "Сохранение..." : `Сохранить (${validMaterials.length})`)
-                : (createMutation.isPending ? "Создание..." : `Создать (${validMaterials.length})`)
+                ? (updateMutation.isPending ? "Сохранение..." : `Сохранить (${materials.length})`)
+                : (createMutation.isPending ? "Создание..." : `Создать (${materials.length})`)
               }
             </Button>
           </div>
