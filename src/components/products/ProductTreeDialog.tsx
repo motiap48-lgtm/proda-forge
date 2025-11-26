@@ -134,7 +134,7 @@ export const ProductTreeDialog = ({
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto pr-2">
-          <TreeNode productId={productId} level={0} />
+          <TreeNode productId={productId} productData={{ name: productName }} level={0} />
         </div>
       </DialogContent>
     </Dialog>
