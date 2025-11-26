@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,7 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
 
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
+  const batchRowsEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (open && product) {
       setMode("single");
@@ -155,6 +156,11 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
       product_type: lastProductType, 
       unit: "шт" 
     }]);
+    
+    // Прокрутка к последней строке после добавления
+    setTimeout(() => {
+      batchRowsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 100);
   };
 
   const removeBatchRow = (id: string) => {
@@ -448,6 +454,7 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                         </Button>
                       </div>
                     ))}
+                    <div ref={batchRowsEndRef} />
                   </div>
                 </div>
 
