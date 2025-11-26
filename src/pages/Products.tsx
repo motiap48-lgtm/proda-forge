@@ -314,6 +314,17 @@ const Products = () => {
           </TabsContent>
 
           <TabsContent value="finished" className="space-y-4">
+            <div className="flex justify-end mb-4">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBulkDeletingType("finished")}
+                disabled={finishedProducts.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Удалить всю готовую продукцию
+              </Button>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {finishedProducts.map((product) => (
                 <Card key={product.id}>
@@ -425,6 +436,17 @@ const Products = () => {
           </TabsContent>
 
           <TabsContent value="semi-finished" className="space-y-4">
+            <div className="flex justify-end mb-4">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBulkDeletingType("semi-finished")}
+                disabled={semiFinished.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Удалить все полуфабрикаты
+              </Button>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {semiFinished.map((product) => (
                 <Card key={product.id}>
@@ -479,6 +501,17 @@ const Products = () => {
           </TabsContent>
 
           <TabsContent value="assembly" className="space-y-4">
+            <div className="flex justify-end mb-4">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBulkDeletingType("assembly")}
+                disabled={assemblies.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Удалить все сборочные узлы
+              </Button>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {assemblies.map((product) => (
                 <Card key={product.id}>
@@ -579,9 +612,14 @@ const Products = () => {
       <AlertDialog open={!!bulkDeletingType} onOpenChange={() => setBulkDeletingType(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Удалить все материалы?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {bulkDeletingType === "material" && "Удалить все материалы?"}
+              {bulkDeletingType === "semi-finished" && "Удалить все полуфабрикаты?"}
+              {bulkDeletingType === "assembly" && "Удалить все сборочные узлы?"}
+              {bulkDeletingType === "finished" && "Удалить всю готовую продукцию?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Вы уверены, что хотите удалить все материалы? Это действие нельзя отменить.
+              Вы уверены, что хотите удалить все продукты этого типа? Это действие нельзя отменить.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
