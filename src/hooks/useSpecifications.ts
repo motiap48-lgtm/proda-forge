@@ -98,24 +98,62 @@ export const useUpdateSpecification = () => {
   return useMutation({
     mutationFn: async ({
       id,
-      data,
+      code,
+      product_id,
+      version,
+      is_active,
+      materials,
     }: {
       id: string;
-      data: {
-        code?: string;
-        product_id?: string;
-        version?: string;
-        is_active?: boolean;
-      };
+      code?: string;
+      product_id?: string;
+      version?: string;
+      is_active?: boolean;
+      materials?: Array<{
+        material_id: string;
+        quantity: number;
+        waste_rate: number;
+      }>;
     }) => {
       const { data: updated, error } = await supabase
         .from("specifications")
-        .update(data)
+        .update({
+          code,
+          product_id,
+          version,
+          is_active,
+        })
         .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
+
+      // Если переданы материалы, обновляем их
+      if (materials !== undefined) {
+        // Удаляем старые материалы
+        const { error: deleteError } = await supabase
+          .from("specification_materials")
+          .delete()
+          .eq("specification_id", id);
+
+        if (deleteError) throw deleteError;
+
+        // Вставляем новые материалы
+        if (materials.length > 0) {
+          const materialsWithSpecId = materials.map(m => ({
+            ...m,
+            specification_id: id,
+          }));
+
+          const { error: materialsError } = await supabase
+            .from("specification_materials")
+            .insert(materialsWithSpecId);
+
+          if (materialsError) throw materialsError;
+        }
+      }
+
       return updated;
     },
     onSuccess: () => {
