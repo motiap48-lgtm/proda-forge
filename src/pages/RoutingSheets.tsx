@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2 } from "lucide-react";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X } from "lucide-react";
 import { useRoutingSheets } from "@/hooks/useRoutingSheets";
 
 const RoutingSheets = () => {
@@ -51,8 +51,18 @@ const RoutingSheets = () => {
                 placeholder="Поиск по номеру, названию или продукту..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-10"
               />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
