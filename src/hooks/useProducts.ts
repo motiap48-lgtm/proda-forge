@@ -46,21 +46,29 @@ export const useCreateProduct = () => {
       unit: string;
       description?: string;
     }) => {
-      // Проверка на дублирование по коду
-      const { data: existing } = await supabase
-        .from("products")
-        .select("code")
-        .eq("code", product.code)
-        .eq("is_active", true)
-        .maybeSingle();
+      // Если код AUTO или пустой, база данных сгенерирует его автоматически
+      const productData = {
+        ...product,
+        code: (!product.code || product.code === "AUTO") ? "" : product.code,
+      };
 
-      if (existing) {
-        throw new Error(`Продукт с кодом "${product.code}" уже существует`);
+      // Проверка на дублирование по коду только если код задан вручную
+      if (productData.code && productData.code !== "") {
+        const { data: existing } = await supabase
+          .from("products")
+          .select("code")
+          .eq("code", productData.code)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (existing) {
+          throw new Error(`Продукт с кодом "${productData.code}" уже существует`);
+        }
       }
 
       const { data, error } = await supabase
         .from("products")
-        .insert(product)
+        .insert(productData)
         .select()
         .single();
 
