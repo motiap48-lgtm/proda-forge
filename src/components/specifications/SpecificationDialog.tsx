@@ -125,14 +125,16 @@ export const SpecificationDialog = ({ open, onOpenChange }: SpecificationDialogP
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="code">Код спецификации *</Label>
+              <Label htmlFor="code">Код спецификации</Label>
               <Input
                 id="code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="SPEC-001"
-                required
+                placeholder="AUTO (генерируется автоматически)"
               />
+              <p className="text-xs text-muted-foreground">
+                Оставьте пустым для автоматической генерации
+              </p>
             </div>
 
             <div className="space-y-2">
