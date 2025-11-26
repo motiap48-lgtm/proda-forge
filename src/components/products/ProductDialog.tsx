@@ -90,24 +90,7 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     return `${prefix}-001`;
   };
 
-  const handleProductTypeChange = async (productType: string, isSingle: boolean = true) => {
-    const nextCode = await getNextCode(productType);
-    
-    if (isSingle) {
-      setFormData(prev => ({ ...prev, product_type: productType, code: nextCode }));
-    } else {
-      // For batch, we'll update the last item's code
-      const updatedBatch = [...batchProducts];
-      const lastIndex = updatedBatch.length - 1;
-      updatedBatch[lastIndex] = { 
-        ...updatedBatch[lastIndex], 
-        product_type: productType, 
-        code: nextCode 
-      };
-      setBatchProducts(updatedBatch);
-    }
-  };
-
+  // Генерация кодов для одиночного режима выполняется в эффекте по изменению типа продукта
   useEffect(() => {
     const initializeDialog = async () => {
       if (open && product) {
@@ -150,6 +133,17 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     
     initializeDialog();
   }, [open, product]);
+
+  useEffect(() => {
+    if (!open || product) return;
+
+    const updateCodeForType = async () => {
+      const nextCode = await getNextCode(formData.product_type);
+      setFormData(prev => ({ ...prev, code: nextCode }));
+    };
+
+    updateCodeForType();
+  }, [open, product, formData.product_type]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -273,7 +267,9 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                     <Label htmlFor="product_type">Тип продукта *</Label>
                     <Select
                       value={formData.product_type}
-                      onValueChange={(value) => handleProductTypeChange(value, true)}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, product_type: value }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
