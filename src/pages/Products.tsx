@@ -46,14 +46,24 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isInstructionOpen, setIsInstructionOpen] = useState(false);
   const [bulkDeletingType, setBulkDeletingType] = useState<string | null>(null);
+  const [codeFilter, setCodeFilter] = useState<string | null>(null);
   const { data: products, isLoading } = useProducts();
   const deleteMutation = useDeleteProduct();
   const bulkDeleteMutation = useBulkDeleteProducts();
 
   const filteredProducts = products?.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.code.toLowerCase().includes(searchQuery.toLowerCase())
+    (product) => {
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.code.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      if (!matchesSearch) return false;
+      
+      if (codeFilter) {
+        return product.code.startsWith(codeFilter);
+      }
+      
+      return true;
+    }
   );
 
   const finishedProducts = filteredProducts?.filter(p => p.product_type === "finished") || [];
@@ -171,7 +181,7 @@ const Products = () => {
           </Alert>
         </Collapsible>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -180,6 +190,45 @@ const Products = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
+          </div>
+          
+          <div className="flex gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground self-center">Фильтр по коду:</span>
+            <Button
+              variant={codeFilter === null ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCodeFilter(null)}
+            >
+              Все
+            </Button>
+            <Button
+              variant={codeFilter === "МАТ" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCodeFilter("МАТ")}
+            >
+              МАТ (Материалы)
+            </Button>
+            <Button
+              variant={codeFilter === "ПФ" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCodeFilter("ПФ")}
+            >
+              ПФ (Полуфабрикаты)
+            </Button>
+            <Button
+              variant={codeFilter === "СБ" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCodeFilter("СБ")}
+            >
+              СБ (Сборочные узлы)
+            </Button>
+            <Button
+              variant={codeFilter === "ГП" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCodeFilter("ГП")}
+            >
+              ГП (Готовая продукция)
+            </Button>
           </div>
         </div>
 
