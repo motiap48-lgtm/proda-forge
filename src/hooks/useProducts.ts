@@ -66,6 +66,18 @@ export const useCreateProduct = () => {
         }
       }
 
+      // Проверка на дублирование по названию
+      const { data: existingByName } = await supabase
+        .from("products")
+        .select("name")
+        .eq("name", product.name)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (existingByName) {
+        throw new Error(`Продукт с названием "${product.name}" уже существует`);
+      }
+
       const { data, error } = await supabase
         .from("products")
         .insert(productData)
@@ -102,6 +114,34 @@ export const useUpdateProduct = () => {
         description?: string;
       };
     }) => {
+      // Проверка на дублирование по коду (если код обновляется)
+      if (data.code) {
+        const { data: existingByCode } = await supabase
+          .from("products")
+          .select("code, id")
+          .eq("code", data.code)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (existingByCode && existingByCode.id !== id) {
+          throw new Error(`Продукт с кодом "${data.code}" уже существует`);
+        }
+      }
+
+      // Проверка на дублирование по названию (если название обновляется)
+      if (data.name) {
+        const { data: existingByName } = await supabase
+          .from("products")
+          .select("name, id")
+          .eq("name", data.name)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (existingByName && existingByName.id !== id) {
+          throw new Error(`Продукт с названием "${data.name}" уже существует`);
+        }
+      }
+
       const { data: updated, error } = await supabase
         .from("products")
         .update(data)
