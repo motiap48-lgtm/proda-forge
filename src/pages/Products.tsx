@@ -600,6 +600,7 @@ const Products = () => {
           onOpenChange={setTreeDialogOpen}
           productId={selectedProduct.id}
           productName={selectedProduct.name}
+          productCode={selectedProduct.code}
         />
       )}
 
