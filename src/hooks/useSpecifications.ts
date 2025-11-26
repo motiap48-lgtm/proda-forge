@@ -13,6 +13,7 @@ export const useSpecifications = () => {
           products:product_id(name, code),
           specification_materials(
             id,
+            material_id,
             quantity,
             waste_rate,
             products:material_id(name, code, unit)
