@@ -295,12 +295,14 @@ const Products = () => {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Тип:</span>
-                        <Badge variant={
-                          product.product_type === "finished" ? "default" : 
-                          product.product_type === "semi-finished" ? "outline" : 
-                          product.product_type === "assembly" ? "outline" : 
-                          "secondary"
-                        }>
+                        <Badge 
+                          className={
+                            product.product_type === "finished" ? "bg-product-finished text-product-finished-foreground" : 
+                            product.product_type === "semi-finished" ? "bg-product-semi-finished text-product-semi-finished-foreground" : 
+                            product.product_type === "assembly" ? "bg-product-assembly text-product-assembly-foreground" : 
+                            "bg-product-material text-product-material-foreground"
+                          }
+                        >
                           {product.product_type === "finished" ? "Готовая продукция" : 
                            product.product_type === "semi-finished" ? "Полуфабрикат" :
                            product.product_type === "assembly" ? "Сборочный узел" :
