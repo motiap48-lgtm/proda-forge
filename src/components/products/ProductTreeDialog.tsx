@@ -9,6 +9,7 @@ interface ProductTreeDialogProps {
   onOpenChange: (open: boolean) => void;
   productId: string;
   productName: string;
+  productCode: string;
 }
 
 interface TreeNodeProps {
@@ -120,6 +121,7 @@ export const ProductTreeDialog = ({
   onOpenChange,
   productId,
   productName,
+  productCode,
 }: ProductTreeDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -132,7 +134,7 @@ export const ProductTreeDialog = ({
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto pr-2">
-          <TreeNode productId={productId} productData={{ name: productName }} level={0} />
+          <TreeNode productId={productId} productData={{ name: productName, code: productCode }} level={0} />
         </div>
       </DialogContent>
     </Dialog>
