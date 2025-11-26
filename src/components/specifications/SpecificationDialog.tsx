@@ -191,7 +191,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
                             const selected = producibleProducts.find((p) => p.id === productId);
                             return selected ? `${selected.code} ${selected.name} - ${
                               selected.product_type === "finished" ? "ГП" : 
-                              selected.product_type === "semi-finished" ? "ПФ" : "СУ"
+                              selected.product_type === "semi-finished" ? "ПФ" : "СБ"
                             }` : "Выберите продукт";
                           })()
                         : "Выберите продукт"}
@@ -222,7 +222,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
                             />
                             {product.code} {product.name} ({
                               product.product_type === "finished" ? "ГП" : 
-                              product.product_type === "semi-finished" ? "ПФ" : "СУ"
+                              product.product_type === "semi-finished" ? "ПФ" : "СБ"
                             })
                           </CommandItem>
                         ))}
@@ -283,7 +283,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
                                 const selected = componentProducts.find((p) => p.id === material.material_id);
                                 return selected ? `${selected.code} ${selected.name} - ${
                                   selected.product_type === "material" ? "Материал" : 
-                                  selected.product_type === "semi-finished" ? "ПФ" : "СУ"
+                                  selected.product_type === "semi-finished" ? "ПФ" : "СБ"
                                 }` : "Выберите компонент";
                               })()
                             : "Выберите компонент"}
@@ -314,7 +314,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
                                 />
                                 {product.code} {product.name} ({
                                   product.product_type === "material" ? "Материал" : 
-                                  product.product_type === "semi-finished" ? "ПФ" : "СУ"
+                                  product.product_type === "semi-finished" ? "ПФ" : "СБ"
                                 })
                               </CommandItem>
                             ))}
