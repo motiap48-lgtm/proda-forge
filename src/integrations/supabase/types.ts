@@ -953,6 +953,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_product_code: {
+        Args: { p_product_type: string }
+        Returns: string
+      }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"][]

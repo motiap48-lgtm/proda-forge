@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2 } from "lucide-react";
 import { useCreateProduct, useUpdateProduct } from "@/hooks/useProducts";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Product {
@@ -44,118 +43,63 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     description: "",
   });
   const [batchProducts, setBatchProducts] = useState<BatchProduct[]>([
-    { id: crypto.randomUUID(), code: "", name: "", product_type: "material", unit: "шт" }
+    { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "material", unit: "шт" }
   ]);
   const [isCreating, setIsCreating] = useState(false);
 
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
-
-  const prefixMap: Record<string, string> = {
-    material: "МАТ",
-    "semi-finished": "ПФ",
-    assembly: "СБ",
-    finished: "ГП",
-  };
-
-  const lastCodeNumberRef = useRef<Record<string, number | null>>({
-    material: null,
-    "semi-finished": null,
-    assembly: null,
-    finished: null,
-  });
-
-  const getNextCode = async (productType: string) => {
-    const prefix = prefixMap[productType];
-
-    if (!prefix) {
-      console.error("Unknown product type for code generation:", productType);
-      return "";
-    }
-
-    // Загружаем последний номер из базы только один раз для каждого типа
-    if (lastCodeNumberRef.current[productType] === null) {
-      const { data, error } = await supabase
-        .from("products")
-        .select("code")
-        .eq("product_type", productType)
-        .eq("is_active", true)
-        .ilike("code", `${prefix}-%`)
-        .order("code", { ascending: false })
-        .limit(1);
-
-      if (error) {
-        console.error("Error fetching last code:", error);
-        lastCodeNumberRef.current[productType] = 0;
-      } else if (!data || data.length === 0) {
-        lastCodeNumberRef.current[productType] = 0;
-      } else {
-        const lastCode = data[0].code;
-        const match = lastCode.match(/(\d+)$/);
-        lastCodeNumberRef.current[productType] = match ? parseInt(match[1], 10) : 0;
-      }
-    }
-
-    const currentNumber = lastCodeNumberRef.current[productType] ?? 0;
-    const nextNumber = currentNumber + 1;
-    lastCodeNumberRef.current[productType] = nextNumber;
-
-    return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
-  };
-
-  const handleSingleProductTypeChange = async (productType: string) => {
-    const nextCode = await getNextCode(productType);
-    setFormData((prev) => ({ ...prev, product_type: productType, code: nextCode }));
-  };
   useEffect(() => {
-    const initializeDialog = async () => {
-      if (open && product) {
-        setMode("single");
-        setFormData({
-          code: product.code,
-          name: product.name,
-          product_type: product.product_type,
-          unit: product.unit,
-          description: product.description || "",
-        });
-      } else if (open && !product) {
-        setMode("single");
-        const nextCode = await getNextCode("material");
-        setFormData({
-          code: nextCode,
-          name: "",
-          product_type: "material",
-          unit: "шт",
-          description: "",
-        });
-        const batchCode = await getNextCode("material");
-        setBatchProducts([
-          { id: crypto.randomUUID(), code: batchCode, name: "", product_type: "material", unit: "шт" }
-        ]);
-      } else if (!open) {
-        setMode("single");
-        setFormData({
-          code: "",
-          name: "",
-          product_type: "material",
-          unit: "шт",
-          description: "",
-        });
-        setBatchProducts([
-          { id: crypto.randomUUID(), code: "", name: "", product_type: "material", unit: "шт" }
-        ]);
-      }
-    };
-    
-    initializeDialog();
+    if (open && product) {
+      setMode("single");
+      setFormData({
+        code: product.code,
+        name: product.name,
+        product_type: product.product_type,
+        unit: product.unit,
+        description: product.description || "",
+      });
+    } else if (open && !product) {
+      setMode("single");
+      setFormData({
+        code: "AUTO",
+        name: "",
+        product_type: "material",
+        unit: "шт",
+        description: "",
+      });
+      setBatchProducts([
+        { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "material", unit: "шт" }
+      ]);
+    } else if (!open) {
+      setMode("single");
+      setFormData({
+        code: "",
+        name: "",
+        product_type: "material",
+        unit: "шт",
+        description: "",
+      });
+      setBatchProducts([
+        { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "material", unit: "шт" }
+      ]);
+    }
   }, [open, product]);
 
-  // Дополнительный эффект не нужен — коды генерируются при инициализации и смене типа
+  // Дополнительный эффект не нужен — коды генерируются в базе данных
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.code || !formData.name) {
+    // Для редактирования требуем код и название
+    // Для создания код генерируется автоматически, требуем только название
+    if (product && !formData.code) {
+      toast.error("Укажите код продукта");
+      return;
+    }
+    
+    if (!formData.name) {
+      toast.error("Укажите название продукта");
       return;
     }
 
@@ -202,12 +146,11 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     }
   };
 
-  const addBatchRow = async () => {
+  const addBatchRow = () => {
     const lastProductType = batchProducts[batchProducts.length - 1]?.product_type || "material";
-    const nextCode = await getNextCode(lastProductType);
     setBatchProducts([...batchProducts, { 
       id: crypto.randomUUID(), 
-      code: nextCode, 
+      code: "AUTO", 
       name: "", 
       product_type: lastProductType, 
       unit: "шт" 
@@ -220,17 +163,10 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     }
   };
 
-  const updateBatchProduct = async (id: string, field: keyof BatchProduct, value: string) => {
-    if (field === 'product_type') {
-      const nextCode = await getNextCode(value);
-      setBatchProducts(batchProducts.map(p => 
-        p.id === id ? { ...p, product_type: value, code: nextCode } : p
-      ));
-    } else {
-      setBatchProducts(batchProducts.map(p => 
-        p.id === id ? { ...p, [field]: value } : p
-      ));
-    }
+  const updateBatchProduct = (id: string, field: keyof BatchProduct, value: string) => {
+    setBatchProducts(batchProducts.map(p => 
+      p.id === id ? { ...p, [field]: value } : p
+    ));
   };
 
   const isLoading = createMutation.isPending || updateMutation.isPending || isCreating;
@@ -345,11 +281,16 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                     <Label htmlFor="code">Код *</Label>
                     <Input
                       id="code"
-                      value={formData.code}
-                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                      placeholder="PROD-001"
-                      required
+                      value={formData.code === "AUTO" ? "" : formData.code}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value || "AUTO" })}
+                      placeholder="Генерируется автоматически"
+                      disabled={!product}
                     />
+                    {!product && (
+                      <p className="text-xs text-muted-foreground">
+                        Код будет сгенерирован автоматически при сохранении
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -367,7 +308,7 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                     <Label htmlFor="product_type">Тип продукта *</Label>
                     <Select
                       value={formData.product_type}
-                      onValueChange={(value) => handleSingleProductTypeChange(value)}
+                      onValueChange={(value) => setFormData({ ...formData, product_type: value })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -441,10 +382,10 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                         <div className="space-y-1">
                           <Label className="text-xs">Код *</Label>
                           <Input
-                            value={product.code}
-                            onChange={(e) => updateBatchProduct(product.id, "code", e.target.value)}
-                            placeholder="PROD-001"
-                            required
+                            value={product.code === "AUTO" ? "" : product.code}
+                            onChange={(e) => updateBatchProduct(product.id, "code", e.target.value || "AUTO")}
+                            placeholder="Автоматически"
+                            disabled
                           />
                         </div>
 
