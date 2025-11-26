@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,46 +51,62 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
 
-  const getNextCode = async (productType: string) => {
-    const prefixMap: Record<string, string> = {
-      'material': 'МАТ',
-      'semi-finished': 'ПФ',
-      'assembly': 'СБ',
-      'finished': 'ГП',
-    };
-
-    const prefix = prefixMap[productType];
-    
-    const { data, error } = await supabase
-      .from('products')
-      .select('code')
-      .eq('product_type', productType)
-      .eq('is_active', true)
-      .ilike('code', `${prefix}%`)
-      .order('code', { ascending: false })
-      .limit(1);
-
-    if (error) {
-      console.error('Error fetching last code:', error);
-      return `${prefix}-001`;
-    }
-
-    if (!data || data.length === 0) {
-      return `${prefix}-001`;
-    }
-
-    const lastCode = data[0].code;
-    const match = lastCode.match(/(\d+)$/);
-    
-    if (match) {
-      const nextNumber = parseInt(match[1]) + 1;
-      return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
-    }
-
-    return `${prefix}-001`;
+  const prefixMap: Record<string, string> = {
+    material: "МАТ",
+    "semi-finished": "ПФ",
+    assembly: "СБ",
+    finished: "ГП",
   };
 
-  // Генерация кодов для одиночного режима выполняется в эффекте по изменению типа продукта
+  const lastCodeNumberRef = useRef<Record<string, number | null>>({
+    material: null,
+    "semi-finished": null,
+    assembly: null,
+    finished: null,
+  });
+
+  const getNextCode = async (productType: string) => {
+    const prefix = prefixMap[productType];
+
+    if (!prefix) {
+      console.error("Unknown product type for code generation:", productType);
+      return "";
+    }
+
+    // Загружаем последний номер из базы только один раз для каждого типа
+    if (lastCodeNumberRef.current[productType] === null) {
+      const { data, error } = await supabase
+        .from("products")
+        .select("code")
+        .eq("product_type", productType)
+        .eq("is_active", true)
+        .ilike("code", `${prefix}-%`)
+        .order("code", { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error("Error fetching last code:", error);
+        lastCodeNumberRef.current[productType] = 0;
+      } else if (!data || data.length === 0) {
+        lastCodeNumberRef.current[productType] = 0;
+      } else {
+        const lastCode = data[0].code;
+        const match = lastCode.match(/(\d+)$/);
+        lastCodeNumberRef.current[productType] = match ? parseInt(match[1], 10) : 0;
+      }
+    }
+
+    const currentNumber = lastCodeNumberRef.current[productType] ?? 0;
+    const nextNumber = currentNumber + 1;
+    lastCodeNumberRef.current[productType] = nextNumber;
+
+    return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
+  };
+
+  const handleSingleProductTypeChange = async (productType: string) => {
+    const nextCode = await getNextCode(productType);
+    setFormData((prev) => ({ ...prev, product_type: productType, code: nextCode }));
+  };
   useEffect(() => {
     const initializeDialog = async () => {
       if (open && product) {
@@ -134,16 +150,7 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
     initializeDialog();
   }, [open, product]);
 
-  useEffect(() => {
-    if (!open || product) return;
-
-    const updateCodeForType = async () => {
-      const nextCode = await getNextCode(formData.product_type);
-      setFormData(prev => ({ ...prev, code: nextCode }));
-    };
-
-    updateCodeForType();
-  }, [open, product, formData.product_type]);
+  // Дополнительный эффект не нужен — коды генерируются при инициализации и смене типа
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -360,7 +367,7 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                     <Label htmlFor="product_type">Тип продукта *</Label>
                     <Select
                       value={formData.product_type}
-                      onValueChange={(value) => setFormData({ ...formData, product_type: value })}
+                      onValueChange={(value) => handleSingleProductTypeChange(value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
