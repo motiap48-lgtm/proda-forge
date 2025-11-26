@@ -739,17 +739,7 @@ const Products = () => {
             setSpecDialogOpen(open);
             if (!open) setSelectedProductForSpec(null);
           }}
-          specification={
-            selectedProductForSpec
-              ? {
-                  product_id: selectedProductForSpec.id,
-                  code: "",
-                  version: "v1",
-                  is_active: true,
-                  specification_materials: []
-                }
-              : undefined
-          }
+          initialProductId={selectedProductForSpec.id}
         />
       )}
 

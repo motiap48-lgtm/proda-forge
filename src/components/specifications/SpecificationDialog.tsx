@@ -15,9 +15,10 @@ interface SpecificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   specification?: any;
+  initialProductId?: string; // Предзаполнение продукта при создании
 }
 
-export const SpecificationDialog = ({ open, onOpenChange, specification }: SpecificationDialogProps) => {
+export const SpecificationDialog = ({ open, onOpenChange, specification, initialProductId }: SpecificationDialogProps) => {
   const [code, setCode] = useState("");
   const [productId, setProductId] = useState("");
   const [version, setVersion] = useState("v1");
@@ -91,8 +92,11 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
       } else {
         setMaterials([{ material_id: "", quantity: "", waste_rate: "0" }]);
       }
+    } else if (initialProductId) {
+      // Предзаполняем продукт при создании новой спецификации
+      setProductId(initialProductId);
     }
-  }, [open, specification]);
+  }, [open, specification, initialProductId]);
 
   const handleAddMaterial = () => {
     setMaterials([...materials, { material_id: "", quantity: "", waste_rate: "0" }]);
