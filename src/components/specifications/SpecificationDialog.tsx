@@ -112,6 +112,8 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
     setMaterials(updated);
   };
 
+  const validMaterials = materials.filter(m => m.material_id && m.quantity);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -119,13 +121,11 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
       return;
     }
 
-    const validMaterials = materials
-      .filter(m => m.material_id && m.quantity)
-      .map(m => ({
-        material_id: m.material_id,
-        quantity: parseFloat(m.quantity),
-        waste_rate: parseFloat(m.waste_rate) || 0,
-      }));
+    const materialsToSave = validMaterials.map(m => ({
+      material_id: m.material_id,
+      quantity: parseFloat(m.quantity),
+      waste_rate: parseFloat(m.waste_rate) || 0,
+    }));
 
     if (specification) {
       // Режим редактирования
@@ -135,7 +135,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
         product_id: productId,
         version,
         is_active: isActive,
-        materials: validMaterials,
+        materials: materialsToSave,
       });
     } else {
       // Режим создания
@@ -144,7 +144,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
         product_id: productId,
         version,
         is_active: isActive,
-        materials: validMaterials,
+        materials: materialsToSave,
       });
     }
 
@@ -254,19 +254,20 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>Компоненты</Label>
               <Button type="button" onClick={handleAddMaterial} size="sm" variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Добавить компонент
+                <Plus className="h-4 w-4 mr-1" />
+                Добавить
               </Button>
             </div>
 
-            {materials.map((material, index) => (
-              <div key={index} className="grid gap-4 p-4 border rounded-lg md:grid-cols-[1fr,120px,120px,auto]">
-                <div className="space-y-2">
-                  <Label>Компонент</Label>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {materials.map((material, index) => (
+                <div key={index} className="grid gap-2 p-3 border rounded-lg bg-card md:grid-cols-[1fr,100px,100px,auto]">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Компонент</Label>
                   <Popover 
                     open={materialOpen[index]} 
                     onOpenChange={(open) => setMaterialOpen({ ...materialOpen, [index]: open })}
@@ -326,8 +327,8 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
                   </Popover>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Количество</Label>
+                <div className="space-y-1">
+                  <Label className="text-xs">Количество</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -337,8 +338,8 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Отходы %</Label>
+                <div className="space-y-1">
+                  <Label className="text-xs">Отходы %</Label>
                   <Input
                     type="number"
                     step="0.1"
@@ -351,7 +352,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
                 <div className="flex items-end">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
                     onClick={() => handleRemoveMaterial(index)}
                     disabled={materials.length === 1}
@@ -360,8 +361,9 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
                   </Button>
                 </div>
               </div>
-            ))}
-            <div ref={materialsEndRef} />
+              ))}
+              <div ref={materialsEndRef} />
+            </div>
           </div>
 
           <div className="flex justify-end gap-4">
@@ -370,8 +372,8 @@ export const SpecificationDialog = ({ open, onOpenChange, specification }: Speci
             </Button>
             <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
               {specification 
-                ? (updateMutation.isPending ? "Сохранение..." : "Сохранить")
-                : (createMutation.isPending ? "Создание..." : "Создать")
+                ? (updateMutation.isPending ? "Сохранение..." : `Сохранить (${validMaterials.length})`)
+                : (createMutation.isPending ? "Создание..." : `Создать (${validMaterials.length})`)
               }
             </Button>
           </div>
