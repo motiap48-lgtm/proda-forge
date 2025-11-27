@@ -52,8 +52,8 @@ const Products = () => {
   const [specFilter, setSpecFilter] = useState<string | null>(null);
   const [specDialogOpen, setSpecDialogOpen] = useState(false);
   const [selectedProductForSpec, setSelectedProductForSpec] = useState<string | null>(null);
-  const [codeFilterOpen, setCodeFilterOpen] = useState(true);
-  const [specFilterOpen, setSpecFilterOpen] = useState(true);
+  const [codeFilterOpen, setCodeFilterOpen] = useState(false);
+  const [specFilterOpen, setSpecFilterOpen] = useState(false);
   const { data: products, isLoading } = useProducts();
   const { data: specifications } = useSpecifications();
   const deleteMutation = useDeleteProduct();
