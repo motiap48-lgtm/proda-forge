@@ -11,6 +11,7 @@ import { useCreateProduct, useUpdateProduct } from "@/hooks/useProducts";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Product {
   id: string;
@@ -25,6 +26,7 @@ interface ProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product?: Product | null;
+  onProductCreated?: (productId: string) => void;
 }
 
 interface BatchProduct {
@@ -36,7 +38,7 @@ interface BatchProduct {
   isDuplicate?: boolean;
 }
 
-export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProps) => {
+export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }: ProductDialogProps) => {
   const [mode, setMode] = useState<"single" | "batch">("single");
   const [formData, setFormData] = useState({
     code: "",
@@ -52,6 +54,7 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
   const [nameDuplicate, setNameDuplicate] = useState(false);
   const [originalProductType, setOriginalProductType] = useState<string>("");
   const [showTypeChangeWarning, setShowTypeChangeWarning] = useState(false);
+  const [createSpecAfter, setCreateSpecAfter] = useState(false);
 
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
@@ -244,11 +247,18 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
         id: product.id,
         data: formData,
       });
+      onOpenChange(false);
     } else {
-      await createMutation.mutateAsync(formData);
+      const result = await createMutation.mutateAsync(formData);
+      onOpenChange(false);
+      
+      // Если нужно создать спецификацию после создания продукта
+      if (createSpecAfter && onProductCreated && result?.id) {
+        setTimeout(() => {
+          onProductCreated(result.id);
+        }, 100);
+      }
     }
-    
-    onOpenChange(false);
   };
 
   const handleBatchSubmit = async (e: React.FormEvent) => {
@@ -540,6 +550,24 @@ export const ProductDialog = ({ open, onOpenChange, product }: ProductDialogProp
                     rows={3}
                   />
                 </div>
+
+                {(formData.product_type === "finished" || 
+                  formData.product_type === "semi-finished" || 
+                  formData.product_type === "assembly") && (
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg bg-muted/50">
+                    <Checkbox 
+                      id="createSpec" 
+                      checked={createSpecAfter}
+                      onCheckedChange={(checked) => setCreateSpecAfter(checked as boolean)}
+                    />
+                    <Label 
+                      htmlFor="createSpec" 
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      Создать спецификацию после создания продукта
+                    </Label>
+                  </div>
+                )}
 
                 <div className="flex justify-end gap-4">
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
