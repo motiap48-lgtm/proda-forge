@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: User | null;
@@ -48,8 +49,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (!mounted) return;
+        
+        console.log("Auth state change event:", event);
+        
+        // Handle token refresh errors gracefully
+        if (event === "TOKEN_REFRESHED" && !session) {
+          console.error("Token refresh failed, session lost");
+          toast({
+            title: "Ошибка аутентификации",
+            description: "Сессия истекла. Пожалуйста, войдите снова.",
+            variant: "destructive",
+          });
+          setSession(null);
+          setUser(null);
+          setUserRoles([]);
+          setLoading(false);
+          return;
+        }
+        
+        // Handle auth errors
+        if (event === "SIGNED_OUT") {
+          setSession(null);
+          setUser(null);
+          setUserRoles([]);
+          setLoading(false);
+          return;
+        }
         
         setSession(session);
         setUser(session?.user ?? null);
