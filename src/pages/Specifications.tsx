@@ -120,6 +120,13 @@ const Specifications = () => {
                       <p className="text-xs text-muted-foreground">
                         Создана: {new Date(spec.created_at).toLocaleDateString()} • Материалов: {spec.specification_materials?.length || 0}
                       </p>
+                      {spec.specification_materials && spec.specification_materials.some((m: any) => !m.waste_rate || Number(m.waste_rate) === 0) && (
+                        <div className="mt-2">
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30">
+                            ⚠️ Не указаны отходы
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <Button 
