@@ -52,6 +52,8 @@ const Products = () => {
   const [specFilter, setSpecFilter] = useState<string | null>(null);
   const [specDialogOpen, setSpecDialogOpen] = useState(false);
   const [selectedProductForSpec, setSelectedProductForSpec] = useState<Product | null>(null);
+  const [codeFilterOpen, setCodeFilterOpen] = useState(true);
+  const [specFilterOpen, setSpecFilterOpen] = useState(true);
   const { data: products, isLoading } = useProducts();
   const { data: specifications } = useSpecifications();
   const deleteMutation = useDeleteProduct();
@@ -234,63 +236,85 @@ const Products = () => {
             )}
           </div>
           
-          <div className="flex gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground self-center">Фильтр по коду:</span>
-            <Button
-              variant={codeFilter === null ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCodeFilter(null)}
-            >
-              Все
-            </Button>
-            <Button
-              variant={codeFilter === "МАТ" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCodeFilter("МАТ")}
-            >
-              МАТ (Материалы)
-            </Button>
-            <Button
-              variant={codeFilter === "ПФ" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCodeFilter("ПФ")}
-            >
-              ПФ (Полуфабрикаты)
-            </Button>
-            <Button
-              variant={codeFilter === "СБ" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCodeFilter("СБ")}
-            >
-              СБ (Сборочные узлы)
-            </Button>
-            <Button
-              variant={codeFilter === "ГП" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCodeFilter("ГП")}
-            >
-              ГП (Готовая продукция)
-            </Button>
-          </div>
+          <Collapsible open={codeFilterOpen} onOpenChange={setCodeFilterOpen}>
+            <div className="border rounded-lg p-3">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
+                  <span className="text-sm font-medium text-muted-foreground">Фильтр по коду</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${codeFilterOpen ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant={codeFilter === null ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCodeFilter(null)}
+                  >
+                    Все
+                  </Button>
+                  <Button
+                    variant={codeFilter === "МАТ" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCodeFilter("МАТ")}
+                  >
+                    МАТ (Материалы)
+                  </Button>
+                  <Button
+                    variant={codeFilter === "ПФ" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCodeFilter("ПФ")}
+                  >
+                    ПФ (Полуфабрикаты)
+                  </Button>
+                  <Button
+                    variant={codeFilter === "СБ" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCodeFilter("СБ")}
+                  >
+                    СБ (Сборочные узлы)
+                  </Button>
+                  <Button
+                    variant={codeFilter === "ГП" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCodeFilter("ГП")}
+                  >
+                    ГП (Готовая продукция)
+                  </Button>
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
           
-          <div className="flex gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground self-center">Фильтр по спецификации:</span>
-            <Button
-              variant={specFilter === null ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSpecFilter(null)}
-            >
-              Все
-            </Button>
-            <Button
-              variant={specFilter === "no-spec" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSpecFilter("no-spec")}
-            >
-              <AlertCircle className="h-3 w-3 mr-1" />
-              Нет спецификации
-            </Button>
-          </div>
+          <Collapsible open={specFilterOpen} onOpenChange={setSpecFilterOpen}>
+            <div className="border rounded-lg p-3">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
+                  <span className="text-sm font-medium text-muted-foreground">Фильтр по спецификации</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${specFilterOpen ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant={specFilter === null ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSpecFilter(null)}
+                  >
+                    Все
+                  </Button>
+                  <Button
+                    variant={specFilter === "no-spec" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSpecFilter("no-spec")}
+                  >
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Нет спецификации
+                  </Button>
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
         </div>
 
         <Tabs defaultValue="all" className="space-y-4">
