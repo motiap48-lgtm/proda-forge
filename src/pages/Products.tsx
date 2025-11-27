@@ -57,6 +57,18 @@ const Products = () => {
   const deleteMutation = useDeleteProduct();
   const bulkDeleteMutation = useBulkDeleteProducts();
 
+  // Проверка наличия активной спецификации для продукта
+  const getProductSpecification = (productId: string) => {
+    return specifications?.find(spec => spec.product_id === productId && spec.is_active);
+  };
+
+  // Проверка наличия неуказанных отходов в спецификации
+  const hasUnspecifiedWaste = (productId: string) => {
+    const spec = getProductSpecification(productId);
+    if (!spec || !spec.specification_materials) return false;
+    return spec.specification_materials.some((m: any) => !m.waste_rate || Number(m.waste_rate) === 0);
+  };
+
   const filteredProducts = products?.filter(
     (product) => {
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -112,18 +124,6 @@ const Products = () => {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingProduct(null);
-  };
-
-  // Проверка наличия активной спецификации для продукта
-  const getProductSpecification = (productId: string) => {
-    return specifications?.find(spec => spec.product_id === productId && spec.is_active);
-  };
-
-  // Проверка наличия неуказанных отходов в спецификации
-  const hasUnspecifiedWaste = (productId: string) => {
-    const spec = getProductSpecification(productId);
-    if (!spec || !spec.specification_materials) return false;
-    return spec.specification_materials.some((m: any) => !m.waste_rate || Number(m.waste_rate) === 0);
   };
 
   // Обработчик создания спецификации для продукта
