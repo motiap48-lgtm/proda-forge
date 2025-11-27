@@ -356,7 +356,11 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
                     value={material.waste_rate}
                     onChange={(e) => handleMaterialChange(index, "waste_rate", e.target.value)}
                     placeholder="0"
+                    className={material.material_id && material.quantity && (!material.waste_rate || Number(material.waste_rate) === 0) ? "border-amber-500" : ""}
                   />
+                  {material.material_id && material.quantity && (!material.waste_rate || Number(material.waste_rate) === 0) && (
+                    <p className="text-xs text-amber-600 mt-0.5">⚠️ Не указан отход</p>
+                  )}
                 </div>
 
                 <div className="flex items-end">
