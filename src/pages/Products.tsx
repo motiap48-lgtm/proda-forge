@@ -807,6 +807,13 @@ const Products = () => {
         open={dialogOpen} 
         onOpenChange={handleCloseDialog}
         product={editingProduct}
+        onProductCreated={(productId) => {
+          const product = products?.find(p => p.id === productId);
+          if (product) {
+            setSelectedProductForSpec(product);
+            setSpecDialogOpen(true);
+          }
+        }}
       />
 
       {selectedProduct && (
