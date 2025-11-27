@@ -51,7 +51,7 @@ const Products = () => {
   const [codeFilter, setCodeFilter] = useState<string | null>(null);
   const [specFilter, setSpecFilter] = useState<string | null>(null);
   const [specDialogOpen, setSpecDialogOpen] = useState(false);
-  const [selectedProductForSpec, setSelectedProductForSpec] = useState<Product | null>(null);
+  const [selectedProductForSpec, setSelectedProductForSpec] = useState<string | null>(null);
   const [codeFilterOpen, setCodeFilterOpen] = useState(true);
   const [specFilterOpen, setSpecFilterOpen] = useState(true);
   const { data: products, isLoading } = useProducts();
@@ -130,7 +130,7 @@ const Products = () => {
 
   // Обработчик создания спецификации для продукта
   const handleCreateSpec = (product: Product) => {
-    setSelectedProductForSpec(product);
+    setSelectedProductForSpec(product.id);
     setSpecDialogOpen(true);
   };
 
@@ -808,11 +808,8 @@ const Products = () => {
         onOpenChange={handleCloseDialog}
         product={editingProduct}
         onProductCreated={(productId) => {
-          const product = products?.find(p => p.id === productId);
-          if (product) {
-            setSelectedProductForSpec(product);
-            setSpecDialogOpen(true);
-          }
+          setSelectedProductForSpec(productId);
+          setSpecDialogOpen(true);
         }}
       />
 
@@ -833,7 +830,7 @@ const Products = () => {
             setSpecDialogOpen(open);
             if (!open) setSelectedProductForSpec(null);
           }}
-          initialProductId={selectedProductForSpec.id}
+          initialProductId={selectedProductForSpec}
         />
       )}
 
