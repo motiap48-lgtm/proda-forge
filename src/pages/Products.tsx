@@ -49,6 +49,7 @@ const Products = () => {
   const [isInstructionOpen, setIsInstructionOpen] = useState(false);
   const [bulkDeletingType, setBulkDeletingType] = useState<string | null>(null);
   const [codeFilter, setCodeFilter] = useState<string | null>(null);
+  const [specFilter, setSpecFilter] = useState<string | null>(null);
   const [specDialogOpen, setSpecDialogOpen] = useState(false);
   const [selectedProductForSpec, setSelectedProductForSpec] = useState<Product | null>(null);
   const { data: products, isLoading } = useProducts();
@@ -64,7 +65,15 @@ const Products = () => {
       if (!matchesSearch) return false;
       
       if (codeFilter) {
-        return product.code.startsWith(codeFilter);
+        if (!product.code.startsWith(codeFilter)) return false;
+      }
+      
+      if (specFilter === "no-spec") {
+        const requiresSpec = product.product_type === "finished" || 
+                            product.product_type === "semi-finished" || 
+                            product.product_type === "assembly";
+        if (!requiresSpec) return false;
+        if (getProductSpecification(product.id)) return false;
       }
       
       return true;
@@ -261,6 +270,25 @@ const Products = () => {
               onClick={() => setCodeFilter("ГП")}
             >
               ГП (Готовая продукция)
+            </Button>
+          </div>
+          
+          <div className="flex gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground self-center">Фильтр по спецификации:</span>
+            <Button
+              variant={specFilter === null ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSpecFilter(null)}
+            >
+              Все
+            </Button>
+            <Button
+              variant={specFilter === "no-spec" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSpecFilter("no-spec")}
+            >
+              <AlertCircle className="h-3 w-3 mr-1" />
+              Нет спецификации
             </Button>
           </div>
         </div>
