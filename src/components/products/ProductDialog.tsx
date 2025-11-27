@@ -43,12 +43,12 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
   const [formData, setFormData] = useState({
     code: "",
     name: "",
-    product_type: "material",
+    product_type: "finished",
     unit: "шт",
     description: "",
   });
   const [batchProducts, setBatchProducts] = useState<BatchProduct[]>([
-    { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "material", unit: "шт" }
+    { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
   ]);
   const [isCreating, setIsCreating] = useState(false);
   const [nameDuplicate, setNameDuplicate] = useState(false);
@@ -77,12 +77,12 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
       setFormData({
         code: "AUTO",
         name: "",
-        product_type: "material",
+        product_type: "finished",
         unit: "шт",
         description: "",
       });
       setBatchProducts([
-        { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "material", unit: "шт" }
+        { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
       ]);
       setOriginalProductType("");
       setShowTypeChangeWarning(false);
@@ -91,12 +91,12 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
       setFormData({
         code: "",
         name: "",
-        product_type: "material",
+        product_type: "finished",
         unit: "шт",
         description: "",
       });
       setBatchProducts([
-        { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "material", unit: "шт" }
+        { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
       ]);
       setOriginalProductType("");
       setShowTypeChangeWarning(false);
@@ -304,7 +304,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
   };
 
   const addBatchRow = () => {
-    const lastProductType = batchProducts[batchProducts.length - 1]?.product_type || "material";
+    const lastProductType = batchProducts[batchProducts.length - 1]?.product_type || "finished";
     setBatchProducts([...batchProducts, { 
       id: crypto.randomUUID(), 
       code: "AUTO", 
