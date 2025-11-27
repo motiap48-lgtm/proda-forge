@@ -334,7 +334,12 @@ const Products = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-lg">{product.name}</CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">{product.code}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm text-muted-foreground">{product.code}</p>
+                          {product.product_type === "material" && (
+                            <Badge variant="secondary" className="text-xs">пок.</Badge>
+                          )}
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         {(product.product_type === "finished" || 
@@ -556,7 +561,10 @@ const Products = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-lg">{product.name}</CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">{product.code}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm text-muted-foreground">{product.code}</p>
+                          <Badge variant="secondary" className="text-xs">пок.</Badge>
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <Button
