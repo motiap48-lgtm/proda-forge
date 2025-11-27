@@ -110,6 +110,13 @@ const Products = () => {
     return specifications?.find(spec => spec.product_id === productId && spec.is_active);
   };
 
+  // Проверка наличия неуказанных отходов в спецификации
+  const hasUnspecifiedWaste = (productId: string) => {
+    const spec = getProductSpecification(productId);
+    if (!spec || !spec.specification_materials) return false;
+    return spec.specification_materials.some((m: any) => !m.waste_rate || Number(m.waste_rate) === 0);
+  };
+
   // Обработчик создания спецификации для продукта
   const handleCreateSpec = (product: Product) => {
     setSelectedProductForSpec(product);
@@ -336,9 +343,16 @@ const Products = () => {
                         product.product_type === "assembly") && (
                         <div className="pt-2 border-t">
                           {getProductSpecification(product.id) ? (
-                            <div className="flex items-center gap-2 text-sm text-green-600">
-                              <FileText className="h-4 w-4" />
-                              <span>Спецификация создана</span>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-sm text-green-600">
+                                <FileText className="h-4 w-4" />
+                                <span>Спецификация создана</span>
+                              </div>
+                              {hasUnspecifiedWaste(product.id) && (
+                                <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30">
+                                  ⚠️ Не указаны отходы
+                                </Badge>
+                              )}
                             </div>
                           ) : (
                             <div className="space-y-2">
@@ -429,9 +443,16 @@ const Products = () => {
                       {/* Индикация наличия спецификации */}
                       <div className="pt-2 border-t">
                         {getProductSpecification(product.id) ? (
-                          <div className="flex items-center gap-2 text-sm text-green-600">
-                            <FileText className="h-4 w-4" />
-                            <span>Спецификация создана</span>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-green-600">
+                              <FileText className="h-4 w-4" />
+                              <span>Спецификация создана</span>
+                            </div>
+                            {hasUnspecifiedWaste(product.id) && (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30">
+                                ⚠️ Не указаны отходы
+                              </Badge>
+                            )}
                           </div>
                         ) : (
                           <div className="space-y-2">
@@ -578,9 +599,16 @@ const Products = () => {
                       {/* Индикация наличия спецификации */}
                       <div className="pt-2 border-t">
                         {getProductSpecification(product.id) ? (
-                          <div className="flex items-center gap-2 text-sm text-green-600">
-                            <FileText className="h-4 w-4" />
-                            <span>Спецификация создана</span>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-green-600">
+                              <FileText className="h-4 w-4" />
+                              <span>Спецификация создана</span>
+                            </div>
+                            {hasUnspecifiedWaste(product.id) && (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30">
+                                ⚠️ Не указаны отходы
+                              </Badge>
+                            )}
                           </div>
                         ) : (
                           <div className="space-y-2">
@@ -670,9 +698,16 @@ const Products = () => {
                       {/* Индикация наличия спецификации */}
                       <div className="pt-2 border-t">
                         {getProductSpecification(product.id) ? (
-                          <div className="flex items-center gap-2 text-sm text-green-600">
-                            <FileText className="h-4 w-4" />
-                            <span>Спецификация создана</span>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-green-600">
+                              <FileText className="h-4 w-4" />
+                              <span>Спецификация создана</span>
+                            </div>
+                            {hasUnspecifiedWaste(product.id) && (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30">
+                                ⚠️ Не указаны отходы
+                              </Badge>
+                            )}
                           </div>
                         ) : (
                           <div className="space-y-2">
