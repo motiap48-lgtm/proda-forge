@@ -778,6 +778,54 @@ export type Database = {
           },
         ]
       }
+      specification_history: {
+        Row: {
+          change_type: string
+          created_at: string
+          description: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          specification_id: string
+          user_id: string
+        }
+        Insert: {
+          change_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          specification_id: string
+          user_id: string
+        }
+        Update: {
+          change_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          specification_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "specification_history_specification_id_fkey"
+            columns: ["specification_id"]
+            isOneToOne: false
+            referencedRelation: "specifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "specification_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       specification_materials: {
         Row: {
           created_at: string
