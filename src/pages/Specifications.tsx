@@ -5,20 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Plus, Search, FileText, Package, Loader2, X, Clock } from "lucide-react";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { SpecificationDialog } from "@/components/specifications/SpecificationDialog";
 
 const Specifications = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showOnlyNoSpec, setShowOnlyNoSpec] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedSpec, setSelectedSpec] = useState<any>(null);
   const { data: specifications, isLoading } = useSpecifications();
 
   const filteredSpecs = (specifications || []).filter(
-    (spec: any) =>
-      spec.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      spec.products?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    (spec: any) => {
+      const matchesSearch = spec.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        spec.products?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesNoSpecFilter = !showOnlyNoSpec || spec.has_no_specification;
+      return matchesSearch && matchesNoSpecFilter;
+    }
   );
 
   if (isLoading) {
@@ -69,24 +75,39 @@ const Specifications = () => {
         {/* Search */}
         <Card className="mb-6">
           <CardContent className="p-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Поиск по номеру или продукту..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10"
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                  onClick={() => setSearchQuery("")}
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по номеру или продукту..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="nospec-filter" 
+                  checked={showOnlyNoSpec}
+                  onCheckedChange={(checked) => setShowOnlyNoSpec(checked as boolean)}
+                />
+                <Label 
+                  htmlFor="nospec-filter" 
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+                  Показать только "Нет спецификации"
+                </Label>
+              </div>
             </div>
           </CardContent>
         </Card>
