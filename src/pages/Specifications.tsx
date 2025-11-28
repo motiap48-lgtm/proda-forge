@@ -120,6 +120,13 @@ const Specifications = () => {
                       <p className="text-xs text-muted-foreground">
                         Создана: {new Date(spec.created_at).toLocaleDateString()} • Материалов: {spec.specification_materials?.length || 0}
                       </p>
+                      {spec.has_no_specification && (
+                        <div className="mt-1.5">
+                          <Badge variant="outline" className="bg-slate-500/10 text-slate-700 border-slate-500/30">
+                            Нет спецификации
+                          </Badge>
+                        </div>
+                      )}
                       {spec.specification_history && spec.specification_history.length > 0 && (() => {
                         const lastChange = spec.specification_history[0];
                         return (
@@ -152,7 +159,7 @@ const Specifications = () => {
                   </Button>
                 </div>
 
-                {spec.specification_materials && spec.specification_materials.length > 0 && (
+                {spec.specification_materials && spec.specification_materials.length > 0 && !spec.has_no_specification && (
                   <div className="mt-4 border-t pt-4">
                     <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                       <Package className="h-4 w-4 text-muted-foreground" />

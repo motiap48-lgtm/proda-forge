@@ -68,6 +68,7 @@ export const useCreateSpecification = () => {
       product_id: string;
       version: string;
       is_active: boolean;
+      has_no_specification?: boolean;
       materials: Array<{
         material_id: string;
         quantity: number;
@@ -130,6 +131,7 @@ export const useUpdateSpecification = () => {
       product_id,
       version,
       is_active,
+      has_no_specification,
       materials,
     }: {
       id: string;
@@ -137,6 +139,7 @@ export const useUpdateSpecification = () => {
       product_id?: string;
       version?: string;
       is_active?: boolean;
+      has_no_specification?: boolean;
       materials?: Array<{
         material_id: string;
         quantity: number;
@@ -157,6 +160,7 @@ export const useUpdateSpecification = () => {
           product_id,
           version,
           is_active,
+          has_no_specification,
         })
         .eq("id", id)
         .select()
@@ -193,19 +197,23 @@ export const useUpdateSpecification = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user && oldSpec) {
         let description = `Спецификация ${updated.code} обновлена`;
+        let changeType = "updated";
         
         if (oldSpec.is_active !== is_active) {
           description = is_active 
             ? `Спецификация ${updated.code} активирована`
             : `Спецификация ${updated.code} деактивирована`;
+          changeType = is_active ? "activated" : "deactivated";
+        } else if (oldSpec.has_no_specification !== has_no_specification) {
+          description = has_no_specification
+            ? `Спецификация ${updated.code} помечена как "нет спецификации"`
+            : `Спецификация ${updated.code} добавлены компоненты`;
         }
 
         await supabase.from("specification_history").insert({
           specification_id: id,
           user_id: user.id,
-          change_type: oldSpec.is_active !== is_active 
-            ? (is_active ? "activated" : "deactivated")
-            : "updated",
+          change_type: changeType,
           description,
           old_value: JSON.stringify(oldSpec),
           new_value: JSON.stringify(updated),

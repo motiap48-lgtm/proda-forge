@@ -23,6 +23,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
   const [productId, setProductId] = useState("");
   const [version, setVersion] = useState("v1");
   const [isActive, setIsActive] = useState(true);
+  const [hasNoSpecification, setHasNoSpecification] = useState(false);
   const [materials, setMaterials] = useState<Array<{ material_id: string; quantity: string; waste_rate: string }>>([
     { material_id: "", quantity: "", waste_rate: "0" }
   ]);
@@ -72,6 +73,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
       setProductId("");
       setVersion("v1");
       setIsActive(true);
+      setHasNoSpecification(false);
       setMaterials([{ material_id: "", quantity: "", waste_rate: "0" }]);
     } else if (specification) {
       // Загружаем данные для редактирования
@@ -79,6 +81,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
       setProductId(specification.product_id);
       setVersion(specification.version);
       setIsActive(specification.is_active);
+      setHasNoSpecification(specification.has_no_specification || false);
       
       if (specification.specification_materials && specification.specification_materials.length > 0) {
         setMaterials(
@@ -125,7 +128,8 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
       return;
     }
 
-    const materialsToSave = validMaterials.map(m => ({
+    // Если выбрано "нет спецификации", сохраняем пустой массив материалов
+    const materialsToSave = hasNoSpecification ? [] : validMaterials.map(m => ({
       material_id: m.material_id,
       quantity: parseFloat(m.quantity),
       waste_rate: parseFloat(m.waste_rate) || 0,
@@ -139,6 +143,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
         product_id: productId,
         version,
         is_active: isActive,
+        has_no_specification: hasNoSpecification,
         materials: materialsToSave,
       });
     } else {
@@ -148,6 +153,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
         product_id: productId,
         version,
         is_active: isActive,
+        has_no_specification: hasNoSpecification,
         materials: materialsToSave,
       });
     }
@@ -258,7 +264,30 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/50">
+            <Switch
+              id="has_no_specification"
+              checked={hasNoSpecification}
+              onCheckedChange={(checked) => {
+                setHasNoSpecification(checked);
+                if (checked) {
+                  // При выборе "нет спецификации" очищаем материалы
+                  setMaterials([{ material_id: "", quantity: "", waste_rate: "0" }]);
+                }
+              }}
+            />
+            <div className="flex-1">
+              <Label htmlFor="has_no_specification" className="cursor-pointer">
+                Нет спецификации
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Продукт производится без указания компонентов
+              </p>
+            </div>
+          </div>
+
+          {!hasNoSpecification && (
+            <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>Компоненты</Label>
               <Button type="button" onClick={handleAddMaterial} size="sm" variant="outline">
@@ -379,15 +408,16 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
               <div ref={materialsEndRef} />
             </div>
           </div>
+          )}
 
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Отмена
             </Button>
-            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || validMaterials.length === 0}>
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || (!hasNoSpecification && validMaterials.length === 0)}>
               {specification 
-                ? (updateMutation.isPending ? "Сохранение..." : `Сохранить (${materials.length})`)
-                : (createMutation.isPending ? "Создание..." : `Создать (${materials.length})`)
+                ? (updateMutation.isPending ? "Сохранение..." : hasNoSpecification ? "Сохранить" : `Сохранить (${materials.length})`)
+                : (createMutation.isPending ? "Создание..." : hasNoSpecification ? "Создать" : `Создать (${materials.length})`)
               }
             </Button>
           </div>
