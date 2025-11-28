@@ -173,7 +173,17 @@ export const ProductTreeDialog = ({
   productName,
   productCode,
 }: ProductTreeDialogProps) => {
+  const [inputValue, setInputValue] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Debounce search query with 300ms delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(inputValue);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [inputValue]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -189,16 +199,16 @@ export const ProductTreeDialog = ({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Поиск по названию или коду..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
             className="pl-9 pr-9"
           />
-          {searchQuery && (
+          {inputValue && (
             <Button
               variant="ghost"
               size="sm"
               className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-              onClick={() => setSearchQuery("")}
+              onClick={() => setInputValue("")}
             >
               <X className="h-4 w-4" />
             </Button>
