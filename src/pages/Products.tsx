@@ -59,9 +59,14 @@ const Products = () => {
   const deleteMutation = useDeleteProduct();
   const bulkDeleteMutation = useBulkDeleteProducts();
 
-  // Проверка наличия активной спецификации для продукта
+  // Возвращаем только активную спецификацию, которая не помечена как "нет спецификации"
   const getProductSpecification = (productId: string) => {
-    return specifications?.find(spec => spec.product_id === productId && spec.is_active);
+    return specifications?.find(
+      (spec) =>
+        spec.product_id === productId &&
+        spec.is_active &&
+        !spec.has_no_specification
+    );
   };
 
   // Проверка наличия неуказанных отходов в спецификации

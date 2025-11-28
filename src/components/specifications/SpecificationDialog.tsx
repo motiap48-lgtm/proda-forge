@@ -121,7 +121,24 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
 
   const handleMaterialChange = (index: number, field: string, value: string) => {
     const updated = [...materials];
-    updated[index] = { ...updated[index], [field]: value };
+
+    if (field === "material_id") {
+      const isNoSpec = value === "NO_SPECIFICATION";
+      const current = updated[index] || { material_id: "", quantity: "", waste_rate: "0" };
+
+      updated[index] = {
+        ...current,
+        material_id: value,
+        // Для обычных компонентов по умолчанию ставим количество 1,
+        // чтобы выбранный компонент всегда сохранялся
+        quantity: isNoSpec ? "" : (current.quantity || "1"),
+        // Для варианта "Нет спецификации" принудительно обнуляем отходы
+        waste_rate: isNoSpec ? "0" : (current.waste_rate ?? "0"),
+      };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+
     setMaterials(updated);
   };
 
@@ -136,7 +153,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
     }
 
     // Проверяем, есть ли хотя бы один компонент с "Нет спецификации"
-    const hasNoSpecComponent = validMaterials.some(m => m.material_id === "NO_SPECIFICATION");
+    const hasNoSpecComponent = materials.some(m => m.material_id === "NO_SPECIFICATION");
     
     // Если выбрано "нет спецификации" (toggle) или есть компонент "Нет спецификации", сохраняем пустой массив
     const shouldSaveAsNoSpec = hasNoSpecification || hasNoSpecComponent;
