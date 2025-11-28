@@ -53,8 +53,8 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
     ? allComponentProducts.filter(p => {
         switch (selectedProduct.product_type) {
           case "finished":
-            // Готовая продукция состоит из сборочных узлов или полуфабрикатов
-            return p.product_type === "assembly" || p.product_type === "semi-finished";
+            // Готовая продукция состоит из сборочных узлов, полуфабрикатов и покупных материалов (метизы и др.)
+            return p.product_type === "assembly" || p.product_type === "semi-finished" || p.product_type === "material";
           case "assembly":
             // Сборочный узел состоит из других узлов, полуфабрикатов и материалов
             return p.product_type === "assembly" || p.product_type === "semi-finished" || p.product_type === "material";
