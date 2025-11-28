@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Package, Pencil, Trash2, GitBranch, Info, ArrowRight, ChevronDown, ChevronUp, X, FileText, AlertCircle } from "lucide-react";
+import { Plus, Search, Package, Pencil, Trash2, GitBranch, Info, ArrowRight, ChevronDown, ChevronUp, X, FileText, AlertCircle, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useProducts, useDeleteProduct, useBulkDeleteProducts } from "@/hooks/useProducts";
+import { useMaterialCategories } from "@/hooks/useMaterialCategories";
 import { ProductDialog } from "@/components/products/ProductDialog";
 import { ProductTreeDialog } from "@/components/products/ProductTreeDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -54,8 +55,11 @@ const Products = () => {
   const [selectedProductForSpec, setSelectedProductForSpec] = useState<string | null>(null);
   const [codeFilterOpen, setCodeFilterOpen] = useState(false);
   const [specFilterOpen, setSpecFilterOpen] = useState(false);
+  const [categoryFilterOpen, setCategoryFilterOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const { data: products, isLoading } = useProducts();
   const { data: specifications } = useSpecifications();
+  const { data: categories } = useMaterialCategories();
   const deleteMutation = useDeleteProduct();
   const bulkDeleteMutation = useBulkDeleteProducts();
 
@@ -85,6 +89,11 @@ const Products = () => {
       
       if (codeFilter) {
         if (!product.code.startsWith(codeFilter)) return false;
+      }
+      
+      if (categoryFilter) {
+        if (product.product_type !== "material") return false;
+        if ((product as any).category !== categoryFilter) return false;
       }
       
       if (specFilter === "no-spec") {
@@ -316,6 +325,39 @@ const Products = () => {
                     <AlertCircle className="h-3 w-3 mr-1" />
                     Нет спецификации
                   </Button>
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+          
+          <Collapsible open={categoryFilterOpen} onOpenChange={setCategoryFilterOpen}>
+            <div className="border rounded-lg p-3">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
+                  <span className="text-sm font-medium text-muted-foreground">Фильтр по категории материалов</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${categoryFilterOpen ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant={categoryFilter === null ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter(null)}
+                  >
+                    Все
+                  </Button>
+                  {categories?.map((category) => (
+                    <Button
+                      key={category.id}
+                      variant={categoryFilter === category.name ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCategoryFilter(category.name)}
+                    >
+                      <Tag className="h-3 w-3 mr-1" />
+                      {category.name}
+                    </Button>
+                  ))}
                 </div>
               </CollapsibleContent>
             </div>

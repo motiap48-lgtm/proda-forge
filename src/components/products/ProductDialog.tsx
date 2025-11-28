@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2, AlertCircle, Info } from "lucide-react";
 import { useCreateProduct, useUpdateProduct } from "@/hooks/useProducts";
+import { useMaterialCategories } from "@/hooks/useMaterialCategories";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -59,6 +60,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
 
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
+  const { data: categories } = useMaterialCategories();
   const batchRowsEndRef = useRef<HTMLDivElement>(null);
   const checkTimeoutRef = useRef<NodeJS.Timeout>();
   useEffect(() => {
@@ -443,16 +445,11 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Без категории</SelectItem>
-                      <SelectItem value="fasteners">Метизы</SelectItem>
-                      <SelectItem value="hardware">Крепеж</SelectItem>
-                      <SelectItem value="electrical">Электрика</SelectItem>
-                      <SelectItem value="pipes">Трубы и фитинги</SelectItem>
-                      <SelectItem value="metals">Металлопрокат</SelectItem>
-                      <SelectItem value="wood">Древесина</SelectItem>
-                      <SelectItem value="chemicals">Химия</SelectItem>
-                      <SelectItem value="packaging">Упаковка</SelectItem>
-                      <SelectItem value="tools">Инструменты</SelectItem>
-                      <SelectItem value="other">Прочее</SelectItem>
+                      {categories?.map((category) => (
+                        <SelectItem key={category.id} value={category.name}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
@@ -585,16 +582,11 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Без категории</SelectItem>
-                          <SelectItem value="fasteners">Метизы</SelectItem>
-                          <SelectItem value="hardware">Крепеж</SelectItem>
-                          <SelectItem value="electrical">Электрика</SelectItem>
-                          <SelectItem value="pipes">Трубы и фитинги</SelectItem>
-                          <SelectItem value="metals">Металлопрокат</SelectItem>
-                          <SelectItem value="wood">Древесина</SelectItem>
-                          <SelectItem value="chemicals">Химия</SelectItem>
-                          <SelectItem value="packaging">Упаковка</SelectItem>
-                          <SelectItem value="tools">Инструменты</SelectItem>
-                          <SelectItem value="other">Прочее</SelectItem>
+                          {categories?.map((category) => (
+                            <SelectItem key={category.id} value={category.name}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">

@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag } from "lucide-react";
+import { MaterialCategoriesManagement } from "@/components/settings/MaterialCategoriesManagement";
 import {
   Select,
   SelectContent,
@@ -131,6 +132,22 @@ const Settings = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Material Categories */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Tag className="h-5 w-5" />
+                Категории материалов
+              </CardTitle>
+              <CardDescription>
+                Управление категориями для группировки материалов
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MaterialCategoriesManagement />
             </CardContent>
           </Card>
 
