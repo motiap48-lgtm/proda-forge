@@ -128,12 +128,20 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
       return;
     }
 
-    // Если выбрано "нет спецификации", сохраняем пустой массив материалов
-    const materialsToSave = hasNoSpecification ? [] : validMaterials.map(m => ({
-      material_id: m.material_id,
-      quantity: parseFloat(m.quantity),
-      waste_rate: parseFloat(m.waste_rate) || 0,
-    }));
+    // Проверяем, есть ли хотя бы один компонент с "Нет спецификации"
+    const hasNoSpecComponent = validMaterials.some(m => m.material_id === "NO_SPECIFICATION");
+    
+    // Если выбрано "нет спецификации" (toggle) или есть компонент "Нет спецификации", сохраняем пустой массив
+    const shouldSaveAsNoSpec = hasNoSpecification || hasNoSpecComponent;
+    
+    // Фильтруем компоненты: исключаем "NO_SPECIFICATION" и сохраняем только валидные
+    const materialsToSave = shouldSaveAsNoSpec ? [] : validMaterials
+      .filter(m => m.material_id !== "NO_SPECIFICATION")
+      .map(m => ({
+        material_id: m.material_id,
+        quantity: parseFloat(m.quantity),
+        waste_rate: parseFloat(m.waste_rate) || 0,
+      }));
 
     if (specification) {
       // Режим редактирования
@@ -143,7 +151,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
         product_id: productId,
         version,
         is_active: isActive,
-        has_no_specification: hasNoSpecification,
+        has_no_specification: shouldSaveAsNoSpec,
         materials: materialsToSave,
       });
     } else {
@@ -153,7 +161,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
         product_id: productId,
         version,
         is_active: isActive,
-        has_no_specification: hasNoSpecification,
+        has_no_specification: shouldSaveAsNoSpec,
         materials: materialsToSave,
       });
     }
