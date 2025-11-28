@@ -49,7 +49,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
 
   // Фильтруем компоненты в зависимости от типа выбранного продукта
   const selectedProduct = products?.find(p => p.id === productId);
-  const componentProducts = selectedProduct
+  const filteredComponentProducts = selectedProduct
     ? allComponentProducts.filter(p => {
         switch (selectedProduct.product_type) {
           case "finished":
@@ -66,6 +66,12 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
         }
       })
     : allComponentProducts;
+
+  // Добавляем опцию "Нет спецификации" в начало списка компонентов
+  const componentProducts = [
+    { id: "NO_SPECIFICATION", code: "", name: "Нет спецификации", product_type: "no_spec", unit: "" },
+    ...filteredComponentProducts
+  ];
 
   useEffect(() => {
     if (!open) {
@@ -323,6 +329,9 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
                         <span className="truncate">
                           {material.material_id
                             ? (() => {
+                                if (material.material_id === "NO_SPECIFICATION") {
+                                  return "Нет спецификации";
+                                }
                                 const selected = componentProducts.find((p) => p.id === material.material_id);
                                 return selected ? `${selected.code} ${selected.name} - ${
                                   selected.product_type === "material" ? "Материал" : 
@@ -343,7 +352,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
                             {componentProducts.map((product) => (
                               <CommandItem
                                 key={product.id}
-                                value={`${product.code} ${product.name}`}
+                                value={product.id === "NO_SPECIFICATION" ? "Нет спецификации" : `${product.code} ${product.name}`}
                                 onSelect={() => {
                                   handleMaterialChange(index, "material_id", product.id);
                                   setMaterialOpen({ ...materialOpen, [index]: false });
@@ -355,10 +364,13 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
                                     material.material_id === product.id ? "opacity-100" : "opacity-0"
                                   )}
                                 />
-                                {product.code} {product.name} ({
-                                  product.product_type === "material" ? "Материал" : 
-                                  product.product_type === "semi-finished" ? "ПФ" : "СБ"
-                                })
+                                {product.id === "NO_SPECIFICATION" 
+                                  ? "Нет спецификации"
+                                  : `${product.code} ${product.name} (${
+                                      product.product_type === "material" ? "Материал" : 
+                                      product.product_type === "semi-finished" ? "ПФ" : "СБ"
+                                    })`
+                                }
                               </CommandItem>
                             ))}
                           </CommandGroup>
@@ -371,7 +383,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
                 <div className="space-y-1">
                   <Label className="text-xs">
                     Количество
-                    {material.material_id && (() => {
+                    {material.material_id && material.material_id !== "NO_SPECIFICATION" && (() => {
                       const selected = componentProducts.find((p) => p.id === material.material_id);
                       return selected ? `, ${selected.unit}` : "";
                     })()}
@@ -382,6 +394,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
                     value={material.quantity}
                     onChange={(e) => handleMaterialChange(index, "quantity", e.target.value)}
                     placeholder="0"
+                    disabled={material.material_id === "NO_SPECIFICATION"}
                   />
                 </div>
 
@@ -393,9 +406,10 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
                     value={material.waste_rate}
                     onChange={(e) => handleMaterialChange(index, "waste_rate", e.target.value)}
                     placeholder="0"
-                    className={material.material_id && material.quantity && (!material.waste_rate || Number(material.waste_rate) === 0) ? "border-amber-500" : ""}
+                    disabled={material.material_id === "NO_SPECIFICATION"}
+                    className={material.material_id && material.material_id !== "NO_SPECIFICATION" && material.quantity && (!material.waste_rate || Number(material.waste_rate) === 0) ? "border-amber-500" : ""}
                   />
-                  {material.material_id && material.quantity && (!material.waste_rate || Number(material.waste_rate) === 0) && (
+                  {material.material_id && material.material_id !== "NO_SPECIFICATION" && material.quantity && (!material.waste_rate || Number(material.waste_rate) === 0) && (
                     <p className="text-xs text-amber-600 mt-0.5">⚠️ Не указан отход</p>
                   )}
                 </div>
