@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, FileText, Package, Loader2, X } from "lucide-react";
+import { Plus, Search, FileText, Package, Loader2, X, Clock } from "lucide-react";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { SpecificationDialog } from "@/components/specifications/SpecificationDialog";
 
@@ -120,6 +120,17 @@ const Specifications = () => {
                       <p className="text-xs text-muted-foreground">
                         Создана: {new Date(spec.created_at).toLocaleDateString()} • Материалов: {spec.specification_materials?.length || 0}
                       </p>
+                      {spec.specification_history && spec.specification_history.length > 0 && (() => {
+                        const lastChange = spec.specification_history[0];
+                        return (
+                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                              {lastChange.description} • {lastChange.profiles?.full_name || "Пользователь"} • {new Date(lastChange.created_at).toLocaleString()}
+                            </span>
+                          </div>
+                        );
+                      })()}
                       {spec.specification_materials && spec.specification_materials.some((m: any) => !m.waste_rate || Number(m.waste_rate) === 0) && (
                         <div className="mt-2">
                           <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30">

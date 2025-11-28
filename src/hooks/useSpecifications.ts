@@ -17,12 +17,28 @@ export const useSpecifications = () => {
             quantity,
             waste_rate,
             products:material_id(name, code, unit, product_type)
+          ),
+          specification_history!specification_history_specification_id_fkey(
+            id,
+            change_type,
+            description,
+            created_at,
+            profiles:user_id(full_name)
           )
         `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data;
+      
+      // Sort history by created_at descending for each specification
+      const dataWithSortedHistory = data?.map(spec => ({
+        ...spec,
+        specification_history: spec.specification_history?.sort((a: any, b: any) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ) || []
+      }));
+      
+      return dataWithSortedHistory;
     },
   });
 };
@@ -81,6 +97,17 @@ export const useCreateSpecification = () => {
         if (materialsError) throw materialsError;
       }
 
+      // Record creation in history
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("specification_history").insert({
+          specification_id: spec.id,
+          user_id: user.id,
+          change_type: "created",
+          description: `Спецификация ${spec.code} создана`,
+        });
+      }
+
       return spec;
     },
     onSuccess: () => {
@@ -116,6 +143,13 @@ export const useUpdateSpecification = () => {
         waste_rate: number;
       }>;
     }) => {
+      // Get old values for history
+      const { data: oldSpec } = await supabase
+        .from("specifications")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { data: updated, error } = await supabase
         .from("specifications")
         .update({
@@ -153,6 +187,29 @@ export const useUpdateSpecification = () => {
 
           if (materialsError) throw materialsError;
         }
+      }
+
+      // Record update in history
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && oldSpec) {
+        let description = `Спецификация ${updated.code} обновлена`;
+        
+        if (oldSpec.is_active !== is_active) {
+          description = is_active 
+            ? `Спецификация ${updated.code} активирована`
+            : `Спецификация ${updated.code} деактивирована`;
+        }
+
+        await supabase.from("specification_history").insert({
+          specification_id: id,
+          user_id: user.id,
+          change_type: oldSpec.is_active !== is_active 
+            ? (is_active ? "activated" : "deactivated")
+            : "updated",
+          description,
+          old_value: JSON.stringify(oldSpec),
+          new_value: JSON.stringify(updated),
+        });
       }
 
       return updated;
