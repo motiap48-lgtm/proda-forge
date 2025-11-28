@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { Loader2, Package, ChevronRight, ChevronDown, Search, X } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -51,14 +51,14 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
   const hasAnyMatch = currentNodeMatches || hasChildMatches;
 
   // Автоматически раскрываем узел если есть совпадения в детях
-  useMemo(() => {
+  useEffect(() => {
     if (searchQuery && hasChildMatches && !isExpanded) {
       setIsExpanded(true);
     }
-  }, [searchQuery, hasChildMatches]);
+  }, [searchQuery, hasChildMatches, isExpanded]);
 
   // Сообщаем родителю о наличии совпадений
-  useMemo(() => {
+  useEffect(() => {
     if (onMatchFound) {
       onMatchFound(hasAnyMatch);
     }
