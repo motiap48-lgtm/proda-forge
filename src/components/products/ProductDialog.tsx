@@ -435,14 +435,14 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
                 <div className="space-y-2">
                   <Label htmlFor="category">Категория</Label>
                   <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    value={formData.category || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, category: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Без категории" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Без категории</SelectItem>
+                      <SelectItem value="none">Без категории</SelectItem>
                       <SelectItem value="fasteners">Метизы</SelectItem>
                       <SelectItem value="hardware">Крепеж</SelectItem>
                       <SelectItem value="electrical">Электрика</SelectItem>
@@ -577,14 +577,14 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
                     <div className="space-y-2">
                       <Label htmlFor="category">Категория</Label>
                       <Select
-                        value={formData.category}
-                        onValueChange={(value) => setFormData({ ...formData, category: value })}
+                        value={formData.category || "none"}
+                        onValueChange={(value) => setFormData({ ...formData, category: value === "none" ? "" : value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Без категории" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Без категории</SelectItem>
+                          <SelectItem value="none">Без категории</SelectItem>
                           <SelectItem value="fasteners">Метизы</SelectItem>
                           <SelectItem value="hardware">Крепеж</SelectItem>
                           <SelectItem value="electrical">Электрика</SelectItem>
