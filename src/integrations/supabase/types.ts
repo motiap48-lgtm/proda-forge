@@ -872,6 +872,7 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          has_no_specification: boolean
           id: string
           is_active: boolean
           product_id: string
@@ -881,6 +882,7 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          has_no_specification?: boolean
           id?: string
           is_active?: boolean
           product_id: string
@@ -890,6 +892,7 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          has_no_specification?: boolean
           id?: string
           is_active?: boolean
           product_id?: string
