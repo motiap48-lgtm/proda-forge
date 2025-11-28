@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useProducts } from "@/hooks/useProducts";
-import { Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Trash2, Check, ChevronsUpDown, Package } from "lucide-react";
 import { useCreateSpecification, useUpdateSpecification } from "@/hooks/useSpecifications";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,23 @@ interface SpecificationDialogProps {
   specification?: any;
   initialProductId?: string; // Предзаполнение продукта при создании
 }
+
+// Функция для получения названия категории
+const getCategoryLabel = (category: string | null | undefined) => {
+  const categories: Record<string, string> = {
+    fasteners: "Метизы",
+    hardware: "Крепеж",
+    electrical: "Электрика",
+    pipes: "Трубы и фитинги",
+    metals: "Металлопрокат",
+    wood: "Древесина",
+    chemicals: "Химия",
+    packaging: "Упаковка",
+    tools: "Инструменты",
+    other: "Прочее",
+  };
+  return category ? categories[category] || "Без категории" : "Без категории";
+};
 
 export const SpecificationDialog = ({ open, onOpenChange, specification, initialProductId }: SpecificationDialogProps) => {
   const [code, setCode] = useState("");
@@ -69,9 +86,56 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
 
   // Добавляем опцию "Нет спецификации" в начало списка компонентов
   const componentProducts = [
-    { id: "NO_SPECIFICATION", code: "", name: "Нет спецификации", product_type: "no_spec", unit: "" },
+    { id: "NO_SPECIFICATION", code: "", name: "Нет спецификации", product_type: "no_spec", unit: "", category: null },
     ...filteredComponentProducts
   ];
+
+  // Группируем материалы по категориям
+  const groupedComponents = componentProducts.reduce((acc, product) => {
+    if (product.id === "NO_SPECIFICATION") {
+      if (!acc["special"]) acc["special"] = [];
+      acc["special"].push(product);
+      return acc;
+    }
+    
+    if (product.product_type === "material") {
+      const category = (product as any).category || "uncategorized";
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(product);
+    } else {
+      // Для не-материалов группируем по типу
+      const type = product.product_type;
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(product);
+    }
+    return acc;
+  }, {} as Record<string, typeof componentProducts>);
+
+  // Определяем порядок отображения групп
+  const groupOrder = [
+    "special",
+    "semi-finished",
+    "assembly",
+    "fasteners",
+    "hardware",
+    "electrical",
+    "pipes",
+    "metals",
+    "wood",
+    "chemicals",
+    "packaging",
+    "tools",
+    "other",
+    "uncategorized"
+  ];
+
+  const getGroupLabel = (group: string) => {
+    if (group === "special") return "";
+    if (group === "semi-finished") return "Полуфабрикаты";
+    if (group === "assembly") return "Сборочные узлы";
+    if (group === "uncategorized") return "Материалы без категории";
+    return getCategoryLabel(group);
+  };
 
   useEffect(() => {
     if (!open) {
@@ -365,32 +429,44 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
                         <CommandInput placeholder="Поиск компонента..." />
                         <CommandList>
                           <CommandEmpty>Компонент не найден</CommandEmpty>
-                          <CommandGroup>
-                            {componentProducts.map((product) => (
-                              <CommandItem
-                                key={product.id}
-                                value={product.id === "NO_SPECIFICATION" ? "Нет спецификации" : `${product.code} ${product.name}`}
-                                onSelect={() => {
-                                  handleMaterialChange(index, "material_id", product.id);
-                                  setMaterialOpen({ ...materialOpen, [index]: false });
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    material.material_id === product.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {product.id === "NO_SPECIFICATION" 
-                                  ? "Нет спецификации"
-                                  : `${product.code} ${product.name} (${
-                                      product.product_type === "material" ? "Материал" : 
-                                      product.product_type === "semi-finished" ? "ПФ" : "СБ"
-                                    })`
-                                }
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
+                          {groupOrder.map(group => {
+                            const items = groupedComponents[group];
+                            if (!items || items.length === 0) return null;
+                            
+                            return (
+                              <CommandGroup key={group} heading={getGroupLabel(group)}>
+                                {items.map((product) => (
+                                  <CommandItem
+                                    key={product.id}
+                                    value={product.id === "NO_SPECIFICATION" ? "Нет спецификации" : `${product.code} ${product.name}`}
+                                    onSelect={() => {
+                                      handleMaterialChange(index, "material_id", product.id);
+                                      setMaterialOpen({ ...materialOpen, [index]: false });
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        material.material_id === product.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {product.id === "NO_SPECIFICATION" 
+                                      ? <span className="flex items-center gap-2">
+                                          <Package className="h-4 w-4" />
+                                          Нет спецификации
+                                        </span>
+                                      : <span>
+                                          {product.code} {product.name} ({
+                                            product.product_type === "material" ? "МАТ" : 
+                                            product.product_type === "semi-finished" ? "ПФ" : "СБ"
+                                          })
+                                        </span>
+                                    }
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            );
+                          })}
                         </CommandList>
                       </Command>
                     </PopoverContent>
