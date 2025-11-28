@@ -1,8 +1,10 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSpecifications } from "@/hooks/useSpecifications";
-import { Loader2, Package, ChevronRight, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Package, ChevronRight, ChevronDown, Search, X } from "lucide-react";
+import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface ProductTreeDialogProps {
   open: boolean;
@@ -14,25 +16,67 @@ interface ProductTreeDialogProps {
 
 interface TreeNodeProps {
   productId: string;
-  productData?: any; // Данные о продукте, если уже загружены
+  productData?: any;
   quantity?: number;
   wasteRate?: number;
   level: number;
+  searchQuery?: string;
+  onMatchFound?: (hasMatch: boolean) => void;
 }
 
-const TreeNode = ({ productId, productData, quantity, wasteRate, level }: TreeNodeProps) => {
+const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQuery = "", onMatchFound }: TreeNodeProps) => {
   const [isExpanded, setIsExpanded] = useState(level === 0);
+  const [childMatches, setChildMatches] = useState<boolean[]>([]);
   const { data: specifications, isLoading } = useSpecifications();
 
   const specification = specifications?.find(
     (spec) => spec.product_id === productId && spec.is_active
   );
 
-  // Используем переданные данные о продукте или берем из спецификации
   const product = productData || (specification?.products as any);
   const materials = (specification?.specification_materials || []) as any[];
-
   const hasChildren = materials.length > 0;
+
+  // Проверяем совпадение с поисковым запросом
+  const searchLower = searchQuery.toLowerCase();
+  const currentNodeMatches = useMemo(() => {
+    if (!searchQuery) return true;
+    const name = product?.name?.toLowerCase() || "";
+    const code = product?.code?.toLowerCase() || "";
+    return name.includes(searchLower) || code.includes(searchLower);
+  }, [searchQuery, product?.name, product?.code, searchLower]);
+
+  // Определяем, есть ли совпадения в дочерних элементах
+  const hasChildMatches = childMatches.some(match => match);
+  const hasAnyMatch = currentNodeMatches || hasChildMatches;
+
+  // Автоматически раскрываем узел если есть совпадения в детях
+  useMemo(() => {
+    if (searchQuery && hasChildMatches && !isExpanded) {
+      setIsExpanded(true);
+    }
+  }, [searchQuery, hasChildMatches]);
+
+  // Сообщаем родителю о наличии совпадений
+  useMemo(() => {
+    if (onMatchFound) {
+      onMatchFound(hasAnyMatch);
+    }
+  }, [hasAnyMatch, onMatchFound]);
+
+  // Обработчик для отслеживания совпадений в дочерних элементах
+  const handleChildMatch = (index: number) => (hasMatch: boolean) => {
+    setChildMatches(prev => {
+      const newMatches = [...prev];
+      newMatches[index] = hasMatch;
+      return newMatches;
+    });
+  };
+
+  // Не отображаем узел если нет совпадений при активном поиске
+  if (searchQuery && !hasAnyMatch) {
+    return null;
+  }
 
   const getProductTypeLabel = (type: string) => {
     switch (type) {
@@ -47,7 +91,11 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level }: TreeNo
   return (
     <div className="space-y-2">
       <div
-        className="flex items-center gap-2 p-2 rounded hover:bg-accent/50 transition-colors cursor-pointer"
+        className={`flex items-center gap-2 p-2 rounded transition-colors cursor-pointer ${
+          currentNodeMatches && searchQuery 
+            ? "bg-primary/10 hover:bg-primary/20 border-l-2 border-primary" 
+            : "hover:bg-accent/50"
+        }`}
         style={{ paddingLeft: `${level * 24 + 8}px` }}
         onClick={() => hasChildren && setIsExpanded(!isExpanded)}
       >
@@ -102,7 +150,7 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level }: TreeNo
         </div>
       )}
 
-      {isExpanded && materials.map((material) => (
+      {isExpanded && materials.map((material, index) => (
         <TreeNode
           key={material.id}
           productId={material.material_id}
@@ -110,6 +158,8 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level }: TreeNo
           quantity={material.quantity}
           wasteRate={material.waste_rate}
           level={level + 1}
+          searchQuery={searchQuery}
+          onMatchFound={handleChildMatch(index)}
         />
       ))}
     </div>
@@ -123,6 +173,8 @@ export const ProductTreeDialog = ({
   productName,
   productCode,
 }: ProductTreeDialogProps) => {
+  const [searchQuery, setSearchQuery] = useState("");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
@@ -133,8 +185,33 @@ export const ProductTreeDialog = ({
           </DialogDescription>
         </DialogHeader>
         
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по названию или коду..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 pr-9"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+        
         <div className="flex-1 overflow-y-auto pr-2">
-          <TreeNode productId={productId} productData={{ name: productName, code: productCode }} level={0} />
+          <TreeNode 
+            productId={productId} 
+            productData={{ name: productName, code: productCode }} 
+            level={0}
+            searchQuery={searchQuery}
+          />
         </div>
       </DialogContent>
     </Dialog>
