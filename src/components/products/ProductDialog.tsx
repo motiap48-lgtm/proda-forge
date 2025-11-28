@@ -46,6 +46,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
     product_type: "finished",
     unit: "шт",
     description: "",
+    category: "",
   });
   const [batchProducts, setBatchProducts] = useState<BatchProduct[]>([
     { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
@@ -69,6 +70,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
         product_type: product.product_type,
         unit: product.unit,
         description: product.description || "",
+        category: (product as any).category || "",
       });
       setOriginalProductType(product.product_type);
       setShowTypeChangeWarning(false);
@@ -80,6 +82,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
         product_type: "finished",
         unit: "шт",
         description: "",
+        category: "",
       });
       setBatchProducts([
         { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
@@ -94,6 +97,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
         product_type: "finished",
         unit: "шт",
         description: "",
+        category: "",
       });
       setBatchProducts([
         { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
@@ -426,6 +430,36 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
                   </SelectContent>
                 </Select>
               </div>
+
+              {formData.product_type === "material" && (
+                <div className="space-y-2">
+                  <Label htmlFor="category">Категория</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Без категории" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Без категории</SelectItem>
+                      <SelectItem value="fasteners">Метизы</SelectItem>
+                      <SelectItem value="hardware">Крепеж</SelectItem>
+                      <SelectItem value="electrical">Электрика</SelectItem>
+                      <SelectItem value="pipes">Трубы и фитинги</SelectItem>
+                      <SelectItem value="metals">Металлопрокат</SelectItem>
+                      <SelectItem value="wood">Древесина</SelectItem>
+                      <SelectItem value="chemicals">Химия</SelectItem>
+                      <SelectItem value="packaging">Упаковка</SelectItem>
+                      <SelectItem value="tools">Инструменты</SelectItem>
+                      <SelectItem value="other">Прочее</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Категория помогает быстро находить материалы в спецификациях
+                  </p>
+                </div>
+              )}
             </div>
 
             {showTypeChangeWarning && (
@@ -538,6 +572,36 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {formData.product_type === "material" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Категория</Label>
+                      <Select
+                        value={formData.category}
+                        onValueChange={(value) => setFormData({ ...formData, category: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Без категории" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Без категории</SelectItem>
+                          <SelectItem value="fasteners">Метизы</SelectItem>
+                          <SelectItem value="hardware">Крепеж</SelectItem>
+                          <SelectItem value="electrical">Электрика</SelectItem>
+                          <SelectItem value="pipes">Трубы и фитинги</SelectItem>
+                          <SelectItem value="metals">Металлопрокат</SelectItem>
+                          <SelectItem value="wood">Древесина</SelectItem>
+                          <SelectItem value="chemicals">Химия</SelectItem>
+                          <SelectItem value="packaging">Упаковка</SelectItem>
+                          <SelectItem value="tools">Инструменты</SelectItem>
+                          <SelectItem value="other">Прочее</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Категория помогает быстро находить материалы в спецификациях
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
