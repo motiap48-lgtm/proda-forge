@@ -126,6 +126,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
   };
 
   const validMaterials = materials.filter(m => m.material_id && m.quantity);
+  const hasSelectedMaterials = materials.some(m => m.material_id && m.material_id !== "");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -436,7 +437,7 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Отмена
             </Button>
-            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || (!hasNoSpecification && validMaterials.length === 0)}>
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || (!hasNoSpecification && !hasSelectedMaterials)}>
               {specification 
                 ? (updateMutation.isPending ? "Сохранение..." : hasNoSpecification ? "Сохранить" : `Сохранить (${materials.length})`)
                 : (createMutation.isPending ? "Создание..." : hasNoSpecification ? "Создать" : `Создать (${materials.length})`)
