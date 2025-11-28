@@ -26,6 +26,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
+    let tokenRefreshErrorCount = 0;
+    const MAX_REFRESH_ERRORS = 3;
 
     // Check for existing session first
     supabase.auth.getSession().then(({ data: { session }, error }) => {
@@ -52,32 +54,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       async (event, session) => {
         if (!mounted) return;
         
-        console.log("Auth state change event:", event);
+        console.log("Auth state change event:", event, "Session:", session ? "exists" : "null");
         
-        // Handle token refresh errors gracefully
-        if (event === "TOKEN_REFRESHED" && !session) {
-          console.error("Token refresh failed, session lost");
-          toast({
-            title: "Ошибка аутентификации",
-            description: "Сессия истекла. Пожалуйста, войдите снова.",
-            variant: "destructive",
-          });
-          setSession(null);
-          setUser(null);
-          setUserRoles([]);
-          setLoading(false);
-          return;
+        // Handle token refresh errors with retry logic
+        if (event === "TOKEN_REFRESHED") {
+          if (!session) {
+            tokenRefreshErrorCount++;
+            console.error(`Token refresh failed (attempt ${tokenRefreshErrorCount}/${MAX_REFRESH_ERRORS})`);
+            
+            // Only sign out after multiple consecutive failures
+            if (tokenRefreshErrorCount >= MAX_REFRESH_ERRORS) {
+              console.error("Max token refresh errors reached, signing out");
+              toast({
+                title: "Ошибка аутентификации",
+                description: "Не удалось обновить сессию. Пожалуйста, войдите снова.",
+                variant: "destructive",
+              });
+              setSession(null);
+              setUser(null);
+              setUserRoles([]);
+              setLoading(false);
+              tokenRefreshErrorCount = 0;
+            } else {
+              // Don't sign out yet, just log the error
+              console.warn("Token refresh failed but keeping current session");
+            }
+            return;
+          } else {
+            // Reset error count on successful refresh
+            tokenRefreshErrorCount = 0;
+          }
         }
         
-        // Handle auth errors
+        // Handle explicit sign out
         if (event === "SIGNED_OUT") {
+          console.log("User signed out explicitly");
           setSession(null);
           setUser(null);
           setUserRoles([]);
           setLoading(false);
+          tokenRefreshErrorCount = 0;
           return;
         }
         
+        // Update session state
         setSession(session);
         setUser(session?.user ?? null);
         
