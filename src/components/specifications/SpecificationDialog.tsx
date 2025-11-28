@@ -129,9 +129,8 @@ export const SpecificationDialog = ({ open, onOpenChange, specification, initial
       updated[index] = {
         ...current,
         material_id: value,
-        // Для обычных компонентов по умолчанию ставим количество 1,
-        // чтобы выбранный компонент всегда сохранялся
-        quantity: isNoSpec ? "" : (current.quantity || "1"),
+        // Количество остается пустым, пользователь должен сам указать
+        quantity: isNoSpec ? "" : current.quantity,
         // Для варианта "Нет спецификации" принудительно обнуляем отходы
         waste_rate: isNoSpec ? "0" : (current.waste_rate ?? "0"),
       };
