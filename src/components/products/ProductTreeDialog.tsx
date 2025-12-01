@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSpecifications } from "@/hooks/useSpecifications";
-import { Loader2, Package, ChevronRight, ChevronDown, Search, X } from "lucide-react";
+import { Loader2, Package, ChevronRight, ChevronDown, Search, X, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -22,12 +22,27 @@ interface TreeNodeProps {
   level: number;
   searchQuery?: string;
   onMatchFound?: (hasMatch: boolean) => void;
+  expandAll?: boolean;
+  collapseAll?: boolean;
 }
 
-const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQuery = "", onMatchFound }: TreeNodeProps) => {
+const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQuery = "", onMatchFound, expandAll, collapseAll }: TreeNodeProps) => {
   const [isExpanded, setIsExpanded] = useState(level === 0);
   const [childMatches, setChildMatches] = useState<boolean[]>([]);
   const { data: specifications, isLoading } = useSpecifications();
+
+  // Handle expand/collapse all
+  useEffect(() => {
+    if (expandAll) {
+      setIsExpanded(true);
+    }
+  }, [expandAll]);
+
+  useEffect(() => {
+    if (collapseAll && level > 0) {
+      setIsExpanded(false);
+    }
+  }, [collapseAll, level]);
 
   const specification = specifications?.find(
     (spec) => spec.product_id === productId && spec.is_active
@@ -160,6 +175,8 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
           level={level + 1}
           searchQuery={searchQuery}
           onMatchFound={handleChildMatch(index)}
+          expandAll={expandAll}
+          collapseAll={collapseAll}
         />
       ))}
     </div>
@@ -175,6 +192,8 @@ export const ProductTreeDialog = ({
 }: ProductTreeDialogProps) => {
   const [inputValue, setInputValue] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandAll, setExpandAll] = useState(false);
+  const [collapseAll, setCollapseAll] = useState(false);
 
   // Debounce search query with 300ms delay
   useEffect(() => {
@@ -184,6 +203,18 @@ export const ProductTreeDialog = ({
 
     return () => clearTimeout(timer);
   }, [inputValue]);
+
+  const handleExpandAll = () => {
+    setCollapseAll(false);
+    setExpandAll(true);
+    setTimeout(() => setExpandAll(false), 100);
+  };
+
+  const handleCollapseAll = () => {
+    setExpandAll(false);
+    setCollapseAll(true);
+    setTimeout(() => setCollapseAll(false), 100);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -195,24 +226,47 @@ export const ProductTreeDialog = ({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск по названию или коду..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            className="pl-9 pr-9"
-          />
-          {inputValue && (
+        <div className="space-y-3 mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Поиск по названию или коду..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {inputValue && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                onClick={() => setInputValue("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          
+          <div className="flex gap-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-              onClick={() => setInputValue("")}
+              onClick={handleExpandAll}
+              className="flex-1"
             >
-              <X className="h-4 w-4" />
+              <ChevronsDownUp className="h-4 w-4 mr-2" />
+              Развернуть всё
             </Button>
-          )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCollapseAll}
+              className="flex-1"
+            >
+              <ChevronsUpDown className="h-4 w-4 mr-2" />
+              Свернуть всё
+            </Button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto pr-2">
@@ -221,6 +275,8 @@ export const ProductTreeDialog = ({
             productData={{ name: productName, code: productCode }} 
             level={0}
             searchQuery={searchQuery}
+            expandAll={expandAll}
+            collapseAll={collapseAll}
           />
         </div>
       </DialogContent>
