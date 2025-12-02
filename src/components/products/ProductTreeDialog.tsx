@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSpecifications } from "@/hooks/useSpecifications";
+import { useProducts } from "@/hooks/useProducts";
 import { Loader2, Package, ChevronRight, ChevronDown, Search, X, ChevronsDownUp, ChevronsUpDown, ArrowUpFromLine, ArrowDownToLine } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -352,6 +353,7 @@ export const ProductTreeDialog = ({
   const [collapseAll, setCollapseAll] = useState(false);
   const [viewMode, setViewMode] = useState<"composition" | "whereUsed">("composition");
   const { data: allSpecifications } = useSpecifications();
+  const { data: allProducts } = useProducts();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -359,6 +361,16 @@ export const ProductTreeDialog = ({
     }, 300);
     return () => clearTimeout(timer);
   }, [inputValue]);
+
+  // Find products matching search query for "Where Used" mode
+  const matchingProductsForWhereUsed = useMemo(() => {
+    if (!searchQuery || viewMode !== "whereUsed" || !allProducts) return [];
+    const searchLower = searchQuery.toLowerCase();
+    return allProducts.filter(p => 
+      p.is_active && 
+      (p.name.toLowerCase().includes(searchLower) || p.code.toLowerCase().includes(searchLower))
+    );
+  }, [searchQuery, viewMode, allProducts]);
 
   const handleExpandAll = () => {
     setCollapseAll(false);
@@ -382,7 +394,9 @@ export const ProductTreeDialog = ({
           <DialogDescription>
             {viewMode === "composition" 
               ? "Иерархическая структура компонентов и материалов"
-              : "В каких изделиях используется данный продукт"
+              : searchQuery 
+                ? "Поиск продуктов и их использования в изделиях"
+                : "В каких изделиях используется данный продукт"
             }
           </DialogDescription>
         </DialogHeader>
@@ -404,7 +418,7 @@ export const ProductTreeDialog = ({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Поиск по названию или коду..."
+              placeholder={viewMode === "whereUsed" ? "Поиск продукта для просмотра использования..." : "Поиск по названию или коду..."}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               className="pl-9 pr-9"
@@ -453,12 +467,32 @@ export const ProductTreeDialog = ({
               expandAll={expandAll}
               collapseAll={collapseAll}
             />
+          ) : searchQuery && matchingProductsForWhereUsed.length > 0 ? (
+            // Show matching products and where they are used
+            <div className="space-y-4">
+              {matchingProductsForWhereUsed.map(product => (
+                <WhereUsedNode
+                  key={product.id}
+                  productId={product.id}
+                  productData={product}
+                  level={0}
+                  searchQuery=""
+                  expandAll={expandAll}
+                  collapseAll={collapseAll}
+                  allSpecifications={allSpecifications || []}
+                />
+              ))}
+            </div>
+          ) : searchQuery && matchingProductsForWhereUsed.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              Продукты не найдены
+            </div>
           ) : (
             <WhereUsedNode
               productId={productId}
               productData={{ name: productName, code: productCode, product_type: productType }}
               level={0}
-              searchQuery={searchQuery}
+              searchQuery=""
               expandAll={expandAll}
               collapseAll={collapseAll}
               allSpecifications={allSpecifications || []}
