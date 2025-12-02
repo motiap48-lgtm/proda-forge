@@ -875,6 +875,7 @@ const Products = () => {
           productId={selectedProduct.id}
           productName={selectedProduct.name}
           productCode={selectedProduct.code}
+          productType={selectedProduct.product_type}
         />
       )}
 
