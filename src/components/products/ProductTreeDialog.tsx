@@ -88,7 +88,8 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", onMatc
     });
   };
 
-  if (searchQuery && !hasAnyMatch) {
+  // Don't hide root node (level 0), only filter children
+  if (searchQuery && !hasAnyMatch && level > 0) {
     return null;
   }
 
@@ -233,8 +234,8 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
     });
   };
 
-  // Не отображаем узел если нет совпадений при активном поиске
-  if (searchQuery && !hasAnyMatch) {
+  // Don't hide root node (level 0), only filter children
+  if (searchQuery && !hasAnyMatch && level > 0) {
     return null;
   }
 
