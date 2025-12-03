@@ -37,6 +37,7 @@ const MRPPlanning = () => {
   const [planningHorizon, setPlanningHorizon] = useState(30);
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [purchaseAlphaFilter, setPurchaseAlphaFilter] = useState<string | null>(null);
+  const [purchaseSearch, setPurchaseSearch] = useState("");
   
   const { data: mrpResult, isLoading, refetch } = useMRPCalculation(planningHorizon);
   const { data: purchaseReqs } = usePurchaseRequisitions();
@@ -268,9 +269,13 @@ const MRPPlanning = () => {
                       size="sm"
                       onClick={() => printMRPReport({
                         type: "purchase",
-                        purchaseRequirements: purchaseRequirements.filter(item => 
-                          !purchaseAlphaFilter || item.product_name.toUpperCase().startsWith(purchaseAlphaFilter)
-                        ),
+                        purchaseRequirements: purchaseRequirements.filter(item => {
+                          const matchesAlpha = !purchaseAlphaFilter || item.product_name.toUpperCase().startsWith(purchaseAlphaFilter);
+                          const matchesSearch = !purchaseSearch || 
+                            item.product_name.toLowerCase().includes(purchaseSearch.toLowerCase()) ||
+                            item.product_code.toLowerCase().includes(purchaseSearch.toLowerCase());
+                          return matchesAlpha && matchesSearch;
+                        }),
                         planningHorizon,
                         startDate
                       })}
@@ -282,32 +287,42 @@ const MRPPlanning = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                {/* Alphabetical Filter */}
+                {/* Search and Alphabetical Filter */}
                 {purchaseRequirements.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-sm text-muted-foreground mb-2">Фильтр по алфавиту:</p>
-                    <div className="flex flex-wrap gap-1">
-                      <Button
-                        variant={purchaseAlphaFilter === null ? "default" : "outline"}
-                        size="sm"
-                        className="h-8 px-3"
-                        onClick={() => setPurchaseAlphaFilter(null)}
-                      >
-                        Все
-                      </Button>
-                      {Array.from(new Set(purchaseRequirements.map(item => item.product_name.charAt(0).toUpperCase())))
-                        .sort((a, b) => a.localeCompare(b, 'ru'))
-                        .map(letter => (
-                          <Button
-                            key={letter}
-                            variant={purchaseAlphaFilter === letter ? "default" : "outline"}
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => setPurchaseAlphaFilter(letter)}
-                          >
-                            {letter}
-                          </Button>
-                        ))}
+                  <div className="mb-4 space-y-3">
+                    <div>
+                      <Input
+                        placeholder="Поиск по названию материала..."
+                        value={purchaseSearch}
+                        onChange={(e) => setPurchaseSearch(e.target.value)}
+                        className="max-w-md"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Фильтр по алфавиту:</p>
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          variant={purchaseAlphaFilter === null ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 px-3"
+                          onClick={() => setPurchaseAlphaFilter(null)}
+                        >
+                          Все
+                        </Button>
+                        {Array.from(new Set(purchaseRequirements.map(item => item.product_name.charAt(0).toUpperCase())))
+                          .sort((a, b) => a.localeCompare(b, 'ru'))
+                          .map(letter => (
+                            <Button
+                              key={letter}
+                              variant={purchaseAlphaFilter === letter ? "default" : "outline"}
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => setPurchaseAlphaFilter(letter)}
+                            >
+                              {letter}
+                            </Button>
+                          ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -316,7 +331,13 @@ const MRPPlanning = () => {
                 ) : purchaseRequirements.length > 0 ? (
                   <div className="space-y-3">
                     {purchaseRequirements
-                      .filter(item => !purchaseAlphaFilter || item.product_name.toUpperCase().startsWith(purchaseAlphaFilter))
+                      .filter(item => {
+                        const matchesAlpha = !purchaseAlphaFilter || item.product_name.toUpperCase().startsWith(purchaseAlphaFilter);
+                        const matchesSearch = !purchaseSearch || 
+                          item.product_name.toLowerCase().includes(purchaseSearch.toLowerCase()) ||
+                          item.product_code.toLowerCase().includes(purchaseSearch.toLowerCase());
+                        return matchesAlpha && matchesSearch;
+                      })
                       .map((item) => (
                       <Card key={item.product_id} className="border-l-4 border-l-green-500">
                         <CardContent className="p-4">
