@@ -15,7 +15,8 @@ import {
   ShoppingCart,
   Warehouse,
   TrendingDown,
-  TrendingUp
+  TrendingUp,
+  Printer
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ import {
 import { MRPHistoryDialog } from "@/components/mrp/MRPHistoryDialog";
 import { format } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { printMRPReport } from "@/components/mrp/MRPPrintView";
 
 const MRPPlanning = () => {
   const [planningHorizon, setPlanningHorizon] = useState(30);
@@ -249,13 +251,32 @@ const MRPPlanning = () => {
           <TabsContent value="purchase" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5 text-green-600" />
-                  Потребность к закупке (покупные материалы)
-                </CardTitle>
-                <CardDescription>
-                  Материалы и комплектующие, которые необходимо закупить
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShoppingCart className="h-5 w-5 text-green-600" />
+                      Потребность к закупке (покупные материалы)
+                    </CardTitle>
+                    <CardDescription>
+                      Материалы и комплектующие, которые необходимо закупить
+                    </CardDescription>
+                  </div>
+                  {purchaseRequirements.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => printMRPReport({
+                        type: "purchase",
+                        purchaseRequirements,
+                        planningHorizon,
+                        startDate
+                      })}
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Печать
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
@@ -322,13 +343,32 @@ const MRPPlanning = () => {
           <TabsContent value="production" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Factory className="h-5 w-5 text-blue-600" />
-                  Потребность к производству (ПФ, СБ)
-                </CardTitle>
-                <CardDescription>
-                  Полуфабрикаты и сборочные узлы, которые необходимо произвести
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Factory className="h-5 w-5 text-blue-600" />
+                      Потребность к производству (ПФ, СБ)
+                    </CardTitle>
+                    <CardDescription>
+                      Полуфабрикаты и сборочные узлы, которые необходимо произвести
+                    </CardDescription>
+                  </div>
+                  {productionRequirements.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => printMRPReport({
+                        type: "production",
+                        productionRequirements,
+                        planningHorizon,
+                        startDate
+                      })}
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Печать
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
@@ -407,13 +447,32 @@ const MRPPlanning = () => {
           <TabsContent value="workcenters" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Warehouse className="h-5 w-5 text-purple-600" />
-                  Рапорты по участкам (рабочим центрам)
-                </CardTitle>
-                <CardDescription>
-                  Производственные задания по участкам
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Warehouse className="h-5 w-5 text-purple-600" />
+                      Рапорты по участкам (рабочим центрам)
+                    </CardTitle>
+                    <CardDescription>
+                      Производственные задания по участкам
+                    </CardDescription>
+                  </div>
+                  {workCenterReports.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => printMRPReport({
+                        type: "workcenter",
+                        allWorkCenterReports: workCenterReports,
+                        planningHorizon,
+                        startDate
+                      })}
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Печать всех
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
@@ -433,9 +492,24 @@ const MRPPlanning = () => {
                                 Код: {report.work_center_code} | Позиций: {report.total_items}
                               </CardDescription>
                             </div>
-                            <div className="text-right">
-                              <p className="text-2xl font-bold text-primary">{report.total_quantity.toFixed(0)}</p>
-                              <p className="text-xs text-muted-foreground">единиц к производству</p>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <p className="text-2xl font-bold text-primary">{report.total_quantity.toFixed(0)}</p>
+                                <p className="text-xs text-muted-foreground">единиц к производству</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => printMRPReport({
+                                  type: "workcenter",
+                                  workCenterReport: report,
+                                  planningHorizon,
+                                  startDate
+                                })}
+                                title="Печать рапорта"
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         </CardHeader>
