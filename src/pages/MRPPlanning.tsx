@@ -17,7 +17,8 @@ import {
   TrendingDown,
   TrendingUp,
   Printer,
-  ListChecks
+  ListChecks,
+  ChevronDown
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ import { format } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { printMRPReport } from "@/components/mrp/MRPPrintView";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const MRPPlanning = () => {
   const [planningHorizon, setPlanningHorizon] = useState(30);
@@ -44,6 +46,7 @@ const MRPPlanning = () => {
   const [purchaseSearch, setPurchaseSearch] = useState("");
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [useSelectedOrders, setUseSelectedOrders] = useState(false);
+  const [orderSelectionOpen, setOrderSelectionOpen] = useState(false);
   
   const { data: productionOrders, isLoading: ordersLoading } = useMRPProductionOrders(planningHorizon);
   const { data: mrpResult, isLoading, refetch } = useMRPCalculation(
@@ -236,106 +239,125 @@ const MRPPlanning = () => {
           </CardContent>
         </Card>
 
-        {/* Order Selection */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ListChecks className="h-5 w-5 text-primary" />
-              Выбор заказов для расчета
-            </CardTitle>
-            <CardDescription>
-              Выберите конкретные заказы или рассчитайте потребность по всем заказам в горизонте планирования
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="useSelected" 
-                    checked={useSelectedOrders}
-                    onCheckedChange={(checked) => setUseSelectedOrders(checked as boolean)}
-                  />
-                  <Label htmlFor="useSelected" className="cursor-pointer">
-                    Рассчитать только для выбранных заказов
-                  </Label>
-                </div>
-                {useSelectedOrders && (
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                      Выбрать все
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleDeselectAll}>
-                      Снять выбор
-                    </Button>
-                  </div>
-                )}
-              </div>
-              
-              {useSelectedOrders && (
-                <div className="border rounded-md">
-                  <ScrollArea className="h-[200px]">
-                    <div className="p-4 space-y-2">
-                      {ordersLoading ? (
-                        <p className="text-sm text-muted-foreground">Загрузка заказов...</p>
-                      ) : productionOrders && productionOrders.length > 0 ? (
-                        productionOrders.map((order) => {
-                          const product = order.products as any;
-                          const remaining = order.quantity - order.completed_quantity;
-                          return (
-                            <div 
-                              key={order.id} 
-                              className={`flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer ${
-                                selectedOrderIds.includes(order.id) ? 'bg-muted' : ''
-                              }`}
-                              onClick={() => handleToggleOrder(order.id)}
-                            >
-                              <Checkbox 
-                                checked={selectedOrderIds.includes(order.id)}
-                                onCheckedChange={() => handleToggleOrder(order.id)}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">{order.order_number}</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {order.status === 'planned' ? 'Плановый' : 'Выпущен'}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground truncate">
-                                  {product?.code} — {product?.name}
-                                </p>
-                              </div>
-                              <div className="text-right text-sm">
-                                <p className="font-medium">{remaining} {product?.unit}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(new Date(order.planned_start_date), 'dd.MM.yyyy')}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Нет заказов в горизонте планирования</p>
+        {/* Order Selection - Collapsible */}
+        <Collapsible open={orderSelectionOpen} onOpenChange={setOrderSelectionOpen} className="mb-6">
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <ListChecks className="h-5 w-5 text-primary" />
+                      Выбор заказов для расчета
+                      {useSelectedOrders && selectedOrderIds.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          Выбрано: {selectedOrderIds.length}
+                        </Badge>
                       )}
-                    </div>
-                  </ScrollArea>
+                    </CardTitle>
+                    <CardDescription>
+                      {useSelectedOrders 
+                        ? `Расчет для ${selectedOrderIds.length} выбранных заказов`
+                        : `Расчет для всех заказов в горизонте ${planningHorizon} дней`
+                      }
+                    </CardDescription>
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${orderSelectionOpen ? 'rotate-180' : ''}`} />
                 </div>
-              )}
-              
-              {useSelectedOrders && selectedOrderIds.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Выбрано заказов: <span className="font-medium">{selectedOrderIds.length}</span>
-                </p>
-              )}
-              
-              {!useSelectedOrders && (
-                <p className="text-sm text-muted-foreground">
-                  Расчет будет выполнен для всех заказов со статусом "Плановый" и "Выпущен" в пределах горизонта планирования ({planningHorizon} дней)
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="useSelected" 
+                        checked={useSelectedOrders}
+                        onCheckedChange={(checked) => setUseSelectedOrders(checked as boolean)}
+                      />
+                      <Label htmlFor="useSelected" className="cursor-pointer">
+                        Рассчитать только для выбранных заказов
+                      </Label>
+                    </div>
+                    {useSelectedOrders && (
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                          Выбрать все
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleDeselectAll}>
+                          Снять выбор
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {useSelectedOrders && (
+                    <div className="border rounded-md">
+                      <ScrollArea className="h-[200px]">
+                        <div className="p-4 space-y-2">
+                          {ordersLoading ? (
+                            <p className="text-sm text-muted-foreground">Загрузка заказов...</p>
+                          ) : productionOrders && productionOrders.length > 0 ? (
+                            productionOrders.map((order) => {
+                              const product = order.products as any;
+                              const remaining = order.quantity - order.completed_quantity;
+                              return (
+                                <div 
+                                  key={order.id} 
+                                  className={`flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer ${
+                                    selectedOrderIds.includes(order.id) ? 'bg-muted' : ''
+                                  }`}
+                                  onClick={() => handleToggleOrder(order.id)}
+                                >
+                                  <Checkbox 
+                                    checked={selectedOrderIds.includes(order.id)}
+                                    onCheckedChange={() => handleToggleOrder(order.id)}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{order.order_number}</span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {order.status === 'planned' ? 'Плановый' : 'Выпущен'}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground truncate">
+                                      {product?.code} — {product?.name}
+                                    </p>
+                                  </div>
+                                  <div className="text-right text-sm">
+                                    <p className="font-medium">{remaining} {product?.unit}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {format(new Date(order.planned_start_date), 'dd.MM.yyyy')}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="text-sm text-muted-foreground">Нет заказов в горизонте планирования</p>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                  
+                  {useSelectedOrders && selectedOrderIds.length > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Выбрано заказов: <span className="font-medium">{selectedOrderIds.length}</span>
+                    </p>
+                  )}
+                  
+                  {!useSelectedOrders && (
+                    <p className="text-sm text-muted-foreground">
+                      Расчет будет выполнен для всех заказов со статусом "Плановый" и "Выпущен" в пределах горизонта планирования ({planningHorizon} дней)
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* Warning for orders without specification */}
         {ordersWithoutSpec.length > 0 && (
