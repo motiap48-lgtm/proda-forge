@@ -36,6 +36,7 @@ import { printMRPReport } from "@/components/mrp/MRPPrintView";
 const MRPPlanning = () => {
   const [planningHorizon, setPlanningHorizon] = useState(30);
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [purchaseAlphaFilter, setPurchaseAlphaFilter] = useState<string | null>(null);
   
   const { data: mrpResult, isLoading, refetch } = useMRPCalculation(planningHorizon);
   const { data: purchaseReqs } = usePurchaseRequisitions();
@@ -267,7 +268,9 @@ const MRPPlanning = () => {
                       size="sm"
                       onClick={() => printMRPReport({
                         type: "purchase",
-                        purchaseRequirements,
+                        purchaseRequirements: purchaseRequirements.filter(item => 
+                          !purchaseAlphaFilter || item.product_name.toUpperCase().startsWith(purchaseAlphaFilter)
+                        ),
                         planningHorizon,
                         startDate
                       })}
@@ -279,11 +282,42 @@ const MRPPlanning = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Alphabetical Filter */}
+                {purchaseRequirements.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-sm text-muted-foreground mb-2">Фильтр по алфавиту:</p>
+                    <div className="flex flex-wrap gap-1">
+                      <Button
+                        variant={purchaseAlphaFilter === null ? "default" : "outline"}
+                        size="sm"
+                        className="h-8 px-3"
+                        onClick={() => setPurchaseAlphaFilter(null)}
+                      >
+                        Все
+                      </Button>
+                      {Array.from(new Set(purchaseRequirements.map(item => item.product_name.charAt(0).toUpperCase())))
+                        .sort((a, b) => a.localeCompare(b, 'ru'))
+                        .map(letter => (
+                          <Button
+                            key={letter}
+                            variant={purchaseAlphaFilter === letter ? "default" : "outline"}
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => setPurchaseAlphaFilter(letter)}
+                          >
+                            {letter}
+                          </Button>
+                        ))}
+                    </div>
+                  </div>
+                )}
                 {isLoading ? (
                   <p className="text-center py-8 text-muted-foreground">Загрузка...</p>
                 ) : purchaseRequirements.length > 0 ? (
                   <div className="space-y-3">
-                    {purchaseRequirements.map((item) => (
+                    {purchaseRequirements
+                      .filter(item => !purchaseAlphaFilter || item.product_name.toUpperCase().startsWith(purchaseAlphaFilter))
+                      .map((item) => (
                       <Card key={item.product_id} className="border-l-4 border-l-green-500">
                         <CardContent className="p-4">
                           <div className="grid gap-4 md:grid-cols-7">
