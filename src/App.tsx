@@ -5,8 +5,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NavigationLoadingProvider } from "@/contexts/NavigationLoadingContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
+import { PageLoadingScreen } from "@/components/layout/PageLoadingScreen";
 import Index from "./pages/Index";
 import ProductionOrders from "./pages/ProductionOrders";
 import NewProductionOrder from "./pages/NewProductionOrder";
@@ -29,6 +31,36 @@ import ProductionReports from "./pages/ProductionReports";
 
 const queryClient = new QueryClient();
 
+const AppRoutes = () => {
+  return (
+    <NavigationLoadingProvider>
+      <PageLoadingScreen />
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+        <Route path="/production-orders" element={<ProtectedRoute><ProductionOrders /></ProtectedRoute>} />
+        <Route path="/production-orders/new" element={<ProtectedRoute><NewProductionOrder /></ProtectedRoute>} />
+        <Route path="/production-orders/:id" element={<ProtectedRoute><ProductionOrderDetailsNew /></ProtectedRoute>} />
+        <Route path="/production-orders/:id/edit" element={<ProtectedRoute><EditProductionOrder /></ProtectedRoute>} />
+        <Route path="/user-management" element={<ProtectedRoute requiredRole="admin"><UserManagement /></ProtectedRoute>} />
+        <Route path="/planning/mrp" element={<ProtectedRoute><MRPPlanning /></ProtectedRoute>} />
+        <Route path="/references/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+        <Route path="/references/specifications" element={<ProtectedRoute><Specifications /></ProtectedRoute>} />
+        <Route path="/references/routing-sheets" element={<ProtectedRoute><RoutingSheets /></ProtectedRoute>} />
+        <Route path="/references/work-centers" element={<ProtectedRoute><WorkCenters /></ProtectedRoute>} />
+        <Route path="/warehouse/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+        <Route path="/warehouse/reservations" element={<ProtectedRoute><MaterialReservations /></ProtectedRoute>} />
+        <Route path="/warehouse/issues" element={<ProtectedRoute><MaterialIssues /></ProtectedRoute>} />
+        <Route path="/analytics/production-reports" element={<ProtectedRoute><ProductionReports /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </NavigationLoadingProvider>
+  );
+};
+
 const App = () => {
   const [showLoading, setShowLoading] = useState(true);
 
@@ -41,28 +73,7 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <AuthProvider>
-              <Routes>
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                <Route path="/production-orders" element={<ProtectedRoute><ProductionOrders /></ProtectedRoute>} />
-                <Route path="/production-orders/new" element={<ProtectedRoute><NewProductionOrder /></ProtectedRoute>} />
-                <Route path="/production-orders/:id" element={<ProtectedRoute><ProductionOrderDetailsNew /></ProtectedRoute>} />
-                <Route path="/production-orders/:id/edit" element={<ProtectedRoute><EditProductionOrder /></ProtectedRoute>} />
-                <Route path="/user-management" element={<ProtectedRoute requiredRole="admin"><UserManagement /></ProtectedRoute>} />
-                <Route path="/planning/mrp" element={<ProtectedRoute><MRPPlanning /></ProtectedRoute>} />
-                <Route path="/references/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
-                <Route path="/references/specifications" element={<ProtectedRoute><Specifications /></ProtectedRoute>} />
-                <Route path="/references/routing-sheets" element={<ProtectedRoute><RoutingSheets /></ProtectedRoute>} />
-                <Route path="/references/work-centers" element={<ProtectedRoute><WorkCenters /></ProtectedRoute>} />
-                <Route path="/warehouse/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-                <Route path="/warehouse/reservations" element={<ProtectedRoute><MaterialReservations /></ProtectedRoute>} />
-                <Route path="/warehouse/issues" element={<ProtectedRoute><MaterialIssues /></ProtectedRoute>} />
-                <Route path="/analytics/production-reports" element={<ProtectedRoute><ProductionReports /></ProtectedRoute>} />
-                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <AppRoutes />
             </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
