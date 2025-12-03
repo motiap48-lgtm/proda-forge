@@ -34,23 +34,57 @@ export const useMRPCalculation = (horizonDays: number = 30) => {
 
       if (ordersError) throw ordersError;
       
-      // Получаем спецификации для заказов
+      // Получаем спецификации для заказов по specification_id
       const specIds = orders?.map(o => o.specification_id).filter(Boolean) || [];
-      const { data: specifications, error: specError } = await supabase
-        .from("specifications")
-        .select(`
-          id,
-          specification_materials(
-            quantity,
-            waste_rate,
-            products:material_id(id, code, name, unit)
-          )
-        `)
-        .in("id", specIds);
       
-      if (specError) throw specError;
+      // Получаем product_id для заказов без спецификации
+      const productIdsWithoutSpec = orders
+        ?.filter(o => !o.specification_id)
+        .map(o => o.product_id) || [];
       
-      const specsMap = new Map(specifications?.map(s => [s.id, s]));
+      // Загружаем спецификации по ID (если есть)
+      let specifications: any[] = [];
+      if (specIds.length > 0) {
+        const { data: specsByIds, error: specError } = await supabase
+          .from("specifications")
+          .select(`
+            id,
+            product_id,
+            specification_materials(
+              quantity,
+              waste_rate,
+              products:material_id(id, code, name, unit)
+            )
+          `)
+          .in("id", specIds);
+        
+        if (specError) throw specError;
+        specifications = specsByIds || [];
+      }
+      
+      // Загружаем спецификации по product_id (для заказов без привязанной спецификации)
+      if (productIdsWithoutSpec.length > 0) {
+        const { data: specsByProduct, error: specByProductError } = await supabase
+          .from("specifications")
+          .select(`
+            id,
+            product_id,
+            specification_materials(
+              quantity,
+              waste_rate,
+              products:material_id(id, code, name, unit)
+            )
+          `)
+          .in("product_id", productIdsWithoutSpec)
+          .eq("is_active", true);
+        
+        if (specByProductError) throw specByProductError;
+        specifications = [...specifications, ...(specsByProduct || [])];
+      }
+      
+      // Создаём карты для поиска спецификаций
+      const specsByIdMap = new Map(specifications.map(s => [s.id, s]));
+      const specsByProductMap = new Map(specifications.map(s => [s.product_id, s]));
 
 
       // Получаем текущие остатки
@@ -67,7 +101,10 @@ export const useMRPCalculation = (horizonDays: number = 30) => {
       const requirements: Map<string, MRPRequirement> = new Map();
 
       orders?.forEach((order) => {
-        const spec = order.specification_id ? specsMap.get(order.specification_id) : null;
+        // Сначала ищем по specification_id, если нет - по product_id
+        const spec = order.specification_id 
+          ? specsByIdMap.get(order.specification_id) 
+          : specsByProductMap.get(order.product_id);
         const materials = spec?.specification_materials || [];
         
         materials.forEach((material: any) => {
