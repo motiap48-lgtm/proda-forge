@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Calculator, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Calendar, Calculator, Package, AlertTriangle, CheckCircle2, FileWarning } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMRPCalculation, usePurchaseRequisitions, useSaveMRPCalculation } from "@/hooks/useMRPPlanning";
 import { MRPHistoryDialog } from "@/components/mrp/MRPHistoryDialog";
 import { format } from "date-fns";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const mockMRPData = {
   requirements: [
@@ -67,18 +68,21 @@ const MRPPlanning = () => {
   const [planningHorizon, setPlanningHorizon] = useState(30);
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   
-  const { data: requirements, isLoading, refetch } = useMRPCalculation(planningHorizon);
+  const { data: mrpResult, isLoading, refetch } = useMRPCalculation(planningHorizon);
   const { data: purchaseReqs } = usePurchaseRequisitions();
   const saveMutation = useSaveMRPCalculation();
 
+  const requirements = mrpResult?.requirements || [];
+  const ordersWithoutSpec = mrpResult?.ordersWithoutSpec || [];
+
   const handleCalculate = async () => {
     const result = await refetch();
-    if (result.data && result.data.length > 0) {
+    if (result.data && result.data.requirements.length > 0) {
       // Сохраняем результаты расчета
       saveMutation.mutate({
         planningHorizonDays: planningHorizon,
         startDate: startDate,
-        requirements: result.data,
+        requirements: result.data.requirements,
       });
     }
   };
@@ -157,6 +161,26 @@ const MRPPlanning = () => {
           </CardContent>
         </Card>
 
+        {/* Warning for orders without specification */}
+        {ordersWithoutSpec.length > 0 && (
+          <Alert variant="destructive" className="mb-6">
+            <FileWarning className="h-4 w-4" />
+            <AlertTitle>Заказы без спецификации</AlertTitle>
+            <AlertDescription>
+              <p className="mb-2">
+                Следующие заказы не имеют спецификации или материалов и не учтены в расчете потребности:
+              </p>
+              <ul className="list-disc pl-4 space-y-1">
+                {ordersWithoutSpec.map((order) => (
+                  <li key={order.order_number}>
+                    <span className="font-medium">{order.order_number}</span> — {order.product_code} {order.product_name}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Results */}
         <Tabs defaultValue="requirements" className="space-y-4">
           <TabsList>
@@ -174,9 +198,9 @@ const MRPPlanning = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+              {isLoading ? (
                   <p className="text-center py-8 text-muted-foreground">Загрузка...</p>
-                ) : requirements && requirements.length > 0 ? (
+                ) : requirements.length > 0 ? (
                   <div className="space-y-3">
                     {requirements.map((item) => (
                       <Card key={item.product_id} className="border-l-4 border-l-primary">

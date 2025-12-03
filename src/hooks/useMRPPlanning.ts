@@ -15,10 +15,21 @@ export interface MRPRequirement {
   status: 'shortage' | 'warning' | 'ok';
 }
 
+export interface OrderWithoutSpec {
+  order_number: string;
+  product_name: string;
+  product_code: string;
+}
+
+export interface MRPCalculationResult {
+  requirements: MRPRequirement[];
+  ordersWithoutSpec: OrderWithoutSpec[];
+}
+
 export const useMRPCalculation = (horizonDays: number = 30) => {
   return useQuery({
     queryKey: ["mrp-calculation", horizonDays],
-    queryFn: async () => {
+    queryFn: async (): Promise<MRPCalculationResult> => {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + horizonDays);
 
@@ -99,6 +110,7 @@ export const useMRPCalculation = (horizonDays: number = 30) => {
 
       // Рассчитываем потребности
       const requirements: Map<string, MRPRequirement> = new Map();
+      const ordersWithoutSpec: OrderWithoutSpec[] = [];
 
       orders?.forEach((order) => {
         // Сначала ищем по specification_id, если нет - по product_id
@@ -106,6 +118,15 @@ export const useMRPCalculation = (horizonDays: number = 30) => {
           ? specsByIdMap.get(order.specification_id) 
           : specsByProductMap.get(order.product_id);
         const materials = spec?.specification_materials || [];
+        
+        // Отслеживаем заказы без спецификации
+        if (!spec || materials.length === 0) {
+          ordersWithoutSpec.push({
+            order_number: order.order_number,
+            product_name: order.products?.name || 'Неизвестно',
+            product_code: order.products?.code || '',
+          });
+        }
         
         materials.forEach((material: any) => {
           const productId = material.products?.id;
@@ -157,7 +178,10 @@ export const useMRPCalculation = (horizonDays: number = 30) => {
         }
       });
 
-      return Array.from(requirements.values());
+      return {
+        requirements: Array.from(requirements.values()),
+        ordersWithoutSpec,
+      };
     },
   });
 };
