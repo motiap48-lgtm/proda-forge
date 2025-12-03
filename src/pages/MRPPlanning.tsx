@@ -269,13 +269,15 @@ const MRPPlanning = () => {
                       size="sm"
                       onClick={() => printMRPReport({
                         type: "purchase",
-                        purchaseRequirements: purchaseRequirements.filter(item => {
-                          const matchesAlpha = !purchaseAlphaFilter || item.product_name.toUpperCase().startsWith(purchaseAlphaFilter);
-                          const matchesSearch = !purchaseSearch || 
-                            item.product_name.toLowerCase().includes(purchaseSearch.toLowerCase()) ||
-                            item.product_code.toLowerCase().includes(purchaseSearch.toLowerCase());
-                          return matchesAlpha && matchesSearch;
-                        }),
+                        purchaseRequirements: purchaseRequirements
+                          .filter(item => {
+                            const matchesAlpha = !purchaseAlphaFilter || item.product_name.toUpperCase().startsWith(purchaseAlphaFilter);
+                            const matchesSearch = !purchaseSearch || 
+                              item.product_name.toLowerCase().includes(purchaseSearch.toLowerCase()) ||
+                              item.product_code.toLowerCase().includes(purchaseSearch.toLowerCase());
+                            return matchesAlpha && matchesSearch;
+                          })
+                          .sort((a, b) => a.product_name.localeCompare(b.product_name, 'ru')),
                         planningHorizon,
                         startDate
                       })}
@@ -338,6 +340,7 @@ const MRPPlanning = () => {
                           item.product_code.toLowerCase().includes(purchaseSearch.toLowerCase());
                         return matchesAlpha && matchesSearch;
                       })
+                      .sort((a, b) => a.product_name.localeCompare(b.product_name, 'ru'))
                       .map((item) => (
                       <Card key={item.product_id} className="border-l-4 border-l-green-500">
                         <CardContent className="p-4">
