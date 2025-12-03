@@ -687,65 +687,95 @@ const MRPPlanning = () => {
                 {isLoading ? (
                   <p className="text-center py-8 text-muted-foreground">Загрузка...</p>
                 ) : workCenterReports.length > 0 ? (
-                  <div className="space-y-6">
-                    {workCenterReports.map((report) => (
-                      <Card key={report.work_center_id} className="border-2">
-                        <CardHeader className="bg-muted/50">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <CardTitle className="text-lg flex items-center gap-2">
-                                <Factory className="h-5 w-5" />
-                                {report.work_center_name}
-                              </CardTitle>
-                              <CardDescription>
-                                Код: {report.work_center_code} | Позиций: {report.total_items}
-                              </CardDescription>
+                  <div className="space-y-8">
+                    {/* Группируем по подразделениям (как в 1С ERP) */}
+                    {(() => {
+                      const departmentGroups = workCenterReports.reduce((acc, report) => {
+                        const dept = report.department || 'Без подразделения';
+                        if (!acc[dept]) acc[dept] = [];
+                        acc[dept].push(report);
+                        return acc;
+                      }, {} as Record<string, WorkCenterReport[]>);
+                      
+                      return Object.entries(departmentGroups).map(([department, reports]) => (
+                        <div key={department} className="space-y-4">
+                          {/* Заголовок подразделения */}
+                          <div className="flex items-center gap-3 border-b-2 border-primary/30 pb-2">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                              <Factory className="h-5 w-5 text-primary" />
                             </div>
-                            <div className="flex items-center gap-4">
-                              <div className="text-right">
-                                <p className="text-2xl font-bold text-primary">{report.total_quantity.toFixed(0)}</p>
-                                <p className="text-xs text-muted-foreground">единиц к производству</p>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => printMRPReport({
-                                  type: "workcenter",
-                                  workCenterReport: report,
-                                  planningHorizon,
-                                  startDate
-                                })}
-                                title="Печать рапорта"
-                              >
-                                <Printer className="h-4 w-4" />
-                              </Button>
+                            <div>
+                              <h3 className="text-lg font-bold text-foreground">{department}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Участков: {reports.length} | Всего позиций: {reports.reduce((s, r) => s + r.total_items, 0)}
+                              </p>
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent className="pt-4">
-                          <div className="space-y-2">
-                            {report.items.map((item, idx) => (
-                              <div 
-                                key={`${item.product_id}-${idx}`}
-                                className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
-                              >
-                                <div className="flex items-center gap-3">
-                                  {getProductTypeBadge(item.product_type)}
-                                  <div>
-                                    <p className="font-medium">{item.product_name}</p>
-                                    <p className="text-xs text-muted-foreground">{item.product_code}</p>
+                          
+                          {/* Участки в подразделении */}
+                          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+                            {reports.map((report) => (
+                              <Card key={report.work_center_id} className="border-2 border-l-4 border-l-primary">
+                                <CardHeader className="bg-muted/50 py-3">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <CardTitle className="text-base flex items-center gap-2">
+                                        <Warehouse className="h-4 w-4" />
+                                        {report.work_center_name}
+                                      </CardTitle>
+                                      <CardDescription className="text-xs">
+                                        Код: {report.work_center_code} | Позиций: {report.total_items}
+                                      </CardDescription>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <div className="text-right">
+                                        <p className="text-xl font-bold text-primary">{report.total_quantity.toFixed(0)}</p>
+                                        <p className="text-xs text-muted-foreground">ед.</p>
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => printMRPReport({
+                                          type: "workcenter",
+                                          workCenterReport: report,
+                                          planningHorizon,
+                                          startDate
+                                        })}
+                                        title="Печать рапорта"
+                                      >
+                                        <Printer className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-bold text-lg">{item.quantity.toFixed(2)}</p>
-                                  <p className="text-xs text-muted-foreground">{item.unit}</p>
-                                </div>
-                              </div>
+                                </CardHeader>
+                                <CardContent className="pt-3 pb-3">
+                                  <div className="space-y-1.5">
+                                    {report.items.map((item, idx) => (
+                                      <div 
+                                        key={`${item.product_id}-${idx}`}
+                                        className="flex items-center justify-between p-2 bg-muted/30 rounded-md text-sm"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          {getProductTypeBadge(item.product_type)}
+                                          <div>
+                                            <p className="font-medium">{item.product_name}</p>
+                                            <p className="text-xs text-muted-foreground">{item.product_code}</p>
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="font-bold">{item.quantity.toFixed(2)}</p>
+                                          <p className="text-xs text-muted-foreground">{item.unit}</p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CardContent>
+                              </Card>
                             ))}
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                        </div>
+                      ));
+                    })()}
                   </div>
                 ) : (
                   <p className="text-center py-8 text-muted-foreground">

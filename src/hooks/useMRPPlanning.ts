@@ -55,6 +55,14 @@ export interface WorkCenterReport {
   total_quantity: number;
 }
 
+// Рапорт по подразделению (группировка участков)
+export interface DepartmentReport {
+  department: string;
+  work_centers: WorkCenterReport[];
+  total_items: number;
+  total_quantity: number;
+}
+
 // Заказ без спецификации
 export interface OrderWithoutSpec {
   order_number: string;
@@ -222,17 +230,19 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
         };
       });
 
-      // Создаем кэш техмаршрутов по product_id (берем первую операцию)
+      // Создаем кэш техмаршрутов по product_id (берем ПОСЛЕДНЮЮ операцию - где продукт "выходит")
+      // В 1С ERP последняя операция маршрута определяет участок, где производится готовый ПФ/СБ/ГП
       const routingCache: RoutingCache = {};
       routingSheets?.forEach(sheet => {
-        const firstOp = sheet.routing_operations
-          ?.sort((a: any, b: any) => a.sequence - b.sequence)[0];
-        if (firstOp?.work_centers) {
+        const sortedOps = sheet.routing_operations
+          ?.sort((a: any, b: any) => b.sequence - a.sequence); // Сортировка по убыванию
+        const lastOp = sortedOps?.[0]; // Берем последнюю операцию
+        if (lastOp?.work_centers) {
           routingCache[sheet.product_id] = {
-            work_center_id: firstOp.work_centers.id,
-            work_center_code: firstOp.work_centers.code,
-            work_center_name: firstOp.work_centers.name,
-            department: firstOp.work_centers.department,
+            work_center_id: lastOp.work_centers.id,
+            work_center_code: lastOp.work_centers.code,
+            work_center_name: lastOp.work_centers.name,
+            department: lastOp.work_centers.department,
           };
         }
       });
@@ -398,14 +408,21 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
       });
 
       // Группируем производственные потребности по рабочим центрам
+      // Получаем department из routingCache для каждого продукта
       const workCenterMap = new Map<string, WorkCenterReport>();
       productionReqs.forEach(req => {
         if (req.work_center_id && req.net_requirement > 0) {
+          // Получаем department из routingCache
+          const routingInfo = Object.values(routingCache).find(
+            r => r?.work_center_id === req.work_center_id
+          );
+          
           if (!workCenterMap.has(req.work_center_id)) {
             workCenterMap.set(req.work_center_id, {
               work_center_id: req.work_center_id,
               work_center_code: req.work_center_code || '',
               work_center_name: req.work_center_name || 'Без участка',
+              department: routingInfo?.department || undefined,
               items: [],
               total_items: 0,
               total_quantity: 0,
