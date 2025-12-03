@@ -2,67 +2,34 @@ import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Calculator, Package, AlertTriangle, CheckCircle2, FileWarning } from "lucide-react";
+import { 
+  Calculator, 
+  Package, 
+  AlertTriangle, 
+  CheckCircle2, 
+  FileWarning,
+  Factory,
+  ShoppingCart,
+  Warehouse,
+  TrendingDown,
+  TrendingUp
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useMRPCalculation, usePurchaseRequisitions, useSaveMRPCalculation } from "@/hooks/useMRPPlanning";
+import { 
+  useMRPCalculation, 
+  usePurchaseRequisitions, 
+  useSaveMRPCalculation,
+  PurchaseRequirement,
+  ProductionRequirement,
+  WorkCenterReport
+} from "@/hooks/useMRPPlanning";
 import { MRPHistoryDialog } from "@/components/mrp/MRPHistoryDialog";
 import { format } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-const mockMRPData = {
-  requirements: [
-    {
-      id: "1",
-      material: "Сталь листовая 3мм",
-      gross_requirement: 500,
-      scheduled_receipts: 200,
-      projected_available: 150,
-      net_requirement: 150,
-      planned_order: 200,
-      status: "shortage",
-    },
-    {
-      id: "2",
-      material: "Болт М8х20",
-      gross_requirement: 2000,
-      scheduled_receipts: 1000,
-      projected_available: 800,
-      net_requirement: 200,
-      planned_order: 500,
-      status: "warning",
-    },
-    {
-      id: "3",
-      material: "Краска порошковая",
-      gross_requirement: 50,
-      scheduled_receipts: 100,
-      projected_available: 75,
-      net_requirement: 0,
-      planned_order: 0,
-      status: "ok",
-    },
-  ],
-  purchaseRequisitions: [
-    {
-      id: "PR-001",
-      material: "Сталь листовая 3мм",
-      quantity: 200,
-      required_date: "2024-02-10",
-      status: "pending",
-    },
-    {
-      id: "PR-002",
-      material: "Болт М8х20",
-      quantity: 500,
-      required_date: "2024-02-15",
-      status: "pending",
-    },
-  ],
-};
 
 const MRPPlanning = () => {
   const [planningHorizon, setPlanningHorizon] = useState(30);
@@ -72,17 +39,20 @@ const MRPPlanning = () => {
   const { data: purchaseReqs } = usePurchaseRequisitions();
   const saveMutation = useSaveMRPCalculation();
 
-  const requirements = mrpResult?.requirements || [];
+  const purchaseRequirements = mrpResult?.purchaseRequirements || [];
+  const productionRequirements = mrpResult?.productionRequirements || [];
+  const workCenterReports = mrpResult?.workCenterReports || [];
   const ordersWithoutSpec = mrpResult?.ordersWithoutSpec || [];
+  const summary = mrpResult?.summary;
 
   const handleCalculate = async () => {
     const result = await refetch();
-    if (result.data && result.data.requirements.length > 0) {
-      // Сохраняем результаты расчета
+    if (result.data) {
       saveMutation.mutate({
         planningHorizonDays: planningHorizon,
         startDate: startDate,
-        requirements: result.data.requirements,
+        purchaseRequirements: result.data.purchaseRequirements,
+        productionRequirements: result.data.productionRequirements,
       });
     }
   };
@@ -92,9 +62,24 @@ const MRPPlanning = () => {
       case "shortage":
         return <Badge variant="destructive"><AlertTriangle className="mr-1 h-3 w-3" />Дефицит</Badge>;
       case "warning":
-        return <Badge variant="default"><AlertTriangle className="mr-1 h-3 w-3" />Внимание</Badge>;
+        return <Badge variant="default" className="bg-amber-500"><AlertTriangle className="mr-1 h-3 w-3" />Внимание</Badge>;
       case "ok":
-        return <Badge variant="outline"><CheckCircle2 className="mr-1 h-3 w-3" />В норме</Badge>;
+        return <Badge variant="outline" className="text-green-600 border-green-600"><CheckCircle2 className="mr-1 h-3 w-3" />В норме</Badge>;
+      default:
+        return null;
+    }
+  };
+
+  const getProductTypeBadge = (type: string) => {
+    switch (type) {
+      case "material":
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">МАТ</Badge>;
+      case "semi-finished":
+        return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">ПФ</Badge>;
+      case "assembly":
+        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">СБ</Badge>;
+      case "finished":
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">ГП</Badge>;
       default:
         return null;
     }
@@ -110,9 +95,67 @@ const MRPPlanning = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">MRP Планирование</h1>
           <p className="text-muted-foreground">
-            Расчет потребности в материалах и планирование закупок
+            Расчет потребности в материалах и производственных мощностях
           </p>
         </div>
+
+        {/* Summary Cards */}
+        {summary && (
+          <div className="grid gap-4 md:grid-cols-4 mb-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-green-100">
+                    <ShoppingCart className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">К закупке</p>
+                    <p className="text-2xl font-bold">{summary.totalPurchaseItems}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-blue-100">
+                    <Factory className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">К производству</p>
+                    <p className="text-2xl font-bold">{summary.totalProductionItems}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-red-100">
+                    <TrendingDown className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Дефицит</p>
+                    <p className="text-2xl font-bold">{summary.totalShortages}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-purple-100">
+                    <Warehouse className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Участков</p>
+                    <p className="text-2xl font-bold">{summary.totalWorkCenters}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Planning Controls */}
         <Card className="mb-6">
@@ -168,7 +211,7 @@ const MRPPlanning = () => {
             <AlertTitle>Заказы без спецификации</AlertTitle>
             <AlertDescription>
               <p className="mb-2">
-                Следующие заказы не имеют спецификации или материалов и не учтены в расчете потребности:
+                Следующие заказы не имеют спецификации или материалов и не учтены в расчете:
               </p>
               <ul className="list-disc pl-4 space-y-1">
                 {ordersWithoutSpec.map((order) => (
@@ -182,38 +225,54 @@ const MRPPlanning = () => {
         )}
 
         {/* Results */}
-        <Tabs defaultValue="requirements" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="requirements">Потребности в материалах</TabsTrigger>
-            <TabsTrigger value="requisitions">Заявки на закупку</TabsTrigger>
-            <TabsTrigger value="schedule">График производства</TabsTrigger>
+        <Tabs defaultValue="purchase" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="purchase" className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              Потребность к закупке
+            </TabsTrigger>
+            <TabsTrigger value="production" className="flex items-center gap-2">
+              <Factory className="h-4 w-4" />
+              Потребность к производству
+            </TabsTrigger>
+            <TabsTrigger value="workcenters" className="flex items-center gap-2">
+              <Warehouse className="h-4 w-4" />
+              Рапорты по участкам
+            </TabsTrigger>
+            <TabsTrigger value="requisitions" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Заявки на закупку
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="requirements" className="space-y-4">
+          {/* Purchase Requirements Tab */}
+          <TabsContent value="purchase" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-primary" />
-                  Чистая потребность в материалах
+                  <ShoppingCart className="h-5 w-5 text-green-600" />
+                  Потребность к закупке (покупные материалы)
                 </CardTitle>
+                <CardDescription>
+                  Материалы и комплектующие, которые необходимо закупить
+                </CardDescription>
               </CardHeader>
               <CardContent>
-              {isLoading ? (
+                {isLoading ? (
                   <p className="text-center py-8 text-muted-foreground">Загрузка...</p>
-                ) : requirements.length > 0 ? (
+                ) : purchaseRequirements.length > 0 ? (
                   <div className="space-y-3">
-                    {requirements.map((item) => (
-                      <Card key={item.product_id} className="border-l-4 border-l-primary">
+                    {purchaseRequirements.map((item) => (
+                      <Card key={item.product_id} className="border-l-4 border-l-green-500">
                         <CardContent className="p-4">
-                          <div className="grid gap-4 md:grid-cols-6">
+                          <div className="grid gap-4 md:grid-cols-7">
                             <div className="md:col-span-2">
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  <p className="font-semibold text-foreground">{item.product_name}</p>
-                                  <p className="text-xs text-muted-foreground">{item.product_code}</p>
-                                  {getStatusBadge(item.status)}
-                                </div>
+                              <div className="flex items-center gap-2 mb-1">
+                                {getProductTypeBadge(item.product_type)}
+                                <span className="text-xs text-muted-foreground">{item.product_code}</span>
                               </div>
+                              <p className="font-semibold text-foreground">{item.product_name}</p>
+                              <div className="mt-1">{getStatusBadge(item.status)}</div>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">Валовая потребность</p>
@@ -228,6 +287,12 @@ const MRPPlanning = () => {
                               </p>
                             </div>
                             <div>
+                              <p className="text-xs text-muted-foreground">Зарезервировано</p>
+                              <p className="text-sm font-medium text-foreground">
+                                {item.reserved.toFixed(2)} {item.unit}
+                              </p>
+                            </div>
+                            <div>
                               <p className="text-xs text-muted-foreground">Доступно</p>
                               <p className="text-sm font-medium text-foreground">
                                 {item.available.toFixed(2)} {item.unit}
@@ -235,7 +300,7 @@ const MRPPlanning = () => {
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">Чистая потребность</p>
-                              <p className="text-sm font-bold text-primary">
+                              <p className={`text-sm font-bold ${item.net_requirement > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                 {item.net_requirement.toFixed(2)} {item.unit}
                               </p>
                             </div>
@@ -246,13 +311,169 @@ const MRPPlanning = () => {
                   </div>
                 ) : (
                   <p className="text-center py-8 text-muted-foreground">
-                    Нет данных для отображения. Выполните расчет.
+                    Нет данных. Выполните расчет MRP.
                   </p>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* Production Requirements Tab */}
+          <TabsContent value="production" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Factory className="h-5 w-5 text-blue-600" />
+                  Потребность к производству (ПФ, СБ)
+                </CardTitle>
+                <CardDescription>
+                  Полуфабрикаты и сборочные узлы, которые необходимо произвести
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <p className="text-center py-8 text-muted-foreground">Загрузка...</p>
+                ) : productionRequirements.length > 0 ? (
+                  <div className="space-y-3">
+                    {productionRequirements.map((item) => (
+                      <Card key={item.product_id} className="border-l-4 border-l-blue-500">
+                        <CardContent className="p-4">
+                          <div className="grid gap-4 md:grid-cols-7">
+                            <div className="md:col-span-2">
+                              <div className="flex items-center gap-2 mb-1">
+                                {getProductTypeBadge(item.product_type)}
+                                <span className="text-xs text-muted-foreground">{item.product_code}</span>
+                              </div>
+                              <p className="font-semibold text-foreground">{item.product_name}</p>
+                              {item.work_center_name && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Участок: {item.work_center_name}
+                                </p>
+                              )}
+                              <div className="mt-1">{getStatusBadge(item.status)}</div>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Валовая потребность</p>
+                              <p className="text-sm font-medium text-foreground">
+                                {item.gross_requirement.toFixed(2)} {item.unit}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">На складе</p>
+                              <p className="text-sm font-medium text-foreground">
+                                {item.on_hand.toFixed(2)} {item.unit}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Зарезервировано</p>
+                              <p className="text-sm font-medium text-foreground">
+                                {item.reserved.toFixed(2)} {item.unit}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Доступно</p>
+                              <p className="text-sm font-medium text-foreground">
+                                {item.available.toFixed(2)} {item.unit}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Чистая потребность</p>
+                              <p className={`text-sm font-bold ${item.net_requirement > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                {item.net_requirement.toFixed(2)} {item.unit}
+                              </p>
+                            </div>
+                          </div>
+                          {item.source_orders && item.source_orders.length > 0 && (
+                            <div className="mt-2 pt-2 border-t">
+                              <p className="text-xs text-muted-foreground">
+                                Из заказов: {item.source_orders.join(', ')}
+                              </p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">
+                    Нет данных. Выполните расчет MRP.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Work Center Reports Tab */}
+          <TabsContent value="workcenters" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Warehouse className="h-5 w-5 text-purple-600" />
+                  Рапорты по участкам (рабочим центрам)
+                </CardTitle>
+                <CardDescription>
+                  Производственные задания по участкам
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <p className="text-center py-8 text-muted-foreground">Загрузка...</p>
+                ) : workCenterReports.length > 0 ? (
+                  <div className="space-y-6">
+                    {workCenterReports.map((report) => (
+                      <Card key={report.work_center_id} className="border-2">
+                        <CardHeader className="bg-muted/50">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-lg flex items-center gap-2">
+                                <Factory className="h-5 w-5" />
+                                {report.work_center_name}
+                              </CardTitle>
+                              <CardDescription>
+                                Код: {report.work_center_code} | Позиций: {report.total_items}
+                              </CardDescription>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-primary">{report.total_quantity.toFixed(0)}</p>
+                              <p className="text-xs text-muted-foreground">единиц к производству</p>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                          <div className="space-y-2">
+                            {report.items.map((item, idx) => (
+                              <div 
+                                key={`${item.product_id}-${idx}`}
+                                className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
+                              >
+                                <div className="flex items-center gap-3">
+                                  {getProductTypeBadge(item.product_type)}
+                                  <div>
+                                    <p className="font-medium">{item.product_name}</p>
+                                    <p className="text-xs text-muted-foreground">{item.product_code}</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-lg">{item.quantity.toFixed(2)}</p>
+                                  <p className="text-xs text-muted-foreground">{item.unit}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">
+                    Нет данных. Выполните расчет MRP.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Purchase Requisitions Tab */}
           <TabsContent value="requisitions" className="space-y-4">
             <Card>
               <CardHeader>
@@ -294,9 +515,9 @@ const MRPPlanning = () => {
                       ))}
                     </div>
                     <div className="mt-4 flex gap-2">
-                  <Button>
-                    Создать заказы поставщикам
-                  </Button>
+                      <Button>
+                        Создать заказы поставщикам
+                      </Button>
                       <Button variant="outline">
                         Экспортировать
                       </Button>
@@ -307,17 +528,6 @@ const MRPPlanning = () => {
                     Заявки на закупку отсутствуют
                   </p>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="schedule" className="space-y-4">
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">
-                  График производства будет доступен после выполнения расчета
-                </p>
               </CardContent>
             </Card>
           </TabsContent>
