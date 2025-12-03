@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 const editOrderSchema = z.object({
+  product_id: z.string().min(1, "Выберите продукт"),
   quantity: z.number().min(1, "Количество должно быть больше 0"),
   planned_start_date: z.string().min(1, "Укажите дату начала"),
   planned_end_date: z.string().min(1, "Укажите дату окончания"),
@@ -79,6 +80,7 @@ const EditProductionOrder = () => {
 
     try {
       editOrderSchema.parse({
+        product_id: formData.product_id,
         quantity: formData.quantity,
         planned_start_date: formData.planned_start_date,
         planned_end_date: formData.planned_end_date,
@@ -88,7 +90,12 @@ const EditProductionOrder = () => {
 
       await updateOrder.mutateAsync({
         id: order!.id,
-        ...formData,
+        product_id: formData.product_id,
+        quantity: formData.quantity,
+        planned_start_date: formData.planned_start_date,
+        planned_end_date: formData.planned_end_date,
+        status: formData.status,
+        priority: formData.priority,
         specification_id: formData.specification_id || null,
         routing_sheet_id: formData.routing_sheet_id || null,
         work_center_id: formData.work_center_id || null,
@@ -175,7 +182,7 @@ const EditProductionOrder = () => {
                         setFormData({ ...formData, product_id: value })
                       }
                     >
-                      <SelectTrigger id="product_id">
+                      <SelectTrigger id="product_id" className={errors.product_id ? "border-destructive" : ""}>
                         <SelectValue placeholder="Выберите продукт" />
                       </SelectTrigger>
                       <SelectContent>
@@ -186,6 +193,9 @@ const EditProductionOrder = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {errors.product_id && (
+                      <p className="text-sm text-destructive">{errors.product_id}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
