@@ -43,7 +43,7 @@ export const Header = () => {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-glow">
-              <span className="text-base font-bold text-primary-foreground">EVA</span>
+              <span className="text-lg font-bold text-primary-foreground">EVA</span>
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">ERP Vostok Auto</h1>
@@ -67,7 +67,7 @@ export const Header = () => {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-glow">
-            <span className="text-base font-bold text-primary-foreground">EVA</span>
+            <span className="text-lg font-bold text-primary-foreground">EVA</span>
           </div>
           <div>
             <h1 className="text-xl font-bold text-foreground">ERP Vostok Auto</h1>
