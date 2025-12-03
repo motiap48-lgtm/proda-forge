@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useProducts } from "@/hooks/useProducts";
@@ -17,6 +16,7 @@ import { useCreateProductionOrder } from "@/hooks/useProductionOrders";
 import { useActiveRoutingSheets } from "@/hooks/useRoutingSheets";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { supabase } from "@/integrations/supabase/client";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 const NewProductionOrderContent = () => {
   const navigate = useNavigate();
@@ -37,6 +37,39 @@ const NewProductionOrderContent = () => {
     planned_start: "",
     planned_end: "",
   });
+
+  // Prepare options for searchable selects
+  const productOptions = useMemo(() => {
+    return (products || []).map((product) => ({
+      value: product.id,
+      label: `${product.code} - ${product.name}`,
+      searchText: `${product.code} ${product.name}`,
+    }));
+  }, [products]);
+
+  const specificationOptions = useMemo(() => {
+    return (specifications || []).map((spec) => ({
+      value: spec.id,
+      label: `${spec.code} ${spec.version}`,
+      searchText: `${spec.code} ${spec.version}`,
+    }));
+  }, [specifications]);
+
+  const routingSheetOptions = useMemo(() => {
+    return (routingSheets || []).map((sheet) => ({
+      value: sheet.id,
+      label: sheet.name,
+      searchText: sheet.name,
+    }));
+  }, [routingSheets]);
+
+  const workCenterOptions = useMemo(() => {
+    return (workCenters || []).map((center) => ({
+      value: center.id,
+      label: center.name,
+      searchText: `${center.code} ${center.name}`,
+    }));
+  }, [workCenters]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,59 +174,38 @@ const NewProductionOrderContent = () => {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="product">Продукт *</Label>
-                    <Select
+                    <SearchableSelect
+                      options={productOptions}
                       value={formData.product}
                       onValueChange={(value) => handleChange("product", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите продукт" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products?.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.code} - {product.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Выберите продукт"
+                      searchPlaceholder="Поиск по коду или названию..."
+                      emptyText="Продукт не найден"
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="specification">Спецификация</Label>
-                    <Select
+                    <SearchableSelect
+                      options={specificationOptions}
                       value={formData.specification}
                       onValueChange={(value) => handleChange("specification", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите спецификацию (опционально)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {specifications?.map((spec) => (
-                          <SelectItem key={spec.id} value={spec.id}>
-                            {spec.code} {spec.version}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Выберите спецификацию (опционально)"
+                      searchPlaceholder="Поиск по коду..."
+                      emptyText="Спецификация не найдена"
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="routing_sheet">Техмаршрут</Label>
-                    <Select
+                    <SearchableSelect
+                      options={routingSheetOptions}
                       value={formData.routing_sheet}
                       onValueChange={(value) => handleChange("routing_sheet", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите техмаршрут (опционально)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {routingSheets?.map((sheet) => (
-                          <SelectItem key={sheet.id} value={sheet.id}>
-                            {sheet.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Выберите техмаршрут (опционально)"
+                      searchPlaceholder="Поиск по названию..."
+                      emptyText="Техмаршрут не найден"
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -219,21 +231,14 @@ const NewProductionOrderContent = () => {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="work_center">Рабочий центр</Label>
-                      <Select
+                      <SearchableSelect
+                        options={workCenterOptions}
                         value={formData.work_center}
                         onValueChange={(value) => handleChange("work_center", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите рабочий центр (опционально)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {workCenters?.map((center) => (
-                            <SelectItem key={center.id} value={center.id}>
-                              {center.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Выберите рабочий центр (опционально)"
+                        searchPlaceholder="Поиск по коду или названию..."
+                        emptyText="Рабочий центр не найден"
+                      />
                     </div>
 
                     <div className="space-y-2">
