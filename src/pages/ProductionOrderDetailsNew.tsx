@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Pause } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, CheckCircle, Play } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useProductionOrder } from "@/hooks/useProductionOrders";
+import { useProductionOrder, useDeleteProductionOrder } from "@/hooks/useProductionOrders";
 import { 
   useProductionOrderOperations, 
   useProductionOrderHistory,
@@ -16,6 +16,17 @@ import {
 } from "@/hooks/useProductionOrderDetails";
 import { useAuth } from "@/contexts/AuthContext";
 import { CompleteOperationDialog } from "@/components/production/CompleteOperationDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const statusConfig = {
   planned: { label: "Запланировано", variant: "secondary" as const },
@@ -43,6 +54,17 @@ const ProductionOrderDetailsNew = () => {
   const { data: operations } = useProductionOrderOperations(order?.id || "");
   const { data: history } = useProductionOrderHistory(order?.id || "");
   const updateStatus = useUpdateOperationStatus();
+  const deleteOrder = useDeleteProductionOrder();
+
+  const handleDelete = () => {
+    if (order) {
+      deleteOrder.mutate(order.id, {
+        onSuccess: () => {
+          navigate("/production-orders");
+        },
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -100,6 +122,33 @@ const ProductionOrderDetailsNew = () => {
                 <Edit className="mr-2 h-4 w-4" />
                 Редактировать
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Удалить
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Удалить производственный заказ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Вы уверены, что хотите удалить заказ {order.order_number}? 
+                      Это действие необратимо. Все связанные операции, резервы материалов 
+                      и история изменений также будут удалены.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {deleteOrder.isPending ? "Удаление..." : "Удалить"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </div>

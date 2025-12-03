@@ -116,3 +116,50 @@ export const useUpdateProductionOrder = () => {
     },
   });
 };
+
+export const useDeleteProductionOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Delete related operations first
+      await supabase
+        .from("production_order_operations")
+        .delete()
+        .eq("production_order_id", id);
+
+      // Delete related history
+      await supabase
+        .from("production_order_history")
+        .delete()
+        .eq("production_order_id", id);
+
+      // Delete related material reservations
+      await supabase
+        .from("material_reservations")
+        .delete()
+        .eq("production_order_id", id);
+
+      // Delete related material issues
+      await supabase
+        .from("material_issues")
+        .delete()
+        .eq("production_order_id", id);
+
+      // Finally delete the order
+      const { error } = await supabase
+        .from("production_orders")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      toast.success("Производственный заказ удален");
+    },
+    onError: (error) => {
+      toast.error("Ошибка при удалении: " + error.message);
+    },
+  });
+};
