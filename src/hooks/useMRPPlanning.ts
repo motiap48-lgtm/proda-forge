@@ -105,22 +105,59 @@ interface RoutingCache {
   } | null;
 }
 
-export const useMRPCalculation = (horizonDays: number = 30) => {
+// Хук для получения списка производственных заказов для выбора
+export const useMRPProductionOrders = (horizonDays: number = 30) => {
   return useQuery({
-    queryKey: ["mrp-calculation", horizonDays],
+    queryKey: ["mrp-production-orders", horizonDays],
+    queryFn: async () => {
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + horizonDays);
+
+      const { data, error } = await supabase
+        .from("production_orders")
+        .select(`
+          id,
+          order_number,
+          quantity,
+          completed_quantity,
+          planned_start_date,
+          status,
+          products:product_id(id, code, name, unit, product_type)
+        `)
+        .lte("planned_start_date", endDate.toISOString())
+        .in("status", ["planned", "released"])
+        .order("planned_start_date", { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+};
+
+export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: string[]) => {
+  return useQuery({
+    queryKey: ["mrp-calculation", horizonDays, selectedOrderIds],
     queryFn: async (): Promise<MRPCalculationResult> => {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + horizonDays);
 
       // 1. Получаем производственные заказы в горизонте планирования
-      const { data: orders, error: ordersError } = await supabase
+      let ordersQuery = supabase
         .from("production_orders")
         .select(`
           *,
           products:product_id(id, code, name, unit, product_type)
         `)
-        .lte("planned_start_date", endDate.toISOString())
         .in("status", ["planned", "released"]);
+      
+      // Если выбраны конкретные заказы, фильтруем по ним
+      if (selectedOrderIds && selectedOrderIds.length > 0) {
+        ordersQuery = ordersQuery.in("id", selectedOrderIds);
+      } else {
+        ordersQuery = ordersQuery.lte("planned_start_date", endDate.toISOString());
+      }
+      
+      const { data: orders, error: ordersError } = await ordersQuery;
 
       if (ordersError) throw ordersError;
 

@@ -16,14 +16,17 @@ import {
   Warehouse,
   TrendingDown,
   TrendingUp,
-  Printer
+  Printer,
+  ListChecks
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   useMRPCalculation, 
   usePurchaseRequisitions, 
   useSaveMRPCalculation,
+  useMRPProductionOrders,
   PurchaseRequirement,
   ProductionRequirement,
   WorkCenterReport
@@ -32,14 +35,21 @@ import { MRPHistoryDialog } from "@/components/mrp/MRPHistoryDialog";
 import { format } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { printMRPReport } from "@/components/mrp/MRPPrintView";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const MRPPlanning = () => {
   const [planningHorizon, setPlanningHorizon] = useState(30);
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [purchaseAlphaFilter, setPurchaseAlphaFilter] = useState<string | null>(null);
   const [purchaseSearch, setPurchaseSearch] = useState("");
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [useSelectedOrders, setUseSelectedOrders] = useState(false);
   
-  const { data: mrpResult, isLoading, refetch } = useMRPCalculation(planningHorizon);
+  const { data: productionOrders, isLoading: ordersLoading } = useMRPProductionOrders(planningHorizon);
+  const { data: mrpResult, isLoading, refetch } = useMRPCalculation(
+    planningHorizon, 
+    useSelectedOrders ? selectedOrderIds : undefined
+  );
   const { data: purchaseReqs } = usePurchaseRequisitions();
   const saveMutation = useSaveMRPCalculation();
 
@@ -59,6 +69,24 @@ const MRPPlanning = () => {
         productionRequirements: result.data.productionRequirements,
       });
     }
+  };
+
+  const handleToggleOrder = (orderId: string) => {
+    setSelectedOrderIds(prev => 
+      prev.includes(orderId) 
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (productionOrders) {
+      setSelectedOrderIds(productionOrders.map(o => o.id));
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedOrderIds([]);
   };
 
   const getStatusBadge = (status: string) => {
@@ -204,6 +232,107 @@ const MRPPlanning = () => {
               <div className="flex items-end">
                 <MRPHistoryDialog />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Order Selection */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ListChecks className="h-5 w-5 text-primary" />
+              Выбор заказов для расчета
+            </CardTitle>
+            <CardDescription>
+              Выберите конкретные заказы или рассчитайте потребность по всем заказам в горизонте планирования
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="useSelected" 
+                    checked={useSelectedOrders}
+                    onCheckedChange={(checked) => setUseSelectedOrders(checked as boolean)}
+                  />
+                  <Label htmlFor="useSelected" className="cursor-pointer">
+                    Рассчитать только для выбранных заказов
+                  </Label>
+                </div>
+                {useSelectedOrders && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                      Выбрать все
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleDeselectAll}>
+                      Снять выбор
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              {useSelectedOrders && (
+                <div className="border rounded-md">
+                  <ScrollArea className="h-[200px]">
+                    <div className="p-4 space-y-2">
+                      {ordersLoading ? (
+                        <p className="text-sm text-muted-foreground">Загрузка заказов...</p>
+                      ) : productionOrders && productionOrders.length > 0 ? (
+                        productionOrders.map((order) => {
+                          const product = order.products as any;
+                          const remaining = order.quantity - order.completed_quantity;
+                          return (
+                            <div 
+                              key={order.id} 
+                              className={`flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer ${
+                                selectedOrderIds.includes(order.id) ? 'bg-muted' : ''
+                              }`}
+                              onClick={() => handleToggleOrder(order.id)}
+                            >
+                              <Checkbox 
+                                checked={selectedOrderIds.includes(order.id)}
+                                onCheckedChange={() => handleToggleOrder(order.id)}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{order.order_number}</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {order.status === 'planned' ? 'Плановый' : 'Выпущен'}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {product?.code} — {product?.name}
+                                </p>
+                              </div>
+                              <div className="text-right text-sm">
+                                <p className="font-medium">{remaining} {product?.unit}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(order.planned_start_date), 'dd.MM.yyyy')}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Нет заказов в горизонте планирования</p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+              
+              {useSelectedOrders && selectedOrderIds.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Выбрано заказов: <span className="font-medium">{selectedOrderIds.length}</span>
+                </p>
+              )}
+              
+              {!useSelectedOrders && (
+                <p className="text-sm text-muted-foreground">
+                  Расчет будет выполнен для всех заказов со статусом "Плановый" и "Выпущен" в пределах горизонта планирования ({planningHorizon} дней)
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
