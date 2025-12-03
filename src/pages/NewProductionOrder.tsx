@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
@@ -70,6 +70,27 @@ const NewProductionOrderContent = () => {
       searchText: `${center.code} ${center.name}`,
     }));
   }, [workCenters]);
+
+  // Auto-link specification and routing sheet when product changes
+  useEffect(() => {
+    if (formData.product && specifications && routingSheets) {
+      // Find specification for this product
+      const productSpec = specifications.find(
+        (spec) => spec.product_id === formData.product
+      );
+      
+      // Find routing sheet for this product
+      const productRouting = routingSheets.find(
+        (sheet) => sheet.product_id === formData.product
+      );
+
+      setFormData((prev) => ({
+        ...prev,
+        specification: productSpec?.id || "",
+        routing_sheet: productRouting?.id || "",
+      }));
+    }
+  }, [formData.product, specifications, routingSheets]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
