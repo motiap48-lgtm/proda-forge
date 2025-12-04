@@ -74,6 +74,26 @@ const EditProductionOrder = () => {
     }
   }, [order]);
 
+  // Автоматическая привязка спецификации и техмаршрута при изменении продукта
+  const handleProductChange = (productId: string) => {
+    // Найти первую активную спецификацию для продукта
+    const matchingSpec = specifications?.find(
+      (spec) => spec.product_id === productId && spec.is_active
+    );
+    
+    // Найти первый активный техмаршрут для продукта
+    const matchingRouting = routingSheets?.find(
+      (sheet) => sheet.product_id === productId && sheet.is_active
+    );
+
+    setFormData((prev) => ({
+      ...prev,
+      product_id: productId,
+      specification_id: matchingSpec?.id || "",
+      routing_sheet_id: matchingRouting?.id || "",
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -178,9 +198,7 @@ const EditProductionOrder = () => {
                     <Label htmlFor="product_id">Продукт *</Label>
                     <Select
                       value={formData.product_id}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, product_id: value })
-                      }
+                      onValueChange={handleProductChange}
                     >
                       <SelectTrigger id="product_id" className={errors.product_id ? "border-destructive" : ""}>
                         <SelectValue placeholder="Выберите продукт" />
