@@ -7,15 +7,18 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, FileText, Package, Loader2, X, Clock } from "lucide-react";
+import { Plus, Search, FileText, Package, Loader2, X, Clock, Layers } from "lucide-react";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { SpecificationDialog } from "@/components/specifications/SpecificationDialog";
+import { FlattenedSpecificationDialog } from "@/components/specifications/FlattenedSpecificationDialog";
 
 const Specifications = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyNoSpec, setShowOnlyNoSpec] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedSpec, setSelectedSpec] = useState<any>(null);
+  const [flattenDialogOpen, setFlattenDialogOpen] = useState(false);
+  const [flattenSpec, setFlattenSpec] = useState<any>(null);
   const { data: specifications, isLoading } = useSpecifications();
 
   const filteredSpecs = (specifications || []).filter(
@@ -70,6 +73,15 @@ const Specifications = () => {
             if (!open) setSelectedSpec(null);
           }}
           specification={selectedSpec}
+        />
+
+        <FlattenedSpecificationDialog
+          open={flattenDialogOpen}
+          onOpenChange={(open) => {
+            setFlattenDialogOpen(open);
+            if (!open) setFlattenSpec(null);
+          }}
+          specification={flattenSpec}
         />
 
         {/* Search */}
@@ -168,16 +180,32 @@ const Specifications = () => {
                       )}
                     </div>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setSelectedSpec(spec);
-                      setDialogOpen(true);
-                    }}
-                  >
-                    Редактировать
-                  </Button>
+                  <div className="flex gap-2">
+                    {!spec.has_no_specification && spec.specification_materials?.length > 0 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFlattenSpec(spec);
+                          setFlattenDialogOpen(true);
+                        }}
+                        title="Разложить в одноуровневую"
+                      >
+                        <Layers className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setSelectedSpec(spec);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      Редактировать
+                    </Button>
+                  </div>
                 </div>
 
                 {spec.specification_materials && spec.specification_materials.length > 0 && !spec.has_no_specification && (
