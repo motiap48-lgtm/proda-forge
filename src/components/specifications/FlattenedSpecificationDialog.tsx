@@ -82,6 +82,14 @@ export const FlattenedSpecificationDialog = ({
     }
   };
 
+  const resetFilters = () => {
+    setShowMaterials(true);
+    setShowSemiFinished(true);
+    setShowAssemblies(true);
+    setSearchQuery("");
+    setGroupByType(false);
+    setActivePreset(null);
+  };
 
   const flattenSpecification = (
     specMaterials: any[],
@@ -361,6 +369,15 @@ export const FlattenedSpecificationDialog = ({
                   {preset.label}
                 </Button>
               ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetFilters}
+                className="h-7 text-xs ml-auto text-muted-foreground"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Сбросить
+              </Button>
             </div>
 
             {/* Фильтры */}
