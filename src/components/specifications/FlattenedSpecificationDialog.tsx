@@ -467,7 +467,7 @@ export const FlattenedSpecificationDialog = ({
 
             {/* Поиск */}
             <div className="relative pt-2 border-t">
-              <Search className="absolute left-3 top-1/2 translate-y-0.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-[calc(50%+4px)] -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Поиск по наименованию или коду..."
                 value={searchQuery}
@@ -478,7 +478,7 @@ export const FlattenedSpecificationDialog = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 translate-y-0.5 h-8 w-8"
+                  className="absolute right-1 top-[calc(50%+4px)] -translate-y-1/2 h-8 w-8"
                   onClick={() => setSearchQuery("")}
                 >
                   <X className="h-4 w-4" />
