@@ -61,8 +61,28 @@ export const FlattenedSpecificationDialog = ({
   const [showSemiFinished, setShowSemiFinished] = useState(true);
   const [showAssemblies, setShowAssemblies] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [groupByType, setGroupByType] = useState(false);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
 
-  // Рекурсивная функция для полной раскладки спецификации
+  // Пресеты фильтров
+  const filterPresets = [
+    { id: 'all', label: 'Все', materials: true, semi: true, assembly: true },
+    { id: 'materials-only', label: 'Только МАТ', materials: true, semi: false, assembly: false },
+    { id: 'production', label: 'К производству', materials: false, semi: true, assembly: true },
+    { id: 'semi-only', label: 'Только ПФ', materials: false, semi: true, assembly: false },
+  ];
+
+  const applyPreset = (presetId: string) => {
+    const preset = filterPresets.find(p => p.id === presetId);
+    if (preset) {
+      setShowMaterials(preset.materials);
+      setShowSemiFinished(preset.semi);
+      setShowAssemblies(preset.assembly);
+      setActivePreset(presetId);
+    }
+  };
+
+
   const flattenSpecification = (
     specMaterials: any[],
     multiplier: number = 1,
@@ -149,6 +169,26 @@ export const FlattenedSpecificationDialog = ({
       return true;
     });
   }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery]);
+
+  // Группированный список по типу
+  const groupedMaterials = useMemo(() => {
+    if (!groupByType) return null;
+    
+    const groups: Record<string, { items: FlattenedMaterial[]; totalQty: number }> = {};
+    const typeOrder = ['assembly', 'semi-finished', 'material'];
+    
+    typeOrder.forEach(type => {
+      const items = flattenedMaterials.filter(m => m.product_type === type);
+      if (items.length > 0) {
+        groups[type] = {
+          items,
+          totalQty: items.reduce((sum, m) => sum + m.quantity, 0)
+        };
+      }
+    });
+    
+    return groups;
+  }, [flattenedMaterials, groupByType]);
 
   // Экспорт в Excel
   const handleExportExcel = () => {
@@ -307,13 +347,32 @@ export const FlattenedSpecificationDialog = ({
               </div>
             </div>
 
+            {/* Пресеты фильтров */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
+              <span className="text-sm text-muted-foreground mr-1">Пресеты:</span>
+              {filterPresets.map(preset => (
+                <Button
+                  key={preset.id}
+                  variant={activePreset === preset.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => applyPreset(preset.id)}
+                  className="h-7 text-xs"
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+
             {/* Фильтры */}
             <div className="flex flex-wrap gap-4 pt-2 border-t">
               <div className="flex items-center space-x-2">
                 <Checkbox 
                   id="filter-materials" 
                   checked={showMaterials}
-                  onCheckedChange={(checked) => setShowMaterials(checked as boolean)}
+                  onCheckedChange={(checked) => {
+                    setShowMaterials(checked as boolean);
+                    setActivePreset(null);
+                  }}
                 />
                 <Label htmlFor="filter-materials" className="text-sm cursor-pointer">
                   Материалы ({summary.material})
@@ -323,7 +382,10 @@ export const FlattenedSpecificationDialog = ({
                 <Checkbox 
                   id="filter-semi" 
                   checked={showSemiFinished}
-                  onCheckedChange={(checked) => setShowSemiFinished(checked as boolean)}
+                  onCheckedChange={(checked) => {
+                    setShowSemiFinished(checked as boolean);
+                    setActivePreset(null);
+                  }}
                 />
                 <Label htmlFor="filter-semi" className="text-sm cursor-pointer">
                   Полуфабрикаты ({summary['semi-finished']})
@@ -333,10 +395,23 @@ export const FlattenedSpecificationDialog = ({
                 <Checkbox 
                   id="filter-assembly" 
                   checked={showAssemblies}
-                  onCheckedChange={(checked) => setShowAssemblies(checked as boolean)}
+                  onCheckedChange={(checked) => {
+                    setShowAssemblies(checked as boolean);
+                    setActivePreset(null);
+                  }}
                 />
                 <Label htmlFor="filter-assembly" className="text-sm cursor-pointer">
                   Сборочные узлы ({summary.assembly})
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 ml-auto">
+                <Checkbox 
+                  id="group-by-type" 
+                  checked={groupByType}
+                  onCheckedChange={(checked) => setGroupByType(checked as boolean)}
+                />
+                <Label htmlFor="group-by-type" className="text-sm cursor-pointer font-medium">
+                  Группировать
                 </Label>
               </div>
             </div>
@@ -381,29 +456,73 @@ export const FlattenedSpecificationDialog = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {flattenedMaterials.map((mat, idx) => (
-                  <TableRow key={`${mat.material_id}-${mat.level}-${idx}`}>
-                    <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getProductTypeBadgeClass(mat.product_type)}>
-                        {getProductTypeLabel(mat.product_type)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">{mat.code}</TableCell>
-                    <TableCell style={{ paddingLeft: `${(mat.level - 1) * 16 + 16}px` }}>
-                      {mat.name}
-                    </TableCell>
-                    <TableCell>{mat.unit}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline" className="font-mono">
-                        {mat.level}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {mat.quantity.toFixed(4)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {groupByType && groupedMaterials ? (
+                  // Группированный вид
+                  Object.entries(groupedMaterials).map(([type, group]) => (
+                    <>
+                      <TableRow key={`header-${type}`} className="bg-muted/50 hover:bg-muted/50">
+                        <TableCell colSpan={6} className="font-semibold">
+                          <Badge variant="outline" className={`mr-2 ${getProductTypeBadgeClass(type)}`}>
+                            {getProductTypeLabel(type)}
+                          </Badge>
+                          {type === 'material' && 'Материалы'}
+                          {type === 'semi-finished' && 'Полуфабрикаты'}
+                          {type === 'assembly' && 'Сборочные узлы'}
+                          <span className="text-muted-foreground ml-2">({group.items.length} поз.)</span>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold font-mono">
+                          Σ {group.totalQty.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                      {group.items.map((mat, idx) => (
+                        <TableRow key={`${type}-${mat.material_id}-${mat.level}-${idx}`}>
+                          <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={getProductTypeBadgeClass(mat.product_type)}>
+                              {getProductTypeLabel(mat.product_type)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">{mat.code}</TableCell>
+                          <TableCell>{mat.name}</TableCell>
+                          <TableCell>{mat.unit}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline" className="font-mono">
+                              {mat.level}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {mat.quantity.toFixed(4)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </>
+                  ))
+                ) : (
+                  // Обычный вид
+                  flattenedMaterials.map((mat, idx) => (
+                    <TableRow key={`${mat.material_id}-${mat.level}-${idx}`}>
+                      <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getProductTypeBadgeClass(mat.product_type)}>
+                          {getProductTypeLabel(mat.product_type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">{mat.code}</TableCell>
+                      <TableCell style={{ paddingLeft: `${(mat.level - 1) * 16 + 16}px` }}>
+                        {mat.name}
+                      </TableCell>
+                      <TableCell>{mat.unit}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="font-mono">
+                          {mat.level}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {mat.quantity.toFixed(4)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           ) : (
