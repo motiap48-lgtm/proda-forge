@@ -2,12 +2,14 @@ import { useState, useRef, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Printer, Layers } from "lucide-react";
+import { Printer, Layers, FileSpreadsheet, Search, X } from "lucide-react";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { useProducts } from "@/hooks/useProducts";
+import * as XLSX from "xlsx";
 
 interface FlattenedSpecificationDialogProps {
   open: boolean;
@@ -58,6 +60,7 @@ export const FlattenedSpecificationDialog = ({
   const [showMaterials, setShowMaterials] = useState(true);
   const [showSemiFinished, setShowSemiFinished] = useState(true);
   const [showAssemblies, setShowAssemblies] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Рекурсивная функция для полной раскладки спецификации
   const flattenSpecification = (
@@ -133,13 +136,49 @@ export const FlattenedSpecificationDialog = ({
 
   // Фильтрованный список
   const flattenedMaterials = useMemo(() => {
+    const query = searchQuery.toLowerCase();
     return allFlattenedMaterials.filter(mat => {
+      // Фильтр по типу
       if (mat.product_type === 'material' && !showMaterials) return false;
       if (mat.product_type === 'semi-finished' && !showSemiFinished) return false;
       if (mat.product_type === 'assembly' && !showAssemblies) return false;
+      // Фильтр по поиску
+      if (query && !mat.name.toLowerCase().includes(query) && !mat.code.toLowerCase().includes(query)) {
+        return false;
+      }
       return true;
     });
-  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies]);
+  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery]);
+
+  // Экспорт в Excel
+  const handleExportExcel = () => {
+    const data = flattenedMaterials.map((mat, idx) => ({
+      '№': idx + 1,
+      'Тип': getProductTypeLabel(mat.product_type),
+      'Код': mat.code,
+      'Наименование': mat.name,
+      'Ед. изм.': mat.unit,
+      'Уровень': mat.level,
+      'Количество': mat.quantity,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Спецификация');
+    
+    // Установка ширины колонок
+    ws['!cols'] = [
+      { wch: 5 },   // №
+      { wch: 8 },   // Тип
+      { wch: 15 },  // Код
+      { wch: 40 },  // Наименование
+      { wch: 10 },  // Ед. изм.
+      { wch: 10 },  // Уровень
+      { wch: 15 },  // Количество
+    ];
+
+    XLSX.writeFile(wb, `Спецификация_${specification?.code || 'export'}.xlsx`);
+  };
 
   const handlePrint = () => {
     const printContent = printRef.current;
@@ -301,6 +340,27 @@ export const FlattenedSpecificationDialog = ({
                 </Label>
               </div>
             </div>
+
+            {/* Поиск */}
+            <div className="relative pt-2 border-t">
+              <Search className="absolute left-3 top-1/2 translate-y-0.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Поиск по наименованию или коду..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 translate-y-0.5 h-8 w-8"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="text-sm text-muted-foreground mb-2">
@@ -356,6 +416,10 @@ export const FlattenedSpecificationDialog = ({
         <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Закрыть
+          </Button>
+          <Button variant="outline" onClick={handleExportExcel} disabled={flattenedMaterials.length === 0}>
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Excel
           </Button>
           <Button onClick={handlePrint} disabled={flattenedMaterials.length === 0}>
             <Printer className="h-4 w-4 mr-2" />
