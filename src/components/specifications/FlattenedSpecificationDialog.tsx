@@ -62,6 +62,7 @@ export const FlattenedSpecificationDialog = ({
   const [showAssemblies, setShowAssemblies] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [groupByType, setGroupByType] = useState(false);
+  const [aggregateSame, setAggregateSame] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
 
   // Пресеты фильтров
@@ -88,6 +89,7 @@ export const FlattenedSpecificationDialog = ({
     setShowAssemblies(true);
     setSearchQuery("");
     setGroupByType(false);
+    setAggregateSame(false);
     setActivePreset(null);
   };
 
@@ -165,7 +167,7 @@ export const FlattenedSpecificationDialog = ({
   // Фильтрованный список
   const flattenedMaterials = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return allFlattenedMaterials.filter(mat => {
+    let filtered = allFlattenedMaterials.filter(mat => {
       // Фильтр по типу
       if (mat.product_type === 'material' && !showMaterials) return false;
       if (mat.product_type === 'semi-finished' && !showSemiFinished) return false;
@@ -176,7 +178,25 @@ export const FlattenedSpecificationDialog = ({
       }
       return true;
     });
-  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery]);
+
+    // Агрегация одинаковых компонентов
+    if (aggregateSame) {
+      const aggregated = new Map<string, FlattenedMaterial>();
+      filtered.forEach(mat => {
+        const existing = aggregated.get(mat.material_id);
+        if (existing) {
+          existing.quantity += mat.quantity;
+          // Сохраняем минимальный уровень
+          existing.level = Math.min(existing.level, mat.level);
+        } else {
+          aggregated.set(mat.material_id, { ...mat });
+        }
+      });
+      filtered = Array.from(aggregated.values());
+    }
+
+    return filtered;
+  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery, aggregateSame]);
 
   // Группированный список по типу
   const groupedMaterials = useMemo(() => {
@@ -421,15 +441,27 @@ export const FlattenedSpecificationDialog = ({
                   Сборочные узлы ({summary.assembly})
                 </Label>
               </div>
-              <div className="flex items-center space-x-2 ml-auto">
-                <Checkbox 
-                  id="group-by-type" 
-                  checked={groupByType}
-                  onCheckedChange={(checked) => setGroupByType(checked as boolean)}
-                />
-                <Label htmlFor="group-by-type" className="text-sm cursor-pointer font-medium">
-                  Группировать
-                </Label>
+              <div className="flex items-center space-x-2 ml-auto gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="aggregate-same" 
+                    checked={aggregateSame}
+                    onCheckedChange={(checked) => setAggregateSame(checked as boolean)}
+                  />
+                  <Label htmlFor="aggregate-same" className="text-sm cursor-pointer font-medium">
+                    Суммировать одинаковые
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="group-by-type" 
+                    checked={groupByType}
+                    onCheckedChange={(checked) => setGroupByType(checked as boolean)}
+                  />
+                  <Label htmlFor="group-by-type" className="text-sm cursor-pointer font-medium">
+                    Группировать
+                  </Label>
+                </div>
               </div>
             </div>
 
