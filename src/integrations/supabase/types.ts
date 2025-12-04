@@ -1039,6 +1039,7 @@ export type Database = {
         Returns: string
       }
       generate_specification_code: { Args: never; Returns: string }
+      generate_work_center_code: { Args: never; Returns: string }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"][]
