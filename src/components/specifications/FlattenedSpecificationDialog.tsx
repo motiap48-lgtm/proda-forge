@@ -20,6 +20,7 @@ interface FlattenedMaterial {
   unit: string;
   quantity: number;
   product_type: string;
+  maxLevel: number; // Максимальный уровень вложенности, на котором встречается материал
 }
 
 export const FlattenedSpecificationDialog = ({ 
@@ -35,6 +36,7 @@ export const FlattenedSpecificationDialog = ({
   const flattenSpecification = (
     specMaterials: any[],
     multiplier: number = 1,
+    level: number = 1,
     visited: Set<string> = new Set()
   ): FlattenedMaterial[] => {
     const flattenedMap = new Map<string, FlattenedMaterial>();
@@ -52,6 +54,7 @@ export const FlattenedSpecificationDialog = ({
         const existing = flattenedMap.get(material.material_id);
         if (existing) {
           existing.quantity += effectiveQuantity;
+          existing.maxLevel = Math.max(existing.maxLevel, level);
         } else {
           flattenedMap.set(material.material_id, {
             material_id: material.material_id,
@@ -60,6 +63,7 @@ export const FlattenedSpecificationDialog = ({
             unit: materialProduct.unit,
             quantity: effectiveQuantity,
             product_type: materialProduct.product_type,
+            maxLevel: level,
           });
         }
       } else {
@@ -78,6 +82,7 @@ export const FlattenedSpecificationDialog = ({
           const childMaterials = flattenSpecification(
             childSpec.specification_materials,
             effectiveQuantity,
+            level + 1,
             visited
           );
           
@@ -86,6 +91,7 @@ export const FlattenedSpecificationDialog = ({
             const existing = flattenedMap.get(childMat.material_id);
             if (existing) {
               existing.quantity += childMat.quantity;
+              existing.maxLevel = Math.max(existing.maxLevel, childMat.maxLevel);
             } else {
               flattenedMap.set(childMat.material_id, { ...childMat });
             }
@@ -137,6 +143,7 @@ export const FlattenedSpecificationDialog = ({
               font-weight: bold;
             }
             .text-right { text-align: right; }
+            .text-center { text-align: center; }
             .footer { 
               margin-top: 20px; 
               font-size: 10px; 
@@ -157,6 +164,7 @@ export const FlattenedSpecificationDialog = ({
                 <th>Код</th>
                 <th>Наименование</th>
                 <th>Ед. изм.</th>
+                <th class="text-center">Уровень</th>
                 <th class="text-right">Количество</th>
               </tr>
             </thead>
@@ -167,6 +175,7 @@ export const FlattenedSpecificationDialog = ({
                   <td>${mat.code}</td>
                   <td>${mat.name}</td>
                   <td>${mat.unit}</td>
+                  <td class="text-center">${mat.maxLevel}</td>
                   <td class="text-right">${mat.quantity.toFixed(4)}</td>
                 </tr>
               `).join('')}
@@ -216,6 +225,7 @@ export const FlattenedSpecificationDialog = ({
                   <TableHead>Код</TableHead>
                   <TableHead>Наименование</TableHead>
                   <TableHead>Ед. изм.</TableHead>
+                  <TableHead className="text-center w-20">Уровень</TableHead>
                   <TableHead className="text-right">Количество</TableHead>
                 </TableRow>
               </TableHeader>
@@ -226,6 +236,11 @@ export const FlattenedSpecificationDialog = ({
                     <TableCell className="font-mono text-sm">{mat.code}</TableCell>
                     <TableCell>{mat.name}</TableCell>
                     <TableCell>{mat.unit}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className="font-mono">
+                        {mat.maxLevel}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right font-mono">
                       {mat.quantity.toFixed(4)}
                     </TableCell>
