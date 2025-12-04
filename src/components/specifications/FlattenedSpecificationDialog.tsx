@@ -520,7 +520,7 @@ export const FlattenedSpecificationDialog = ({
                           <span className="text-muted-foreground ml-2">({group.items.length} поз.)</span>
                         </TableCell>
                         <TableCell className="text-right font-semibold font-mono">
-                          Σ {group.totalQty.toFixed(2)}
+                          Σ {group.totalQty.toFixed(4)}
                         </TableCell>
                       </TableRow>
                       {group.items.map((mat, idx) => (
