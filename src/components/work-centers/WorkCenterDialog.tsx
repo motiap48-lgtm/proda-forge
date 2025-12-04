@@ -184,9 +184,6 @@ export const WorkCenterDialog = ({ open, onOpenChange, workCenter }: WorkCenterD
                 onChange={(e) => setFormData({ ...formData, capacity_minutes_per_day: parseInt(e.target.value) || 480 })}
                 min="1"
               />
-              <p className="text-xs text-muted-foreground">
-                {(formData.capacity_minutes_per_day / 60).toFixed(1)} ч
-              </p>
             </div>
 
             <div className="space-y-2">
