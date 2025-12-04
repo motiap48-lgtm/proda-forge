@@ -1,8 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Printer, Layers } from "lucide-react";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { useProducts } from "@/hooks/useProducts";
@@ -51,6 +53,11 @@ export const FlattenedSpecificationDialog = ({
   const printRef = useRef<HTMLDivElement>(null);
   const { data: allSpecifications } = useSpecifications();
   const { data: products } = useProducts();
+  
+  // Фильтры по типам
+  const [showMaterials, setShowMaterials] = useState(true);
+  const [showSemiFinished, setShowSemiFinished] = useState(true);
+  const [showAssemblies, setShowAssemblies] = useState(true);
 
   // Рекурсивная функция для полной раскладки спецификации
   const flattenSpecification = (
@@ -108,10 +115,31 @@ export const FlattenedSpecificationDialog = ({
     return result;
   };
 
-  const flattenedMaterials = specification?.specification_materials
-    ? flattenSpecification(specification.specification_materials)
-        .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
-    : [];
+  const allFlattenedMaterials = useMemo(() => {
+    if (!specification?.specification_materials) return [];
+    return flattenSpecification(specification.specification_materials);
+  }, [specification, products, allSpecifications]);
+
+  // Подсчёт по типам
+  const summary = useMemo(() => {
+    const counts = { material: 0, 'semi-finished': 0, assembly: 0 };
+    allFlattenedMaterials.forEach(mat => {
+      if (counts[mat.product_type as keyof typeof counts] !== undefined) {
+        counts[mat.product_type as keyof typeof counts]++;
+      }
+    });
+    return counts;
+  }, [allFlattenedMaterials]);
+
+  // Фильтрованный список
+  const flattenedMaterials = useMemo(() => {
+    return allFlattenedMaterials.filter(mat => {
+      if (mat.product_type === 'material' && !showMaterials) return false;
+      if (mat.product_type === 'semi-finished' && !showSemiFinished) return false;
+      if (mat.product_type === 'assembly' && !showAssemblies) return false;
+      return true;
+    });
+  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies]);
 
   const handlePrint = () => {
     const printContent = printRef.current;
@@ -210,7 +238,7 @@ export const FlattenedSpecificationDialog = ({
         </DialogHeader>
 
         <div ref={printRef}>
-          <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+          <div className="mb-4 p-4 bg-muted/50 rounded-lg space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold">{specification?.code}</p>
@@ -218,10 +246,65 @@ export const FlattenedSpecificationDialog = ({
                   {specification?.products?.name} ({specification?.products?.code})
                 </p>
               </div>
-              <Badge variant="outline">
-                {flattenedMaterials.length} компонентов
-              </Badge>
             </div>
+            
+            {/* Сводка по типам */}
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-green-500/10 border border-green-500/20">
+                <span className="text-sm font-medium text-green-700">МАТ:</span>
+                <span className="text-sm font-bold text-green-700">{summary.material}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-orange-500/10 border border-orange-500/20">
+                <span className="text-sm font-medium text-orange-700">ПФ:</span>
+                <span className="text-sm font-bold text-orange-700">{summary['semi-finished']}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-purple-500/10 border border-purple-500/20">
+                <span className="text-sm font-medium text-purple-700">СБ:</span>
+                <span className="text-sm font-bold text-purple-700">{summary.assembly}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted border">
+                <span className="text-sm font-medium">Всего:</span>
+                <span className="text-sm font-bold">{allFlattenedMaterials.length}</span>
+              </div>
+            </div>
+
+            {/* Фильтры */}
+            <div className="flex flex-wrap gap-4 pt-2 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="filter-materials" 
+                  checked={showMaterials}
+                  onCheckedChange={(checked) => setShowMaterials(checked as boolean)}
+                />
+                <Label htmlFor="filter-materials" className="text-sm cursor-pointer">
+                  Материалы ({summary.material})
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="filter-semi" 
+                  checked={showSemiFinished}
+                  onCheckedChange={(checked) => setShowSemiFinished(checked as boolean)}
+                />
+                <Label htmlFor="filter-semi" className="text-sm cursor-pointer">
+                  Полуфабрикаты ({summary['semi-finished']})
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="filter-assembly" 
+                  checked={showAssemblies}
+                  onCheckedChange={(checked) => setShowAssemblies(checked as boolean)}
+                />
+                <Label htmlFor="filter-assembly" className="text-sm cursor-pointer">
+                  Сборочные узлы ({summary.assembly})
+                </Label>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-sm text-muted-foreground mb-2">
+            Показано: {flattenedMaterials.length} из {allFlattenedMaterials.length}
           </div>
 
           {flattenedMaterials.length > 0 ? (
