@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Wand2 } from "lucide-react";
+import { Loader2, Wand2, Calculator } from "lucide-react";
 import { useCreateWorkCenter, useUpdateWorkCenter } from "@/hooks/useWorkCenters";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -35,6 +35,15 @@ export const WorkCenterDialog = ({ open, onOpenChange, workCenter }: WorkCenterD
     capacity_minutes_per_day: 480,
     efficiency_percent: 100,
   });
+  
+  // Calculation parameters
+  const [calcParams, setCalcParams] = useState({
+    shifts: 1,
+    machines: 1,
+    hoursPerShift: 8,
+    utilizationPercent: 100,
+  });
+  
   const [isLoadingCode, setIsLoadingCode] = useState(false);
 
   const createMutation = useCreateWorkCenter();
@@ -55,10 +64,29 @@ export const WorkCenterDialog = ({ open, onOpenChange, workCenter }: WorkCenterD
     }
   };
 
-  // Calculate efficiency based on capacity (standard 8-hour day = 480 min = 100%)
-  const calculateEfficiency = (capacity: number) => {
-    const standardCapacity = 480; // 8 hours standard
-    return Math.round((capacity / standardCapacity) * 100);
+  // Calculate capacity and efficiency based on parameters
+  const calculateCapacityAndEfficiency = (params: typeof calcParams) => {
+    const capacityMinutes = params.shifts * params.machines * params.hoursPerShift * 60;
+    return {
+      capacity_minutes_per_day: capacityMinutes,
+      efficiency_percent: params.utilizationPercent,
+    };
+  };
+
+  // Reverse calculate params from capacity (for editing)
+  const reverseCalculateParams = (capacity: number, efficiency: number) => {
+    // Default: 1 shift, calculate machines based on 8-hour shift
+    const hoursPerShift = 8;
+    const shifts = 1;
+    const totalHours = capacity / 60;
+    const machines = Math.max(1, Math.round(totalHours / (shifts * hoursPerShift)));
+    
+    return {
+      shifts,
+      machines,
+      hoursPerShift,
+      utilizationPercent: efficiency,
+    };
   };
 
   useEffect(() => {
@@ -72,8 +100,11 @@ export const WorkCenterDialog = ({ open, onOpenChange, workCenter }: WorkCenterD
           capacity_minutes_per_day: workCenter.capacity_minutes_per_day || 480,
           efficiency_percent: workCenter.efficiency_percent || 100,
         });
+        setCalcParams(reverseCalculateParams(
+          workCenter.capacity_minutes_per_day || 480,
+          workCenter.efficiency_percent || 100
+        ));
       } else {
-        // Reset form and generate new code
         setFormData({
           code: "",
           name: "",
@@ -82,18 +113,26 @@ export const WorkCenterDialog = ({ open, onOpenChange, workCenter }: WorkCenterD
           capacity_minutes_per_day: 480,
           efficiency_percent: 100,
         });
+        setCalcParams({
+          shifts: 1,
+          machines: 1,
+          hoursPerShift: 8,
+          utilizationPercent: 100,
+        });
         generateCode();
       }
     }
   }, [workCenter, open]);
 
-  // Auto-calculate efficiency when capacity changes
-  const handleCapacityChange = (capacity: number) => {
-    const efficiency = calculateEfficiency(capacity);
+  // Update capacity when calculation params change
+  const handleCalcParamChange = (key: keyof typeof calcParams, value: number) => {
+    const newParams = { ...calcParams, [key]: value };
+    setCalcParams(newParams);
+    
+    const calculated = calculateCapacityAndEfficiency(newParams);
     setFormData(prev => ({
       ...prev,
-      capacity_minutes_per_day: capacity,
-      efficiency_percent: efficiency,
+      ...calculated,
     }));
   };
 
@@ -103,7 +142,6 @@ export const WorkCenterDialog = ({ open, onOpenChange, workCenter }: WorkCenterD
     if (workCenter) {
       await updateMutation.mutateAsync({ id: workCenter.id, ...formData });
     } else {
-      // Server will auto-generate code if empty
       await createMutation.mutateAsync(formData);
     }
 
@@ -125,6 +163,7 @@ export const WorkCenterDialog = ({ open, onOpenChange, workCenter }: WorkCenterD
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Basic info */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="code">Код *</Label>
@@ -187,32 +226,80 @@ export const WorkCenterDialog = ({ open, onOpenChange, workCenter }: WorkCenterD
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="capacity">Мощность (мин/день)</Label>
-              <Input
-                id="capacity"
-                type="number"
-                value={formData.capacity_minutes_per_day}
-                onChange={(e) => handleCapacityChange(parseInt(e.target.value) || 0)}
-                min="0"
-              />
+          {/* Capacity calculation */}
+          <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Calculator className="h-4 w-4" />
+              Расчёт мощности и эффективности
+            </div>
+            
+            <div className="grid grid-cols-4 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="shifts" className="text-xs">Смен в день</Label>
+                <Input
+                  id="shifts"
+                  type="number"
+                  value={calcParams.shifts}
+                  onChange={(e) => handleCalcParamChange('shifts', Math.max(1, parseInt(e.target.value) || 1))}
+                  min="1"
+                  max="3"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="machines" className="text-xs">Станков/рабочих мест</Label>
+                <Input
+                  id="machines"
+                  type="number"
+                  value={calcParams.machines}
+                  onChange={(e) => handleCalcParamChange('machines', Math.max(1, parseInt(e.target.value) || 1))}
+                  min="1"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="hoursPerShift" className="text-xs">Часов в смене</Label>
+                <Input
+                  id="hoursPerShift"
+                  type="number"
+                  value={calcParams.hoursPerShift}
+                  onChange={(e) => handleCalcParamChange('hoursPerShift', Math.max(1, parseInt(e.target.value) || 8))}
+                  min="1"
+                  max="24"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="utilization" className="text-xs">Коэфф. использования (%)</Label>
+                <Input
+                  id="utilization"
+                  type="number"
+                  value={calcParams.utilizationPercent}
+                  onChange={(e) => handleCalcParamChange('utilizationPercent', Math.min(100, Math.max(0, parseInt(e.target.value) || 100)))}
+                  min="0"
+                  max="100"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="efficiency">
-                Эффективность (%)
-                <span className="ml-2 text-xs text-muted-foreground">авто</span>
-              </Label>
-              <div className="relative">
-                <Input
-                  id="efficiency"
-                  type="number"
-                  value={formData.efficiency_percent}
-                  readOnly
-                  className="bg-muted pr-10"
-                />
-                <Wand2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            {/* Calculated results */}
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Мощность (мин/день)</Label>
+                <div className="text-lg font-semibold">
+                  {formData.capacity_minutes_per_day.toLocaleString('ru-RU')}
+                  <span className="text-xs text-muted-foreground ml-2">
+                    ({(formData.capacity_minutes_per_day / 60).toFixed(1)} ч)
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Эффективность</Label>
+                <div className="text-lg font-semibold">
+                  {formData.efficiency_percent}%
+                </div>
               </div>
             </div>
           </div>
