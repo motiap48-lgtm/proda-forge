@@ -20,8 +20,28 @@ interface FlattenedMaterial {
   unit: string;
   quantity: number;
   product_type: string;
-  maxLevel: number; // Максимальный уровень вложенности, на котором встречается материал
+  level: number; // Уровень вложенности
 }
+
+const getProductTypeLabel = (type: string) => {
+  switch (type) {
+    case 'material': return 'МАТ';
+    case 'semi-finished': return 'ПФ';
+    case 'assembly': return 'СБ';
+    case 'finished': return 'ГП';
+    default: return type;
+  }
+};
+
+const getProductTypeBadgeClass = (type: string) => {
+  switch (type) {
+    case 'material': return 'bg-green-500/10 text-green-700 border-green-500/20';
+    case 'semi-finished': return 'bg-orange-500/10 text-orange-700 border-orange-500/20';
+    case 'assembly': return 'bg-purple-500/10 text-purple-700 border-purple-500/20';
+    case 'finished': return 'bg-blue-500/10 text-blue-700 border-blue-500/20';
+    default: return '';
+  }
+};
 
 export const FlattenedSpecificationDialog = ({ 
   open, 
@@ -32,14 +52,14 @@ export const FlattenedSpecificationDialog = ({
   const { data: allSpecifications } = useSpecifications();
   const { data: products } = useProducts();
 
-  // Рекурсивная функция для разложения спецификации
+  // Рекурсивная функция для полной раскладки спецификации
   const flattenSpecification = (
     specMaterials: any[],
     multiplier: number = 1,
     level: number = 1,
     visited: Set<string> = new Set()
   ): FlattenedMaterial[] => {
-    const flattenedMap = new Map<string, FlattenedMaterial>();
+    const result: FlattenedMaterial[] = [];
 
     for (const material of specMaterials) {
       const materialProduct = products?.find(p => p.id === material.material_id);
@@ -49,25 +69,19 @@ export const FlattenedSpecificationDialog = ({
       const wasteMultiplier = 1 + (Number(material.waste_rate) || 0) / 100;
       const effectiveQuantity = Number(material.quantity) * multiplier * wasteMultiplier;
 
-      // Если это материал (покупная продукция) - добавляем в итоговый список
-      if (materialProduct.product_type === "material") {
-        const existing = flattenedMap.get(material.material_id);
-        if (existing) {
-          existing.quantity += effectiveQuantity;
-          existing.maxLevel = Math.max(existing.maxLevel, level);
-        } else {
-          flattenedMap.set(material.material_id, {
-            material_id: material.material_id,
-            name: materialProduct.name,
-            code: materialProduct.code,
-            unit: materialProduct.unit,
-            quantity: effectiveQuantity,
-            product_type: materialProduct.product_type,
-            maxLevel: level,
-          });
-        }
-      } else {
-        // Если это ПФ или СБ - ищем их спецификацию и раскладываем дальше
+      // Добавляем текущий компонент в результат
+      result.push({
+        material_id: material.material_id,
+        name: materialProduct.name,
+        code: materialProduct.code,
+        unit: materialProduct.unit,
+        quantity: effectiveQuantity,
+        product_type: materialProduct.product_type,
+        level: level,
+      });
+
+      // Если это ПФ или СБ - ищем их спецификацию и раскладываем дальше
+      if (materialProduct.product_type !== "material") {
         if (visited.has(material.material_id)) {
           // Предотвращаем бесконечную рекурсию
           continue;
@@ -86,21 +100,12 @@ export const FlattenedSpecificationDialog = ({
             visited
           );
           
-          // Добавляем материалы из дочерней спецификации
-          for (const childMat of childMaterials) {
-            const existing = flattenedMap.get(childMat.material_id);
-            if (existing) {
-              existing.quantity += childMat.quantity;
-              existing.maxLevel = Math.max(existing.maxLevel, childMat.maxLevel);
-            } else {
-              flattenedMap.set(childMat.material_id, { ...childMat });
-            }
-          }
+          result.push(...childMaterials);
         }
       }
     }
 
-    return Array.from(flattenedMap.values());
+    return result;
   };
 
   const flattenedMaterials = specification?.specification_materials
@@ -161,6 +166,7 @@ export const FlattenedSpecificationDialog = ({
             <thead>
               <tr>
                 <th>№</th>
+                <th>Тип</th>
                 <th>Код</th>
                 <th>Наименование</th>
                 <th>Ед. изм.</th>
@@ -172,10 +178,11 @@ export const FlattenedSpecificationDialog = ({
               ${flattenedMaterials.map((mat, idx) => `
                 <tr>
                   <td>${idx + 1}</td>
+                  <td>${getProductTypeLabel(mat.product_type)}</td>
                   <td>${mat.code}</td>
-                  <td>${mat.name}</td>
+                  <td>${'&nbsp;'.repeat((mat.level - 1) * 4)}${mat.name}</td>
                   <td>${mat.unit}</td>
-                  <td class="text-center">${mat.maxLevel}</td>
+                  <td class="text-center">${mat.level}</td>
                   <td class="text-right">${mat.quantity.toFixed(4)}</td>
                 </tr>
               `).join('')}
@@ -212,7 +219,7 @@ export const FlattenedSpecificationDialog = ({
                 </p>
               </div>
               <Badge variant="outline">
-                {flattenedMaterials.length} материалов
+                {flattenedMaterials.length} компонентов
               </Badge>
             </div>
           </div>
@@ -222,6 +229,7 @@ export const FlattenedSpecificationDialog = ({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">№</TableHead>
+                  <TableHead className="w-16">Тип</TableHead>
                   <TableHead>Код</TableHead>
                   <TableHead>Наименование</TableHead>
                   <TableHead>Ед. изм.</TableHead>
@@ -231,14 +239,21 @@ export const FlattenedSpecificationDialog = ({
               </TableHeader>
               <TableBody>
                 {flattenedMaterials.map((mat, idx) => (
-                  <TableRow key={mat.material_id}>
+                  <TableRow key={`${mat.material_id}-${mat.level}-${idx}`}>
                     <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getProductTypeBadgeClass(mat.product_type)}>
+                        {getProductTypeLabel(mat.product_type)}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="font-mono text-sm">{mat.code}</TableCell>
-                    <TableCell>{mat.name}</TableCell>
+                    <TableCell style={{ paddingLeft: `${(mat.level - 1) * 16 + 16}px` }}>
+                      {mat.name}
+                    </TableCell>
                     <TableCell>{mat.unit}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant="outline" className="font-mono">
-                        {mat.maxLevel}
+                        {mat.level}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-mono">
