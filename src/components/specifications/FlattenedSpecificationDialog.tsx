@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Printer, Layers, FileSpreadsheet, Search, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Printer, Layers, FileSpreadsheet, Search, X, Copy } from "lucide-react";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { useProducts } from "@/hooks/useProducts";
 import * as XLSX from "xlsx";
@@ -25,6 +26,8 @@ interface FlattenedMaterial {
   quantity: number;
   product_type: string;
   level: number; // Уровень вложенности
+  occurrences?: number; // Сколько раз встречается в спецификации
+  totalQuantity?: number; // Суммарное количество по всем вхождениям
 }
 
 const getProductTypeLabel = (type: string) => {
@@ -157,6 +160,21 @@ export const FlattenedSpecificationDialog = ({
     return flattenSpecification(specification.specification_materials);
   }, [specification, products, allSpecifications]);
 
+  // Подсчёт вхождений и сумм по каждому компоненту
+  const occurrenceStats = useMemo(() => {
+    const stats = new Map<string, { count: number; totalQty: number }>();
+    allFlattenedMaterials.forEach(mat => {
+      const existing = stats.get(mat.material_id);
+      if (existing) {
+        existing.count++;
+        existing.totalQty += mat.quantity;
+      } else {
+        stats.set(mat.material_id, { count: 1, totalQty: mat.quantity });
+      }
+    });
+    return stats;
+  }, [allFlattenedMaterials]);
+
   // Подсчёт по типам
   const summary = useMemo(() => {
     const counts = { material: 0, 'semi-finished': 0, assembly: 0 };
@@ -183,6 +201,16 @@ export const FlattenedSpecificationDialog = ({
       return true;
     });
 
+    // Обогащаем данными о вхождениях
+    filtered = filtered.map(mat => {
+      const stats = occurrenceStats.get(mat.material_id);
+      return {
+        ...mat,
+        occurrences: stats?.count || 1,
+        totalQuantity: stats?.totalQty || mat.quantity,
+      };
+    });
+
     // Агрегация одинаковых компонентов
     if (aggregateSame) {
       const aggregated = new Map<string, FlattenedMaterial>();
@@ -200,7 +228,7 @@ export const FlattenedSpecificationDialog = ({
     }
 
     return filtered;
-  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery, aggregateSame]);
+  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery, aggregateSame, occurrenceStats]);
 
   // Группированный список по типу
   const groupedMaterials = useMemo(() => {
@@ -536,7 +564,27 @@ export const FlattenedSpecificationDialog = ({
                             </Badge>
                           </TableCell>
                           <TableCell className="font-mono text-sm">{mat.code}</TableCell>
-                          <TableCell>{mat.name}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {mat.name}
+                              {mat.occurrences && mat.occurrences > 1 && !aggregateSame && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge variant="secondary" className="text-xs bg-blue-500/10 text-blue-700 border-blue-500/20 cursor-help">
+                                        <Copy className="h-3 w-3 mr-1" />
+                                        {mat.occurrences}× | Σ {mat.totalQuantity?.toFixed(4)}
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Компонент встречается {mat.occurrences} раз(а)</p>
+                                      <p>Суммарное кол-во: {mat.totalQuantity?.toFixed(4)} {mat.unit}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>{mat.unit}</TableCell>
                           <TableCell className="text-center">
                             <Badge variant="outline" className="font-mono">
@@ -562,7 +610,25 @@ export const FlattenedSpecificationDialog = ({
                       </TableCell>
                       <TableCell className="font-mono text-sm">{mat.code}</TableCell>
                       <TableCell style={{ paddingLeft: `${(mat.level - 1) * 16 + 16}px` }}>
-                        {mat.name}
+                        <div className="flex items-center gap-2">
+                          {mat.name}
+                          {mat.occurrences && mat.occurrences > 1 && !aggregateSame && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="secondary" className="text-xs bg-blue-500/10 text-blue-700 border-blue-500/20 cursor-help">
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    {mat.occurrences}× | Σ {mat.totalQuantity?.toFixed(4)}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Компонент встречается {mat.occurrences} раз(а)</p>
+                                  <p>Суммарное кол-во: {mat.totalQuantity?.toFixed(4)} {mat.unit}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>{mat.unit}</TableCell>
                       <TableCell className="text-center">

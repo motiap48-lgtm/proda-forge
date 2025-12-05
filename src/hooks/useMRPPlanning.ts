@@ -261,7 +261,6 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
       const purchaseReqs = new Map<string, PurchaseRequirement>();
       const productionReqs = new Map<string, ProductionRequirement>();
       const ordersWithoutSpec: OrderWithoutSpec[] = [];
-      const processedProducts = new Set<string>(); // Для избежания циклов
 
       // Рекурсивная функция разузловки
       const explodeBOM = (
@@ -272,11 +271,11 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
         unit: string,
         requiredQty: number,
         sourceOrder: string,
-        depth: number = 0
+        ancestorPath: Set<string> = new Set() // Путь от корня для предотвращения циклов
       ) => {
-        // Защита от бесконечной рекурсии
-        if (depth > 10) {
-          console.warn(`Max BOM depth reached for product ${productCode}`);
+        // Защита от циклических ссылок (A -> B -> A)
+        if (ancestorPath.has(productId)) {
+          console.warn(`Circular reference detected for product ${productCode}`);
           return;
         }
 
@@ -335,6 +334,10 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
 
         // Рекурсивно разузловываем компоненты
         if (spec && spec.materials.length > 0) {
+          // Создаём новый Set для текущей ветви с добавлением текущего продукта
+          const newAncestorPath = new Set(ancestorPath);
+          newAncestorPath.add(productId);
+          
           spec.materials.forEach(material => {
             const materialQty = material.quantity * (1 + material.waste_rate / 100) * requiredQty;
             explodeBOM(
@@ -345,7 +348,7 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
               material.unit,
               materialQty,
               sourceOrder,
-              depth + 1
+              newAncestorPath
             );
           });
         }
@@ -378,7 +381,7 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
             product.unit,
             remainingQty,
             order.order_number,
-            0
+            new Set()
           );
         }
       });
