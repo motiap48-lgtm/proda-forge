@@ -188,16 +188,53 @@ export const FlattenedSpecificationDialog = ({
     return counts;
   }, [allFlattenedMaterials]);
 
+  // Функция для проверки точного совпадения (с учётом границ слов/чисел)
+  const matchesSearchQuery = (text: string, query: string): boolean => {
+    if (!query) return true;
+    const textLower = text.toLowerCase();
+    const queryLower = query.toLowerCase();
+    
+    // Находим все вхождения подстроки
+    let startIndex = 0;
+    while (startIndex < textLower.length) {
+      const foundIndex = textLower.indexOf(queryLower, startIndex);
+      if (foundIndex === -1) return false;
+      
+      // Проверяем границы совпадения
+      const charBefore = foundIndex > 0 ? textLower[foundIndex - 1] : ' ';
+      const charAfter = foundIndex + queryLower.length < textLower.length 
+        ? textLower[foundIndex + queryLower.length] 
+        : ' ';
+      
+      // Если запрос заканчивается цифрой, следующий символ не должен быть цифрой
+      const queryEndsWithDigit = /\d$/.test(queryLower);
+      const afterIsDigit = /\d/.test(charAfter);
+      
+      // Если запрос начинается с цифры, предыдущий символ не должен быть цифрой
+      const queryStartsWithDigit = /^\d/.test(queryLower);
+      const beforeIsDigit = /\d/.test(charBefore);
+      
+      // Проверка границ для чисел
+      const validBoundary = 
+        (!queryEndsWithDigit || !afterIsDigit) && 
+        (!queryStartsWithDigit || !beforeIsDigit);
+      
+      if (validBoundary) return true;
+      
+      startIndex = foundIndex + 1;
+    }
+    return false;
+  };
+
   // Фильтрованный список
   const flattenedMaterials = useMemo(() => {
-    const query = searchQuery.toLowerCase();
     let filtered = allFlattenedMaterials.filter(mat => {
       // Фильтр по типу
       if (mat.product_type === 'material' && !showMaterials) return false;
       if (mat.product_type === 'semi-finished' && !showSemiFinished) return false;
       if (mat.product_type === 'assembly' && !showAssemblies) return false;
-      // Фильтр по поиску
-      if (query && !mat.name.toLowerCase().includes(query) && !mat.code.toLowerCase().includes(query)) {
+      // Фильтр по поиску с учётом границ слов/чисел
+      if (searchQuery && !matchesSearchQuery(mat.name, searchQuery) && !matchesSearchQuery(mat.code, searchQuery)) {
         return false;
       }
       return true;
