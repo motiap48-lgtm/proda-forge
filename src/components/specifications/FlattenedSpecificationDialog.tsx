@@ -66,6 +66,7 @@ export const FlattenedSpecificationDialog = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [groupByType, setGroupByType] = useState(false);
   const [aggregateSame, setAggregateSame] = useState(false);
+  const [showOnlyRepeated, setShowOnlyRepeated] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
 
   // Пресеты фильтров
@@ -93,6 +94,7 @@ export const FlattenedSpecificationDialog = ({
     setSearchQuery("");
     setGroupByType(false);
     setAggregateSame(false);
+    setShowOnlyRepeated(false);
     setActivePreset(null);
   };
 
@@ -211,6 +213,11 @@ export const FlattenedSpecificationDialog = ({
       };
     });
 
+    // Фильтр только повторяющихся
+    if (showOnlyRepeated) {
+      filtered = filtered.filter(mat => (mat.occurrences || 1) > 1);
+    }
+
     // Агрегация одинаковых компонентов
     if (aggregateSame) {
       const aggregated = new Map<string, FlattenedMaterial>();
@@ -228,7 +235,7 @@ export const FlattenedSpecificationDialog = ({
     }
 
     return filtered;
-  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery, aggregateSame, occurrenceStats]);
+  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery, aggregateSame, showOnlyRepeated, occurrenceStats]);
 
   // Группированный список по типу
   const groupedMaterials = useMemo(() => {
@@ -260,6 +267,8 @@ export const FlattenedSpecificationDialog = ({
       'Ед. изм.': mat.unit,
       'Уровень': mat.level,
       'Количество': mat.quantity,
+      'Вхождений': mat.occurrences || 1,
+      'Σ Количество': mat.totalQuantity || mat.quantity,
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -275,6 +284,8 @@ export const FlattenedSpecificationDialog = ({
       { wch: 10 },  // Ед. изм.
       { wch: 10 },  // Уровень
       { wch: 15 },  // Количество
+      { wch: 12 },  // Вхождений
+      { wch: 15 },  // Σ Количество
     ];
 
     XLSX.writeFile(wb, `Спецификация_${specification?.code || 'export'}.xlsx`);
@@ -474,6 +485,16 @@ export const FlattenedSpecificationDialog = ({
                 </Label>
               </div>
               <div className="flex items-center space-x-2 ml-auto gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="show-only-repeated" 
+                    checked={showOnlyRepeated}
+                    onCheckedChange={(checked) => setShowOnlyRepeated(checked as boolean)}
+                  />
+                  <Label htmlFor="show-only-repeated" className="text-sm cursor-pointer font-medium">
+                    Только повторяющиеся
+                  </Label>
+                </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox 
                     id="aggregate-same" 
