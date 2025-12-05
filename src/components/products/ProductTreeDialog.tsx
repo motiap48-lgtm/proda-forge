@@ -7,6 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface TreeNodeProps {
   productId: string;
@@ -15,8 +21,9 @@ interface TreeNodeProps {
   wasteRate?: number;
   level: number;
   searchQuery?: string;
-  expandVersion?: number;
-  collapseVersion?: number;
+  expandToLevel?: number;
+  collapseToLevel?: number;
+  allSpecifications: any[];
 }
 
 // Component for "Where Used" reverse tree
@@ -25,29 +32,76 @@ interface WhereUsedNodeProps {
   productData?: any;
   level: number;
   searchQuery?: string;
-  expandVersion?: number;
-  collapseVersion?: number;
+  expandToLevel?: number;
+  collapseToLevel?: number;
   allSpecifications: any[];
 }
 
-const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expandVersion, collapseVersion, allSpecifications }: WhereUsedNodeProps) => {
+// Helper function to check if a node or any descendant matches the search
+const checkDescendantsMatch = (
+  productId: string,
+  searchQuery: string,
+  allSpecifications: any[],
+  visited: Set<string> = new Set()
+): boolean => {
+  if (!searchQuery || visited.has(productId)) return false;
+  visited.add(productId);
+
+  const specification = allSpecifications?.find(
+    (spec) => spec.product_id === productId && spec.is_active
+  );
+  
+  const product = specification?.products;
+  if (product) {
+    const searchLower = searchQuery.toLowerCase();
+    const name = product?.name?.toLowerCase() || "";
+    const code = product?.code?.toLowerCase() || "";
+    if (name.includes(searchLower) || code.includes(searchLower)) {
+      return true;
+    }
+  }
+
+  const materials = (specification?.specification_materials || []) as any[];
+  for (const material of materials) {
+    const matProduct = material.products;
+    if (matProduct) {
+      const searchLower = searchQuery.toLowerCase();
+      const name = matProduct?.name?.toLowerCase() || "";
+      const code = matProduct?.code?.toLowerCase() || "";
+      if (name.includes(searchLower) || code.includes(searchLower)) {
+        return true;
+      }
+    }
+    if (checkDescendantsMatch(material.material_id, searchQuery, allSpecifications, visited)) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
+const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expandToLevel, collapseToLevel, allSpecifications }: WhereUsedNodeProps) => {
   const [isExpanded, setIsExpanded] = useState(level === 0);
-  const lastExpandVersion = useRef(0);
-  const lastCollapseVersion = useRef(0);
+  const lastExpandToLevel = useRef<number | undefined>(undefined);
+  const lastCollapseToLevel = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    if (expandVersion && expandVersion > lastExpandVersion.current) {
-      lastExpandVersion.current = expandVersion;
-      setIsExpanded(true);
+    if (expandToLevel !== undefined && expandToLevel !== lastExpandToLevel.current) {
+      lastExpandToLevel.current = expandToLevel;
+      if (level < expandToLevel) {
+        setIsExpanded(true);
+      }
     }
-  }, [expandVersion]);
+  }, [expandToLevel, level]);
 
   useEffect(() => {
-    if (collapseVersion && collapseVersion > lastCollapseVersion.current && level > 0) {
-      lastCollapseVersion.current = collapseVersion;
-      setIsExpanded(false);
+    if (collapseToLevel !== undefined && collapseToLevel !== lastCollapseToLevel.current) {
+      lastCollapseToLevel.current = collapseToLevel;
+      if (level >= collapseToLevel && level > 0) {
+        setIsExpanded(false);
+      }
     }
-  }, [collapseVersion, level]);
+  }, [collapseToLevel, level]);
 
   // Find all specifications that use this product as a material
   const parentProducts = useMemo(() => {
@@ -71,7 +125,7 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
     return name.includes(searchLower) || code.includes(searchLower);
   }, [searchQuery, product?.name, product?.code]);
 
-  // Auto-expand when search matches - use ref to prevent loops
+  // Auto-expand when search matches
   const prevSearchQuery = useRef(searchQuery);
   useEffect(() => {
     if (searchQuery !== prevSearchQuery.current) {
@@ -82,9 +136,6 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
     }
   }, [searchQuery, currentNodeMatches]);
 
-  // Don't hide nodes when searching - just highlight matches
-  const shouldShow = !searchQuery || currentNodeMatches || level === 0;
-
   const getProductTypeLabel = (type: string) => {
     switch (type) {
       case "finished": return "ГП";
@@ -94,10 +145,6 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
       default: return type;
     }
   };
-
-  if (!shouldShow) {
-    return null;
-  }
 
   return (
     <div className="space-y-2">
@@ -158,8 +205,8 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
             productData={parentProduct}
             level={level + 1}
             searchQuery={searchQuery}
-            expandVersion={expandVersion}
-            collapseVersion={collapseVersion}
+            expandToLevel={expandToLevel}
+            collapseToLevel={collapseToLevel}
             allSpecifications={allSpecifications}
           />
         );
@@ -168,27 +215,30 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
   );
 };
 
-const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQuery = "", expandVersion, collapseVersion }: TreeNodeProps) => {
+const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQuery = "", expandToLevel, collapseToLevel, allSpecifications }: TreeNodeProps) => {
   const [isExpanded, setIsExpanded] = useState(level === 0);
-  const lastExpandVersion = useRef(0);
-  const lastCollapseVersion = useRef(0);
-  const { data: specifications, isLoading } = useSpecifications();
+  const lastExpandToLevel = useRef<number | undefined>(undefined);
+  const lastCollapseToLevel = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    if (expandVersion && expandVersion > lastExpandVersion.current) {
-      lastExpandVersion.current = expandVersion;
-      setIsExpanded(true);
+    if (expandToLevel !== undefined && expandToLevel !== lastExpandToLevel.current) {
+      lastExpandToLevel.current = expandToLevel;
+      if (level < expandToLevel) {
+        setIsExpanded(true);
+      }
     }
-  }, [expandVersion]);
+  }, [expandToLevel, level]);
 
   useEffect(() => {
-    if (collapseVersion && collapseVersion > lastCollapseVersion.current && level > 0) {
-      lastCollapseVersion.current = collapseVersion;
-      setIsExpanded(false);
+    if (collapseToLevel !== undefined && collapseToLevel !== lastCollapseToLevel.current) {
+      lastCollapseToLevel.current = collapseToLevel;
+      if (level >= collapseToLevel && level > 0) {
+        setIsExpanded(false);
+      }
     }
-  }, [collapseVersion, level]);
+  }, [collapseToLevel, level]);
 
-  const specification = specifications?.find(
+  const specification = allSpecifications?.find(
     (spec) => spec.product_id === productId && spec.is_active
   );
 
@@ -196,7 +246,7 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
   const materials = (specification?.specification_materials || []) as any[];
   const hasChildren = materials.length > 0;
 
-  // Проверяем совпадение с поисковым запросом
+  // Check if current node matches search
   const currentNodeMatches = useMemo(() => {
     if (!searchQuery) return true;
     const searchLower = searchQuery.toLowerCase();
@@ -205,19 +255,39 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
     return name.includes(searchLower) || code.includes(searchLower);
   }, [searchQuery, product?.name, product?.code]);
 
-  // Auto-expand when search matches - use ref to prevent loops
+  // Check if any descendant matches
+  const hasDescendantMatch = useMemo(() => {
+    if (!searchQuery) return false;
+    for (const material of materials) {
+      const matProduct = material.products;
+      if (matProduct) {
+        const searchLower = searchQuery.toLowerCase();
+        const name = matProduct?.name?.toLowerCase() || "";
+        const code = matProduct?.code?.toLowerCase() || "";
+        if (name.includes(searchLower) || code.includes(searchLower)) {
+          return true;
+        }
+      }
+      if (checkDescendantsMatch(material.material_id, searchQuery, allSpecifications)) {
+        return true;
+      }
+    }
+    return false;
+  }, [searchQuery, materials, allSpecifications]);
+
+  // Auto-expand when search matches or has descendant match
   const prevSearchQuery = useRef(searchQuery);
   useEffect(() => {
     if (searchQuery !== prevSearchQuery.current) {
       prevSearchQuery.current = searchQuery;
-      if (searchQuery && currentNodeMatches) {
+      if (searchQuery && (currentNodeMatches || hasDescendantMatch)) {
         setIsExpanded(true);
       }
     }
-  }, [searchQuery, currentNodeMatches]);
+  }, [searchQuery, currentNodeMatches, hasDescendantMatch]);
 
-  // Don't hide nodes when searching - just highlight matches
-  const shouldShow = !searchQuery || currentNodeMatches || level === 0;
+  // Show node if it matches or has matching descendants or is root or no search
+  const shouldShow = !searchQuery || currentNodeMatches || hasDescendantMatch || level === 0;
 
   if (!shouldShow) {
     return null;
@@ -288,13 +358,6 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
         </div>
       </div>
 
-      {isLoading && isExpanded && (
-        <div className="flex items-center gap-2 p-2" style={{ paddingLeft: `${(level + 1) * 24 + 8}px` }}>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm text-muted-foreground">Загрузка...</span>
-        </div>
-      )}
-
       {isExpanded && materials.map((material) => (
         <TreeNode
           key={material.id}
@@ -304,8 +367,9 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
           wasteRate={material.waste_rate}
           level={level + 1}
           searchQuery={searchQuery}
-          expandVersion={expandVersion}
-          collapseVersion={collapseVersion}
+          expandToLevel={expandToLevel}
+          collapseToLevel={collapseToLevel}
+          allSpecifications={allSpecifications}
         />
       ))}
     </div>
@@ -331,8 +395,10 @@ export const ProductTreeDialog = ({
 }: ProductTreeDialogProps) => {
   const [inputValue, setInputValue] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandVersion, setExpandVersion] = useState(0);
-  const [collapseVersion, setCollapseVersion] = useState(0);
+  const [expandToLevel, setExpandToLevel] = useState<number | undefined>(undefined);
+  const [collapseToLevel, setCollapseToLevel] = useState<number | undefined>(undefined);
+  const [expandTrigger, setExpandTrigger] = useState(0);
+  const [collapseTrigger, setCollapseTrigger] = useState(0);
   const [viewMode, setViewMode] = useState<"composition" | "whereUsed">("composition");
   const { data: allSpecifications } = useSpecifications();
   const { data: allProducts } = useProducts();
@@ -354,13 +420,19 @@ export const ProductTreeDialog = ({
     );
   }, [searchQuery, viewMode, allProducts]);
 
-  const handleExpandAll = () => {
-    setExpandVersion(v => v + 1);
+  const handleExpandToLevel = (level: number) => {
+    setExpandToLevel(level);
+    setExpandTrigger(t => t + 1);
   };
 
-  const handleCollapseAll = () => {
-    setCollapseVersion(v => v + 1);
+  const handleCollapseToLevel = (level: number) => {
+    setCollapseToLevel(level);
+    setCollapseTrigger(t => t + 1);
   };
+
+  // Combine trigger with level for unique keys
+  const effectiveExpandToLevel = expandTrigger > 0 ? expandToLevel : undefined;
+  const effectiveCollapseToLevel = collapseTrigger > 0 ? collapseToLevel : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -414,24 +486,57 @@ export const ProductTreeDialog = ({
           </div>
           
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExpandAll}
-              className="flex-1"
-            >
-              <ChevronsDownUp className="h-4 w-4 mr-2" />
-              Развернуть всё
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCollapseAll}
-              className="flex-1"
-            >
-              <ChevronsUpDown className="h-4 w-4 mr-2" />
-              Свернуть всё
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex-1">
+                  <ChevronsDownUp className="h-4 w-4 mr-2" />
+                  Развернуть
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleExpandToLevel(1)}>
+                  До уровня 1
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExpandToLevel(2)}>
+                  До уровня 2
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExpandToLevel(3)}>
+                  До уровня 3
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExpandToLevel(4)}>
+                  До уровня 4
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExpandToLevel(5)}>
+                  До уровня 5
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExpandToLevel(100)}>
+                  Всё
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex-1">
+                  <ChevronsUpDown className="h-4 w-4 mr-2" />
+                  Свернуть
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleCollapseToLevel(1)}>
+                  До уровня 1
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCollapseToLevel(2)}>
+                  До уровня 2
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCollapseToLevel(3)}>
+                  До уровня 3
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCollapseToLevel(0)}>
+                  Всё (кроме корня)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         
@@ -442,8 +547,9 @@ export const ProductTreeDialog = ({
               productData={{ name: productName, code: productCode, product_type: productType }} 
               level={0}
               searchQuery={searchQuery}
-              expandVersion={expandVersion}
-              collapseVersion={collapseVersion}
+              expandToLevel={effectiveExpandToLevel}
+              collapseToLevel={effectiveCollapseToLevel}
+              allSpecifications={allSpecifications || []}
             />
           ) : searchQuery && matchingProductsForWhereUsed.length > 0 ? (
             // Show matching products and where they are used
@@ -455,8 +561,8 @@ export const ProductTreeDialog = ({
                   productData={product}
                   level={0}
                   searchQuery=""
-                  expandVersion={expandVersion}
-                  collapseVersion={collapseVersion}
+                  expandToLevel={effectiveExpandToLevel}
+                  collapseToLevel={effectiveCollapseToLevel}
                   allSpecifications={allSpecifications || []}
                 />
               ))}
@@ -471,8 +577,8 @@ export const ProductTreeDialog = ({
               productData={{ name: productName, code: productCode, product_type: productType }}
               level={0}
               searchQuery=""
-              expandVersion={expandVersion}
-              collapseVersion={collapseVersion}
+              expandToLevel={effectiveExpandToLevel}
+              collapseToLevel={effectiveCollapseToLevel}
               allSpecifications={allSpecifications || []}
             />
           )}
