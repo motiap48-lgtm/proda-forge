@@ -63,18 +63,22 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
   const product = productData;
   const hasChildren = parentProducts.length > 0;
 
-  const searchLower = searchQuery.toLowerCase();
   const currentNodeMatches = useMemo(() => {
     if (!searchQuery) return true;
+    const searchLower = searchQuery.toLowerCase();
     const name = product?.name?.toLowerCase() || "";
     const code = product?.code?.toLowerCase() || "";
     return name.includes(searchLower) || code.includes(searchLower);
-  }, [searchQuery, product?.name, product?.code, searchLower]);
+  }, [searchQuery, product?.name, product?.code]);
 
-  // Auto-expand when search matches
+  // Auto-expand when search matches - use ref to prevent loops
+  const prevSearchQuery = useRef(searchQuery);
   useEffect(() => {
-    if (searchQuery && currentNodeMatches) {
-      setIsExpanded(true);
+    if (searchQuery !== prevSearchQuery.current) {
+      prevSearchQuery.current = searchQuery;
+      if (searchQuery && currentNodeMatches) {
+        setIsExpanded(true);
+      }
     }
   }, [searchQuery, currentNodeMatches]);
 
@@ -193,18 +197,22 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
   const hasChildren = materials.length > 0;
 
   // Проверяем совпадение с поисковым запросом
-  const searchLower = searchQuery.toLowerCase();
   const currentNodeMatches = useMemo(() => {
     if (!searchQuery) return true;
+    const searchLower = searchQuery.toLowerCase();
     const name = product?.name?.toLowerCase() || "";
     const code = product?.code?.toLowerCase() || "";
     return name.includes(searchLower) || code.includes(searchLower);
-  }, [searchQuery, product?.name, product?.code, searchLower]);
+  }, [searchQuery, product?.name, product?.code]);
 
-  // Auto-expand when search matches
+  // Auto-expand when search matches - use ref to prevent loops
+  const prevSearchQuery = useRef(searchQuery);
   useEffect(() => {
-    if (searchQuery && currentNodeMatches) {
-      setIsExpanded(true);
+    if (searchQuery !== prevSearchQuery.current) {
+      prevSearchQuery.current = searchQuery;
+      if (searchQuery && currentNodeMatches) {
+        setIsExpanded(true);
+      }
     }
   }, [searchQuery, currentNodeMatches]);
 
