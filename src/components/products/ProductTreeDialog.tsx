@@ -37,6 +37,37 @@ interface WhereUsedNodeProps {
   allSpecifications: any[];
 }
 
+// Helper function for exact matching with number boundaries
+const matchesSearchQuery = (text: string, query: string): boolean => {
+  if (!query) return true;
+  const textLower = text.toLowerCase();
+  const queryLower = query.toLowerCase();
+  
+  let startIndex = 0;
+  while (startIndex < textLower.length) {
+    const foundIndex = textLower.indexOf(queryLower, startIndex);
+    if (foundIndex === -1) return false;
+    
+    const charBefore = foundIndex > 0 ? textLower[foundIndex - 1] : ' ';
+    const charAfter = foundIndex + queryLower.length < textLower.length 
+      ? textLower[foundIndex + queryLower.length] 
+      : ' ';
+    
+    const queryEndsWithDigit = /\d$/.test(queryLower);
+    const afterIsDigit = /\d/.test(charAfter);
+    const queryStartsWithDigit = /^\d/.test(queryLower);
+    const beforeIsDigit = /\d/.test(charBefore);
+    
+    const validBoundary = 
+      (!queryEndsWithDigit || !afterIsDigit) && 
+      (!queryStartsWithDigit || !beforeIsDigit);
+    
+    if (validBoundary) return true;
+    startIndex = foundIndex + 1;
+  }
+  return false;
+};
+
 // Helper function to check if a node or any descendant matches the search
 const checkDescendantsMatch = (
   productId: string,
@@ -53,10 +84,9 @@ const checkDescendantsMatch = (
   
   const product = specification?.products;
   if (product) {
-    const searchLower = searchQuery.toLowerCase();
-    const name = product?.name?.toLowerCase() || "";
-    const code = product?.code?.toLowerCase() || "";
-    if (name.includes(searchLower) || code.includes(searchLower)) {
+    const name = product?.name || "";
+    const code = product?.code || "";
+    if (matchesSearchQuery(name, searchQuery) || matchesSearchQuery(code, searchQuery)) {
       return true;
     }
   }
@@ -65,10 +95,9 @@ const checkDescendantsMatch = (
   for (const material of materials) {
     const matProduct = material.products;
     if (matProduct) {
-      const searchLower = searchQuery.toLowerCase();
-      const name = matProduct?.name?.toLowerCase() || "";
-      const code = matProduct?.code?.toLowerCase() || "";
-      if (name.includes(searchLower) || code.includes(searchLower)) {
+      const name = matProduct?.name || "";
+      const code = matProduct?.code || "";
+      if (matchesSearchQuery(name, searchQuery) || matchesSearchQuery(code, searchQuery)) {
         return true;
       }
     }
@@ -119,10 +148,9 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
 
   const currentNodeMatches = useMemo(() => {
     if (!searchQuery) return true;
-    const searchLower = searchQuery.toLowerCase();
-    const name = product?.name?.toLowerCase() || "";
-    const code = product?.code?.toLowerCase() || "";
-    return name.includes(searchLower) || code.includes(searchLower);
+    const name = product?.name || "";
+    const code = product?.code || "";
+    return matchesSearchQuery(name, searchQuery) || matchesSearchQuery(code, searchQuery);
   }, [searchQuery, product?.name, product?.code]);
 
   // Auto-expand when search matches
@@ -249,10 +277,9 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
   // Check if current node matches search
   const currentNodeMatches = useMemo(() => {
     if (!searchQuery) return true;
-    const searchLower = searchQuery.toLowerCase();
-    const name = product?.name?.toLowerCase() || "";
-    const code = product?.code?.toLowerCase() || "";
-    return name.includes(searchLower) || code.includes(searchLower);
+    const name = product?.name || "";
+    const code = product?.code || "";
+    return matchesSearchQuery(name, searchQuery) || matchesSearchQuery(code, searchQuery);
   }, [searchQuery, product?.name, product?.code]);
 
   // Check if any descendant matches
@@ -261,10 +288,9 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
     for (const material of materials) {
       const matProduct = material.products;
       if (matProduct) {
-        const searchLower = searchQuery.toLowerCase();
-        const name = matProduct?.name?.toLowerCase() || "";
-        const code = matProduct?.code?.toLowerCase() || "";
-        if (name.includes(searchLower) || code.includes(searchLower)) {
+        const name = matProduct?.name || "";
+        const code = matProduct?.code || "";
+        if (matchesSearchQuery(name, searchQuery) || matchesSearchQuery(code, searchQuery)) {
           return true;
         }
       }
@@ -413,10 +439,9 @@ export const ProductTreeDialog = ({
   // Find products matching search query for "Where Used" mode
   const matchingProductsForWhereUsed = useMemo(() => {
     if (!searchQuery || viewMode !== "whereUsed" || !allProducts) return [];
-    const searchLower = searchQuery.toLowerCase();
     return allProducts.filter(p => 
       p.is_active && 
-      (p.name.toLowerCase().includes(searchLower) || p.code.toLowerCase().includes(searchLower))
+      (matchesSearchQuery(p.name, searchQuery) || matchesSearchQuery(p.code, searchQuery))
     );
   }, [searchQuery, viewMode, allProducts]);
 
