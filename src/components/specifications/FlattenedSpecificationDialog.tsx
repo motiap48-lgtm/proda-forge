@@ -97,7 +97,7 @@ export const FlattenedSpecificationDialog = ({
     specMaterials: any[],
     multiplier: number = 1,
     level: number = 1,
-    visited: Set<string> = new Set()
+    ancestorPath: Set<string> = new Set() // Путь от корня - для предотвращения циклов
   ): FlattenedMaterial[] => {
     const result: FlattenedMaterial[] = [];
 
@@ -122,8 +122,9 @@ export const FlattenedSpecificationDialog = ({
 
       // Если это ПФ или СБ - ищем их спецификацию и раскладываем дальше
       if (materialProduct.product_type !== "material") {
-        if (visited.has(material.material_id)) {
-          // Предотвращаем бесконечную рекурсию
+        // Проверяем только циклические ссылки в текущей ветви (предок -> потомок -> тот же предок)
+        if (ancestorPath.has(material.material_id)) {
+          // Предотвращаем бесконечную рекурсию при циклических ссылках
           continue;
         }
         
@@ -132,12 +133,15 @@ export const FlattenedSpecificationDialog = ({
         );
         
         if (childSpec && childSpec.specification_materials?.length > 0) {
-          visited.add(material.material_id);
+          // Создаём новый Set для текущей ветви с добавлением текущего компонента
+          const newAncestorPath = new Set(ancestorPath);
+          newAncestorPath.add(material.material_id);
+          
           const childMaterials = flattenSpecification(
             childSpec.specification_materials,
             effectiveQuantity,
             level + 1,
-            visited
+            newAncestorPath
           );
           
           result.push(...childMaterials);
