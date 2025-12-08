@@ -494,7 +494,7 @@ export const FlattenedSpecificationDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Layers className="h-5 w-5" />
@@ -656,27 +656,18 @@ export const FlattenedSpecificationDialog = ({
               </div>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[280px] justify-between h-10">
+                  <Button variant="outline" className="w-[200px] justify-between h-10">
                     <div className="flex items-center gap-2 truncate">
                       <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
                       {selectedParents.size === 0 ? (
-                        <span className="text-muted-foreground">Все родители</span>
-                      ) : selectedParents.size === 1 ? (
-                        <span className="truncate">
-                          {uniqueParents.find(p => p.code === Array.from(selectedParents)[0])?.name || 'Выбран 1'}
-                        </span>
+                        <span className="text-muted-foreground">Фильтр по родителю</span>
                       ) : (
                         <span>Выбрано: {selectedParents.size}</span>
                       )}
                     </div>
-                    {selectedParents.size > 0 && (
-                      <Badge variant="secondary" className="ml-2 shrink-0">
-                        {selectedParents.size}
-                      </Badge>
-                    )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[280px] p-0" align="start">
+                <PopoverContent className="w-[350px] p-0" align="end">
                   <div className="p-2 border-b">
                     <Button 
                       variant="ghost" 
@@ -811,16 +802,16 @@ export const FlattenedSpecificationDialog = ({
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="max-w-[200px]">
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="text-sm text-muted-foreground truncate max-w-[150px] block cursor-help">
+                                  <span className="text-sm truncate block cursor-help">
                                     {mat.parentName || '-'}
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="font-medium">{mat.parentName}</p>
+                                <TooltipContent side="top" className="max-w-[300px]">
+                                  <p className="font-medium break-words">{mat.parentName}</p>
                                   {mat.parentCode && <p className="text-xs text-muted-foreground">{mat.parentCode}</p>}
                                 </TooltipContent>
                               </Tooltip>
@@ -871,16 +862,16 @@ export const FlattenedSpecificationDialog = ({
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="max-w-[200px]">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="text-sm text-muted-foreground truncate max-w-[150px] block cursor-help">
+                              <span className="text-sm truncate block cursor-help">
                                 {mat.parentName || '-'}
                               </span>
                             </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="font-medium">{mat.parentName}</p>
+                            <TooltipContent side="top" className="max-w-[300px]">
+                              <p className="font-medium break-words">{mat.parentName}</p>
                               {mat.parentCode && <p className="text-xs text-muted-foreground">{mat.parentCode}</p>}
                             </TooltipContent>
                           </Tooltip>
