@@ -67,7 +67,7 @@ const WorkCenters = () => {
         {/* Page Header */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Рабочие центры</h1>
+            <h1 className="text-3xl font-bold text-foreground">Производственные участки</h1>
             <p className="text-muted-foreground">
               Управление производственными участками и оборудованием
             </p>
@@ -81,7 +81,7 @@ const WorkCenters = () => {
             }}
           >
             <Plus className="mr-2 h-5 w-5" />
-            Добавить рабочий центр
+            Добавить производственный участок
           </Button>
         </div>
 
@@ -159,7 +159,7 @@ const WorkCenters = () => {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
-                            if (confirm("Удалить рабочий центр?")) {
+                            if (confirm("Удалить производственный участок?")) {
                               deleteMutation.mutate(center.id);
                             }
                           }}
@@ -206,7 +206,7 @@ const WorkCenters = () => {
         {filteredCenters.length === 0 && (
           <Card>
             <CardContent className="p-12 text-center">
-              <p className="text-muted-foreground">Рабочие центры не найдены</p>
+              <p className="text-muted-foreground">Производственные участки не найдены</p>
             </CardContent>
           </Card>
         )}
