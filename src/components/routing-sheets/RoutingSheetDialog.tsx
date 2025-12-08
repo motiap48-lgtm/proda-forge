@@ -602,6 +602,13 @@ export function RoutingSheetDialog({
               <RoutingFlowDiagram 
                 operations={operations}
                 workCenters={workCenters || []}
+                editable
+                onReorder={(fromIndex, toIndex) => {
+                  const newOps = [...operations];
+                  const [draggedOp] = newOps.splice(fromIndex, 1);
+                  newOps.splice(toIndex, 0, draggedOp);
+                  setOperations(newOps.map((op, i) => ({ ...op, sequence: i + 1 })));
+                }}
               />
 
               <Card className="bg-muted/50">
