@@ -180,7 +180,7 @@ const ProductionOrderDetailsNew = () => {
           </Card>
           <Card>
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-2">Рабочий центр</p>
+              <p className="text-sm text-muted-foreground mb-2">Производственный участок</p>
               <p className="text-xl font-bold text-foreground">{order.work_centers?.name || "Не указан"}</p>
             </CardContent>
           </Card>

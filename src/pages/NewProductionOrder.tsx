@@ -251,14 +251,14 @@ const NewProductionOrderContent = () => {
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="work_center">Рабочий центр</Label>
+                      <Label htmlFor="work_center">Производственный участок</Label>
                       <SearchableSelect
                         options={workCenterOptions}
                         value={formData.work_center}
                         onValueChange={(value) => handleChange("work_center", value)}
-                        placeholder="Выберите рабочий центр (опционально)"
+                        placeholder="Выберите участок (опционально)"
                         searchPlaceholder="Поиск по коду или названию..."
-                        emptyText="Рабочий центр не найден"
+                        emptyText="Участок не найден"
                       />
                     </div>
 

@@ -276,7 +276,7 @@ const EditProductionOrder = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="work_center_id">Рабочий центр</Label>
+                    <Label htmlFor="work_center_id">Производственный участок</Label>
                     <Select
                       value={formData.work_center_id}
                       onValueChange={(value) =>
@@ -284,7 +284,7 @@ const EditProductionOrder = () => {
                       }
                     >
                       <SelectTrigger id="work_center_id">
-                        <SelectValue placeholder="Выберите рабочий центр" />
+                        <SelectValue placeholder="Выберите участок" />
                       </SelectTrigger>
                       <SelectContent>
                         {workCenters?.map((wc) => (
