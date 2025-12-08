@@ -1034,6 +1034,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_equipment_code: { Args: never; Returns: string }
       generate_product_code: {
         Args: { p_product_type: string }
         Returns: string

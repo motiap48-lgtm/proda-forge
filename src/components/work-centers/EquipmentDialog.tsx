@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Wand2 } from "lucide-react";
 import { useCreateEquipment, useUpdateEquipment } from "@/hooks/useEquipment";
 
 interface EquipmentDialogProps {
@@ -123,14 +123,16 @@ export const EquipmentDialog = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="code">Код *</Label>
-              <Input
-                id="code"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                required
-                placeholder="EQ-001"
-              />
+              <Label htmlFor="code">Код</Label>
+              <div className="relative">
+                <Input
+                  id="code"
+                  value={equipment ? formData.code : "Автоматически"}
+                  readOnly
+                  className="bg-muted pr-10"
+                />
+                <Wand2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </div>
             </div>
 
             <div className="space-y-2">
