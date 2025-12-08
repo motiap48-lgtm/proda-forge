@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Factory, Loader2, Edit, Trash2, Wrench, X } from "lucide-react";
+import { Plus, Search, Factory, Loader2, Edit, Trash2, Wrench, X, Filter } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useWorkCenters, useDeleteWorkCenter } from "@/hooks/useWorkCenters";
+import { useEquipment } from "@/hooks/useEquipment";
 import { WorkCenterDialog } from "@/components/work-centers/WorkCenterDialog";
 import { EquipmentManagement } from "@/components/work-centers/EquipmentManagement";
 import { EquipmentPrintExport } from "@/components/work-centers/EquipmentPrintExport";
@@ -16,23 +17,68 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
+
+type EquipmentStatus = "all" | "active" | "maintenance" | "broken" | "inactive";
+
+const EQUIPMENT_STATUS_OPTIONS: { value: EquipmentStatus; label: string }[] = [
+  { value: "all", label: "Все статусы" },
+  { value: "active", label: "Активно" },
+  { value: "maintenance", label: "На ТО" },
+  { value: "broken", label: "Сломано" },
+  { value: "inactive", label: "Неактивно" },
+];
 
 const WorkCenters = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false);
   const [selectedWorkCenter, setSelectedWorkCenter] = useState<any>(null);
+  const [equipmentStatusFilter, setEquipmentStatusFilter] = useState<EquipmentStatus>("all");
   
   const { data: workCenters, isLoading } = useWorkCenters();
+  const { data: allEquipment } = useEquipment();
   const deleteMutation = useDeleteWorkCenter();
 
-  const filteredCenters = (workCenters || []).filter(
-    (center: any) =>
-      center.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      center.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      center.department?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Count equipment per work center
+  const equipmentCountsByWorkCenter = useMemo(() => {
+    if (!allEquipment) return {};
+    
+    const counts: Record<string, { total: number; byStatus: Record<string, number> }> = {};
+    
+    allEquipment.forEach((item: any) => {
+      const wcId = item.work_center_id;
+      if (!counts[wcId]) {
+        counts[wcId] = { total: 0, byStatus: {} };
+      }
+      counts[wcId].total++;
+      counts[wcId].byStatus[item.status] = (counts[wcId].byStatus[item.status] || 0) + 1;
+    });
+    
+    return counts;
+  }, [allEquipment]);
+
+  // Filter work centers based on equipment status filter
+  const filteredCenters = useMemo(() => {
+    let centers = (workCenters || []).filter(
+      (center: any) =>
+        center.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        center.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        center.department?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Filter by equipment status
+    if (equipmentStatusFilter !== "all") {
+      centers = centers.filter((center: any) => {
+        const counts = equipmentCountsByWorkCenter[center.id];
+        return counts && counts.byStatus[equipmentStatusFilter] > 0;
+      });
+    }
+
+    return centers;
+  }, [workCenters, searchQuery, equipmentStatusFilter, equipmentCountsByWorkCenter]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -45,6 +91,10 @@ const WorkCenters = () => {
       default:
         return null;
     }
+  };
+
+  const getEquipmentStatusLabel = (status: EquipmentStatus) => {
+    return EQUIPMENT_STATUS_OPTIONS.find(o => o.value === status)?.label || "Все статусы";
   };
 
   if (isLoading) {
@@ -89,27 +139,65 @@ const WorkCenters = () => {
           </div>
         </div>
 
-        {/* Search */}
+        {/* Search and Filters */}
         <Card className="mb-6">
           <CardContent className="p-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Поиск по номеру, названию или цеху..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10"
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                  onClick={() => setSearchQuery("")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по номеру, названию или цеху..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              
+              {/* Equipment Status Filter */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="min-w-[180px] justify-between">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      <span>{getEquipmentStatusLabel(equipmentStatusFilter)}</span>
+                    </div>
+                    {equipmentStatusFilter !== "all" && (
+                      <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                        1
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[180px]">
+                  {EQUIPMENT_STATUS_OPTIONS.map((option) => (
+                    <DropdownMenuCheckboxItem
+                      key={option.value}
+                      checked={equipmentStatusFilter === option.value}
+                      onCheckedChange={() => setEquipmentStatusFilter(option.value)}
+                    >
+                      {option.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                  {equipmentStatusFilter !== "all" && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setEquipmentStatusFilter("all")}>
+                        Сбросить фильтр
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </CardContent>
         </Card>
@@ -118,6 +206,8 @@ const WorkCenters = () => {
         <div className="grid gap-4 md:grid-cols-2">
           {filteredCenters.map((center: any) => {
             const loadPercent = 0; // TODO: Calculate from production orders
+            const equipmentCounts = equipmentCountsByWorkCenter[center.id] || { total: 0, byStatus: {} };
+            
             return (
               <Card
                 key={center.id}
@@ -176,6 +266,43 @@ const WorkCenters = () => {
                     </DropdownMenu>
                   </div>
 
+                  {/* Equipment Count */}
+                  <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Wrench className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">Оборудование</span>
+                      </div>
+                      <Badge variant="outline" className="font-bold">
+                        {equipmentCounts.total}
+                      </Badge>
+                    </div>
+                    {equipmentCounts.total > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {equipmentCounts.byStatus.active > 0 && (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20 text-xs">
+                            {equipmentCounts.byStatus.active} активно
+                          </Badge>
+                        )}
+                        {equipmentCounts.byStatus.maintenance > 0 && (
+                          <Badge variant="default" className="text-xs">
+                            {equipmentCounts.byStatus.maintenance} на ТО
+                          </Badge>
+                        )}
+                        {equipmentCounts.byStatus.broken > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {equipmentCounts.byStatus.broken} сломано
+                          </Badge>
+                        )}
+                        {equipmentCounts.byStatus.inactive > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {equipmentCounts.byStatus.inactive} неактивно
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Capacity and Load */}
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
@@ -191,7 +318,7 @@ const WorkCenters = () => {
                   </div>
 
                   {/* Metrics */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="text-center p-2 bg-muted/50 rounded-lg">
                       <p className="text-xs text-muted-foreground">Эффективность</p>
                       <p className="text-sm font-bold text-foreground">{center.efficiency_percent}%</p>
