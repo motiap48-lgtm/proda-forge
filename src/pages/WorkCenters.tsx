@@ -45,7 +45,7 @@ const WorkCenters = () => {
   const [selectedWorkCenter, setSelectedWorkCenter] = useState<any>(null);
   const [equipmentStatusFilter, setEquipmentStatusFilter] = useState<EquipmentStatus>("all");
   const [groupByDepartment, setGroupByDepartment] = useState(false);
-  const [showChart, setShowChart] = useState(true);
+  const [showChart, setShowChart] = useState(false);
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
   
   const { data: workCenters, isLoading } = useWorkCenters();
