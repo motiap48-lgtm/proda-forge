@@ -28,6 +28,8 @@ interface FlattenedMaterial {
   level: number; // Уровень вложенности
   occurrences?: number; // Сколько раз встречается в спецификации
   totalQuantity?: number; // Суммарное количество по всем вхождениям
+  parentName?: string; // Родительский элемент, в который входит этот компонент
+  parentCode?: string; // Код родительского элемента
 }
 
 const getProductTypeLabel = (type: string) => {
@@ -102,7 +104,9 @@ export const FlattenedSpecificationDialog = ({
     specMaterials: any[],
     multiplier: number = 1,
     level: number = 1,
-    ancestorPath: Set<string> = new Set() // Путь от корня - для предотвращения циклов
+    ancestorPath: Set<string> = new Set(), // Путь от корня - для предотвращения циклов
+    parentName?: string, // Имя родительского элемента
+    parentCode?: string // Код родительского элемента
   ): FlattenedMaterial[] => {
     const result: FlattenedMaterial[] = [];
 
@@ -123,6 +127,8 @@ export const FlattenedSpecificationDialog = ({
         quantity: effectiveQuantity,
         product_type: materialProduct.product_type,
         level: level,
+        parentName: parentName || specification?.products?.name,
+        parentCode: parentCode || specification?.products?.code,
       });
 
       // Если это ПФ или СБ - ищем их спецификацию и раскладываем дальше
@@ -146,7 +152,9 @@ export const FlattenedSpecificationDialog = ({
             childSpec.specification_materials,
             effectiveQuantity,
             level + 1,
-            newAncestorPath
+            newAncestorPath,
+            materialProduct.name,
+            materialProduct.code
           );
           
           result.push(...childMaterials);
@@ -301,6 +309,7 @@ export const FlattenedSpecificationDialog = ({
       'Тип': getProductTypeLabel(mat.product_type),
       'Код': mat.code,
       'Наименование': mat.name,
+      'Входит в': mat.parentName || '',
       'Ед. изм.': mat.unit,
       'Уровень': mat.level,
       'Количество': mat.quantity,
@@ -318,6 +327,7 @@ export const FlattenedSpecificationDialog = ({
       { wch: 8 },   // Тип
       { wch: 15 },  // Код
       { wch: 40 },  // Наименование
+      { wch: 35 },  // Входит в
       { wch: 10 },  // Ед. изм.
       { wch: 10 },  // Уровень
       { wch: 15 },  // Количество
@@ -384,6 +394,7 @@ export const FlattenedSpecificationDialog = ({
                 <th>Тип</th>
                 <th>Код</th>
                 <th>Наименование</th>
+                <th>Входит в</th>
                 <th>Ед. изм.</th>
                 <th class="text-center">Уровень</th>
                 <th class="text-right">Количество</th>
@@ -396,6 +407,7 @@ export const FlattenedSpecificationDialog = ({
                   <td>${getProductTypeLabel(mat.product_type)}</td>
                   <td>${mat.code}</td>
                   <td>${'&nbsp;'.repeat((mat.level - 1) * 4)}${mat.name}</td>
+                  <td>${mat.parentName || '-'}</td>
                   <td>${mat.unit}</td>
                   <td class="text-center">${mat.level}</td>
                   <td class="text-right">${mat.quantity.toFixed(4)}</td>
@@ -589,6 +601,7 @@ export const FlattenedSpecificationDialog = ({
                   <TableHead className="w-16">Тип</TableHead>
                   <TableHead>Код</TableHead>
                   <TableHead>Наименование</TableHead>
+                  <TableHead>Входит в</TableHead>
                   <TableHead>Ед. изм.</TableHead>
                   <TableHead className="text-center w-20">Уровень</TableHead>
                   <TableHead className="text-right">Количество</TableHead>
@@ -600,7 +613,7 @@ export const FlattenedSpecificationDialog = ({
                   Object.entries(groupedMaterials).map(([type, group]) => (
                     <>
                       <TableRow key={`header-${type}`} className="bg-muted/50 hover:bg-muted/50">
-                        <TableCell colSpan={6} className="font-semibold">
+                        <TableCell colSpan={7} className="font-semibold">
                           <Badge variant="outline" className={`mr-2 ${getProductTypeBadgeClass(type)}`}>
                             {getProductTypeLabel(type)}
                           </Badge>
@@ -642,6 +655,21 @@ export const FlattenedSpecificationDialog = ({
                                 </TooltipProvider>
                               )}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-sm text-muted-foreground truncate max-w-[150px] block cursor-help">
+                                    {mat.parentName || '-'}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="font-medium">{mat.parentName}</p>
+                                  {mat.parentCode && <p className="text-xs text-muted-foreground">{mat.parentCode}</p>}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </TableCell>
                           <TableCell>{mat.unit}</TableCell>
                           <TableCell className="text-center">
@@ -687,6 +715,21 @@ export const FlattenedSpecificationDialog = ({
                             </TooltipProvider>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm text-muted-foreground truncate max-w-[150px] block cursor-help">
+                                {mat.parentName || '-'}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="font-medium">{mat.parentName}</p>
+                              {mat.parentCode && <p className="text-xs text-muted-foreground">{mat.parentCode}</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>{mat.unit}</TableCell>
                       <TableCell className="text-center">
