@@ -18,6 +18,7 @@ export const useRoutingSheets = () => {
             setup_time_minutes,
             cycle_time_minutes,
             work_center_id,
+            operation_type,
             work_centers:work_center_id(id, name, code)
           )
         `)
@@ -52,6 +53,7 @@ interface Operation {
   work_center_id: string;
   setup_time_minutes: number;
   cycle_time_minutes: number;
+  operation_type: string;
 }
 
 interface RoutingSheetData {
@@ -90,6 +92,7 @@ export const useCreateRoutingSheet = () => {
           work_center_id: op.work_center_id,
           setup_time_minutes: op.setup_time_minutes,
           cycle_time_minutes: op.cycle_time_minutes,
+          operation_type: op.operation_type || "production",
         }));
 
         const { error: opsError } = await supabase
@@ -145,6 +148,7 @@ export const useUpdateRoutingSheet = () => {
           work_center_id: op.work_center_id,
           setup_time_minutes: op.setup_time_minutes,
           cycle_time_minutes: op.cycle_time_minutes,
+          operation_type: op.operation_type || "production",
         }));
 
         const { error: opsError } = await supabase

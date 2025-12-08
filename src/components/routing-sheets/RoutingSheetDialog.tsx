@@ -12,10 +12,18 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Plus, Trash2, GripVertical, Wand2, ArrowUp, ArrowDown, Factory, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Trash2, Wand2, ArrowUp, ArrowDown, Factory, Clock, 
+  Truck, ClipboardCheck, Settings, Eye, Edit
+} from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { toast } from "sonner";
+import { RoutingFlowDiagram } from "./RoutingFlowDiagram";
+import { cn } from "@/lib/utils";
+
+type OperationType = "production" | "transport" | "control" | "setup";
 
 interface Operation {
   id?: string;
@@ -24,6 +32,7 @@ interface Operation {
   work_center_id: string;
   setup_time_minutes: number;
   cycle_time_minutes: number;
+  operation_type: OperationType;
 }
 
 interface RoutingSheetDialogProps {
@@ -40,6 +49,20 @@ interface RoutingSheetDialogProps {
   isLoading?: boolean;
 }
 
+const operationTypeOptions: { value: OperationType; label: string; icon: typeof Factory }[] = [
+  { value: "production", label: "Производство", icon: Factory },
+  { value: "transport", label: "Транспортировка", icon: Truck },
+  { value: "control", label: "Контроль", icon: ClipboardCheck },
+  { value: "setup", label: "Наладка", icon: Settings },
+];
+
+const operationTypeColors: Record<OperationType, string> = {
+  production: "border-l-blue-500",
+  transport: "border-l-amber-500",
+  control: "border-l-green-500",
+  setup: "border-l-purple-500",
+};
+
 export function RoutingSheetDialog({
   open,
   onOpenChange,
@@ -55,6 +78,7 @@ export function RoutingSheetDialog({
   const [productId, setProductId] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [operations, setOperations] = useState<Operation[]>([]);
+  const [activeTab, setActiveTab] = useState("edit");
 
   const isEditing = !!routingSheet;
 
@@ -72,6 +96,7 @@ export function RoutingSheetDialog({
         work_center_id: op.work_center_id || op.work_centers?.id,
         setup_time_minutes: op.setup_time_minutes || 0,
         cycle_time_minutes: op.cycle_time_minutes || 0,
+        operation_type: op.operation_type || "production",
       })) || [];
       
       setOperations(existingOps.sort((a: Operation, b: Operation) => a.sequence - b.sequence));
@@ -82,9 +107,9 @@ export function RoutingSheetDialog({
       setIsActive(true);
       setOperations([]);
     }
+    setActiveTab("edit");
   }, [routingSheet, open]);
 
-  // Filter products that can have routing sheets (finished, assembly, semi-finished)
   const eligibleProducts = products?.filter(
     (p) => p.product_type !== "material" && p.is_active
   ) || [];
@@ -103,23 +128,30 @@ export function RoutingSheetDialog({
 
   const operationsEndRef = useRef<HTMLDivElement>(null);
 
-  const addOperation = () => {
+  const addOperation = (type: OperationType = "production") => {
     const newSequence = operations.length > 0 
       ? Math.max(...operations.map(o => o.sequence)) + 1 
       : 1;
+    
+    const defaultNames: Record<OperationType, string> = {
+      production: "",
+      transport: "Транспортировка между участками",
+      control: "Контроль качества",
+      setup: "Наладка оборудования",
+    };
     
     setOperations([
       ...operations,
       {
         sequence: newSequence,
-        name: "",
+        name: defaultNames[type],
         work_center_id: "",
         setup_time_minutes: 0,
-        cycle_time_minutes: 0,
+        cycle_time_minutes: type === "transport" ? 15 : 0,
+        operation_type: type,
       },
     ]);
 
-    // Scroll to new operation after state update
     setTimeout(() => {
       operationsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, 150);
@@ -127,7 +159,6 @@ export function RoutingSheetDialog({
 
   const removeOperation = (index: number) => {
     const newOps = operations.filter((_, i) => i !== index);
-    // Re-sequence
     setOperations(newOps.map((op, i) => ({ ...op, sequence: i + 1 })));
   };
 
@@ -147,11 +178,7 @@ export function RoutingSheetDialog({
 
     const newOps = [...operations];
     const targetIndex = direction === "up" ? index - 1 : index + 1;
-    
-    // Swap
     [newOps[index], newOps[targetIndex]] = [newOps[targetIndex], newOps[index]];
-    
-    // Re-sequence
     setOperations(newOps.map((op, i) => ({ ...op, sequence: i + 1 })));
   };
 
@@ -188,251 +215,374 @@ export function RoutingSheetDialog({
 
   const totalSetupTime = operations.reduce((sum, op) => sum + (op.setup_time_minutes || 0), 0);
   const totalCycleTime = operations.reduce((sum, op) => sum + (op.cycle_time_minutes || 0), 0);
+  const selectedProduct = products?.find(p => p.id === productId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Редактирование техмаршрута" : "Создание техмаршрута"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Header Section */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="code">Код</Label>
-              <div className="relative">
-                <Input
-                  id="code"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="Авто"
-                  disabled={code === "AUTO"}
-                  className="pr-10"
-                />
-                {code === "AUTO" && (
-                  <Wand2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Код генерируется автоматически (RS-XXX)
-              </p>
-            </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="edit" className="gap-2">
+              <Edit className="h-4 w-4" />
+              Редактирование
+            </TabsTrigger>
+            <TabsTrigger value="view" className="gap-2" disabled={operations.length === 0}>
+              <Eye className="h-4 w-4" />
+              Визуализация
+            </TabsTrigger>
+          </TabsList>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Название *</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Например: Маршрут сборки изделия"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Продукт *</Label>
-              <SearchableSelect
-                options={productOptions}
-                value={productId}
-                onValueChange={setProductId}
-                placeholder="Выберите продукт"
-                searchPlaceholder="Поиск по коду или названию..."
-                emptyText="Продукт не найден"
-              />
-              <p className="text-xs text-muted-foreground">
-                Только ГП, СБ и ПФ (не материалы)
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Статус</Label>
-              <div className="flex items-center gap-3 h-10">
-                <Switch
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
-                <span className="text-sm">
-                  {isActive ? "Активен" : "Неактивен"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Operations Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">Операции</h3>
-                <p className="text-sm text-muted-foreground">
-                  Последовательность производственных операций
-                </p>
-              </div>
-              <Button onClick={addOperation} variant="outline" size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                Добавить операцию
-              </Button>
-            </div>
-
-            {operations.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Factory className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p className="text-muted-foreground mb-4">
-                    Добавьте операции для создания техмаршрута
+          <TabsContent value="edit">
+            <div className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="code">Код</Label>
+                  <div className="relative">
+                    <Input
+                      id="code"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      placeholder="Авто"
+                      disabled={code === "AUTO"}
+                      className="pr-10"
+                    />
+                    {code === "AUTO" && (
+                      <Wand2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Код генерируется автоматически (RS-XXX)
                   </p>
-                  <Button onClick={addOperation} variant="outline">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Добавить первую операцию
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {operations.map((op, index) => (
-                  <Card key={index} className="border-l-4 border-l-primary">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex flex-col items-center gap-1 pt-2">
-                          <Badge variant="secondary" className="font-mono text-lg px-3">
-                            {op.sequence}
-                          </Badge>
-                          <div className="flex flex-col gap-0.5">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveOperation(index, "up")}
-                              disabled={index === 0}
-                            >
-                              <ArrowUp className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveOperation(index, "down")}
-                              disabled={index === operations.length - 1}
-                            >
-                              <ArrowDown className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
+                </div>
 
-                        <div className="flex-1 grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Название операции *</Label>
-                            <Input
-                              value={op.name}
-                              onChange={(e) =>
-                                updateOperation(index, { name: e.target.value })
-                              }
-                              placeholder="Например: Токарная обработка"
-                            />
-                          </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Название *</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Например: Маршрут сборки изделия"
+                  />
+                </div>
+              </div>
 
-                          <div className="space-y-2">
-                            <Label>Производственный участок *</Label>
-                            <SearchableSelect
-                              options={workCenterOptions}
-                              value={op.work_center_id}
-                              onValueChange={(v) =>
-                                updateOperation(index, { work_center_id: v })
-                              }
-                              placeholder="Выберите участок"
-                              searchPlaceholder="Поиск..."
-                              emptyText="Участок не найден"
-                            />
-                          </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Продукт *</Label>
+                  <SearchableSelect
+                    options={productOptions}
+                    value={productId}
+                    onValueChange={setProductId}
+                    placeholder="Выберите продукт"
+                    searchPlaceholder="Поиск по коду или названию..."
+                    emptyText="Продукт не найден"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Только ГП, СБ и ПФ (не материалы)
+                  </p>
+                </div>
 
-                          <div className="space-y-2">
-                            <Label>Время наладки (ПЗ), мин</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={op.setup_time_minutes}
-                              onChange={(e) =>
-                                updateOperation(index, {
-                                  setup_time_minutes: parseFloat(e.target.value) || 0,
-                                })
-                              }
-                              placeholder="0"
-                            />
-                          </div>
+                <div className="space-y-2">
+                  <Label>Статус</Label>
+                  <div className="flex items-center gap-3 h-10">
+                    <Switch
+                      checked={isActive}
+                      onCheckedChange={setIsActive}
+                    />
+                    <span className="text-sm">
+                      {isActive ? "Активен" : "Неактивен"}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-                          <div className="space-y-2">
-                            <Label>Штучное время, мин</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={op.cycle_time_minutes}
-                              onChange={(e) =>
-                                updateOperation(index, {
-                                  cycle_time_minutes: parseFloat(e.target.value) || 0,
-                                })
-                              }
-                              placeholder="0"
-                            />
-                          </div>
-                        </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-lg font-medium">Операции</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Последовательность операций маршрута
+                    </p>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button onClick={() => addOperation("production")} variant="outline" size="sm" className="gap-1.5">
+                      <Factory className="h-4 w-4" />
+                      Производство
+                    </Button>
+                    <Button onClick={() => addOperation("transport")} variant="outline" size="sm" className="gap-1.5">
+                      <Truck className="h-4 w-4" />
+                      Транспортировка
+                    </Button>
+                    <Button onClick={() => addOperation("control")} variant="outline" size="sm" className="gap-1.5">
+                      <ClipboardCheck className="h-4 w-4" />
+                      Контроль
+                    </Button>
+                  </div>
+                </div>
 
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => removeOperation(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                {operations.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <Factory className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                      <p className="text-muted-foreground mb-4">
+                        Добавьте операции для создания техмаршрута
+                      </p>
+                      <div className="flex justify-center gap-2 flex-wrap">
+                        <Button onClick={() => addOperation("production")} variant="outline">
+                          <Factory className="mr-2 h-4 w-4" />
+                          Производственная
+                        </Button>
+                        <Button onClick={() => addOperation("transport")} variant="outline">
+                          <Truck className="mr-2 h-4 w-4" />
+                          Транспортировка
                         </Button>
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                ) : (
+                  <div className="space-y-3">
+                    {operations.map((op, index) => {
+                      const typeConfig = operationTypeOptions.find(t => t.value === op.operation_type);
+                      const TypeIcon = typeConfig?.icon || Factory;
+                      
+                      return (
+                        <Card key={index} className={cn("border-l-4", operationTypeColors[op.operation_type])}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex flex-col items-center gap-1 pt-2">
+                                <Badge variant="secondary" className="font-mono text-lg px-3">
+                                  {op.sequence}
+                                </Badge>
+                                <div className="flex flex-col gap-0.5">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => moveOperation(index, "up")}
+                                    disabled={index === 0}
+                                  >
+                                    <ArrowUp className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => moveOperation(index, "down")}
+                                    disabled={index === operations.length - 1}
+                                  >
+                                    <ArrowDown className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
 
-                {/* Summary */}
-                <Card className="bg-muted/50">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Итого:</span>
+                              <div className="flex-1 space-y-4">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {operationTypeOptions.map(typeOpt => {
+                                    const Icon = typeOpt.icon;
+                                    const isSelected = op.operation_type === typeOpt.value;
+                                    return (
+                                      <Button
+                                        key={typeOpt.value}
+                                        type="button"
+                                        variant={isSelected ? "default" : "outline"}
+                                        size="sm"
+                                        className="gap-1.5"
+                                        onClick={() => updateOperation(index, { operation_type: typeOpt.value })}
+                                      >
+                                        <Icon className="h-3.5 w-3.5" />
+                                        {typeOpt.label}
+                                      </Button>
+                                    );
+                                  })}
+                                </div>
+
+                                <div className="grid gap-4 md:grid-cols-2">
+                                  <div className="space-y-2">
+                                    <Label>Название операции *</Label>
+                                    <Input
+                                      value={op.name}
+                                      onChange={(e) =>
+                                        updateOperation(index, { name: e.target.value })
+                                      }
+                                      placeholder={
+                                        op.operation_type === "transport" 
+                                          ? "Транспортировка в цех 2" 
+                                          : "Например: Токарная обработка"
+                                      }
+                                    />
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label>Производственный участок *</Label>
+                                    <SearchableSelect
+                                      options={workCenterOptions}
+                                      value={op.work_center_id}
+                                      onValueChange={(v) =>
+                                        updateOperation(index, { work_center_id: v })
+                                      }
+                                      placeholder={
+                                        op.operation_type === "transport"
+                                          ? "Участок назначения"
+                                          : "Выберите участок"
+                                      }
+                                      searchPlaceholder="Поиск..."
+                                      emptyText="Участок не найден"
+                                    />
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label>Время наладки (ПЗ), мин</Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={op.setup_time_minutes}
+                                      onChange={(e) =>
+                                        updateOperation(index, {
+                                          setup_time_minutes: parseFloat(e.target.value) || 0,
+                                        })
+                                      }
+                                      placeholder="0"
+                                    />
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label>
+                                      {op.operation_type === "transport" ? "Время транспортировки, мин" : "Штучное время, мин"}
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={op.cycle_time_minutes}
+                                      onChange={(e) =>
+                                        updateOperation(index, {
+                                          cycle_time_minutes: parseFloat(e.target.value) || 0,
+                                        })
+                                      }
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => removeOperation(index)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+
+                    <Card className="bg-muted/50">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">Итого:</span>
+                          </div>
+                          <div className="flex gap-6 text-sm flex-wrap">
+                            <div>
+                              <span className="text-muted-foreground">Наладка: </span>
+                              <span className="font-medium">{totalSetupTime} мин</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Штучное: </span>
+                              <span className="font-medium">{totalCycleTime} мин</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Всего: </span>
+                              <span className="font-bold">{totalSetupTime + totalCycleTime} мин</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <div ref={operationsEndRef} />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Отмена
+                </Button>
+                <Button onClick={handleSave} disabled={isLoading}>
+                  {isLoading ? "Сохранение..." : isEditing ? "Сохранить" : "Создать"}
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="view">
+            <div className="space-y-6">
+              {selectedProduct && (
+                <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+                  <Factory className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">{selectedProduct.name}</p>
+                    <p className="text-sm text-muted-foreground">{selectedProduct.code}</p>
+                  </div>
+                </div>
+              )}
+
+              <RoutingFlowDiagram 
+                operations={operations}
+                workCenters={workCenters || []}
+              />
+
+              <Card className="bg-muted/50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Общее время:</span>
+                    </div>
+                    <div className="flex gap-6 text-sm flex-wrap">
+                      <div>
+                        <span className="text-muted-foreground">Операций: </span>
+                        <span className="font-medium">{operations.length}</span>
                       </div>
-                      <div className="flex gap-6 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Наладка: </span>
-                          <span className="font-medium">{totalSetupTime} мин</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Штучное: </span>
-                          <span className="font-medium">{totalCycleTime} мин</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Всего: </span>
-                          <span className="font-bold">{totalSetupTime + totalCycleTime} мин</span>
-                        </div>
+                      <div>
+                        <span className="text-muted-foreground">Наладка: </span>
+                        <span className="font-medium">{totalSetupTime} мин</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Обработка: </span>
+                        <span className="font-medium">{totalCycleTime} мин</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Всего: </span>
+                        <span className="font-bold">{totalSetupTime + totalCycleTime} мин</span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-                <div ref={operationsEndRef} />
-              </div>
-            )}
-          </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleSave} disabled={isLoading}>
-              {isLoading ? "Сохранение..." : isEditing ? "Сохранить" : "Создать"}
-            </Button>
-          </div>
-        </div>
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setActiveTab("edit")}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Редактировать
+                </Button>
+                <Button onClick={handleSave} disabled={isLoading}>
+                  {isLoading ? "Сохранение..." : isEditing ? "Сохранить" : "Создать"}
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
