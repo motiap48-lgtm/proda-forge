@@ -7,8 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Printer, Layers, FileSpreadsheet, Search, X, Copy, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Printer, Layers, FileSpreadsheet, Search, X, Copy, ArrowUpDown, ArrowUp, ArrowDown, Filter, Check } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { useProducts } from "@/hooks/useProducts";
 import * as XLSX from "xlsx";
@@ -74,8 +75,8 @@ export const FlattenedSpecificationDialog = ({
   
   // Сортировка по колонке "Входит в"
   const [parentSortOrder, setParentSortOrder] = useState<'none' | 'asc' | 'desc'>('none');
-  // Фильтр по родительскому элементу
-  const [parentFilter, setParentFilter] = useState<string>("all");
+  // Фильтр по родительским элементам (множественный выбор)
+  const [selectedParents, setSelectedParents] = useState<Set<string>>(new Set());
 
   // Пресеты фильтров
   const filterPresets = [
@@ -105,8 +106,22 @@ export const FlattenedSpecificationDialog = ({
     setShowOnlyRepeated(false);
     setActivePreset(null);
     setParentSortOrder('none');
-    setParentFilter("all");
+    setSelectedParents(new Set());
   };
+
+  // Переключение выбора родителя
+  const toggleParentSelection = (code: string) => {
+    setSelectedParents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(code)) {
+        newSet.delete(code);
+      } else {
+        newSet.add(code);
+      }
+      return newSet;
+    });
+  };
+
 
   const flattenSpecification = (
     specMaterials: any[],
@@ -253,6 +268,15 @@ export const FlattenedSpecificationDialog = ({
     return Array.from(parents.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
   }, [allFlattenedMaterials]);
 
+  // Выбрать/снять все родители
+  const toggleAllParents = () => {
+    if (selectedParents.size === uniqueParents.length) {
+      setSelectedParents(new Set());
+    } else {
+      setSelectedParents(new Set(uniqueParents.map(p => p.code)));
+    }
+  };
+
   // Фильтрованный список
   const flattenedMaterials = useMemo(() => {
     let filtered = allFlattenedMaterials.filter(mat => {
@@ -264,8 +288,8 @@ export const FlattenedSpecificationDialog = ({
       if (searchQuery && !matchesSearchQuery(mat.name, searchQuery) && !matchesSearchQuery(mat.code, searchQuery)) {
         return false;
       }
-      // Фильтр по родительскому элементу
-      if (parentFilter !== "all" && mat.parentCode !== parentFilter) {
+      // Фильтр по родительским элементам (множественный выбор)
+      if (selectedParents.size > 0 && mat.parentCode && !selectedParents.has(mat.parentCode)) {
         return false;
       }
       return true;
@@ -313,7 +337,7 @@ export const FlattenedSpecificationDialog = ({
     }
 
     return filtered;
-  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery, aggregateSame, showOnlyRepeated, occurrenceStats, parentFilter, parentSortOrder]);
+  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery, aggregateSame, showOnlyRepeated, occurrenceStats, selectedParents, parentSortOrder]);
 
   // Переключатель сортировки
   const toggleParentSort = () => {
@@ -630,24 +654,81 @@ export const FlattenedSpecificationDialog = ({
                   </Button>
                 )}
               </div>
-              <div className="w-[250px]">
-                <Select value={parentFilter} onValueChange={setParentFilter}>
-                  <SelectTrigger className="h-10">
-                    <div className="flex items-center gap-2">
-                      <Filter className="h-4 w-4 text-muted-foreground" />
-                      <SelectValue placeholder="Фильтр по родителю" />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[280px] justify-between h-10">
+                    <div className="flex items-center gap-2 truncate">
+                      <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+                      {selectedParents.size === 0 ? (
+                        <span className="text-muted-foreground">Все родители</span>
+                      ) : selectedParents.size === 1 ? (
+                        <span className="truncate">
+                          {uniqueParents.find(p => p.code === Array.from(selectedParents)[0])?.name || 'Выбран 1'}
+                        </span>
+                      ) : (
+                        <span>Выбрано: {selectedParents.size}</span>
+                      )}
                     </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Все родители</SelectItem>
-                    {uniqueParents.map(parent => (
-                      <SelectItem key={parent.code} value={parent.code}>
-                        <span className="truncate">{parent.name}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    {selectedParents.size > 0 && (
+                      <Badge variant="secondary" className="ml-2 shrink-0">
+                        {selectedParents.size}
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[280px] p-0" align="start">
+                  <div className="p-2 border-b">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full justify-start text-sm"
+                      onClick={toggleAllParents}
+                    >
+                      <div className="h-4 w-4 mr-2 border rounded flex items-center justify-center">
+                        {selectedParents.size === uniqueParents.length && uniqueParents.length > 0 && (
+                          <Check className="h-3 w-3" />
+                        )}
+                      </div>
+                      {selectedParents.size === uniqueParents.length && uniqueParents.length > 0 
+                        ? 'Снять все' 
+                        : 'Выбрать все'}
+                    </Button>
+                  </div>
+                  <ScrollArea className="h-[250px]">
+                    <div className="p-2 space-y-1">
+                      {uniqueParents.map(parent => (
+                        <Button
+                          key={parent.code}
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start text-sm font-normal"
+                          onClick={() => toggleParentSelection(parent.code)}
+                        >
+                          <div className="h-4 w-4 mr-2 border rounded flex items-center justify-center shrink-0">
+                            {selectedParents.has(parent.code) && (
+                              <Check className="h-3 w-3" />
+                            )}
+                          </div>
+                          <span className="truncate">{parent.name}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  {selectedParents.size > 0 && (
+                    <div className="p-2 border-t">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full text-muted-foreground"
+                        onClick={() => setSelectedParents(new Set())}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Сбросить фильтр
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
