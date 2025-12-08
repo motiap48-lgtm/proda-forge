@@ -2,10 +2,10 @@ import { useState, useMemo } from "react";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Factory, Loader2, Edit, Trash2, Wrench, X, Filter } from "lucide-react";
+import { Plus, Search, Factory, Loader2, Edit, Trash2, Wrench, X, Filter, LayoutGrid, Layers, BarChart3 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useWorkCenters, useDeleteWorkCenter } from "@/hooks/useWorkCenters";
 import { useEquipment } from "@/hooks/useEquipment";
@@ -20,6 +20,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 
 type EquipmentStatus = "all" | "active" | "maintenance" | "broken" | "inactive";
 
@@ -37,6 +44,9 @@ const WorkCenters = () => {
   const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false);
   const [selectedWorkCenter, setSelectedWorkCenter] = useState<any>(null);
   const [equipmentStatusFilter, setEquipmentStatusFilter] = useState<EquipmentStatus>("all");
+  const [groupByDepartment, setGroupByDepartment] = useState(false);
+  const [showChart, setShowChart] = useState(true);
+  const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
   
   const { data: workCenters, isLoading } = useWorkCenters();
   const { data: allEquipment } = useEquipment();
@@ -80,6 +90,59 @@ const WorkCenters = () => {
     return centers;
   }, [workCenters, searchQuery, equipmentStatusFilter, equipmentCountsByWorkCenter]);
 
+  // Group centers by department
+  const groupedCenters = useMemo(() => {
+    if (!groupByDepartment) return null;
+    
+    const groups: Record<string, any[]> = {};
+    filteredCenters.forEach((center: any) => {
+      const dept = center.department || "Без цеха";
+      if (!groups[dept]) {
+        groups[dept] = [];
+      }
+      groups[dept].push(center);
+    });
+    
+    // Sort departments alphabetically
+    return Object.fromEntries(
+      Object.entries(groups).sort(([a], [b]) => a.localeCompare(b, "ru"))
+    );
+  }, [filteredCenters, groupByDepartment]);
+
+  // Chart data
+  const chartData = useMemo(() => {
+    return filteredCenters.map((center: any) => {
+      const loadPercent = 0; // TODO: Calculate from production orders
+      return {
+        name: center.code,
+        fullName: center.name,
+        capacity: center.capacity_minutes_per_day,
+        efficiency: center.efficiency_percent,
+        load: loadPercent,
+        equipment: equipmentCountsByWorkCenter[center.id]?.total || 0,
+      };
+    });
+  }, [filteredCenters, equipmentCountsByWorkCenter]);
+
+  // Initialize expanded departments
+  useMemo(() => {
+    if (groupByDepartment && groupedCenters) {
+      setExpandedDepartments(new Set(Object.keys(groupedCenters)));
+    }
+  }, [groupByDepartment, groupedCenters]);
+
+  const toggleDepartment = (dept: string) => {
+    setExpandedDepartments(prev => {
+      const next = new Set(prev);
+      if (next.has(dept)) {
+        next.delete(dept);
+      } else {
+        next.add(dept);
+      }
+      return next;
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -95,6 +158,137 @@ const WorkCenters = () => {
 
   const getEquipmentStatusLabel = (status: EquipmentStatus) => {
     return EQUIPMENT_STATUS_OPTIONS.find(o => o.value === status)?.label || "Все статусы";
+  };
+
+  const renderWorkCenterCard = (center: any) => {
+    const loadPercent = 0; // TODO: Calculate from production orders
+    const equipmentCounts = equipmentCountsByWorkCenter[center.id] || { total: 0, byStatus: {} };
+    
+    return (
+      <Card
+        key={center.id}
+        className="transition-all hover:border-primary hover:shadow-md"
+      >
+        <CardContent className="p-6">
+          <div className="mb-4 flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 p-3">
+                <Factory className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-foreground">{center.code}</h3>
+                  {getStatusBadge(center.status)}
+                </div>
+                <p className="text-sm font-medium text-foreground">{center.name}</p>
+                {!groupByDepartment && (
+                  <p className="text-xs text-muted-foreground">{center.department || "Без цеха"}</p>
+                )}
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">⋮</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedWorkCenter(center);
+                    setEquipmentDialogOpen(true);
+                  }}
+                >
+                  <Wrench className="mr-2 h-4 w-4" />
+                  Оборудование
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedWorkCenter(center);
+                    setDialogOpen(true);
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Редактировать
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (confirm("Удалить производственный участок?")) {
+                      deleteMutation.mutate(center.id);
+                    }
+                  }}
+                  className="text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Удалить
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Equipment Count */}
+          <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border/50">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Оборудование</span>
+              </div>
+              <Badge variant="outline" className="font-bold">
+                {equipmentCounts.total}
+              </Badge>
+            </div>
+            {equipmentCounts.total > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {equipmentCounts.byStatus.active > 0 && (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20 text-xs">
+                    {equipmentCounts.byStatus.active} активно
+                  </Badge>
+                )}
+                {equipmentCounts.byStatus.maintenance > 0 && (
+                  <Badge variant="default" className="text-xs">
+                    {equipmentCounts.byStatus.maintenance} на ТО
+                  </Badge>
+                )}
+                {equipmentCounts.byStatus.broken > 0 && (
+                  <Badge variant="destructive" className="text-xs">
+                    {equipmentCounts.byStatus.broken} сломано
+                  </Badge>
+                )}
+                {equipmentCounts.byStatus.inactive > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {equipmentCounts.byStatus.inactive} неактивно
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Capacity and Load */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Загрузка</span>
+              <span className="text-sm font-bold text-green-600">
+                {loadPercent.toFixed(0)}%
+              </span>
+            </div>
+            <Progress value={loadPercent} className="h-2" />
+            <p className="text-xs text-muted-foreground mt-1">
+              0 из {center.capacity_minutes_per_day} мин/день
+            </p>
+          </div>
+
+          {/* Metrics */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="text-center p-2 bg-muted/50 rounded-lg">
+              <p className="text-xs text-muted-foreground">Эффективность</p>
+              <p className="text-sm font-bold text-foreground">{center.efficiency_percent}%</p>
+            </div>
+            <div className="text-center p-2 bg-muted/50 rounded-lg">
+              <p className="text-xs text-muted-foreground">Мощность</p>
+              <p className="text-sm font-bold text-foreground">{center.capacity_minutes_per_day} мин</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   if (isLoading) {
@@ -139,6 +333,101 @@ const WorkCenters = () => {
           </div>
         </div>
 
+        {/* Capacity Chart */}
+        {showChart && chartData.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Мощность и эффективность участков
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowChart(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      className="text-muted-foreground"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      className="text-muted-foreground"
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        color: 'hsl(var(--popover-foreground))'
+                      }}
+                      formatter={(value: number, name: string) => {
+                        const labels: Record<string, string> = {
+                          capacity: 'Мощность (мин/день)',
+                          efficiency: 'Эффективность (%)',
+                          equipment: 'Оборудование (шт)',
+                        };
+                        return [value, labels[name] || name];
+                      }}
+                      labelFormatter={(label) => {
+                        const item = chartData.find(d => d.name === label);
+                        return item?.fullName || label;
+                      }}
+                    />
+                    <Bar dataKey="capacity" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="capacity">
+                      {chartData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`}
+                          fill={`hsl(var(--primary) / ${0.5 + (entry.efficiency / 200)})`}
+                        />
+                      ))}
+                    </Bar>
+                    <Bar dataKey="efficiency" fill="hsl(142 76% 36%)" radius={[4, 4, 0, 0]} name="efficiency" />
+                    <Bar dataKey="equipment" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} name="equipment" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-6 mt-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-primary" />
+                  <span className="text-xs text-muted-foreground">Мощность</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(142 76% 36%)' }} />
+                  <span className="text-xs text-muted-foreground">Эффективность</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Оборудование</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!showChart && chartData.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mb-4"
+            onClick={() => setShowChart(true)}
+          >
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Показать диаграмму
+          </Button>
+        )}
+
         {/* Search and Filters */}
         <Card className="mb-6">
           <CardContent className="p-6">
@@ -162,6 +451,25 @@ const WorkCenters = () => {
                   </Button>
                 )}
               </div>
+              
+              {/* Group Toggle */}
+              <Button
+                variant={groupByDepartment ? "default" : "outline"}
+                onClick={() => setGroupByDepartment(!groupByDepartment)}
+                className="min-w-[180px]"
+              >
+                {groupByDepartment ? (
+                  <>
+                    <Layers className="mr-2 h-4 w-4" />
+                    По цехам
+                  </>
+                ) : (
+                  <>
+                    <LayoutGrid className="mr-2 h-4 w-4" />
+                    Все участки
+                  </>
+                )}
+              </Button>
               
               {/* Equipment Status Filter */}
               <DropdownMenu>
@@ -203,136 +511,47 @@ const WorkCenters = () => {
         </Card>
 
         {/* Work Centers List */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {filteredCenters.map((center: any) => {
-            const loadPercent = 0; // TODO: Calculate from production orders
-            const equipmentCounts = equipmentCountsByWorkCenter[center.id] || { total: 0, byStatus: {} };
-            
-            return (
-              <Card
-                key={center.id}
-                className="transition-all hover:border-primary hover:shadow-md"
+        {groupByDepartment && groupedCenters ? (
+          <div className="space-y-4">
+            {Object.entries(groupedCenters).map(([department, centers]) => (
+              <Collapsible
+                key={department}
+                open={expandedDepartments.has(department)}
+                onOpenChange={() => toggleDepartment(department)}
               >
-                <CardContent className="p-6">
-                  <div className="mb-4 flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-primary/10 p-3">
-                        <Factory className="h-6 w-6 text-primary" />
+                <Card>
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-3">
+                          <Factory className="h-5 w-5 text-primary" />
+                          {department}
+                          <Badge variant="secondary">{centers.length}</Badge>
+                        </CardTitle>
+                        <ChevronDown 
+                          className={`h-5 w-5 text-muted-foreground transition-transform ${
+                            expandedDepartments.has(department) ? "rotate-180" : ""
+                          }`}
+                        />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-foreground">{center.code}</h3>
-                          {getStatusBadge(center.status)}
-                        </div>
-                        <p className="text-sm font-medium text-foreground">{center.name}</p>
-                        <p className="text-xs text-muted-foreground">{center.department || "N/A"}</p>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {centers.map((center: any) => renderWorkCenterCard(center))}
                       </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">⋮</Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedWorkCenter(center);
-                            setEquipmentDialogOpen(true);
-                          }}
-                        >
-                          <Wrench className="mr-2 h-4 w-4" />
-                          Оборудование
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedWorkCenter(center);
-                            setDialogOpen(true);
-                          }}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Редактировать
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            if (confirm("Удалить производственный участок?")) {
-                              deleteMutation.mutate(center.id);
-                            }
-                          }}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Удалить
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Equipment Count */}
-                  <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border/50">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Wrench className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium text-foreground">Оборудование</span>
-                      </div>
-                      <Badge variant="outline" className="font-bold">
-                        {equipmentCounts.total}
-                      </Badge>
-                    </div>
-                    {equipmentCounts.total > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {equipmentCounts.byStatus.active > 0 && (
-                          <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20 text-xs">
-                            {equipmentCounts.byStatus.active} активно
-                          </Badge>
-                        )}
-                        {equipmentCounts.byStatus.maintenance > 0 && (
-                          <Badge variant="default" className="text-xs">
-                            {equipmentCounts.byStatus.maintenance} на ТО
-                          </Badge>
-                        )}
-                        {equipmentCounts.byStatus.broken > 0 && (
-                          <Badge variant="destructive" className="text-xs">
-                            {equipmentCounts.byStatus.broken} сломано
-                          </Badge>
-                        )}
-                        {equipmentCounts.byStatus.inactive > 0 && (
-                          <Badge variant="secondary" className="text-xs">
-                            {equipmentCounts.byStatus.inactive} неактивно
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Capacity and Load */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground">Загрузка</span>
-                      <span className="text-sm font-bold text-green-600">
-                        {loadPercent.toFixed(0)}%
-                      </span>
-                    </div>
-                    <Progress value={loadPercent} className="h-2" />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      0 из {center.capacity_minutes_per_day} мин/день
-                    </p>
-                  </div>
-
-                  {/* Metrics */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center p-2 bg-muted/50 rounded-lg">
-                      <p className="text-xs text-muted-foreground">Эффективность</p>
-                      <p className="text-sm font-bold text-foreground">{center.efficiency_percent}%</p>
-                    </div>
-                    <div className="text-center p-2 bg-muted/50 rounded-lg">
-                      <p className="text-xs text-muted-foreground">Мощность</p>
-                      <p className="text-sm font-bold text-foreground">{center.capacity_minutes_per_day} мин</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {filteredCenters.map((center: any) => renderWorkCenterCard(center))}
+          </div>
+        )}
 
         {filteredCenters.length === 0 && (
           <Card>
