@@ -100,10 +100,10 @@ export const WorkCenterDialog = ({ open, onOpenChange, workCenter }: WorkCenterD
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {workCenter ? "Редактирование рабочего центра" : "Добавление рабочего центра"}
+            {workCenter ? "Редактирование производственного участка" : "Добавление производственного участка"}
           </DialogTitle>
           <DialogDescription>
-            Заполните информацию о рабочем центре
+            Заполните информацию о производственном участке
           </DialogDescription>
         </DialogHeader>
 
