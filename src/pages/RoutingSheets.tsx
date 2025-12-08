@@ -5,19 +5,66 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X } from "lucide-react";
-import { useRoutingSheets } from "@/hooks/useRoutingSheets";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2 } from "lucide-react";
+import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet } from "@/hooks/useRoutingSheets";
+import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const RoutingSheets = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedSheet, setSelectedSheet] = useState<any>(null);
+  
   const { data: routingSheets, isLoading } = useRoutingSheets();
+  const createMutation = useCreateRoutingSheet();
+  const updateMutation = useUpdateRoutingSheet();
+  const deleteMutation = useDeleteRoutingSheet();
 
   const filteredSheets = routingSheets?.filter(
     (sheet) =>
       sheet.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sheet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sheet.products?.name.toLowerCase().includes(searchQuery.toLowerCase())
+      sheet.products?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
+
+  const handleSave = async (data: any) => {
+    if (selectedSheet) {
+      await updateMutation.mutateAsync({ id: selectedSheet.id, ...data });
+    } else {
+      await createMutation.mutateAsync(data);
+    }
+    setDialogOpen(false);
+    setSelectedSheet(null);
+  };
+
+  const handleEdit = (sheet: any) => {
+    setSelectedSheet(sheet);
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (sheet: any) => {
+    if (confirm(`Удалить техмаршрут "${sheet.code}"? Это действие необратимо.`)) {
+      deleteMutation.mutate(sheet.id);
+    }
+  };
+
+  const getProductTypeBadge = (type: string) => {
+    switch (type) {
+      case "finished":
+        return <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20 text-xs">ГП</Badge>;
+      case "assembly":
+        return <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20 text-xs">СБ</Badge>;
+      case "semi-finished":
+        return <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20 text-xs">ПФ</Badge>;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,6 +83,10 @@ const RoutingSheets = () => {
           <Button
             size="lg"
             className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
+            onClick={() => {
+              setSelectedSheet(null);
+              setDialogOpen(true);
+            }}
           >
             <Plus className="mr-2 h-5 w-5" />
             Создать техмаршрут
@@ -78,9 +129,22 @@ const RoutingSheets = () => {
         ) : filteredSheets.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
-              <p className="text-muted-foreground">
+              <GitBranch className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+              <p className="text-muted-foreground mb-4">
                 {searchQuery ? "Технологические маршруты не найдены" : "Нет созданных техмаршрутов"}
               </p>
+              {!searchQuery && (
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedSheet(null);
+                    setDialogOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Создать первый техмаршрут
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -88,14 +152,14 @@ const RoutingSheets = () => {
             {filteredSheets.map((sheet) => {
               const operations = sheet.routing_operations || [];
               const totalTime = operations.reduce(
-                (sum, op) => sum + (op.setup_time_minutes || 0) + (op.cycle_time_minutes || 0),
+                (sum: number, op: any) => sum + (op.setup_time_minutes || 0) + (op.cycle_time_minutes || 0),
                 0
               );
 
               return (
                 <Card
                   key={sheet.id}
-                  className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
+                  className="transition-all hover:border-primary hover:shadow-md"
                 >
                   <CardContent className="p-6">
                     <div className="mb-4 flex items-start justify-between">
@@ -113,14 +177,32 @@ const RoutingSheets = () => {
                             )}
                           </div>
                           <p className="text-sm font-medium text-foreground">{sheet.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Продукт: {sheet.products?.name || "Не указан"}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {sheet.products && getProductTypeBadge(sheet.products.product_type)}
+                            <p className="text-xs text-muted-foreground">
+                              {sheet.products?.code} — {sheet.products?.name || "Не указан"}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm">
-                        Редактировать
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">⋮</Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(sheet)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Редактировать
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDelete(sheet)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Удалить
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2 mb-4">
@@ -140,9 +222,9 @@ const RoutingSheets = () => {
                       <div className="mt-4 border-t pt-4">
                         <p className="text-sm font-medium text-foreground mb-3">Операции:</p>
                         <div className="space-y-2">
-                          {operations
-                            .sort((a, b) => a.sequence - b.sequence)
-                            .map((operation) => (
+                          {[...operations]
+                            .sort((a: any, b: any) => a.sequence - b.sequence)
+                            .map((operation: any) => (
                               <div
                                 key={operation.id}
                                 className="flex items-start gap-3 bg-muted/50 rounded-lg p-3"
@@ -176,6 +258,17 @@ const RoutingSheets = () => {
           </div>
         )}
       </main>
+
+      <RoutingSheetDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setSelectedSheet(null);
+        }}
+        routingSheet={selectedSheet}
+        onSave={handleSave}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+      />
     </div>
   );
 };
