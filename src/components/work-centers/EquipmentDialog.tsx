@@ -157,6 +157,7 @@ export const EquipmentDialog = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="machine">Станок</SelectItem>
+                  <SelectItem value="welding">Сварочное оборудование</SelectItem>
                   <SelectItem value="tool">Инструмент</SelectItem>
                   <SelectItem value="fixture">Оснастка</SelectItem>
                   <SelectItem value="other">Другое</SelectItem>
