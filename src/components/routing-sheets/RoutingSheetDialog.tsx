@@ -121,8 +121,8 @@ export function RoutingSheetDialog({
 
     // Scroll to new operation after state update
     setTimeout(() => {
-      operationsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 100);
+      operationsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 150);
   };
 
   const removeOperation = (index: number) => {
