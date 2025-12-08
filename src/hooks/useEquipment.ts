@@ -10,7 +10,7 @@ export const useEquipment = (workCenterId?: string) => {
         .from("equipment")
         .select(`
           *,
-          work_centers:work_center_id(code, name)
+          work_centers:work_center_id(code, name, department)
         `)
         .order("code");
 

@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { useWorkCenters, useDeleteWorkCenter } from "@/hooks/useWorkCenters";
 import { WorkCenterDialog } from "@/components/work-centers/WorkCenterDialog";
 import { EquipmentManagement } from "@/components/work-centers/EquipmentManagement";
+import { EquipmentPrintExport } from "@/components/work-centers/EquipmentPrintExport";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,17 +73,20 @@ const WorkCenters = () => {
               Управление производственными участками и оборудованием
             </p>
           </div>
-          <Button
-            size="lg"
-            className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
-            onClick={() => {
-              setSelectedWorkCenter(null);
-              setDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Добавить производственный участок
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <EquipmentPrintExport />
+            <Button
+              size="lg"
+              className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
+              onClick={() => {
+                setSelectedWorkCenter(null);
+                setDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              Добавить участок
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
