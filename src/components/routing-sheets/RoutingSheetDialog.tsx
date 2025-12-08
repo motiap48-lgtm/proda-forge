@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, DragEvent } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Trash2, Wand2, ArrowUp, ArrowDown, Factory, Clock, 
-  Truck, ClipboardCheck, Settings, Eye, Edit
+  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical
 } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
@@ -79,6 +79,8 @@ export function RoutingSheetDialog({
   const [isActive, setIsActive] = useState(true);
   const [operations, setOperations] = useState<Operation[]>([]);
   const [activeTab, setActiveTab] = useState("edit");
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const isEditing = !!routingSheet;
 
@@ -180,6 +182,46 @@ export function RoutingSheetDialog({
     const targetIndex = direction === "up" ? index - 1 : index + 1;
     [newOps[index], newOps[targetIndex]] = [newOps[targetIndex], newOps[index]];
     setOperations(newOps.map((op, i) => ({ ...op, sequence: i + 1 })));
+  };
+
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", index.toString());
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newOps = [...operations];
+    const [draggedOp] = newOps.splice(draggedIndex, 1);
+    newOps.splice(targetIndex, 0, draggedOp);
+    
+    setOperations(newOps.map((op, i) => ({ ...op, sequence: i + 1 })));
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const handleSave = async () => {
@@ -352,10 +394,30 @@ export function RoutingSheetDialog({
                       const TypeIcon = typeConfig?.icon || Factory;
                       
                       return (
-                        <Card key={index} className={cn("border-l-4", operationTypeColors[op.operation_type])}>
+                        <Card 
+                          key={index} 
+                          className={cn(
+                            "border-l-4 transition-all duration-200",
+                            operationTypeColors[op.operation_type],
+                            draggedIndex === index && "opacity-50 scale-[0.98]",
+                            dragOverIndex === index && "ring-2 ring-primary ring-offset-2"
+                          )}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, index)}
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, index)}
+                          onDragEnd={handleDragEnd}
+                        >
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
                               <div className="flex flex-col items-center gap-1 pt-2">
+                                <div 
+                                  className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded"
+                                  title="Перетащите для изменения порядка"
+                                >
+                                  <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                </div>
                                 <Badge variant="secondary" className="font-mono text-lg px-3">
                                   {op.sequence}
                                 </Badge>
