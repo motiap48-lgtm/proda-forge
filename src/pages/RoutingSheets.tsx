@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2 } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet } from "@/hooks/useRoutingSheets";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
+import { RoutingFlowDiagram } from "@/components/routing-sheets/RoutingFlowDiagram";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -220,35 +221,19 @@ const RoutingSheets = () => {
 
                     {operations.length > 0 && (
                       <div className="mt-4 border-t pt-4">
-                        <p className="text-sm font-medium text-foreground mb-3">Операции:</p>
-                        <div className="space-y-2">
-                          {[...operations]
-                            .sort((a: any, b: any) => a.sequence - b.sequence)
-                            .map((operation: any) => (
-                              <div
-                                key={operation.id}
-                                className="flex items-start gap-3 bg-muted/50 rounded-lg p-3"
-                              >
-                                <Badge variant="secondary" className="mt-0.5 font-mono">
-                                  {operation.sequence}
-                                </Badge>
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-foreground">{operation.name}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {operation.work_centers?.name || "Участок не указан"}
-                                  </p>
-                                  <div className="flex gap-4 mt-1">
-                                    <span className="text-xs text-muted-foreground">
-                                      ПЗ: {operation.setup_time_minutes} мин
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      Штучное: {operation.cycle_time_minutes} мин
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
+                        <p className="text-sm font-medium text-foreground mb-3">Маршрут:</p>
+                        <RoutingFlowDiagram
+                          operations={operations.map((op: any) => ({
+                            sequence: op.sequence,
+                            name: op.name,
+                            work_center_id: op.work_center_id,
+                            work_center_name: op.work_centers?.name,
+                            work_center_code: op.work_centers?.code,
+                            setup_time_minutes: op.setup_time_minutes || 0,
+                            cycle_time_minutes: op.cycle_time_minutes || 0,
+                            operation_type: op.operation_type || "production",
+                          }))}
+                        />
                       </div>
                     )}
                   </CardContent>
