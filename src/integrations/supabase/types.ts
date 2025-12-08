@@ -1039,7 +1039,9 @@ export type Database = {
         Args: { p_product_type: string }
         Returns: string
       }
+      generate_routing_sheet_code: { Args: never; Returns: string }
       generate_specification_code: { Args: never; Returns: string }
+      generate_warehouse_code: { Args: never; Returns: string }
       generate_work_center_code: { Args: never; Returns: string }
       get_user_roles: {
         Args: { _user_id: string }
