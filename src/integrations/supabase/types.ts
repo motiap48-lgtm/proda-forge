@@ -728,6 +728,7 @@ export type Database = {
           cycle_time_minutes: number
           id: string
           name: string
+          operation_type: string
           routing_sheet_id: string
           sequence: number
           setup_time_minutes: number
@@ -738,6 +739,7 @@ export type Database = {
           cycle_time_minutes: number
           id?: string
           name: string
+          operation_type?: string
           routing_sheet_id: string
           sequence: number
           setup_time_minutes?: number
@@ -748,6 +750,7 @@ export type Database = {
           cycle_time_minutes?: number
           id?: string
           name?: string
+          operation_type?: string
           routing_sheet_id?: string
           sequence?: number
           setup_time_minutes?: number
