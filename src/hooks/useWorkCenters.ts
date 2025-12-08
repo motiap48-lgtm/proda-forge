@@ -49,7 +49,7 @@ export const useCreateWorkCenter = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["work-centers"] });
-      toast.success("Рабочий центр создан");
+      toast.success("Производственный участок создан");
     },
     onError: (error: any) => {
       toast.error("Ошибка: " + error.message);
@@ -74,7 +74,7 @@ export const useUpdateWorkCenter = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["work-centers"] });
-      toast.success("Рабочий центр обновлен");
+      toast.success("Производственный участок обновлён");
     },
     onError: (error: any) => {
       toast.error("Ошибка: " + error.message);
@@ -96,7 +96,7 @@ export const useDeleteWorkCenter = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["work-centers"] });
-      toast.success("Рабочий центр удален");
+      toast.success("Производственный участок удалён");
     },
     onError: (error: any) => {
       toast.error("Ошибка: " + error.message);
