@@ -50,6 +50,7 @@ export const EquipmentManagement = ({
   const getTypeName = (type: string) => {
     const types: Record<string, string> = {
       machine: "Станок",
+      welding: "Сварочное",
       tool: "Инструмент",
       fixture: "Оснастка",
       other: "Другое",

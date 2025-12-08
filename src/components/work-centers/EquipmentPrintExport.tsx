@@ -19,6 +19,7 @@ const getStatusLabel = (status: string): string => {
 const getTypeName = (type: string): string => {
   const types: Record<string, string> = {
     machine: "Станок",
+    welding: "Сварочное оборудование",
     tool: "Инструмент",
     fixture: "Оснастка",
     other: "Другое",
