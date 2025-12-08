@@ -37,7 +37,7 @@ const navigationItems = [
       { name: "Номенклатура", path: "/references/products", icon: Package },
       { name: "Спецификации", path: "/references/specifications", icon: FileText },
       { name: "Техмаршруты", path: "/references/routing-sheets", icon: GitBranch },
-      { name: "Рабочие центры", path: "/references/work-centers", icon: Factory },
+      { name: "Производственные участки", path: "/references/work-centers", icon: Factory },
     ]
   },
   { 
