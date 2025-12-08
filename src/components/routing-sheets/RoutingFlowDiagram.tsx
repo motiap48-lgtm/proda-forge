@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Factory, Truck, ClipboardCheck, Settings, ArrowRight } from "lucide-react";
+import { useMemo, useState, DragEvent } from "react";
+import { Factory, Truck, ClipboardCheck, Settings, ArrowRight, GripVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,8 @@ interface RoutingFlowDiagramProps {
   operations: Operation[];
   workCenters?: { id: string; name: string; code: string; department?: string | null }[];
   className?: string;
+  editable?: boolean;
+  onReorder?: (fromIndex: number, toIndex: number) => void;
 }
 
 const operationTypeConfig: Record<string, { 
@@ -57,7 +59,10 @@ const operationTypeConfig: Record<string, {
   },
 };
 
-export function RoutingFlowDiagram({ operations, workCenters, className }: RoutingFlowDiagramProps) {
+export function RoutingFlowDiagram({ operations, workCenters, className, editable = false, onReorder }: RoutingFlowDiagramProps) {
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   const enrichedOperations = useMemo(() => {
     return operations.map(op => {
       const wc = workCenters?.find(w => w.id === op.work_center_id);
@@ -69,6 +74,44 @@ export function RoutingFlowDiagram({ operations, workCenters, className }: Routi
       };
     }).sort((a, b) => a.sequence - b.sequence);
   }, [operations, workCenters]);
+
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
+    if (!editable) return;
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", index.toString());
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number) => {
+    if (!editable) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, targetIndex: number) => {
+    e.preventDefault();
+    if (!editable || draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    onReorder?.(draggedIndex, targetIndex);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   if (enrichedOperations.length === 0) {
     return (
@@ -89,11 +132,29 @@ export function RoutingFlowDiagram({ operations, workCenters, className }: Routi
             <div key={index} className="flex items-center">
               <div 
                 className={cn(
-                  "relative rounded-lg border-2 p-3 min-w-[160px] max-w-[200px] transition-all hover:shadow-md",
+                  "relative rounded-lg border-2 p-3 min-w-[160px] max-w-[200px] transition-all",
                   config.bgColor,
-                  config.borderColor
+                  config.borderColor,
+                  editable && "cursor-grab active:cursor-grabbing",
+                  editable && "hover:shadow-md",
+                  !editable && "hover:shadow-md",
+                  draggedIndex === index && "opacity-50 scale-[0.98]",
+                  dragOverIndex === index && "ring-2 ring-primary ring-offset-2"
                 )}
+                draggable={editable}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, index)}
+                onDragEnd={handleDragEnd}
               >
+                {/* Drag handle for editable mode */}
+                {editable && (
+                  <div className="absolute -left-1 top-1/2 -translate-y-1/2 -translate-x-full pr-1">
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                )}
+
                 {/* Sequence badge */}
                 <Badge 
                   variant="secondary" 
