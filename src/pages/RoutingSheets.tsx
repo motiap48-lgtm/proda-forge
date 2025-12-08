@@ -153,7 +153,7 @@ const RoutingSheets = () => {
                                 <div className="flex-1">
                                   <p className="text-sm font-medium text-foreground">{operation.name}</p>
                                   <p className="text-xs text-muted-foreground">
-                                    {operation.work_centers?.name || "Рабочий центр не указан"}
+                                    {operation.work_centers?.name || "Участок не указан"}
                                   </p>
                                   <div className="flex gap-4 mt-1">
                                     <span className="text-xs text-muted-foreground">
