@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Factory, Loader2, Edit, Trash2, Wrench, X, Filter, LayoutGrid, Layers, BarChart3 } from "lucide-react";
+import { Plus, Search, Factory, Loader2, Edit, Trash2, Wrench, X, Filter, LayoutGrid, Layers, BarChart3, Package } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useWorkCenters, useDeleteWorkCenter } from "@/hooks/useWorkCenters";
 import { useEquipment } from "@/hooks/useEquipment";
+import { useRoutingSheets } from "@/hooks/useRoutingSheets";
 import { WorkCenterDialog } from "@/components/work-centers/WorkCenterDialog";
 import { EquipmentManagement } from "@/components/work-centers/EquipmentManagement";
 import { EquipmentPrintExport } from "@/components/work-centers/EquipmentPrintExport";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 import {
   Collapsible,
   CollapsibleContent,
@@ -50,7 +52,54 @@ const WorkCenters = () => {
   
   const { data: workCenters, isLoading } = useWorkCenters();
   const { data: allEquipment } = useEquipment();
+  const { data: routingSheets } = useRoutingSheets();
   const deleteMutation = useDeleteWorkCenter();
+
+  // Get products produced at each work center based on routing operations
+  const productsByWorkCenter = useMemo(() => {
+    if (!routingSheets) return {};
+    
+    const result: Record<string, Array<{
+      productId: string;
+      productCode: string;
+      productName: string;
+      productType: string;
+      operationName: string;
+      isLastOperation: boolean;
+    }>> = {};
+    
+    routingSheets.forEach((sheet: any) => {
+      if (!sheet.routing_operations || !sheet.products) return;
+      
+      const operations = [...sheet.routing_operations].sort((a, b) => a.sequence - b.sequence);
+      const lastOpIndex = operations.length - 1;
+      
+      operations.forEach((op: any, index: number) => {
+        const wcId = op.work_center_id;
+        if (!result[wcId]) {
+          result[wcId] = [];
+        }
+        
+        // Check if product already added for this work center
+        const existingProduct = result[wcId].find(p => p.productId === sheet.products.id);
+        if (!existingProduct) {
+          result[wcId].push({
+            productId: sheet.products.id,
+            productCode: sheet.products.code,
+            productName: sheet.products.name,
+            productType: sheet.products.product_type,
+            operationName: op.name,
+            isLastOperation: index === lastOpIndex,
+          });
+        } else if (index === lastOpIndex) {
+          // Mark as last operation if this is the final step
+          existingProduct.isLastOperation = true;
+        }
+      });
+    });
+    
+    return result;
+  }, [routingSheets]);
 
   // Count equipment per work center
   const equipmentCountsByWorkCenter = useMemo(() => {
@@ -160,9 +209,25 @@ const WorkCenters = () => {
     return EQUIPMENT_STATUS_OPTIONS.find(o => o.value === status)?.label || "Все статусы";
   };
 
+  const getProductTypeBadge = (type: string) => {
+    switch (type) {
+      case "finished":
+        return <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20 text-xs">ГП</Badge>;
+      case "assembly":
+        return <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20 text-xs">СБ</Badge>;
+      case "semi-finished":
+        return <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20 text-xs">ПФ</Badge>;
+      default:
+        return null;
+    }
+  };
+
   const renderWorkCenterCard = (center: any) => {
     const loadPercent = 0; // TODO: Calculate from production orders
     const equipmentCounts = equipmentCountsByWorkCenter[center.id] || { total: 0, byStatus: {} };
+    const products = productsByWorkCenter[center.id] || [];
+    const producedHere = products.filter(p => p.isLastOperation); // Products that "exit" this work center
+    const processedHere = products.filter(p => !p.isLastOperation); // Products that pass through
     
     return (
       <Card
@@ -222,6 +287,83 @@ const WorkCenters = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          </div>
+
+          {/* Products Produced Here */}
+          <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border/50">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Производимая продукция</span>
+              </div>
+              <Badge variant="outline" className="font-bold">
+                {products.length}
+              </Badge>
+            </div>
+            {products.length > 0 ? (
+              <TooltipProvider>
+                <div className="space-y-1.5">
+                  {producedHere.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Выпуск (последняя операция):</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {producedHere.slice(0, 5).map((product) => (
+                          <UITooltip key={product.productId}>
+                            <TooltipTrigger>
+                              <div className="flex items-center gap-1">
+                                {getProductTypeBadge(product.productType)}
+                                <Badge variant="outline" className="text-xs font-normal">
+                                  {product.productCode}
+                                </Badge>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="font-medium">{product.productName}</p>
+                              <p className="text-xs text-muted-foreground">Операция: {product.operationName}</p>
+                            </TooltipContent>
+                          </UITooltip>
+                        ))}
+                        {producedHere.length > 5 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{producedHere.length - 5}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {processedHere.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Обработка (промежуточные операции):</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {processedHere.slice(0, 3).map((product) => (
+                          <UITooltip key={product.productId}>
+                            <TooltipTrigger>
+                              <div className="flex items-center gap-1">
+                                {getProductTypeBadge(product.productType)}
+                                <Badge variant="outline" className="text-xs font-normal bg-muted/50">
+                                  {product.productCode}
+                                </Badge>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="font-medium">{product.productName}</p>
+                              <p className="text-xs text-muted-foreground">Операция: {product.operationName}</p>
+                            </TooltipContent>
+                          </UITooltip>
+                        ))}
+                        {processedHere.length > 3 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{processedHere.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </TooltipProvider>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">Нет привязанных продуктов</p>
+            )}
           </div>
 
           {/* Equipment Count */}
@@ -365,7 +507,7 @@ const WorkCenters = () => {
                       tick={{ fontSize: 12 }}
                       className="text-muted-foreground"
                     />
-                    <Tooltip
+                    <RechartsTooltip
                       contentStyle={{
                         backgroundColor: 'hsl(var(--popover))',
                         border: '1px solid hsl(var(--border))',
