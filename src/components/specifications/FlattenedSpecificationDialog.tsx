@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Printer, Layers, FileSpreadsheet, Search, X, Copy } from "lucide-react";
+import { Printer, Layers, FileSpreadsheet, Search, X, Copy, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { useProducts } from "@/hooks/useProducts";
 import * as XLSX from "xlsx";
@@ -70,6 +71,11 @@ export const FlattenedSpecificationDialog = ({
   const [aggregateSame, setAggregateSame] = useState(false);
   const [showOnlyRepeated, setShowOnlyRepeated] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
+  
+  // Сортировка по колонке "Входит в"
+  const [parentSortOrder, setParentSortOrder] = useState<'none' | 'asc' | 'desc'>('none');
+  // Фильтр по родительскому элементу
+  const [parentFilter, setParentFilter] = useState<string>("all");
 
   // Пресеты фильтров
   const filterPresets = [
@@ -98,6 +104,8 @@ export const FlattenedSpecificationDialog = ({
     setAggregateSame(false);
     setShowOnlyRepeated(false);
     setActivePreset(null);
+    setParentSortOrder('none');
+    setParentFilter("all");
   };
 
   const flattenSpecification = (
@@ -234,6 +242,17 @@ export const FlattenedSpecificationDialog = ({
     return false;
   };
 
+  // Уникальные родительские элементы для фильтра
+  const uniqueParents = useMemo(() => {
+    const parents = new Map<string, { name: string; code: string }>();
+    allFlattenedMaterials.forEach(mat => {
+      if (mat.parentName && mat.parentCode && !parents.has(mat.parentCode)) {
+        parents.set(mat.parentCode, { name: mat.parentName, code: mat.parentCode });
+      }
+    });
+    return Array.from(parents.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  }, [allFlattenedMaterials]);
+
   // Фильтрованный список
   const flattenedMaterials = useMemo(() => {
     let filtered = allFlattenedMaterials.filter(mat => {
@@ -243,6 +262,10 @@ export const FlattenedSpecificationDialog = ({
       if (mat.product_type === 'assembly' && !showAssemblies) return false;
       // Фильтр по поиску с учётом границ слов/чисел
       if (searchQuery && !matchesSearchQuery(mat.name, searchQuery) && !matchesSearchQuery(mat.code, searchQuery)) {
+        return false;
+      }
+      // Фильтр по родительскому элементу
+      if (parentFilter !== "all" && mat.parentCode !== parentFilter) {
         return false;
       }
       return true;
@@ -279,8 +302,27 @@ export const FlattenedSpecificationDialog = ({
       filtered = Array.from(aggregated.values());
     }
 
+    // Сортировка по колонке "Входит в"
+    if (parentSortOrder !== 'none') {
+      filtered.sort((a, b) => {
+        const nameA = (a.parentName || '').toLowerCase();
+        const nameB = (b.parentName || '').toLowerCase();
+        const comparison = nameA.localeCompare(nameB, 'ru');
+        return parentSortOrder === 'asc' ? comparison : -comparison;
+      });
+    }
+
     return filtered;
-  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery, aggregateSame, showOnlyRepeated, occurrenceStats]);
+  }, [allFlattenedMaterials, showMaterials, showSemiFinished, showAssemblies, searchQuery, aggregateSame, showOnlyRepeated, occurrenceStats, parentFilter, parentSortOrder]);
+
+  // Переключатель сортировки
+  const toggleParentSort = () => {
+    setParentSortOrder(prev => {
+      if (prev === 'none') return 'asc';
+      if (prev === 'asc') return 'desc';
+      return 'none';
+    });
+  };
 
   // Группированный список по типу
   const groupedMaterials = useMemo(() => {
@@ -567,25 +609,45 @@ export const FlattenedSpecificationDialog = ({
               </div>
             </div>
 
-            {/* Поиск */}
-            <div className="relative pt-2 border-t">
-              <Search className="absolute left-3 top-[calc(50%+4px)] -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Поиск по наименованию или коду..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10"
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-[calc(50%+4px)] -translate-y-1/2 h-8 w-8"
-                  onClick={() => setSearchQuery("")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+            {/* Поиск и фильтр по родителю */}
+            <div className="flex gap-3 pt-2 border-t">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по наименованию или коду..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="w-[250px]">
+                <Select value={parentFilter} onValueChange={setParentFilter}>
+                  <SelectTrigger className="h-10">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <SelectValue placeholder="Фильтр по родителю" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Все родители</SelectItem>
+                    {uniqueParents.map(parent => (
+                      <SelectItem key={parent.code} value={parent.code}>
+                        <span className="truncate">{parent.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -601,7 +663,19 @@ export const FlattenedSpecificationDialog = ({
                   <TableHead className="w-16">Тип</TableHead>
                   <TableHead>Код</TableHead>
                   <TableHead>Наименование</TableHead>
-                  <TableHead>Входит в</TableHead>
+                  <TableHead>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-auto p-0 hover:bg-transparent font-medium flex items-center gap-1"
+                      onClick={toggleParentSort}
+                    >
+                      Входит в
+                      {parentSortOrder === 'none' && <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                      {parentSortOrder === 'asc' && <ArrowUp className="h-3.5 w-3.5" />}
+                      {parentSortOrder === 'desc' && <ArrowDown className="h-3.5 w-3.5" />}
+                    </Button>
+                  </TableHead>
                   <TableHead>Ед. изм.</TableHead>
                   <TableHead className="text-center w-20">Уровень</TableHead>
                   <TableHead className="text-right">Количество</TableHead>
