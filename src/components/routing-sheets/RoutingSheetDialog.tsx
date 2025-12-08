@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -101,6 +101,8 @@ export function RoutingSheetDialog({
     searchText: `${wc.code} ${wc.name}`,
   })) || [];
 
+  const operationsEndRef = useRef<HTMLDivElement>(null);
+
   const addOperation = () => {
     const newSequence = operations.length > 0 
       ? Math.max(...operations.map(o => o.sequence)) + 1 
@@ -116,6 +118,11 @@ export function RoutingSheetDialog({
         cycle_time_minutes: 0,
       },
     ]);
+
+    // Scroll to new operation after state update
+    setTimeout(() => {
+      operationsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
   };
 
   const removeOperation = (index: number) => {
@@ -411,6 +418,7 @@ export function RoutingSheetDialog({
                     </div>
                   </CardContent>
                 </Card>
+                <div ref={operationsEndRef} />
               </div>
             )}
           </div>
