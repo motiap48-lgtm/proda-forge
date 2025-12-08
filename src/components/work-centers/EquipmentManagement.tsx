@@ -63,7 +63,7 @@ export const EquipmentManagement = ({
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Оборудование рабочего центра {workCenter?.code}
+              Оборудование производственного участка {workCenter?.code}
             </DialogTitle>
             <DialogDescription>
               Управление оборудованием и инструментами
