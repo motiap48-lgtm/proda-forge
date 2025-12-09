@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer } from "lucide-react";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet } from "@/hooks/useRoutingSheets";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
@@ -15,6 +15,7 @@ import { RoutingFlowDiagram } from "@/components/routing-sheets/RoutingFlowDiagr
 import { RoutingSheetPrintView } from "@/components/routing-sheets/RoutingSheetPrintView";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -127,6 +128,76 @@ const RoutingSheets = () => {
     setTimeout(() => {
       handlePrint();
     }, 100);
+  };
+
+  const handleExportToExcel = (sheet: any) => {
+    const operations = sheet.routing_operations || [];
+    const operationTypeLabels: Record<string, string> = {
+      production: "Производство",
+      transport: "Транспортировка",
+      control: "Контроль",
+      setup: "Наладка",
+    };
+
+    // Sheet 1: General info and operations
+    const operationsData = operations.map((op: any) => ({
+      "№": op.sequence,
+      "Операция": op.name,
+      "Тип": operationTypeLabels[op.operation_type] || op.operation_type,
+      "Участок (код)": op.work_centers?.code || "",
+      "Участок (название)": op.work_centers?.name || "",
+      "ПЗ, мин": op.setup_time_minutes || 0,
+      "Шт, мин": op.cycle_time_minutes || 0,
+    }));
+
+    // Sheet 2: Components by operations
+    const componentsData: any[] = [];
+    operations.forEach((op: any) => {
+      const materials = op.routing_operation_materials || [];
+      materials.forEach((m: any) => {
+        componentsData.push({
+          "Операция №": op.sequence,
+          "Операция": op.name,
+          "Код компонента": m.products?.code || "",
+          "Наименование": m.products?.name || "",
+          "Тип": m.products?.product_type || "",
+          "Количество": m.quantity_per_operation ?? "",
+          "Ед. изм.": m.products?.unit || "",
+        });
+      });
+    });
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+
+    // Info sheet
+    const infoData = [
+      ["Технологический маршрут", sheet.code],
+      ["Название", sheet.name],
+      ["Продукт", `${sheet.products?.code || ""} — ${sheet.products?.name || ""}`],
+      ["Статус", sheet.is_active ? "Активен" : "Неактивен"],
+      ["Количество операций", operations.length],
+      ["Общее время наладки", operations.reduce((s: number, o: any) => s + (o.setup_time_minutes || 0), 0) + " мин"],
+      ["Общее время на единицу", operations.reduce((s: number, o: any) => s + (o.cycle_time_minutes || 0), 0) + " мин"],
+    ];
+    const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
+    XLSX.utils.book_append_sheet(wb, wsInfo, "Информация");
+
+    // Operations sheet
+    if (operationsData.length > 0) {
+      const wsOps = XLSX.utils.json_to_sheet(operationsData);
+      XLSX.utils.book_append_sheet(wb, wsOps, "Операции");
+    }
+
+    // Components sheet
+    if (componentsData.length > 0) {
+      const wsComps = XLSX.utils.json_to_sheet(componentsData);
+      XLSX.utils.book_append_sheet(wb, wsComps, "Компоненты");
+    }
+
+    // Download
+    XLSX.writeFile(wb, `Техмаршрут_${sheet.code}.xlsx`);
+    toast.success("Экспорт в Excel выполнен");
   };
 
   const getProductTypeBadge = (type: string) => {
@@ -277,6 +348,10 @@ const RoutingSheets = () => {
                           <DropdownMenuItem onClick={() => handlePrintSheet(sheet)}>
                             <Printer className="mr-2 h-4 w-4" />
                             Печать
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExportToExcel(sheet)}>
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                            Экспорт в Excel
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
