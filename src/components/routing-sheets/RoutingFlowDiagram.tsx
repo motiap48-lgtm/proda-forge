@@ -189,8 +189,10 @@ export function RoutingFlowDiagram({ operations, workCenters, className, editabl
                 <div className="text-xs text-muted-foreground space-y-0.5">
                   <div className="flex items-center gap-1">
                     <Factory className="h-3 w-3" />
-                    <span className="truncate" title={`${op.work_center_code} - ${op.work_center_name}`}>
-                      {op.work_center_code}{op.work_center_code && op.work_center_name ? ' - ' : ''}{op.work_center_name}
+                    <span className="truncate" title={op.work_center_code && op.work_center_name ? `${op.work_center_code} - ${op.work_center_name}` : (op.work_center_name || op.work_center_code)}>
+                      {op.work_center_code && op.work_center_name 
+                        ? `${op.work_center_code} - ${op.work_center_name}` 
+                        : (op.work_center_name || op.work_center_code || 'Не указан')}
                     </span>
                   </div>
                   {op.work_center_department && (
