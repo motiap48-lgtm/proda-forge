@@ -16,8 +16,14 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Trash2, Wand2, ArrowUp, ArrowDown, Factory, Clock, 
-  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle
+  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle, Sparkles
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useProducts } from "@/hooks/useProducts";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { useSpecifications } from "@/hooks/useSpecifications";
@@ -291,6 +297,61 @@ export function RoutingSheetDialog({
   );
   const hasUnlinkedComponents = unlinkedMaterials.length > 0 && specificationMaterials.length > 0;
 
+  // Auto-distribute components to operations based on operation type
+  const autoDistributeComponents = () => {
+    if (specificationMaterials.length === 0) {
+      toast.error("Нет компонентов в спецификации для распределения");
+      return;
+    }
+    if (operations.length === 0) {
+      toast.error("Добавьте операции для распределения компонентов");
+      return;
+    }
+
+    // Find production operations (these are the main manufacturing operations)
+    const productionOps = operations.filter(op => op.operation_type === "production");
+    
+    if (productionOps.length === 0) {
+      toast.error("Добавьте производственные операции для распределения компонентов");
+      return;
+    }
+
+    // Strategy: distribute components to production operations
+    // If only one production operation - assign all to it
+    // If multiple - distribute evenly or to the first one (simple strategy)
+    const updatedOperations = operations.map(op => {
+      if (op.operation_type === "production") {
+        // For production operations, check if it's the last one (assembly/final)
+        const isLastProductionOp = productionOps.indexOf(op) === productionOps.length - 1;
+        
+        if (productionOps.length === 1) {
+          // Only one production op - assign all components
+          return {
+            ...op,
+            materials: specificationMaterials.map((m: any) => ({
+              product_id: m.material_id,
+              quantity_per_operation: m.quantity,
+            })),
+          };
+        } else if (isLastProductionOp) {
+          // Last production operation (typically final assembly) - assign all remaining
+          // For simplicity, assign all to the last production operation
+          return {
+            ...op,
+            materials: specificationMaterials.map((m: any) => ({
+              product_id: m.material_id,
+              quantity_per_operation: m.quantity,
+            })),
+          };
+        }
+      }
+      return op;
+    });
+
+    setOperations(updatedOperations);
+    toast.success("Компоненты автоматически распределены по операциям");
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -376,16 +437,36 @@ export function RoutingSheetDialog({
                 </div>
               </div>
 
-              {/* Warning for unlinked components */}
+              {/* Warning for unlinked components with auto-distribute button */}
               {hasUnlinkedComponents && operations.length > 0 && (
                 <Alert variant="default" className="border-amber-500/50 bg-amber-500/10">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <AlertDescription className="text-amber-700 dark:text-amber-400">
-                    <span className="font-medium">{unlinkedMaterials.length} компонент{unlinkedMaterials.length === 1 ? '' : unlinkedMaterials.length < 5 ? 'а' : 'ов'}</span> из спецификации не привязан{unlinkedMaterials.length === 1 ? '' : 'о'} к операциям:
-                    <span className="ml-1 text-muted-foreground">
-                      {unlinkedMaterials.slice(0, 3).map((m: any) => m.products?.code || m.products?.name).join(", ")}
-                      {unlinkedMaterials.length > 3 && ` и ещё ${unlinkedMaterials.length - 3}...`}
-                    </span>
+                  <AlertDescription className="text-amber-700 dark:text-amber-400 flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <span className="font-medium">{unlinkedMaterials.length} компонент{unlinkedMaterials.length === 1 ? '' : unlinkedMaterials.length < 5 ? 'а' : 'ов'}</span> из спецификации не привязан{unlinkedMaterials.length === 1 ? '' : 'о'} к операциям:
+                      <span className="ml-1 text-muted-foreground">
+                        {unlinkedMaterials.slice(0, 3).map((m: any) => m.products?.code || m.products?.name).join(", ")}
+                        {unlinkedMaterials.length > 3 && ` и ещё ${unlinkedMaterials.length - 3}...`}
+                      </span>
+                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={autoDistributeComponents}
+                            className="shrink-0 gap-1.5"
+                          >
+                            <Sparkles className="h-4 w-4" />
+                            Авто
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Автоматически распределить все компоненты по производственным операциям
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </AlertDescription>
                 </Alert>
               )}
