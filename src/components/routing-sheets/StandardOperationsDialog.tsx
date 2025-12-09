@@ -285,7 +285,7 @@ export function StandardOperationsDialog({
                 </Button>
               </div>
 
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 max-h-[400px]">
                 {isLoading ? (
                   <div className="p-8 text-center text-muted-foreground">
                     Загрузка...
