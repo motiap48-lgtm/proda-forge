@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Collapsible,
   CollapsibleContent,
@@ -25,7 +26,10 @@ import {
   ClipboardCheck,
   Package,
   AlertTriangle,
-  Printer,
+  List,
+  GitBranch,
+  Factory,
+  ArrowDown,
 } from 'lucide-react';
 import { useRoutingSheets } from '@/hooks/useRoutingSheets';
 import { useSpecifications } from '@/hooks/useSpecifications';
@@ -179,6 +183,42 @@ export function ConsolidatedRoutingDialog({
     return { totalSetupTime, totalCycleTime, totalOperations, nodesWithoutRouting };
   }, [routingTree]);
 
+  // Flatten all operations for visualization
+  const flatOperations = useMemo(() => {
+    const ops: Array<{
+      productName: string;
+      productCode: string;
+      productType: string;
+      level: number;
+      operation: any;
+      workCenterName: string;
+      workCenterCode: string;
+    }> = [];
+
+    const traverse = (node: RoutingNode) => {
+      if (node.routingSheet) {
+        const sortedOps = [...(node.routingSheet.routing_operations || [])].sort(
+          (a: any, b: any) => a.sequence - b.sequence
+        );
+        for (const op of sortedOps) {
+          ops.push({
+            productName: node.productName,
+            productCode: node.productCode,
+            productType: node.productType,
+            level: node.level,
+            operation: op,
+            workCenterName: op.work_center?.name || 'Не указан',
+            workCenterCode: op.work_center?.code || '',
+          });
+        }
+      }
+      node.children.forEach(traverse);
+    };
+
+    traverse(routingTree);
+    return ops;
+  }, [routingTree]);
+
   const toggleNode = (nodeId: string) => {
     setExpandedNodes(prev => {
       const next = new Set(prev);
@@ -301,9 +341,46 @@ export function ConsolidatedRoutingDialog({
     );
   };
 
+  const operationTypeConfig: Record<string, { 
+    label: string; 
+    icon: typeof Wrench; 
+    color: string;
+    bgColor: string;
+    borderColor: string;
+  }> = {
+    production: { 
+      label: "Производство", 
+      icon: Wrench, 
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-50 dark:bg-blue-950/50",
+      borderColor: "border-blue-200 dark:border-blue-800"
+    },
+    transport: { 
+      label: "Транспортировка", 
+      icon: Truck, 
+      color: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-50 dark:bg-amber-950/50",
+      borderColor: "border-amber-200 dark:border-amber-800"
+    },
+    control: { 
+      label: "Контроль", 
+      icon: ClipboardCheck, 
+      color: "text-green-600 dark:text-green-400",
+      bgColor: "bg-green-50 dark:bg-green-950/50",
+      borderColor: "border-green-200 dark:border-green-800"
+    },
+    setup: { 
+      label: "Наладка", 
+      icon: Settings2, 
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-50 dark:bg-purple-950/50",
+      borderColor: "border-purple-200 dark:border-purple-800"
+    },
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Layers className="h-5 w-5 text-primary" />
@@ -341,20 +418,133 @@ export function ConsolidatedRoutingDialog({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={expandAll}>
-            Развернуть всё
-          </Button>
-          <Button variant="outline" size="sm" onClick={collapseAll}>
-            Свернуть всё
-          </Button>
-        </div>
+        <Tabs defaultValue="tree" className="flex-1 flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="tree" className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              Дерево
+            </TabsTrigger>
+            <TabsTrigger value="flow" className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4" />
+              Визуализация
+            </TabsTrigger>
+          </TabsList>
 
-        <ScrollArea className="h-[calc(90vh_-_280px)]">
-          <div className="pr-4">
-            {renderNode(routingTree)}
-          </div>
-        </ScrollArea>
+          <TabsContent value="tree" className="flex-1 flex flex-col min-h-0 mt-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Button variant="outline" size="sm" onClick={expandAll}>
+                Развернуть всё
+              </Button>
+              <Button variant="outline" size="sm" onClick={collapseAll}>
+                Свернуть всё
+              </Button>
+            </div>
+            <ScrollArea className="h-[calc(90vh_-_380px)]">
+              <div className="pr-4">
+                {renderNode(routingTree)}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="flow" className="flex-1 flex flex-col min-h-0 mt-4">
+            <ScrollArea className="h-[calc(90vh_-_340px)]">
+              <div className="pr-4 space-y-4">
+                {flatOperations.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    Нет операций для отображения
+                  </div>
+                ) : (
+                  flatOperations.map((item, index) => {
+                    const config = operationTypeConfig[item.operation.operation_type] || operationTypeConfig.production;
+                    const Icon = config.icon;
+                    const isLastInProduct = index === flatOperations.length - 1 || 
+                      flatOperations[index + 1]?.productCode !== item.productCode;
+
+                    return (
+                      <div key={`${item.productCode}-${item.operation.id}-${index}`}>
+                        {/* Show product header when product changes */}
+                        {(index === 0 || flatOperations[index - 1]?.productCode !== item.productCode) && (
+                          <div className="flex items-center gap-3 mb-3 pb-2 border-b">
+                            <Badge className={cn("shrink-0", productTypeBadgeColors[item.productType])}>
+                              {productTypeLabels[item.productType]}
+                            </Badge>
+                            <div>
+                              <div className="font-medium">{item.productName}</div>
+                              <div className="text-xs text-muted-foreground">{item.productCode}</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Operation card */}
+                        <div className={cn(
+                          "relative rounded-lg border-2 p-4 ml-8",
+                          config.bgColor,
+                          config.borderColor
+                        )}>
+                          {/* Connection line */}
+                          <div className="absolute -left-4 top-1/2 w-4 h-0.5 bg-border" />
+                          
+                          {/* Sequence badge */}
+                          <Badge 
+                            variant="secondary" 
+                            className={cn("absolute -top-2 -left-2 font-mono font-bold", config.color)}
+                          >
+                            {item.operation.sequence}
+                          </Badge>
+
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className={cn("flex items-center gap-2 mb-1", config.color)}>
+                                <Icon className="h-4 w-4" />
+                                <span className="text-xs font-medium">{config.label}</span>
+                              </div>
+                              <p className="font-medium">{item.operation.name}</p>
+                              <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                                <Factory className="h-4 w-4" />
+                                <span>{item.workCenterCode} - {item.workCenterName}</span>
+                              </div>
+                            </div>
+                            <div className="text-right text-sm">
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                <span>{(item.operation.setup_time_minutes || 0) + (item.operation.cycle_time_minutes || 0)} мин</span>
+                              </div>
+                              {item.operation.setup_time_minutes > 0 && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  ПЗ: {item.operation.setup_time_minutes}м | Шт: {item.operation.cycle_time_minutes}м
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Arrow down to next */}
+                        {!isLastInProduct && (
+                          <div className="flex justify-center my-2">
+                            <ArrowDown className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+
+                {/* Legend */}
+                <div className="mt-6 pt-4 border-t flex flex-wrap gap-4 text-xs">
+                  {Object.entries(operationTypeConfig).map(([key, config]) => {
+                    const Icon = config.icon;
+                    return (
+                      <div key={key} className={cn("flex items-center gap-1.5", config.color)}>
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>{config.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
