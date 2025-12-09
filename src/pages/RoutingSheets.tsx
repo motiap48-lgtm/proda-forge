@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet } from "@/hooks/useRoutingSheets";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
 import { RoutingFlowDiagram } from "@/components/routing-sheets/RoutingFlowDiagram";
@@ -220,21 +221,28 @@ const RoutingSheets = () => {
                     </div>
 
                     {operations.length > 0 && (
-                      <div className="mt-4 border-t pt-4">
-                        <p className="text-sm font-medium text-foreground mb-3">Маршрут:</p>
-                        <RoutingFlowDiagram
-                          operations={operations.map((op: any) => ({
-                            sequence: op.sequence,
-                            name: op.name,
-                            work_center_id: op.work_center_id,
-                            work_center_name: op.work_centers?.name,
-                            work_center_code: op.work_centers?.code,
-                            setup_time_minutes: op.setup_time_minutes || 0,
-                            cycle_time_minutes: op.cycle_time_minutes || 0,
-                            operation_type: op.operation_type || "production",
-                          }))}
-                        />
-                      </div>
+                      <Collapsible className="mt-4 border-t pt-4">
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="w-full justify-between px-0 hover:bg-transparent">
+                            <span className="text-sm font-medium text-foreground">Маршрут:</span>
+                            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-3">
+                          <RoutingFlowDiagram
+                            operations={operations.map((op: any) => ({
+                              sequence: op.sequence,
+                              name: op.name,
+                              work_center_id: op.work_center_id,
+                              work_center_name: op.work_centers?.name,
+                              work_center_code: op.work_centers?.code,
+                              setup_time_minutes: op.setup_time_minutes || 0,
+                              cycle_time_minutes: op.cycle_time_minutes || 0,
+                              operation_type: op.operation_type || "production",
+                            }))}
+                          />
+                        </CollapsibleContent>
+                      </Collapsible>
                     )}
                   </CardContent>
                 </Card>
