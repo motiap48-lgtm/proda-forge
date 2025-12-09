@@ -29,6 +29,7 @@ const RoutingSheets = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedSheet, setSelectedSheet] = useState<any>(null);
   const [sheetToPrint, setSheetToPrint] = useState<any>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   
   const { data: routingSheets, isLoading } = useRoutingSheets();
@@ -241,7 +242,7 @@ const RoutingSheets = () => {
         </div>
 
         {/* Guide/Memo - collapsed by default */}
-        <Collapsible className="mb-6">
+        <Collapsible open={guideOpen} onOpenChange={setGuideOpen} className="mb-6">
           <Card className="border-primary/20">
             <CollapsibleTrigger asChild>
               <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
@@ -250,7 +251,7 @@ const RoutingSheets = () => {
                     <HelpCircle className="h-5 w-5 text-primary" />
                     <span className="font-medium text-foreground">Как создать техмаршрут? Пошаговая инструкция</span>
                   </div>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${guideOpen ? 'rotate-180' : ''}`} />
                 </div>
               </CardContent>
             </CollapsibleTrigger>
