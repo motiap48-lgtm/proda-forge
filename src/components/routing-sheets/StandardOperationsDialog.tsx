@@ -92,13 +92,19 @@ export function StandardOperationsDialog({
   const [editingOperation, setEditingOperation] = useState<StandardOperation | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // Form state
-  const [formData, setFormData] = useState({
+  const getInitialFormData = () => ({
     name: '',
     operation_type: 'production',
     description: '',
     is_active: true,
   });
+
+  // Form state
+  const [formData, setFormData] = useState(getInitialFormData());
+
+  const resetForm = () => {
+    setFormData(getInitialFormData());
+  };
 
   useEffect(() => {
     if (editingOperation) {
@@ -109,12 +115,7 @@ export function StandardOperationsDialog({
         is_active: editingOperation.is_active,
       });
     } else {
-      setFormData({
-        name: '',
-        operation_type: 'production',
-        description: '',
-        is_active: true,
-      });
+      resetForm();
     }
   }, [editingOperation]);
 
@@ -123,7 +124,7 @@ export function StandardOperationsDialog({
     op.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (continueAdding: boolean = false) => {
     if (!formData.name.trim()) {
       toast.error('Укажите название операции');
       return;
@@ -135,11 +136,18 @@ export function StandardOperationsDialog({
           id: editingOperation.id,
           ...formData,
         });
+        setIsEditing(false);
+        setEditingOperation(null);
       } else {
         await createMutation.mutateAsync(formData);
+        if (continueAdding) {
+          // Reset form for next operation
+          resetForm();
+        } else {
+          setIsEditing(false);
+          setEditingOperation(null);
+        }
       }
-      setIsEditing(false);
-      setEditingOperation(null);
     } catch (error) {
       // Error handled in mutation
     }
@@ -249,7 +257,12 @@ export function StandardOperationsDialog({
                 <Button variant="outline" onClick={handleCancel}>
                   Отмена
                 </Button>
-                <Button onClick={handleSubmit}>
+                {!editingOperation && (
+                  <Button variant="secondary" onClick={() => handleSubmit(true)}>
+                    Создать и добавить ещё
+                  </Button>
+                )}
+                <Button onClick={() => handleSubmit(false)}>
                   {editingOperation ? 'Сохранить' : 'Создать'}
                 </Button>
               </div>
