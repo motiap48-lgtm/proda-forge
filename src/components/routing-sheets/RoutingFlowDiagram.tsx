@@ -1,7 +1,17 @@
 import { useMemo, useState, DragEvent } from "react";
-import { Factory, Truck, ClipboardCheck, Settings, ArrowRight, GripVertical } from "lucide-react";
+import { Factory, Truck, ClipboardCheck, Settings, ArrowRight, GripVertical, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+
+interface OperationMaterial {
+  product_id: string;
+  product_name?: string;
+  product_code?: string;
+  product_type?: string;
+  quantity?: number | null;
+  unit?: string;
+}
 
 interface Operation {
   sequence: number;
@@ -12,6 +22,7 @@ interface Operation {
   setup_time_minutes: number;
   cycle_time_minutes: number;
   operation_type: string;
+  materials?: OperationMaterial[];
 }
 
 interface RoutingFlowDiagramProps {
@@ -189,9 +200,38 @@ export function RoutingFlowDiagram({ operations, workCenters, className, editabl
                   )}
                 </div>
 
+                {/* Materials linked to operation */}
+                {op.materials && op.materials.length > 0 && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="mt-2 pt-2 border-t flex items-center gap-1 text-xs text-muted-foreground cursor-help">
+                          <Package className="h-3 w-3" />
+                          <span>{op.materials.length} компонент{op.materials.length === 1 ? '' : op.materials.length < 5 ? 'а' : 'ов'}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
+                        <div className="space-y-1">
+                          {op.materials.map((m, mIdx) => (
+                            <div key={mIdx} className="text-xs">
+                              <span className="font-medium">{m.product_code || m.product_name}</span>
+                              {m.quantity && (
+                                <span className="text-muted-foreground"> • {m.quantity} {m.unit}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+
                 {/* Time info */}
                 {(op.setup_time_minutes > 0 || op.cycle_time_minutes > 0) && (
-                  <div className="mt-2 pt-2 border-t text-xs text-muted-foreground flex gap-2">
+                  <div className={cn(
+                    "mt-2 pt-2 border-t text-xs text-muted-foreground flex gap-2",
+                    op.materials && op.materials.length > 0 && "mt-1 pt-1"
+                  )}>
                     {op.setup_time_minutes > 0 && (
                       <span>ПЗ: {op.setup_time_minutes}м</span>
                     )}
