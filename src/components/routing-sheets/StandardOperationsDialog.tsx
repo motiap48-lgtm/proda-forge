@@ -45,7 +45,6 @@ import {
   useDeleteStandardOperation,
   StandardOperation,
 } from '@/hooks/useStandardOperations';
-import { useActiveWorkCenters } from '@/hooks/useWorkCenters';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,7 +83,6 @@ export function StandardOperationsDialog({
   onOpenChange,
 }: StandardOperationsDialogProps) {
   const { data: operations = [], isLoading } = useStandardOperations();
-  const { data: workCenters = [] } = useActiveWorkCenters();
   const createMutation = useCreateStandardOperation();
   const updateMutation = useUpdateStandardOperation();
   const deleteMutation = useDeleteStandardOperation();
@@ -99,9 +97,6 @@ export function StandardOperationsDialog({
     name: '',
     operation_type: 'production',
     description: '',
-    default_setup_time_minutes: 0,
-    default_cycle_time_minutes: 0,
-    default_work_center_id: null as string | null,
     is_active: true,
   });
 
@@ -111,9 +106,6 @@ export function StandardOperationsDialog({
         name: editingOperation.name,
         operation_type: editingOperation.operation_type,
         description: editingOperation.description || '',
-        default_setup_time_minutes: editingOperation.default_setup_time_minutes,
-        default_cycle_time_minutes: editingOperation.default_cycle_time_minutes,
-        default_work_center_id: editingOperation.default_work_center_id,
         is_active: editingOperation.is_active,
       });
     } else {
@@ -121,9 +113,6 @@ export function StandardOperationsDialog({
         name: '',
         operation_type: 'production',
         description: '',
-        default_setup_time_minutes: 0,
-        default_cycle_time_minutes: 0,
-        default_work_center_id: null,
         is_active: true,
       });
     }
@@ -248,58 +237,6 @@ export function StandardOperationsDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Время наладки (мин)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={formData.default_setup_time_minutes}
-                    onChange={e => setFormData(prev => ({
-                      ...prev,
-                      default_setup_time_minutes: parseInt(e.target.value) || 0
-                    }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Время цикла (мин)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={0.1}
-                    value={formData.default_cycle_time_minutes}
-                    onChange={e => setFormData(prev => ({
-                      ...prev,
-                      default_cycle_time_minutes: parseFloat(e.target.value) || 0
-                    }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Производственный участок</Label>
-                  <Select
-                    value={formData.default_work_center_id || 'none'}
-                    onValueChange={value => setFormData(prev => ({
-                      ...prev,
-                      default_work_center_id: value === 'none' ? null : value
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Не указан" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Не указан</SelectItem>
-                      {workCenters.map(wc => (
-                        <SelectItem key={wc.id} value={wc.id}>
-                          {wc.code} - {wc.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.is_active}
@@ -351,9 +288,7 @@ export function StandardOperationsDialog({
                         <TableHead className="w-24">Код</TableHead>
                         <TableHead>Название</TableHead>
                         <TableHead className="w-36">Тип</TableHead>
-                        <TableHead className="w-28 text-center">Наладка</TableHead>
-                        <TableHead className="w-28 text-center">Цикл</TableHead>
-                        <TableHead className="w-40">Участок</TableHead>
+                        <TableHead>Описание</TableHead>
                         <TableHead className="w-24 text-center">Статус</TableHead>
                         <TableHead className="w-24"></TableHead>
                       </TableRow>
@@ -371,16 +306,10 @@ export function StandardOperationsDialog({
                                 <span className="text-sm">{getOperationTypeLabel(op.operation_type)}</span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-center">{op.default_setup_time_minutes} мин</TableCell>
-                            <TableCell className="text-center">{op.default_cycle_time_minutes} мин</TableCell>
                             <TableCell>
-                              {op.default_work_center ? (
-                                <span className="text-sm">
-                                  {op.default_work_center.code}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">—</span>
-                              )}
+                              <span className="text-sm text-muted-foreground line-clamp-1">
+                                {op.description || '—'}
+                              </span>
                             </TableCell>
                             <TableCell className="text-center">
                               <Badge variant={op.is_active ? 'default' : 'secondary'}>

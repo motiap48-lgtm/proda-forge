@@ -62,7 +62,7 @@ export function useCreateStandardOperation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<StandardOperation, 'id' | 'code' | 'created_at' | 'updated_at' | 'default_work_center'>) => {
+    mutationFn: async (data: { name: string; operation_type: string; description: string; is_active: boolean }) => {
       const { data: result, error } = await supabase
         .from('standard_operations')
         .insert({
@@ -70,9 +70,6 @@ export function useCreateStandardOperation() {
           name: data.name,
           operation_type: data.operation_type,
           description: data.description,
-          default_setup_time_minutes: data.default_setup_time_minutes,
-          default_cycle_time_minutes: data.default_cycle_time_minutes,
-          default_work_center_id: data.default_work_center_id,
           is_active: data.is_active,
         })
         .select()
@@ -96,16 +93,13 @@ export function useUpdateStandardOperation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...data }: Partial<StandardOperation> & { id: string }) => {
+    mutationFn: async ({ id, ...data }: { id: string; name?: string; operation_type?: string; description?: string; is_active?: boolean }) => {
       const { data: result, error } = await supabase
         .from('standard_operations')
         .update({
           name: data.name,
           operation_type: data.operation_type,
           description: data.description,
-          default_setup_time_minutes: data.default_setup_time_minutes,
-          default_cycle_time_minutes: data.default_cycle_time_minutes,
-          default_work_center_id: data.default_work_center_id,
           is_active: data.is_active,
         })
         .eq('id', id)
