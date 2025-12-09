@@ -160,7 +160,8 @@ export function RoutingSheetDialog({
     searchText: `${wc.code} ${wc.name}`,
   })) || [];
 
-  const operationsEndRef = useRef<HTMLDivElement>(null);
+  const operationsContainerRef = useRef<HTMLDivElement>(null);
+  const lastOperationRef = useRef<HTMLDivElement>(null);
 
   const addOperation = (type: OperationType = "production") => {
     const newSequence = operations.length > 0 
@@ -188,8 +189,8 @@ export function RoutingSheetDialog({
     ]);
 
     setTimeout(() => {
-      operationsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }, 150);
+      lastOperationRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
   };
 
   const addFromStandardOperation = (stdOp: any) => {
@@ -213,8 +214,8 @@ export function RoutingSheetDialog({
     toast.success(`Добавлена операция "${stdOp.name}"`);
 
     setTimeout(() => {
-      operationsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }, 150);
+      lastOperationRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
   };
 
   const removeOperation = (index: number) => {
@@ -705,10 +706,12 @@ export function RoutingSheetDialog({
                     {operations.map((op, index) => {
                       const typeConfig = operationTypeOptions.find(t => t.value === op.operation_type);
                       const TypeIcon = typeConfig?.icon || Factory;
+                      const isLastOperation = index === operations.length - 1;
                       
                       return (
                         <Card 
-                          key={index} 
+                          key={index}
+                          ref={isLastOperation ? lastOperationRef : null} 
                           className={cn(
                             "border-l-4 transition-all duration-200",
                             operationTypeColors[op.operation_type],
@@ -896,7 +899,7 @@ export function RoutingSheetDialog({
                         </div>
                       </CardContent>
                     </Card>
-                    <div ref={operationsEndRef} />
+                    
                   </div>
                 )}
               </div>
