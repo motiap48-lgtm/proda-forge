@@ -19,7 +19,13 @@ export const useRoutingSheets = () => {
             cycle_time_minutes,
             work_center_id,
             operation_type,
-            work_centers:work_center_id(id, name, code)
+            work_centers:work_center_id(id, name, code),
+            routing_operation_materials(
+              id,
+              product_id,
+              quantity_per_operation,
+              products:product_id(id, name, code, unit, product_type)
+            )
           )
         `)
         .order("created_at", { ascending: false });
@@ -46,6 +52,11 @@ export const useActiveRoutingSheets = () => {
   });
 };
 
+interface OperationMaterial {
+  product_id: string;
+  quantity_per_operation?: number | null;
+}
+
 interface Operation {
   id?: string;
   sequence: number;
@@ -54,6 +65,7 @@ interface Operation {
   setup_time_minutes: number;
   cycle_time_minutes: number;
   operation_type: string;
+  materials?: OperationMaterial[];
 }
 
 interface RoutingSheetData {
@@ -95,11 +107,44 @@ export const useCreateRoutingSheet = () => {
           operation_type: op.operation_type || "production",
         }));
 
-        const { error: opsError } = await supabase
+        const { data: insertedOps, error: opsError } = await supabase
           .from("routing_operations")
-          .insert(operationsToInsert);
+          .insert(operationsToInsert)
+          .select();
 
         if (opsError) throw opsError;
+
+        // Insert operation materials
+        const allMaterials: Array<{
+          routing_operation_id: string;
+          product_id: string;
+          quantity_per_operation: number | null;
+        }> = [];
+
+        if (insertedOps) {
+          data.operations.forEach((op, index) => {
+            if (op.materials && op.materials.length > 0) {
+              const opId = insertedOps[index]?.id;
+              if (opId) {
+                op.materials.forEach((mat) => {
+                  allMaterials.push({
+                    routing_operation_id: opId,
+                    product_id: mat.product_id,
+                    quantity_per_operation: mat.quantity_per_operation ?? null,
+                  });
+                });
+              }
+            }
+          });
+        }
+
+        if (allMaterials.length > 0) {
+          const { error: matsError } = await supabase
+            .from("routing_operation_materials")
+            .insert(allMaterials);
+
+          if (matsError) throw matsError;
+        }
       }
 
       return sheet;
@@ -151,11 +196,44 @@ export const useUpdateRoutingSheet = () => {
           operation_type: op.operation_type || "production",
         }));
 
-        const { error: opsError } = await supabase
+        const { data: insertedOps, error: opsError } = await supabase
           .from("routing_operations")
-          .insert(operationsToInsert);
+          .insert(operationsToInsert)
+          .select();
 
         if (opsError) throw opsError;
+
+        // Insert operation materials
+        const allMaterials: Array<{
+          routing_operation_id: string;
+          product_id: string;
+          quantity_per_operation: number | null;
+        }> = [];
+
+        if (insertedOps) {
+          data.operations.forEach((op, index) => {
+            if (op.materials && op.materials.length > 0) {
+              const opId = insertedOps[index]?.id;
+              if (opId) {
+                op.materials.forEach((mat) => {
+                  allMaterials.push({
+                    routing_operation_id: opId,
+                    product_id: mat.product_id,
+                    quantity_per_operation: mat.quantity_per_operation ?? null,
+                  });
+                });
+              }
+            }
+          });
+        }
+
+        if (allMaterials.length > 0) {
+          const { error: matsError } = await supabase
+            .from("routing_operation_materials")
+            .insert(allMaterials);
+
+          if (matsError) throw matsError;
+        }
       }
 
       return { id };

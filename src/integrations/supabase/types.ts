@@ -722,6 +722,45 @@ export type Database = {
           },
         ]
       }
+      routing_operation_materials: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          quantity_per_operation: number | null
+          routing_operation_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity_per_operation?: number | null
+          routing_operation_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity_per_operation?: number | null
+          routing_operation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routing_operation_materials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routing_operation_materials_routing_operation_id_fkey"
+            columns: ["routing_operation_id"]
+            isOneToOne: false
+            referencedRelation: "routing_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       routing_operations: {
         Row: {
           created_at: string
