@@ -350,7 +350,7 @@ export function ConsolidatedRoutingDialog({
           </Button>
         </div>
 
-        <ScrollArea className="flex-1 h-[calc(90vh-280px)]">
+        <ScrollArea className="h-[calc(90vh_-_280px)]">
           <div className="pr-4">
             {renderNode(routingTree)}
           </div>
