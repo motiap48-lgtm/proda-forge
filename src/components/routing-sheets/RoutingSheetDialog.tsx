@@ -381,30 +381,25 @@ export function RoutingSheetDialog({
 
     const firstProductionSeq = productionOps[0].sequence;
     const lastProductionSeq = productionOps[productionOps.length - 1].sequence;
-    // Middle operation if available
+    // Middle operation if available (only use if we have 3+ production operations)
     const middleIdx = Math.floor(productionOps.length / 2);
-    const middleProductionSeq = productionOps.length > 2 ? productionOps[middleIdx].sequence : lastProductionSeq;
+    const middleProductionSeq = productionOps.length >= 3 ? productionOps[middleIdx].sequence : null;
 
     const updatedOperations = operations.map(op => {
       let materialsToAdd: any[] = [];
 
+      // Raw materials go to first production operation
       if (op.sequence === firstProductionSeq) {
-        // Raw materials go to first operation
         materialsToAdd = rawMaterials.map((m: any) => ({
           product_id: m.material_id,
           quantity_per_operation: m.quantity,
         }));
       }
 
-      if (productionOps.length > 2 && op.sequence === middleProductionSeq) {
-        // Semi-finished products go to middle operation
-        materialsToAdd = components.map((m: any) => ({
-          product_id: m.material_id,
-          quantity_per_operation: m.quantity,
-        }));
-      } else if (productionOps.length <= 2 && op.sequence === lastProductionSeq) {
-        // If only 1-2 operations, components go to last
+      // Components (ПФ, СБ) go to middle operation if 3+ ops, otherwise to last
+      if (middleProductionSeq && op.sequence === middleProductionSeq) {
         materialsToAdd = [
+          ...materialsToAdd,
           ...components.map((m: any) => ({
             product_id: m.material_id,
             quantity_per_operation: m.quantity,
@@ -412,8 +407,8 @@ export function RoutingSheetDialog({
         ];
       }
 
+      // Last operation gets: finished goods, unknown, and components if no middle operation
       if (op.sequence === lastProductionSeq) {
-        // Finished goods and unknown go to last operation
         materialsToAdd = [
           ...materialsToAdd,
           ...finishedGoods.map((m: any) => ({
@@ -425,8 +420,9 @@ export function RoutingSheetDialog({
             quantity_per_operation: m.quantity,
           })),
         ];
-        // If only 1-2 ops and components weren't added to middle
-        if (productionOps.length <= 2) {
+        
+        // If no middle operation (1-2 production ops), components also go to last
+        if (!middleProductionSeq) {
           materialsToAdd = [
             ...materialsToAdd,
             ...components.map((m: any) => ({
@@ -459,7 +455,7 @@ export function RoutingSheetDialog({
       other: finishedGoods.length + unknown.length,
     };
     toast.success(
-      `Распределено: ${distributed.materials} материалов на первую операцию, ${distributed.components} ПФ/СБ ${productionOps.length > 2 ? 'на среднюю' : 'на последнюю'}, ${distributed.other} прочих на последнюю`
+      `Распределено: ${distributed.materials} материалов на первую операцию, ${distributed.components} ПФ/СБ ${middleProductionSeq ? 'на среднюю' : 'на последнюю'}, ${distributed.other} прочих на последнюю`
     );
   };
 
