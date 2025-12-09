@@ -350,13 +350,11 @@ export function ConsolidatedRoutingDialog({
           </Button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="pr-4">
-              {renderNode(routingTree)}
-            </div>
-          </ScrollArea>
-        </div>
+        <ScrollArea className="flex-1 h-[calc(90vh-280px)]">
+          <div className="pr-4">
+            {renderNode(routingTree)}
+          </div>
+        </ScrollArea>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
