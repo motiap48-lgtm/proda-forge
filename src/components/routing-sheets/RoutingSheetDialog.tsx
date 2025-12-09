@@ -10,12 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Trash2, Wand2, ArrowUp, ArrowDown, Factory, Clock, 
-  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical
+  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle
 } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
@@ -279,6 +280,17 @@ export function RoutingSheetDialog({
   );
   const specificationMaterials = productSpecification?.specification_materials || [];
 
+  // Calculate unlinked specification components
+  const specMaterialIds = new Set(specificationMaterials.map((m: any) => m.material_id));
+  const linkedMaterialIds = new Set<string>();
+  operations.forEach(op => {
+    op.materials?.forEach(m => linkedMaterialIds.add(m.product_id));
+  });
+  const unlinkedMaterials = specificationMaterials.filter(
+    (m: any) => !linkedMaterialIds.has(m.material_id)
+  );
+  const hasUnlinkedComponents = unlinkedMaterials.length > 0 && specificationMaterials.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -363,6 +375,20 @@ export function RoutingSheetDialog({
                   </div>
                 </div>
               </div>
+
+              {/* Warning for unlinked components */}
+              {hasUnlinkedComponents && operations.length > 0 && (
+                <Alert variant="default" className="border-amber-500/50 bg-amber-500/10">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-700 dark:text-amber-400">
+                    <span className="font-medium">{unlinkedMaterials.length} компонент{unlinkedMaterials.length === 1 ? '' : unlinkedMaterials.length < 5 ? 'а' : 'ов'}</span> из спецификации не привязан{unlinkedMaterials.length === 1 ? '' : 'о'} к операциям:
+                    <span className="ml-1 text-muted-foreground">
+                      {unlinkedMaterials.slice(0, 3).map((m: any) => m.products?.code || m.products?.name).join(", ")}
+                      {unlinkedMaterials.length > 3 && ` и ещё ${unlinkedMaterials.length - 3}...`}
+                    </span>
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap gap-2">

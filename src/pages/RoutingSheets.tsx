@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet } from "@/hooks/useRoutingSheets";
+import { useSpecifications } from "@/hooks/useSpecifications";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
 import { RoutingFlowDiagram } from "@/components/routing-sheets/RoutingFlowDiagram";
 import {
@@ -23,9 +25,41 @@ const RoutingSheets = () => {
   const [selectedSheet, setSelectedSheet] = useState<any>(null);
   
   const { data: routingSheets, isLoading } = useRoutingSheets();
+  const { data: specifications } = useSpecifications();
   const createMutation = useCreateRoutingSheet();
   const updateMutation = useUpdateRoutingSheet();
   const deleteMutation = useDeleteRoutingSheet();
+
+  // Helper to get specification for a product and calculate linked components stats
+  const getSheetComponentStats = (sheet: any) => {
+    const spec = specifications?.find(
+      (s) => s.product_id === sheet.product_id && s.is_active && !s.has_no_specification
+    );
+    const specMaterialIds = new Set(
+      spec?.specification_materials?.map((m: any) => m.material_id) || []
+    );
+    const totalSpecComponents = specMaterialIds.size;
+
+    // Collect all linked component IDs from all operations
+    const linkedComponentIds = new Set<string>();
+    const operations = sheet.routing_operations || [];
+    operations.forEach((op: any) => {
+      op.routing_operation_materials?.forEach((m: any) => {
+        linkedComponentIds.add(m.product_id);
+      });
+    });
+
+    const linkedCount = linkedComponentIds.size;
+    const unlinkedCount = totalSpecComponents - [...specMaterialIds].filter(id => linkedComponentIds.has(id)).length;
+
+    return {
+      totalSpecComponents,
+      linkedCount,
+      unlinkedCount,
+      hasSpec: !!spec,
+      linkedComponentIds,
+    };
+  };
 
   const filteredSheets = routingSheets?.filter(
     (sheet) =>
@@ -207,7 +241,7 @@ const RoutingSheets = () => {
                       </DropdownMenu>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2 mb-4">
+                    <div className="grid gap-4 md:grid-cols-3 mb-4">
                       <div className="flex items-center gap-2 text-sm">
                         <Settings className="h-4 w-4 text-muted-foreground" />
                         <span className="text-muted-foreground">Операций:</span>
@@ -218,6 +252,36 @@ const RoutingSheets = () => {
                         <span className="text-muted-foreground">Общее время:</span>
                         <span className="font-medium text-foreground">{totalTime} мин</span>
                       </div>
+                      {(() => {
+                        const stats = getSheetComponentStats(sheet);
+                        if (!stats.hasSpec || stats.totalSpecComponents === 0) return null;
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Package className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-muted-foreground">Компоненты:</span>
+                                  <span className="font-medium text-foreground">
+                                    {stats.linkedCount}/{stats.totalSpecComponents}
+                                  </span>
+                                  {stats.unlinkedCount > 0 && (
+                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
+                                      <AlertTriangle className="h-3 w-3 mr-1" />
+                                      {stats.unlinkedCount} не привязано
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>
+                                  {stats.linkedCount} из {stats.totalSpecComponents} компонентов спецификации привязаны к операциям
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
                     </div>
 
                     {operations.length > 0 && (
@@ -239,6 +303,14 @@ const RoutingSheets = () => {
                               setup_time_minutes: op.setup_time_minutes || 0,
                               cycle_time_minutes: op.cycle_time_minutes || 0,
                               operation_type: op.operation_type || "production",
+                              materials: op.routing_operation_materials?.map((m: any) => ({
+                                product_id: m.product_id,
+                                product_name: m.products?.name,
+                                product_code: m.products?.code,
+                                product_type: m.products?.product_type,
+                                quantity: m.quantity_per_operation,
+                                unit: m.products?.unit,
+                              })) || [],
                             }))}
                           />
                         </CollapsibleContent>
