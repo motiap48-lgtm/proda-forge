@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,9 @@ import {
   GitBranch,
   Factory,
   ArrowDown,
+  Printer,
 } from 'lucide-react';
+import { ConsolidatedRoutingPrintView } from './ConsolidatedRoutingPrintView';
 import { useRoutingSheets } from '@/hooks/useRoutingSheets';
 import { useSpecifications } from '@/hooks/useSpecifications';
 import { cn } from '@/lib/utils';
@@ -85,6 +88,12 @@ export function ConsolidatedRoutingDialog({
   const { data: routingSheets = [] } = useRoutingSheets();
   const { data: specifications = [] } = useSpecifications();
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Сводный техмаршрут - ${productCode}`,
+  });
 
   // Build the consolidated routing tree
   const routingTree = useMemo(() => {
@@ -304,6 +313,9 @@ export function ConsolidatedRoutingDialog({
                     .sort((a: any, b: any) => a.sequence - b.sequence)
                     .map((op: any, idx: number) => {
                       const IconComponent = operationTypeIcons[op.operation_type] || Wrench;
+                      const workCenterDisplay = op.work_center?.code && op.work_center?.name 
+                        ? `${op.work_center.code} - ${op.work_center.name}`
+                        : (op.work_center?.name || op.work_center?.code || 'Не указан');
                       return (
                         <div
                           key={op.id}
@@ -314,11 +326,9 @@ export function ConsolidatedRoutingDialog({
                           </div>
                           <IconComponent className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span className="flex-1 truncate">{op.name}</span>
-                          {op.work_center && (
-                            <Badge variant="outline" className="shrink-0">
-                              {op.work_center.code} - {op.work_center.name}
-                            </Badge>
-                          )}
+                          <Badge variant="outline" className="shrink-0">
+                            {workCenterDisplay}
+                          </Badge>
                           <div className="flex items-center gap-1 text-muted-foreground shrink-0">
                             <Clock className="h-3 w-3" />
                             <span>{op.setup_time_minutes + op.cycle_time_minutes} мин</span>
@@ -501,7 +511,11 @@ export function ConsolidatedRoutingDialog({
                               <p className="font-medium">{item.operation.name}</p>
                               <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                                 <Factory className="h-4 w-4" />
-                                <span>{item.workCenterCode} - {item.workCenterName}</span>
+                                <span>
+                                  {item.workCenterCode && item.workCenterName 
+                                    ? `${item.workCenterCode} - ${item.workCenterName}` 
+                                    : (item.workCenterName || item.workCenterCode || 'Не указан')}
+                                </span>
                               </div>
                             </div>
                             <div className="text-right text-sm">
@@ -547,9 +561,24 @@ export function ConsolidatedRoutingDialog({
         </Tabs>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={() => handlePrint()}>
+            <Printer className="h-4 w-4 mr-2" />
+            Печать
+          </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Закрыть
           </Button>
+        </div>
+
+        {/* Hidden print view */}
+        <div className="hidden">
+          <ConsolidatedRoutingPrintView
+            ref={printRef}
+            productName={productName}
+            productCode={productCode}
+            totals={totals}
+            flatOperations={flatOperations}
+          />
         </div>
       </DialogContent>
     </Dialog>
