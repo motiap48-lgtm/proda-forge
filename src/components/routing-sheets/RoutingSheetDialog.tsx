@@ -16,7 +16,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Trash2, Wand2, ArrowUp, ArrowDown, Factory, Clock, 
-  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle, Sparkles
+  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle, Sparkles, ChevronDown
 } from "lucide-react";
 import {
   Tooltip,
@@ -24,6 +24,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useProducts } from "@/hooks/useProducts";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { useSpecifications } from "@/hooks/useSpecifications";
@@ -297,47 +307,32 @@ export function RoutingSheetDialog({
   );
   const hasUnlinkedComponents = unlinkedMaterials.length > 0 && specificationMaterials.length > 0;
 
-  // Auto-distribute components to operations based on operation type
-  const autoDistributeComponents = () => {
-    if (specificationMaterials.length === 0) {
-      toast.error("Нет компонентов в спецификации для распределения");
-      return;
-    }
-    if (operations.length === 0) {
-      toast.error("Добавьте операции для распределения компонентов");
-      return;
-    }
+  // Get production operations for menu
+  const productionOps = operations.filter(op => op.operation_type === "production");
 
-    // Find production operations (these are the main manufacturing operations)
-    const productionOps = operations.filter(op => op.operation_type === "production");
-    
-    if (productionOps.length === 0) {
-      toast.error("Добавьте производственные операции для распределения компонентов");
-      return;
-    }
-
-    // Get IDs of already linked materials across all operations
+  // Helper to get unlinked materials
+  const getUnlinkedMaterials = () => {
     const alreadyLinkedIds = new Set<string>();
     operations.forEach(op => {
       op.materials?.forEach(m => alreadyLinkedIds.add(m.product_id));
     });
-
-    // Filter out materials that are not yet linked
-    const unlinkedMats = specificationMaterials.filter(
+    return specificationMaterials.filter(
       (m: any) => !alreadyLinkedIds.has(m.material_id)
     );
+  };
 
+  // Auto-distribute to specific operation
+  const distributeToOperation = (targetSequence: number) => {
+    const unlinkedMats = getUnlinkedMaterials();
+    
     if (unlinkedMats.length === 0) {
       toast.info("Все компоненты уже распределены по операциям");
       return;
     }
 
-    // Find the target operation - last production operation (typically final assembly)
-    const targetOpSequence = productionOps[productionOps.length - 1].sequence;
-
-    // Strategy: assign all unlinked components to the last production operation
+    const targetOp = operations.find(op => op.sequence === targetSequence);
     const updatedOperations = operations.map(op => {
-      if (op.sequence === targetOpSequence) {
+      if (op.sequence === targetSequence) {
         const existingMaterials = op.materials || [];
         const newMaterials = unlinkedMats.map((m: any) => ({
           product_id: m.material_id,
@@ -353,7 +348,119 @@ export function RoutingSheetDialog({
     });
 
     setOperations(updatedOperations);
-    toast.success(`${unlinkedMats.length} компонент(ов) распределено на последнюю производственную операцию`);
+    toast.success(`${unlinkedMats.length} компонент(ов) распределено на операцию "${targetOp?.name || targetSequence}"`);
+  };
+
+  // Smart distribution by product type
+  const distributeByProductType = () => {
+    const unlinkedMats = getUnlinkedMaterials();
+    
+    if (unlinkedMats.length === 0) {
+      toast.info("Все компоненты уже распределены по операциям");
+      return;
+    }
+
+    if (productionOps.length === 0) {
+      toast.error("Добавьте производственные операции для распределения");
+      return;
+    }
+
+    // Get product info for each material
+    const materialsWithInfo = unlinkedMats.map((m: any) => ({
+      ...m,
+      productInfo: products?.find(p => p.id === m.material_id),
+    }));
+
+    // Separate by type: materials go to first production op, assemblies/semi-finished to last
+    const rawMaterials = materialsWithInfo.filter((m: any) => m.productInfo?.product_type === "material");
+    const components = materialsWithInfo.filter((m: any) => 
+      m.productInfo?.product_type === "semi-finished" || m.productInfo?.product_type === "assembly"
+    );
+    const finishedGoods = materialsWithInfo.filter((m: any) => m.productInfo?.product_type === "finished");
+    const unknown = materialsWithInfo.filter((m: any) => !m.productInfo);
+
+    const firstProductionSeq = productionOps[0].sequence;
+    const lastProductionSeq = productionOps[productionOps.length - 1].sequence;
+    // Middle operation if available
+    const middleIdx = Math.floor(productionOps.length / 2);
+    const middleProductionSeq = productionOps.length > 2 ? productionOps[middleIdx].sequence : lastProductionSeq;
+
+    const updatedOperations = operations.map(op => {
+      let materialsToAdd: any[] = [];
+
+      if (op.sequence === firstProductionSeq) {
+        // Raw materials go to first operation
+        materialsToAdd = rawMaterials.map((m: any) => ({
+          product_id: m.material_id,
+          quantity_per_operation: m.quantity,
+        }));
+      }
+
+      if (productionOps.length > 2 && op.sequence === middleProductionSeq) {
+        // Semi-finished products go to middle operation
+        materialsToAdd = components.map((m: any) => ({
+          product_id: m.material_id,
+          quantity_per_operation: m.quantity,
+        }));
+      } else if (productionOps.length <= 2 && op.sequence === lastProductionSeq) {
+        // If only 1-2 operations, components go to last
+        materialsToAdd = [
+          ...components.map((m: any) => ({
+            product_id: m.material_id,
+            quantity_per_operation: m.quantity,
+          })),
+        ];
+      }
+
+      if (op.sequence === lastProductionSeq) {
+        // Finished goods and unknown go to last operation
+        materialsToAdd = [
+          ...materialsToAdd,
+          ...finishedGoods.map((m: any) => ({
+            product_id: m.material_id,
+            quantity_per_operation: m.quantity,
+          })),
+          ...unknown.map((m: any) => ({
+            product_id: m.material_id,
+            quantity_per_operation: m.quantity,
+          })),
+        ];
+        // If only 1-2 ops and components weren't added to middle
+        if (productionOps.length <= 2) {
+          materialsToAdd = [
+            ...materialsToAdd,
+            ...components.map((m: any) => ({
+              product_id: m.material_id,
+              quantity_per_operation: m.quantity,
+            })),
+          ];
+        }
+      }
+
+      if (materialsToAdd.length > 0) {
+        const existingMaterials = op.materials || [];
+        // Dedupe by product_id
+        const existingIds = new Set(existingMaterials.map(m => m.product_id));
+        const newMaterials = materialsToAdd.filter(m => !existingIds.has(m.product_id));
+        
+        return {
+          ...op,
+          materials: [...existingMaterials, ...newMaterials],
+        };
+      }
+      return op;
+    });
+
+    setOperations(updatedOperations);
+    
+    const distributed = {
+      materials: rawMaterials.length,
+      components: components.length,
+      other: finishedGoods.length + unknown.length,
+    };
+    toast.success(
+      `Распределено: ${distributed.materials} материалов на первую операцию, ${distributed.components} ПФ/СБ ${productionOps.length > 2 ? 'на среднюю' : 'на последнюю'}, ${distributed.other} прочих на последнюю`
+    );
   };
 
   return (
@@ -453,24 +560,53 @@ export function RoutingSheetDialog({
                         {unlinkedMaterials.length > 3 && ` и ещё ${unlinkedMaterials.length - 3}...`}
                       </span>
                     </div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={autoDistributeComponents}
-                            className="shrink-0 gap-1.5"
-                          >
-                            <Sparkles className="h-4 w-4" />
-                            Авто
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Автоматически распределить все компоненты по производственным операциям
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="shrink-0 gap-1.5"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          Авто
+                          <ChevronDown className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem onClick={distributeByProductType} className="gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          <div className="flex flex-col">
+                            <span>Умное распределение</span>
+                            <span className="text-xs text-muted-foreground">Материалы → первая, ПФ/СБ → последняя</span>
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger className="gap-2">
+                            <Factory className="h-4 w-4" />
+                            Выбрать операцию
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            {productionOps.length === 0 ? (
+                              <DropdownMenuItem disabled>
+                                Нет производственных операций
+                              </DropdownMenuItem>
+                            ) : (
+                              productionOps.map(op => (
+                                <DropdownMenuItem 
+                                  key={op.sequence} 
+                                  onClick={() => distributeToOperation(op.sequence)}
+                                  className="gap-2"
+                                >
+                                  <span className="text-xs text-muted-foreground w-4">{op.sequence}.</span>
+                                  {op.name || "Без названия"}
+                                </DropdownMenuItem>
+                              ))
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </AlertDescription>
                 </Alert>
               )}
