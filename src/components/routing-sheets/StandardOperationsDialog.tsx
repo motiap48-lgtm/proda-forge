@@ -247,14 +247,14 @@ export function StandardOperationsDialog({
               <div className="space-y-2">
                 <Label>Производственный участок (по умолчанию)</Label>
                 <Select
-                  value={formData.default_work_center_id || ''}
-                  onValueChange={value => setFormData(prev => ({ ...prev, default_work_center_id: value || null }))}
+                  value={formData.default_work_center_id || 'none'}
+                  onValueChange={value => setFormData(prev => ({ ...prev, default_work_center_id: value === 'none' ? null : value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Не указан" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Не указан</SelectItem>
+                    <SelectItem value="none">Не указан</SelectItem>
                     {workCenters.map(wc => (
                       <SelectItem key={wc.id} value={wc.id}>
                         {wc.code} — {wc.name}
