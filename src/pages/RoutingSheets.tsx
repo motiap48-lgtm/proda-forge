@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet } from "lucide-react";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet } from "@/hooks/useRoutingSheets";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
@@ -239,6 +239,147 @@ const RoutingSheets = () => {
             Создать техмаршрут
           </Button>
         </div>
+
+        {/* Guide/Memo - collapsed by default */}
+        <Collapsible className="mb-6">
+          <Card className="border-primary/20">
+            <CollapsibleTrigger asChild>
+              <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="h-5 w-5 text-primary" />
+                    <span className="font-medium text-foreground">Как создать техмаршрут? Пошаговая инструкция</span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </div>
+              </CardContent>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0 pb-6 px-6">
+                <div className="border-t pt-4 space-y-6">
+                  {/* Prerequisites */}
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center text-sm">0</span>
+                      Подготовка (обязательно)
+                    </h4>
+                    <div className="ml-8 space-y-2 text-sm text-muted-foreground">
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                        <span><strong>Создайте продукт</strong> (ГП, СБ или ПФ) в разделе "Продукты"</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                        <span><strong>Создайте спецификацию</strong> для продукта с перечнем компонентов (материалы, ПФ, СБ)</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                        <span><strong>Создайте производственные участки</strong> в разделе "Производственные участки"</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 1 */}
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center text-sm">1</span>
+                      Создание техмаршрута
+                    </h4>
+                    <div className="ml-8 space-y-2 text-sm text-muted-foreground">
+                      <p>Нажмите кнопку <strong>"Создать техмаршрут"</strong>. Укажите:</p>
+                      <ul className="list-disc ml-4 space-y-1">
+                        <li><strong>Название</strong> — описательное название маршрута</li>
+                        <li><strong>Продукт</strong> — выберите продукт, для которого создаётся маршрут</li>
+                        <li>Код генерируется автоматически (RS-XXX)</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center text-sm">2</span>
+                      Добавление операций
+                    </h4>
+                    <div className="ml-8 space-y-2 text-sm text-muted-foreground">
+                      <p>Добавьте операции в нужной последовательности. Типы операций:</p>
+                      <ul className="list-disc ml-4 space-y-1">
+                        <li><strong>Производство</strong> — основные производственные операции (обработка, сборка)</li>
+                        <li><strong>Транспортировка</strong> — перемещение между участками</li>
+                        <li><strong>Контроль</strong> — проверка качества</li>
+                      </ul>
+                      <p className="mt-2">Для каждой операции укажите:</p>
+                      <ul className="list-disc ml-4 space-y-1">
+                        <li>Название операции</li>
+                        <li>Производственный участок</li>
+                        <li>Время наладки (ПЗ) и время на единицу (Шт)</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center text-sm">3</span>
+                      Привязка компонентов к операциям
+                    </h4>
+                    <div className="ml-8 space-y-2 text-sm text-muted-foreground">
+                      <p>Для каждой производственной операции раскройте секцию <strong>"Компоненты операции"</strong> и выберите какие компоненты из спецификации потребляются на этой операции.</p>
+                      <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-3 mt-2">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-amber-700 dark:text-amber-400 font-medium">Предупреждение о непривязанных компонентах</p>
+                            <p className="text-amber-600 dark:text-amber-500 text-xs mt-1">
+                              Если не все компоненты спецификации привязаны к операциям, появится предупреждение. 
+                              Используйте кнопку <strong>"Авто"</strong> для автоматического распределения всех компонентов по производственным операциям.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center text-sm">4</span>
+                      Проверка и сохранение
+                    </h4>
+                    <div className="ml-8 space-y-2 text-sm text-muted-foreground">
+                      <p>Перейдите на вкладку <strong>"Визуализация"</strong> для проверки последовательности операций. Убедитесь, что:</p>
+                      <ul className="list-disc ml-4 space-y-1">
+                        <li>Операции расположены в правильном порядке</li>
+                        <li>Все компоненты привязаны к операциям</li>
+                        <li>Указаны производственные участки</li>
+                      </ul>
+                      <p className="mt-2">Нажмите <strong>"Сохранить"</strong> для создания техмаршрута.</p>
+                    </div>
+                  </div>
+
+                  {/* Additional features */}
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold text-foreground mb-3">Дополнительные возможности</h4>
+                    <div className="grid gap-3 md:grid-cols-3 text-sm">
+                      <div className="flex items-start gap-2 text-muted-foreground">
+                        <Copy className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                        <span><strong>Копирование</strong> — создайте копию существующего маршрута через меню ⋮</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-muted-foreground">
+                        <Printer className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                        <span><strong>Печать</strong> — распечатайте маршрут с детальной информацией</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-muted-foreground">
+                        <FileSpreadsheet className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                        <span><strong>Excel</strong> — экспортируйте маршрут в Excel</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* Search */}
         <Card className="mb-6">
