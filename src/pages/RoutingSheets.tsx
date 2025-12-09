@@ -221,11 +221,11 @@ const RoutingSheets = () => {
                     </div>
 
                     {operations.length > 0 && (
-                      <Collapsible className="mt-4 border-t pt-4">
+                      <Collapsible className="mt-4 border-t pt-4 group">
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" className="w-full justify-between px-0 hover:bg-transparent">
                             <span className="text-sm font-medium text-foreground">Маршрут:</span>
-                            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
+                            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 -rotate-90 group-data-[state=open]:rotate-0" />
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pt-3">
