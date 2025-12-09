@@ -110,7 +110,7 @@ export function OperationMaterialsSection({
       <CollapsibleTrigger asChild>
         <Button
           variant="ghost"
-          className="w-full justify-between px-0 hover:bg-transparent h-auto py-2"
+          className="w-full justify-between px-0 hover:bg-muted/50 h-auto py-2"
           disabled={disabled}
         >
           <div className="flex items-center gap-2">
