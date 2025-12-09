@@ -137,7 +137,7 @@ export function OperationMaterialsSection({
               Выберите компоненты из спецификации, которые потребляются на этой
               операции
             </p>
-            <ScrollArea className="max-h-48">
+            <ScrollArea className="max-h-72">
               <div className="space-y-2">
                 {specificationMaterials.map((material) => {
                   const isSelected = isMaterialSelected(material.material_id);
