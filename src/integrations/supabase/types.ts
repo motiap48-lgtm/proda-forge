@@ -771,6 +771,7 @@ export type Database = {
           routing_sheet_id: string
           sequence: number
           setup_time_minutes: number
+          standard_operation_id: string | null
           work_center_id: string
         }
         Insert: {
@@ -782,6 +783,7 @@ export type Database = {
           routing_sheet_id: string
           sequence: number
           setup_time_minutes?: number
+          standard_operation_id?: string | null
           work_center_id: string
         }
         Update: {
@@ -793,6 +795,7 @@ export type Database = {
           routing_sheet_id?: string
           sequence?: number
           setup_time_minutes?: number
+          standard_operation_id?: string | null
           work_center_id?: string
         }
         Relationships: [
@@ -801,6 +804,13 @@ export type Database = {
             columns: ["routing_sheet_id"]
             isOneToOne: false
             referencedRelation: "routing_sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routing_operations_standard_operation_id_fkey"
+            columns: ["standard_operation_id"]
+            isOneToOne: false
+            referencedRelation: "standard_operations"
             referencedColumns: ["id"]
           },
           {
@@ -981,6 +991,56 @@ export type Database = {
           },
         ]
       }
+      standard_operations: {
+        Row: {
+          code: string
+          created_at: string
+          default_cycle_time_minutes: number | null
+          default_setup_time_minutes: number | null
+          default_work_center_id: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          operation_type: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_cycle_time_minutes?: number | null
+          default_setup_time_minutes?: number | null
+          default_work_center_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          operation_type?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_cycle_time_minutes?: number | null
+          default_setup_time_minutes?: number | null
+          default_work_center_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          operation_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "standard_operations_default_work_center_id_fkey"
+            columns: ["default_work_center_id"]
+            isOneToOne: false
+            referencedRelation: "work_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1083,6 +1143,7 @@ export type Database = {
       }
       generate_routing_sheet_code: { Args: never; Returns: string }
       generate_specification_code: { Args: never; Returns: string }
+      generate_standard_operation_code: { Args: never; Returns: string }
       generate_warehouse_code: { Args: never; Returns: string }
       generate_work_center_code: { Args: never; Returns: string }
       get_user_roles: {

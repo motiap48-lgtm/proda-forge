@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet } from "@/hooks/useRoutingSheets";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
 import { RoutingFlowDiagram } from "@/components/routing-sheets/RoutingFlowDiagram";
 import { RoutingSheetPrintView } from "@/components/routing-sheets/RoutingSheetPrintView";
+import { StandardOperationsDialog } from "@/components/routing-sheets/StandardOperationsDialog";
+import { ConsolidatedRoutingDialog } from "@/components/routing-sheets/ConsolidatedRoutingDialog";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -30,6 +32,9 @@ const RoutingSheets = () => {
   const [selectedSheet, setSelectedSheet] = useState<any>(null);
   const [sheetToPrint, setSheetToPrint] = useState<any>(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [standardOpsDialogOpen, setStandardOpsDialogOpen] = useState(false);
+  const [consolidatedRoutingOpen, setConsolidatedRoutingOpen] = useState(false);
+  const [consolidatedRoutingProduct, setConsolidatedRoutingProduct] = useState<{id: string; name: string; code: string} | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
   
   const { data: routingSheets, isLoading } = useRoutingSheets();
@@ -228,17 +233,26 @@ const RoutingSheets = () => {
               Последовательность операций для производства продукции
             </p>
           </div>
-          <Button
-            size="lg"
-            className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
-            onClick={() => {
-              setSelectedSheet(null);
-              setDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Создать техмаршрут
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setStandardOpsDialogOpen(true)}
+            >
+              <Wand2 className="mr-2 h-4 w-4" />
+              Справочник операций
+            </Button>
+            <Button
+              size="lg"
+              className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
+              onClick={() => {
+                setSelectedSheet(null);
+                setDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              Создать техмаршрут
+            </Button>
+          </div>
         </div>
 
         {/* Guide/Memo - collapsed by default */}
@@ -496,6 +510,18 @@ const RoutingSheets = () => {
                             Экспорт в Excel
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => {
+                            setConsolidatedRoutingProduct({
+                              id: sheet.product_id,
+                              name: sheet.products?.name || '',
+                              code: sheet.products?.code || '',
+                            });
+                            setConsolidatedRoutingOpen(true);
+                          }}>
+                            <Layers className="mr-2 h-4 w-4" />
+                            Сводный маршрут
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             onClick={() => handleDelete(sheet)}
                             className="text-destructive"
@@ -600,6 +626,21 @@ const RoutingSheets = () => {
         onSave={handleSave}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
+
+      <StandardOperationsDialog
+        open={standardOpsDialogOpen}
+        onOpenChange={setStandardOpsDialogOpen}
+      />
+
+      {consolidatedRoutingProduct && (
+        <ConsolidatedRoutingDialog
+          open={consolidatedRoutingOpen}
+          onOpenChange={setConsolidatedRoutingOpen}
+          productId={consolidatedRoutingProduct.id}
+          productName={consolidatedRoutingProduct.name}
+          productCode={consolidatedRoutingProduct.code}
+        />
+      )}
 
       {/* Hidden print view */}
       <div style={{ display: "none" }}>
