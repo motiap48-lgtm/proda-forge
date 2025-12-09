@@ -216,8 +216,8 @@ export function ConsolidatedRoutingDialog({
             productType: node.productType,
             level: node.level,
             operation: op,
-            workCenterName: op.work_center?.name || 'Не указан',
-            workCenterCode: op.work_center?.code || '',
+            workCenterName: op.work_centers?.name || 'Не указан',
+            workCenterCode: op.work_centers?.code || '',
           });
         }
       }
@@ -313,9 +313,9 @@ export function ConsolidatedRoutingDialog({
                     .sort((a: any, b: any) => a.sequence - b.sequence)
                     .map((op: any, idx: number) => {
                       const IconComponent = operationTypeIcons[op.operation_type] || Wrench;
-                      const workCenterDisplay = op.work_center?.code && op.work_center?.name 
-                        ? `${op.work_center.code} - ${op.work_center.name}`
-                        : (op.work_center?.name || op.work_center?.code || 'Не указан');
+                      const workCenterDisplay = op.work_centers?.code && op.work_centers?.name 
+                        ? `${op.work_centers.code} - ${op.work_centers.name}`
+                        : (op.work_centers?.name || op.work_centers?.code || 'Не указан');
                       return (
                         <div
                           key={op.id}
