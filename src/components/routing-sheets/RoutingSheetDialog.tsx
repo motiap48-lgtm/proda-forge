@@ -19,11 +19,18 @@ import {
 } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
+import { useSpecifications } from "@/hooks/useSpecifications";
 import { toast } from "sonner";
 import { RoutingFlowDiagram } from "./RoutingFlowDiagram";
+import { OperationMaterialsSection } from "./OperationMaterialsSection";
 import { cn } from "@/lib/utils";
 
 type OperationType = "production" | "transport" | "control" | "setup";
+
+interface OperationMaterial {
+  product_id: string;
+  quantity_per_operation?: number | null;
+}
 
 interface Operation {
   id?: string;
@@ -33,6 +40,7 @@ interface Operation {
   setup_time_minutes: number;
   cycle_time_minutes: number;
   operation_type: OperationType;
+  materials?: OperationMaterial[];
 }
 
 interface RoutingSheetDialogProps {
@@ -72,6 +80,7 @@ export function RoutingSheetDialog({
 }: RoutingSheetDialogProps) {
   const { data: products } = useProducts();
   const { data: workCenters } = useActiveWorkCenters();
+  const { data: specifications } = useSpecifications();
 
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -99,6 +108,10 @@ export function RoutingSheetDialog({
         setup_time_minutes: op.setup_time_minutes || 0,
         cycle_time_minutes: op.cycle_time_minutes || 0,
         operation_type: op.operation_type || "production",
+        materials: op.routing_operation_materials?.map((m: any) => ({
+          product_id: m.product_id,
+          quantity_per_operation: m.quantity_per_operation,
+        })) || [],
       })) || [];
       
       setOperations(existingOps.sort((a: Operation, b: Operation) => a.sequence - b.sequence));
@@ -151,6 +164,7 @@ export function RoutingSheetDialog({
         setup_time_minutes: 0,
         cycle_time_minutes: type === "transport" ? 15 : 0,
         operation_type: type,
+        materials: [],
       },
     ]);
 
@@ -258,6 +272,12 @@ export function RoutingSheetDialog({
   const totalSetupTime = operations.reduce((sum, op) => sum + (op.setup_time_minutes || 0), 0);
   const totalCycleTime = operations.reduce((sum, op) => sum + (op.cycle_time_minutes || 0), 0);
   const selectedProduct = products?.find(p => p.id === productId);
+
+  // Get specification materials for the selected product
+  const productSpecification = specifications?.find(
+    (s) => s.product_id === productId && s.is_active && !s.has_no_specification
+  );
+  const specificationMaterials = productSpecification?.specification_materials || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -531,6 +551,18 @@ export function RoutingSheetDialog({
                                     />
                                   </div>
                                 </div>
+
+                                {specificationMaterials.length > 0 && (
+                                  <OperationMaterialsSection
+                                    operationIndex={index}
+                                    operationName={op.name}
+                                    specificationMaterials={specificationMaterials}
+                                    selectedMaterials={op.materials || []}
+                                    onMaterialsChange={(materials) =>
+                                      updateOperation(index, { materials })
+                                    }
+                                  />
+                                )}
                               </div>
 
                               <Button
