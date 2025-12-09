@@ -109,15 +109,17 @@ export function OperationMaterialsSection({
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group">
       <CollapsibleTrigger asChild>
         <Button
-          variant="ghost"
-          className="w-full justify-between px-0 hover:bg-muted/50 h-auto py-2"
+          variant="outline"
+          className="w-full justify-between h-auto py-3 px-4 hover:bg-accent hover:text-accent-foreground border-dashed"
           disabled={disabled}
         >
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Компоненты операции</span>
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 rounded-md bg-primary/10">
+              <Package className="h-4 w-4 text-primary" />
+            </div>
+            <span className="text-sm font-medium text-foreground">Компоненты операции</span>
             {selectedMaterials.length > 0 && (
-              <Badge variant="secondary" className="ml-1">
+              <Badge variant="default" className="ml-1">
                 {selectedMaterials.length}
               </Badge>
             )}
@@ -125,7 +127,7 @@ export function OperationMaterialsSection({
           <ChevronDown
             className={cn(
               "h-4 w-4 text-muted-foreground transition-transform duration-200",
-              isOpen ? "rotate-0" : "-rotate-90"
+              isOpen ? "rotate-180" : ""
             )}
           />
         </Button>
