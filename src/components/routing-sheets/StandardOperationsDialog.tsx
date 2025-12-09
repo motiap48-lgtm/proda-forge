@@ -45,6 +45,7 @@ import {
   useDeleteStandardOperation,
   StandardOperation,
 } from '@/hooks/useStandardOperations';
+import { useActiveWorkCenters } from '@/hooks/useWorkCenters';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,6 +84,7 @@ export function StandardOperationsDialog({
   onOpenChange,
 }: StandardOperationsDialogProps) {
   const { data: operations = [], isLoading } = useStandardOperations();
+  const { data: workCenters = [] } = useActiveWorkCenters();
   const createMutation = useCreateStandardOperation();
   const updateMutation = useUpdateStandardOperation();
   const deleteMutation = useDeleteStandardOperation();
@@ -97,6 +99,7 @@ export function StandardOperationsDialog({
     operation_type: 'production',
     description: '',
     is_active: true,
+    default_work_center_id: '' as string | null,
   });
 
   // Form state
@@ -113,6 +116,7 @@ export function StandardOperationsDialog({
         operation_type: editingOperation.operation_type,
         description: editingOperation.description || '',
         is_active: editingOperation.is_active,
+        default_work_center_id: editingOperation.default_work_center_id || '',
       });
     } else {
       resetForm();
@@ -131,15 +135,20 @@ export function StandardOperationsDialog({
     }
 
     try {
+      const submitData = {
+        ...formData,
+        default_work_center_id: formData.default_work_center_id || null,
+      };
+      
       if (editingOperation) {
         await updateMutation.mutateAsync({
           id: editingOperation.id,
-          ...formData,
+          ...submitData,
         });
         setIsEditing(false);
         setEditingOperation(null);
       } else {
-        await createMutation.mutateAsync(formData);
+        await createMutation.mutateAsync(submitData);
         if (continueAdding) {
           // Reset form for next operation
           resetForm();
@@ -236,6 +245,26 @@ export function StandardOperationsDialog({
               </div>
 
               <div className="space-y-2">
+                <Label>Производственный участок (по умолчанию)</Label>
+                <Select
+                  value={formData.default_work_center_id || ''}
+                  onValueChange={value => setFormData(prev => ({ ...prev, default_work_center_id: value || null }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Не указан" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Не указан</SelectItem>
+                    {workCenters.map(wc => (
+                      <SelectItem key={wc.id} value={wc.id}>
+                        {wc.code} — {wc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Описание</Label>
                 <Textarea
                   value={formData.description}
@@ -301,6 +330,7 @@ export function StandardOperationsDialog({
                         <TableHead className="w-24">Код</TableHead>
                         <TableHead>Название</TableHead>
                         <TableHead className="w-36">Тип</TableHead>
+                        <TableHead>Участок</TableHead>
                         <TableHead>Описание</TableHead>
                         <TableHead className="w-24 text-center">Статус</TableHead>
                         <TableHead className="w-24"></TableHead>
@@ -318,6 +348,11 @@ export function StandardOperationsDialog({
                                 <TypeIcon className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm">{getOperationTypeLabel(op.operation_type)}</span>
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {op.default_work_center ? `${op.default_work_center.code} — ${op.default_work_center.name}` : '—'}
+                              </span>
                             </TableCell>
                             <TableCell>
                               <span className="text-sm text-muted-foreground line-clamp-1">

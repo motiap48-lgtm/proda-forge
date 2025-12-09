@@ -62,7 +62,7 @@ export function useCreateStandardOperation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { name: string; operation_type: string; description: string; is_active: boolean }) => {
+    mutationFn: async (data: { name: string; operation_type: string; description: string; is_active: boolean; default_work_center_id?: string | null }) => {
       const { data: result, error } = await supabase
         .from('standard_operations')
         .insert({
@@ -71,6 +71,7 @@ export function useCreateStandardOperation() {
           operation_type: data.operation_type,
           description: data.description,
           is_active: data.is_active,
+          default_work_center_id: data.default_work_center_id || null,
         })
         .select()
         .single();
@@ -93,7 +94,7 @@ export function useUpdateStandardOperation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; name?: string; operation_type?: string; description?: string; is_active?: boolean }) => {
+    mutationFn: async ({ id, ...data }: { id: string; name?: string; operation_type?: string; description?: string; is_active?: boolean; default_work_center_id?: string | null }) => {
       const { data: result, error } = await supabase
         .from('standard_operations')
         .update({
@@ -101,6 +102,7 @@ export function useUpdateStandardOperation() {
           operation_type: data.operation_type,
           description: data.description,
           is_active: data.is_active,
+          default_work_center_id: data.default_work_center_id,
         })
         .eq('id', id)
         .select()
