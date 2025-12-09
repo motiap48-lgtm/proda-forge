@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Package, Pencil, Trash2, GitBranch, Info, ArrowRight, ChevronDown, ChevronUp, X, FileText, AlertCircle, Tag } from "lucide-react";
+import { Plus, Search, Package, Pencil, Trash2, GitBranch, Info, ArrowRight, ChevronDown, X, FileText, AlertCircle, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -180,11 +180,7 @@ const Products = () => {
                 <div className="font-medium text-foreground">Порядок работы со спецификациями:</div>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                    {isInstructionOpen ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isInstructionOpen ? 'rotate-180' : ''}`} />
                   </Button>
                 </CollapsibleTrigger>
               </div>
@@ -255,7 +251,7 @@ const Products = () => {
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
                   <span className="text-sm font-medium text-muted-foreground">Фильтр по коду</span>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${codeFilterOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${codeFilterOpen ? 'rotate-180' : ''}`} />
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-3">
@@ -305,7 +301,7 @@ const Products = () => {
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
                   <span className="text-sm font-medium text-muted-foreground">Фильтр по спецификации</span>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${specFilterOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${specFilterOpen ? 'rotate-180' : ''}`} />
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-3">
@@ -335,7 +331,7 @@ const Products = () => {
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
                   <span className="text-sm font-medium text-muted-foreground">Фильтр по категории материалов</span>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${categoryFilterOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${categoryFilterOpen ? 'rotate-180' : ''}`} />
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-3">

@@ -262,7 +262,7 @@ const MRPPlanning = () => {
                       }
                     </CardDescription>
                   </div>
-                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${orderSelectionOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${orderSelectionOpen ? 'rotate-180' : ''}`} />
                 </div>
               </CardHeader>
             </CollapsibleTrigger>
