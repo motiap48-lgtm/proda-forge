@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useRef } from "react";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -7,15 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle } from "lucide-react";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet } from "@/hooks/useRoutingSheets";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
 import { RoutingFlowDiagram } from "@/components/routing-sheets/RoutingFlowDiagram";
+import { RoutingSheetPrintView } from "@/components/routing-sheets/RoutingSheetPrintView";
+import { useReactToPrint } from "react-to-print";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -23,12 +27,20 @@ const RoutingSheets = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedSheet, setSelectedSheet] = useState<any>(null);
+  const [sheetToPrint, setSheetToPrint] = useState<any>(null);
+  const printRef = useRef<HTMLDivElement>(null);
   
   const { data: routingSheets, isLoading } = useRoutingSheets();
   const { data: specifications } = useSpecifications();
   const createMutation = useCreateRoutingSheet();
   const updateMutation = useUpdateRoutingSheet();
   const deleteMutation = useDeleteRoutingSheet();
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: sheetToPrint ? `Техмаршрут_${sheetToPrint.code}` : "Техмаршрут",
+    onAfterPrint: () => setSheetToPrint(null),
+  });
 
   // Helper to get specification for a product and calculate linked components stats
   const getSheetComponentStats = (sheet: any) => {
@@ -87,6 +99,34 @@ const RoutingSheets = () => {
     if (confirm(`Удалить техмаршрут "${sheet.code}"? Это действие необратимо.`)) {
       deleteMutation.mutate(sheet.id);
     }
+  };
+
+  const handleCopy = (sheet: any) => {
+    // Create a copy of the sheet for editing - set code to AUTO for new generation
+    const copiedSheet = {
+      ...sheet,
+      id: undefined,
+      code: "AUTO",
+      name: `${sheet.name} (копия)`,
+      routing_operations: sheet.routing_operations?.map((op: any) => ({
+        ...op,
+        id: undefined,
+        routing_operation_materials: op.routing_operation_materials?.map((m: any) => ({
+          ...m,
+          id: undefined,
+        })),
+      })),
+    };
+    setSelectedSheet(copiedSheet);
+    setDialogOpen(true);
+    toast.info("Создание копии техмаршрута");
+  };
+
+  const handlePrintSheet = (sheet: any) => {
+    setSheetToPrint(sheet);
+    setTimeout(() => {
+      handlePrint();
+    }, 100);
   };
 
   const getProductTypeBadge = (type: string) => {
@@ -230,6 +270,15 @@ const RoutingSheets = () => {
                             <Edit className="mr-2 h-4 w-4" />
                             Редактировать
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCopy(sheet)}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            Копировать
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handlePrintSheet(sheet)}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Печать
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             onClick={() => handleDelete(sheet)}
                             className="text-destructive"
@@ -334,6 +383,33 @@ const RoutingSheets = () => {
         onSave={handleSave}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
+
+      {/* Hidden print view */}
+      <div style={{ display: "none" }}>
+        {sheetToPrint && (
+          <RoutingSheetPrintView
+            ref={printRef}
+            sheet={sheetToPrint}
+            operations={(sheetToPrint.routing_operations || []).map((op: any) => ({
+              sequence: op.sequence,
+              name: op.name,
+              work_center_code: op.work_centers?.code,
+              work_center_name: op.work_centers?.name,
+              setup_time_minutes: op.setup_time_minutes || 0,
+              cycle_time_minutes: op.cycle_time_minutes || 0,
+              operation_type: op.operation_type || "production",
+              materials: op.routing_operation_materials?.map((m: any) => ({
+                product_id: m.product_id,
+                product_name: m.products?.name,
+                product_code: m.products?.code,
+                product_type: m.products?.product_type,
+                quantity: m.quantity_per_operation,
+                unit: m.products?.unit,
+              })) || [],
+            }))}
+          />
+        )}
+      </div>
     </div>
   );
 };
