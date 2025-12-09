@@ -21,7 +21,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
-  Settings2,
+  Settings,
   Wrench,
   Truck,
   ClipboardCheck,
@@ -61,7 +61,7 @@ const operationTypeIcons: Record<string, any> = {
   production: Wrench,
   transport: Truck,
   control: ClipboardCheck,
-  setup: Settings2,
+  setup: Settings,
 };
 
 const productTypeBadgeColors: Record<string, string> = {
@@ -381,7 +381,7 @@ export function ConsolidatedRoutingDialog({
     },
     setup: { 
       label: "Наладка", 
-      icon: Settings2, 
+      icon: Settings, 
       color: "text-purple-600 dark:text-purple-400",
       bgColor: "bg-purple-50 dark:bg-purple-950/50",
       borderColor: "border-purple-200 dark:border-purple-800"
