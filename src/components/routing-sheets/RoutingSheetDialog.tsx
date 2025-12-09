@@ -37,6 +37,7 @@ import {
 import { useProducts } from "@/hooks/useProducts";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { useSpecifications } from "@/hooks/useSpecifications";
+import { useActiveStandardOperations } from "@/hooks/useStandardOperations";
 import { toast } from "sonner";
 import { RoutingFlowDiagram } from "./RoutingFlowDiagram";
 import { OperationMaterialsSection } from "./OperationMaterialsSection";
@@ -98,6 +99,7 @@ export function RoutingSheetDialog({
   const { data: products } = useProducts();
   const { data: workCenters } = useActiveWorkCenters();
   const { data: specifications } = useSpecifications();
+  const { data: standardOperations = [] } = useActiveStandardOperations();
 
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -184,6 +186,31 @@ export function RoutingSheetDialog({
         materials: [],
       },
     ]);
+
+    setTimeout(() => {
+      operationsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 150);
+  };
+
+  const addFromStandardOperation = (stdOp: any) => {
+    const newSequence = operations.length > 0 
+      ? Math.max(...operations.map(o => o.sequence)) + 1 
+      : 1;
+    
+    setOperations([
+      ...operations,
+      {
+        sequence: newSequence,
+        name: stdOp.name,
+        work_center_id: stdOp.default_work_center_id || "",
+        setup_time_minutes: stdOp.default_setup_time_minutes || 0,
+        cycle_time_minutes: stdOp.default_cycle_time_minutes || 0,
+        operation_type: stdOp.operation_type as OperationType,
+        materials: [],
+      },
+    ]);
+
+    toast.success(`Добавлена операция "${stdOp.name}"`);
 
     setTimeout(() => {
       operationsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -616,6 +643,29 @@ export function RoutingSheetDialog({
                     </p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
+                    {standardOperations.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-1.5">
+                            <Wand2 className="h-4 w-4" />
+                            Из справочника
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
+                          {standardOperations.map(stdOp => (
+                            <DropdownMenuItem 
+                              key={stdOp.id} 
+                              onClick={() => addFromStandardOperation(stdOp)}
+                              className="gap-2"
+                            >
+                              <span className="font-mono text-xs text-muted-foreground">{stdOp.code}</span>
+                              {stdOp.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                     <Button onClick={() => addOperation("production")} variant="outline" size="sm" className="gap-1.5">
                       <Factory className="h-4 w-4" />
                       Производство
