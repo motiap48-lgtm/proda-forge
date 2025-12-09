@@ -316,40 +316,44 @@ export function RoutingSheetDialog({
       return;
     }
 
-    // Strategy: distribute components to production operations
-    // If only one production operation - assign all to it
-    // If multiple - distribute evenly or to the first one (simple strategy)
+    // Get IDs of already linked materials across all operations
+    const alreadyLinkedIds = new Set<string>();
+    operations.forEach(op => {
+      op.materials?.forEach(m => alreadyLinkedIds.add(m.product_id));
+    });
+
+    // Filter out materials that are not yet linked
+    const unlinkedMats = specificationMaterials.filter(
+      (m: any) => !alreadyLinkedIds.has(m.material_id)
+    );
+
+    if (unlinkedMats.length === 0) {
+      toast.info("Все компоненты уже распределены по операциям");
+      return;
+    }
+
+    // Find the target operation - last production operation (typically final assembly)
+    const targetOpSequence = productionOps[productionOps.length - 1].sequence;
+
+    // Strategy: assign all unlinked components to the last production operation
     const updatedOperations = operations.map(op => {
-      if (op.operation_type === "production") {
-        // For production operations, check if it's the last one (assembly/final)
-        const isLastProductionOp = productionOps.indexOf(op) === productionOps.length - 1;
+      if (op.sequence === targetOpSequence) {
+        const existingMaterials = op.materials || [];
+        const newMaterials = unlinkedMats.map((m: any) => ({
+          product_id: m.material_id,
+          quantity_per_operation: m.quantity,
+        }));
         
-        if (productionOps.length === 1) {
-          // Only one production op - assign all components
-          return {
-            ...op,
-            materials: specificationMaterials.map((m: any) => ({
-              product_id: m.material_id,
-              quantity_per_operation: m.quantity,
-            })),
-          };
-        } else if (isLastProductionOp) {
-          // Last production operation (typically final assembly) - assign all remaining
-          // For simplicity, assign all to the last production operation
-          return {
-            ...op,
-            materials: specificationMaterials.map((m: any) => ({
-              product_id: m.material_id,
-              quantity_per_operation: m.quantity,
-            })),
-          };
-        }
+        return {
+          ...op,
+          materials: [...existingMaterials, ...newMaterials],
+        };
       }
       return op;
     });
 
     setOperations(updatedOperations);
-    toast.success("Компоненты автоматически распределены по операциям");
+    toast.success(`${unlinkedMats.length} компонент(ов) распределено на последнюю производственную операцию`);
   };
 
   return (
