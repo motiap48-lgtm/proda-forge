@@ -316,7 +316,7 @@ export function ConsolidatedRoutingDialog({
                           <span className="flex-1 truncate">{op.name}</span>
                           {op.work_center && (
                             <Badge variant="outline" className="shrink-0">
-                              {op.work_center.code}
+                              {op.work_center.code} - {op.work_center.name}
                             </Badge>
                           )}
                           <div className="flex items-center gap-1 text-muted-foreground shrink-0">
