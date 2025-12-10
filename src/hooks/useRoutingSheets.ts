@@ -110,13 +110,13 @@ export const useCreateRoutingSheet = () => {
           routing_sheet_id: sheet.id,
           sequence: op.sequence,
           name: op.name,
-          work_center_id: op.is_external ? null : (op.work_center_id || null),
+          work_center_id: op.is_external ? null : (op.work_center_id && op.work_center_id.trim() !== "" ? op.work_center_id : null),
           setup_time_minutes: op.setup_time_minutes,
           cycle_time_minutes: op.cycle_time_minutes,
           operation_type: op.operation_type || "production",
           is_external: op.is_external || false,
           external_contractor: op.is_external ? (op.external_contractor || null) : null,
-          contractor_id: op.is_external && op.contractor_id ? op.contractor_id : null,
+          contractor_id: op.is_external && op.contractor_id && op.contractor_id.trim() !== "" ? op.contractor_id : null,
           external_lead_time_days: op.is_external ? (op.external_lead_time_days || null) : null,
         }));
 
@@ -203,13 +203,13 @@ export const useUpdateRoutingSheet = () => {
           routing_sheet_id: id,
           sequence: op.sequence,
           name: op.name,
-          work_center_id: op.is_external ? null : (op.work_center_id || null),
+          work_center_id: op.is_external ? null : (op.work_center_id && op.work_center_id.trim() !== "" ? op.work_center_id : null),
           setup_time_minutes: op.setup_time_minutes,
           cycle_time_minutes: op.cycle_time_minutes,
           operation_type: op.operation_type || "production",
           is_external: op.is_external || false,
           external_contractor: op.is_external ? (op.external_contractor || null) : null,
-          contractor_id: op.is_external && op.contractor_id ? op.contractor_id : null,
+          contractor_id: op.is_external && op.contractor_id && op.contractor_id.trim() !== "" ? op.contractor_id : null,
           external_lead_time_days: op.is_external ? (op.external_lead_time_days || null) : null,
         }));
 
