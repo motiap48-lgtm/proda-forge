@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
+import * as XLSX from 'xlsx';
 import {
   Dialog,
   DialogContent,
@@ -32,11 +33,13 @@ import {
   Factory,
   ArrowDown,
   Printer,
+  Download,
 } from 'lucide-react';
 import { ConsolidatedRoutingPrintView } from './ConsolidatedRoutingPrintView';
 import { useRoutingSheets } from '@/hooks/useRoutingSheets';
 import { useSpecifications } from '@/hooks/useSpecifications';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface ConsolidatedRoutingDialogProps {
   open: boolean;
@@ -227,6 +230,113 @@ export function ConsolidatedRoutingDialog({
     traverse(routingTree);
     return ops;
   }, [routingTree]);
+
+  const operationTypeLabelsRu: Record<string, string> = {
+    production: 'Производство',
+    transport: 'Транспортировка',
+    control: 'Контроль',
+    setup: 'Наладка',
+  };
+
+  const handleExportToExcel = () => {
+    try {
+      // Sheet 1: General Info
+      const infoData = [
+        ['Сводный техмаршрут'],
+        [],
+        ['Изделие', productName],
+        ['Код изделия', productCode],
+        ['Всего операций', totals.totalOperations],
+        ['Общее время (мин)', totals.totalSetupTime + totals.totalCycleTime],
+        ['Время наладки (мин)', totals.totalSetupTime],
+        ['Время цикла (мин)', totals.totalCycleTime],
+        ['Без маршрута', totals.nodesWithoutRouting],
+      ];
+      const infoSheet = XLSX.utils.aoa_to_sheet(infoData);
+      infoSheet['!cols'] = [{ wch: 25 }, { wch: 50 }];
+
+      // Sheet 2: All Operations
+      const operationsHeader = [
+        'Изделие',
+        'Код изделия',
+        'Тип изделия',
+        'Уровень',
+        '№ операции',
+        'Операция',
+        'Тип операции',
+        'Участок (код)',
+        'Участок (наименование)',
+        'ПЗ (мин)',
+        'Штучное время (мин)',
+        'Общее время (мин)',
+      ];
+      const operationsData = flatOperations.map(item => [
+        item.productName,
+        item.productCode,
+        productTypeLabels[item.productType] || item.productType,
+        item.level,
+        item.operation.sequence,
+        item.operation.name,
+        operationTypeLabelsRu[item.operation.operation_type] || item.operation.operation_type,
+        item.workCenterCode,
+        item.workCenterName,
+        item.operation.setup_time_minutes || 0,
+        item.operation.cycle_time_minutes || 0,
+        (item.operation.setup_time_minutes || 0) + (item.operation.cycle_time_minutes || 0),
+      ]);
+      const operationsSheet = XLSX.utils.aoa_to_sheet([operationsHeader, ...operationsData]);
+      operationsSheet['!cols'] = [
+        { wch: 35 }, { wch: 20 }, { wch: 15 }, { wch: 10 },
+        { wch: 12 }, { wch: 35 }, { wch: 18 }, { wch: 15 },
+        { wch: 25 }, { wch: 12 }, { wch: 18 }, { wch: 16 },
+      ];
+
+      // Sheet 3: Products in routing tree
+      const productsHeader = [
+        'Изделие',
+        'Код изделия',
+        'Тип изделия',
+        'Уровень',
+        'Количество',
+        'Техмаршрут',
+        'Код техмаршрута',
+        'Кол-во операций',
+      ];
+      const productsData: any[][] = [];
+      const collectProducts = (node: RoutingNode) => {
+        productsData.push([
+          node.productName,
+          node.productCode,
+          productTypeLabels[node.productType] || node.productType,
+          node.level,
+          node.quantity,
+          node.routingSheet?.name || 'Нет',
+          node.routingSheet?.code || '-',
+          node.routingSheet?.routing_operations?.length || 0,
+        ]);
+        node.children.forEach(collectProducts);
+      };
+      collectProducts(routingTree);
+      const productsSheet = XLSX.utils.aoa_to_sheet([productsHeader, ...productsData]);
+      productsSheet['!cols'] = [
+        { wch: 35 }, { wch: 20 }, { wch: 15 }, { wch: 10 },
+        { wch: 12 }, { wch: 30 }, { wch: 18 }, { wch: 16 },
+      ];
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, infoSheet, 'Информация');
+      XLSX.utils.book_append_sheet(wb, operationsSheet, 'Операции');
+      XLSX.utils.book_append_sheet(wb, productsSheet, 'Изделия');
+
+      // Download
+      XLSX.writeFile(wb, `Сводный_техмаршрут_${productCode}.xlsx`);
+      toast.success('Файл успешно экспортирован');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Ошибка при экспорте в Excel');
+    }
+  };
 
   const toggleNode = (nodeId: string) => {
     setExpandedNodes(prev => {
@@ -561,6 +671,10 @@ export function ConsolidatedRoutingDialog({
         </Tabs>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={handleExportToExcel}>
+            <Download className="h-4 w-4 mr-2" />
+            Excel
+          </Button>
           <Button variant="outline" onClick={() => handlePrint()}>
             <Printer className="h-4 w-4 mr-2" />
             Печать
