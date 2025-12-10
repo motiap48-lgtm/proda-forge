@@ -90,6 +90,14 @@ export const useCreateRoutingSheet = () => {
 
   return useMutation({
     mutationFn: async (data: RoutingSheetData) => {
+      // Debug: Log incoming data
+      console.log("Creating routing sheet with data:", JSON.stringify(data, null, 2));
+      
+      // Validate product_id
+      if (!data.product_id || data.product_id === "undefined" || data.product_id.trim() === "") {
+        throw new Error("Не выбран продукт для техмаршрута");
+      }
+      
       // Create the routing sheet
       const { data: sheet, error: sheetError } = await supabase
         .from("routing_sheets")

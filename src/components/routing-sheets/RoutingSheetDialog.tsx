@@ -336,12 +336,27 @@ export function RoutingSheetDialog({
       return;
     }
 
+    // Clean operations before saving - remove undefined fields and ensure proper types
+    const cleanedOperations = operations.map(op => ({
+      sequence: op.sequence,
+      name: op.name,
+      work_center_id: op.work_center_id || "",
+      setup_time_minutes: op.setup_time_minutes || 0,
+      cycle_time_minutes: op.cycle_time_minutes || 0,
+      operation_type: op.operation_type || "production",
+      materials: (op.materials || []).filter(m => m.product_id && m.product_id !== "undefined"),
+      is_external: op.is_external || false,
+      external_contractor: op.external_contractor || "",
+      contractor_id: op.contractor_id && op.contractor_id !== "undefined" ? op.contractor_id : undefined,
+      external_lead_time_days: op.external_lead_time_days || 0,
+    }));
+
     await onSave({
       code: code === "AUTO" ? "" : code,
       name: name.trim(),
       product_id: productId,
       is_active: isActive,
-      operations,
+      operations: cleanedOperations,
     });
   };
 
