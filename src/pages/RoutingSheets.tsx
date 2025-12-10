@@ -88,7 +88,9 @@ const RoutingSheets = () => {
   ) || [];
 
   const handleSave = async (data: any) => {
-    if (selectedSheet) {
+    // Use selectedSheet.id to determine if this is an update or create
+    // When copying, id is set to undefined, so we should create a new sheet
+    if (selectedSheet?.id) {
       await updateMutation.mutateAsync({ id: selectedSheet.id, ...data });
     } else {
       await createMutation.mutateAsync(data);
