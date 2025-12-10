@@ -1,5 +1,5 @@
 import { useMemo, useState, DragEvent } from "react";
-import { Factory, Truck, ClipboardCheck, Settings, ArrowRight, GripVertical, Package } from "lucide-react";
+import { Factory, Truck, ClipboardCheck, Settings, ArrowRight, GripVertical, Package, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,8 @@ interface Operation {
   cycle_time_minutes: number;
   operation_type: string;
   materials?: OperationMaterial[];
+  is_external?: boolean;
+  external_contractor?: string;
 }
 
 interface RoutingFlowDiagramProps {
@@ -67,6 +69,13 @@ const operationTypeConfig: Record<string, {
     color: "text-purple-600 dark:text-purple-400",
     bgColor: "bg-purple-50 dark:bg-purple-950/50",
     borderColor: "border-purple-200 dark:border-purple-800"
+  },
+  external: { 
+    label: "Внешняя", 
+    icon: Building2, 
+    color: "text-orange-600 dark:text-orange-400",
+    bgColor: "bg-orange-50 dark:bg-orange-950/50",
+    borderColor: "border-orange-200 dark:border-orange-800"
   },
 };
 
@@ -136,7 +145,10 @@ export function RoutingFlowDiagram({ operations, workCenters, className, editabl
     <div className={cn("relative", className)}>
       <div className="flex flex-wrap items-start gap-2">
         {enrichedOperations.map((op, index) => {
-          const config = operationTypeConfig[op.operation_type] || operationTypeConfig.production;
+          // Use external config if is_external, otherwise use operation_type config
+          const config = op.is_external 
+            ? operationTypeConfig.external 
+            : (operationTypeConfig[op.operation_type] || operationTypeConfig.production);
           const Icon = config.icon;
 
           return (
@@ -185,20 +197,31 @@ export function RoutingFlowDiagram({ operations, workCenters, className, editabl
                   {op.name || "Без названия"}
                 </p>
 
-                {/* Work center */}
+                {/* Work center or External contractor */}
                 <div className="text-xs text-muted-foreground space-y-0.5">
-                  <div className="flex items-center gap-1">
-                    <Factory className="h-3 w-3" />
-                    <span className="truncate" title={op.work_center_code && op.work_center_name ? `${op.work_center_code} - ${op.work_center_name}` : (op.work_center_name || op.work_center_code)}>
-                      {op.work_center_code && op.work_center_name 
-                        ? `${op.work_center_code} - ${op.work_center_name}` 
-                        : (op.work_center_name || op.work_center_code || 'Не указан')}
-                    </span>
-                  </div>
-                  {op.work_center_department && (
-                    <div className="text-xs opacity-75">
-                      {op.work_center_department}
+                  {op.is_external ? (
+                    <div className="flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      <span className="truncate" title={op.external_contractor || 'Контрагент не указан'}>
+                        {op.external_contractor || 'Контрагент не указан'}
+                      </span>
                     </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-1">
+                        <Factory className="h-3 w-3" />
+                        <span className="truncate" title={op.work_center_code && op.work_center_name ? `${op.work_center_code} - ${op.work_center_name}` : (op.work_center_name || op.work_center_code)}>
+                          {op.work_center_code && op.work_center_name 
+                            ? `${op.work_center_code} - ${op.work_center_name}` 
+                            : (op.work_center_name || op.work_center_code || 'Не указан')}
+                        </span>
+                      </div>
+                      {op.work_center_department && (
+                        <div className="text-xs opacity-75">
+                          {op.work_center_department}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
