@@ -38,6 +38,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { useActiveStandardOperations } from "@/hooks/useStandardOperations";
+import { useActiveContractors } from "@/hooks/useContractors";
 import { toast } from "sonner";
 import { RoutingFlowDiagram } from "./RoutingFlowDiagram";
 import { OperationMaterialsSection } from "./OperationMaterialsSection";
@@ -61,6 +62,8 @@ interface Operation {
   materials?: OperationMaterial[];
   is_external?: boolean;
   external_contractor?: string;
+  contractor_id?: string;
+  external_lead_time_days?: number;
 }
 
 interface RoutingSheetDialogProps {
@@ -102,6 +105,7 @@ export function RoutingSheetDialog({
   const { data: workCenters } = useActiveWorkCenters();
   const { data: specifications } = useSpecifications();
   const { data: standardOperations = [] } = useActiveStandardOperations();
+  const { data: contractors = [] } = useActiveContractors();
 
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -135,6 +139,8 @@ export function RoutingSheetDialog({
         })) || [],
         is_external: op.is_external || false,
         external_contractor: op.external_contractor || "",
+        contractor_id: op.contractor_id || "",
+        external_lead_time_days: op.external_lead_time_days || 0,
       })) || [];
       
       setOperations(existingOps.sort((a: Operation, b: Operation) => a.sequence - b.sequence));
@@ -164,6 +170,12 @@ export function RoutingSheetDialog({
     searchText: `${wc.code} ${wc.name}`,
   })) || [];
 
+  const contractorOptions = contractors.map((c) => ({
+    value: c.id,
+    label: `${c.code} — ${c.name}`,
+    searchText: `${c.code} ${c.name} ${c.inn || ""}`,
+  }));
+
   const operationsContainerRef = useRef<HTMLDivElement>(null);
   const lastOperationRef = useRef<HTMLDivElement>(null);
 
@@ -191,6 +203,8 @@ export function RoutingSheetDialog({
         materials: [],
         is_external: false,
         external_contractor: "",
+        contractor_id: "",
+        external_lead_time_days: 0,
       },
     ]);
 
@@ -216,6 +230,8 @@ export function RoutingSheetDialog({
         materials: [],
         is_external: false,
         external_contractor: "",
+        contractor_id: "",
+        external_lead_time_days: 0,
       },
     ]);
 
@@ -305,18 +321,18 @@ export function RoutingSheetDialog({
       return;
     }
     
-    // For external operations, work_center_id is not required but external_contractor is
+    // For external operations, contractor_id is required; for internal, work_center_id is required
     const invalidOps = operations.filter(
       (op) => {
         if (!op.name.trim()) return true;
         if (op.is_external) {
-          return !op.external_contractor?.trim();
+          return !op.contractor_id;
         }
         return !op.work_center_id;
       }
     );
     if (invalidOps.length > 0) {
-      toast.error("Заполните все обязательные поля операций");
+      toast.error("Заполните все обязательные поля операций (название и участок/контрагент)");
       return;
     }
 
@@ -836,55 +852,83 @@ export function RoutingSheetDialog({
                                   </div>
 
                                   {op.is_external ? (
-                                    <div className="space-y-2">
-                                      <Label>Контрагент (организация) *</Label>
-                                      <Input
-                                        value={op.external_contractor || ""}
-                                        onChange={(e) =>
-                                          updateOperation(index, { external_contractor: e.target.value })
-                                        }
-                                        placeholder="ООО Гальваника и Ко"
-                                        className="border-orange-500/30"
-                                      />
-                                    </div>
+                                    <>
+                                      <div className="space-y-2">
+                                        <Label>Контрагент *</Label>
+                                        <SearchableSelect
+                                          options={contractorOptions}
+                                          value={op.contractor_id || ""}
+                                          onValueChange={(v) => {
+                                            const contractor = contractors.find(c => c.id === v);
+                                            updateOperation(index, { 
+                                              contractor_id: v,
+                                              external_contractor: contractor?.name || ""
+                                            });
+                                          }}
+                                          placeholder="Выберите контрагента"
+                                          searchPlaceholder="Поиск..."
+                                          emptyText="Контрагент не найден. Добавьте в Настройки → Контрагенты"
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label>Срок выполнения, дней</Label>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          value={op.external_lead_time_days || ""}
+                                          onChange={(e) =>
+                                            updateOperation(index, {
+                                              external_lead_time_days: parseInt(e.target.value) || 0,
+                                            })
+                                          }
+                                          placeholder="0"
+                                          className="border-orange-500/30"
+                                        />
+                                      </div>
+                                    </>
                                   ) : (
-                                    <div className="space-y-2">
-                                      <Label>Производственный участок *</Label>
-                                      <SearchableSelect
-                                        options={workCenterOptions}
-                                        value={op.work_center_id}
-                                        onValueChange={(v) =>
-                                          updateOperation(index, { work_center_id: v })
-                                        }
-                                        placeholder={
-                                          op.operation_type === "transport"
-                                            ? "Участок назначения"
-                                            : "Выберите участок"
-                                        }
-                                        searchPlaceholder="Поиск..."
-                                        emptyText="Участок не найден"
-                                      />
-                                    </div>
+                                    <>
+                                      <div className="space-y-2">
+                                        <Label>Производственный участок *</Label>
+                                        <SearchableSelect
+                                          options={workCenterOptions}
+                                          value={op.work_center_id}
+                                          onValueChange={(v) =>
+                                            updateOperation(index, { work_center_id: v })
+                                          }
+                                          placeholder={
+                                            op.operation_type === "transport"
+                                              ? "Участок назначения"
+                                              : "Выберите участок"
+                                          }
+                                          searchPlaceholder="Поиск..."
+                                          emptyText="Участок не найден"
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label>Время наладки (ПЗ), мин</Label>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          value={op.setup_time_minutes}
+                                          onChange={(e) =>
+                                            updateOperation(index, {
+                                              setup_time_minutes: parseFloat(e.target.value) || 0,
+                                            })
+                                          }
+                                          placeholder="0"
+                                        />
+                                      </div>
+                                    </>
                                   )}
 
                                   <div className="space-y-2">
-                                    <Label>Время наладки (ПЗ), мин</Label>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      value={op.setup_time_minutes}
-                                      onChange={(e) =>
-                                        updateOperation(index, {
-                                          setup_time_minutes: parseFloat(e.target.value) || 0,
-                                        })
-                                      }
-                                      placeholder="0"
-                                    />
-                                  </div>
-
-                                  <div className="space-y-2">
                                     <Label>
-                                      {op.operation_type === "transport" ? "Время транспортировки, мин" : "Штучное время, мин"}
+                                      {op.is_external 
+                                        ? "Стоимость операции, мин (условно)" 
+                                        : op.operation_type === "transport" 
+                                          ? "Время транспортировки, мин" 
+                                          : "Штучное время, мин"}
                                     </Label>
                                     <Input
                                       type="number"

@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      contractors: {
+        Row: {
+          address: string | null
+          code: string
+          contact_person: string | null
+          created_at: string
+          email: string | null
+          id: string
+          inn: string | null
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          code: string
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inn?: string | null
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          code?: string
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inn?: string | null
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       equipment: {
         Row: {
           code: string
@@ -435,6 +480,8 @@ export type Database = {
           completed_quantity: number
           created_at: string
           cycle_time_actual: number | null
+          external_actual_date: string | null
+          external_planned_date: string | null
           id: string
           notes: string | null
           operator_id: string | null
@@ -453,6 +500,8 @@ export type Database = {
           completed_quantity?: number
           created_at?: string
           cycle_time_actual?: number | null
+          external_actual_date?: string | null
+          external_planned_date?: string | null
           id?: string
           notes?: string | null
           operator_id?: string | null
@@ -471,6 +520,8 @@ export type Database = {
           completed_quantity?: number
           created_at?: string
           cycle_time_actual?: number | null
+          external_actual_date?: string | null
+          external_planned_date?: string | null
           id?: string
           notes?: string | null
           operator_id?: string | null
@@ -766,9 +817,11 @@ export type Database = {
       }
       routing_operations: {
         Row: {
+          contractor_id: string | null
           created_at: string
           cycle_time_minutes: number
           external_contractor: string | null
+          external_lead_time_days: number | null
           id: string
           is_external: boolean
           name: string
@@ -780,9 +833,11 @@ export type Database = {
           work_center_id: string | null
         }
         Insert: {
+          contractor_id?: string | null
           created_at?: string
           cycle_time_minutes: number
           external_contractor?: string | null
+          external_lead_time_days?: number | null
           id?: string
           is_external?: boolean
           name: string
@@ -794,9 +849,11 @@ export type Database = {
           work_center_id?: string | null
         }
         Update: {
+          contractor_id?: string | null
           created_at?: string
           cycle_time_minutes?: number
           external_contractor?: string | null
+          external_lead_time_days?: number | null
           id?: string
           is_external?: boolean
           name?: string
@@ -808,6 +865,13 @@ export type Database = {
           work_center_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "routing_operations_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "contractors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "routing_operations_routing_sheet_id_fkey"
             columns: ["routing_sheet_id"]
@@ -1145,6 +1209,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_contractor_code: { Args: never; Returns: string }
       generate_equipment_code: { Args: never; Returns: string }
       generate_product_code: {
         Args: { p_product_type: string }
