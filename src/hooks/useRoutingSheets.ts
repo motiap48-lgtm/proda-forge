@@ -140,11 +140,14 @@ export const useCreateRoutingSheet = () => {
               const opId = insertedOps[index]?.id;
               if (opId) {
                 op.materials.forEach((mat) => {
-                  allMaterials.push({
-                    routing_operation_id: opId,
-                    product_id: mat.product_id,
-                    quantity_per_operation: mat.quantity_per_operation ?? null,
-                  });
+                  // Skip materials with invalid product_id
+                  if (mat.product_id && mat.product_id.trim() !== "") {
+                    allMaterials.push({
+                      routing_operation_id: opId,
+                      product_id: mat.product_id,
+                      quantity_per_operation: mat.quantity_per_operation ?? null,
+                    });
+                  }
                 });
               }
             }
@@ -233,11 +236,14 @@ export const useUpdateRoutingSheet = () => {
               const opId = insertedOps[index]?.id;
               if (opId) {
                 op.materials.forEach((mat) => {
-                  allMaterials.push({
-                    routing_operation_id: opId,
-                    product_id: mat.product_id,
-                    quantity_per_operation: mat.quantity_per_operation ?? null,
-                  });
+                  // Skip materials with invalid product_id
+                  if (mat.product_id && mat.product_id.trim() !== "") {
+                    allMaterials.push({
+                      routing_operation_id: opId,
+                      product_id: mat.product_id,
+                      quantity_per_operation: mat.quantity_per_operation ?? null,
+                    });
+                  }
                 });
               }
             }

@@ -134,9 +134,9 @@ export function RoutingSheetDialog({
         cycle_time_minutes: op.cycle_time_minutes || 0,
         operation_type: op.operation_type || "production",
         materials: op.routing_operation_materials?.map((m: any) => ({
-          product_id: m.product_id,
+          product_id: m.product_id || m.products?.id,
           quantity_per_operation: m.quantity_per_operation,
-        })) || [],
+        })).filter((m: any) => m.product_id) || [],
         is_external: op.is_external || false,
         external_contractor: op.external_contractor || "",
         contractor_id: op.contractor_id || op.contractors?.id || undefined,
