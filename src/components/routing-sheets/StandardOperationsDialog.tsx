@@ -384,7 +384,7 @@ export function StandardOperationsDialog({
                         <TableHead>Участок</TableHead>
                         <TableHead>Описание</TableHead>
                         <TableHead className="w-24 text-center">Статус</TableHead>
-                        <TableHead className="w-24"></TableHead>
+                        <TableHead className="w-20"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -415,11 +415,12 @@ export function StandardOperationsDialog({
                                 {op.is_active ? 'Активна' : 'Неактивна'}
                               </Badge>
                             </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
+                            <TableCell className="w-20">
+                              <div className="flex items-center gap-1 shrink-0">
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  className="h-8 w-8"
                                   onClick={() => handleEdit(op)}
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -427,6 +428,7 @@ export function StandardOperationsDialog({
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  className="h-8 w-8"
                                   onClick={() => setDeleteConfirmId(op.id)}
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
