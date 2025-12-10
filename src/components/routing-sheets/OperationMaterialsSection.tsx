@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Collapsible,
   CollapsibleContent,
@@ -134,11 +133,9 @@ export function OperationMaterialsSection({
                 {selectedMaterials.length}
               </Badge>
             )}
-            {needsPagination && (
-              <Badge variant="outline" className="ml-1 text-xs">
-                {specificationMaterials.length} всего
-              </Badge>
-            )}
+            <Badge variant="outline" className="ml-1 text-xs">
+              {specificationMaterials.length} всего
+            </Badge>
           </div>
           <ChevronDown
             className={cn(
@@ -155,89 +152,90 @@ export function OperationMaterialsSection({
               Выберите компоненты из спецификации, которые потребляются на этой
               операции
             </p>
-            <ScrollArea className="max-h-[500px] pr-3">
-              <div className="space-y-2 pb-1">
-                {paginatedMaterials.map((material) => {
-                  const isSelected = isMaterialSelected(material.material_id);
-                  const quantity = getSelectedQuantity(material.material_id);
+            <div className="max-h-[400px] overflow-y-auto pr-2 space-y-2">
+              {paginatedMaterials.map((material) => {
+                const isSelected = isMaterialSelected(material.material_id);
+                const quantity = getSelectedQuantity(material.material_id);
 
-                  return (
-                    <div
-                      key={material.material_id}
-                      className={cn(
-                        "flex items-center gap-3 p-2 rounded-md transition-colors",
-                        isSelected ? "bg-primary/5" : "hover:bg-muted/50"
-                      )}
-                    >
-                      <Checkbox
-                        id={`mat-${operationIndex}-${material.material_id}`}
-                        checked={isSelected}
-                        onCheckedChange={(checked) =>
-                          handleToggleMaterial(
-                            material.material_id,
-                            checked as boolean
-                          )
-                        }
-                        disabled={disabled}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-[10px] px-1.5 py-0",
-                              productTypeColors[material.products.product_type]
-                            )}
-                          >
-                            {productTypeLabels[material.products.product_type]}
-                          </Badge>
-                          <span className="text-sm font-medium truncate">
-                            {material.products.name}
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {material.products.code} • Норма: {material.quantity}{" "}
-                          {material.products.unit}
-                          {material.waste_rate > 0 &&
-                            ` (+${material.waste_rate}% отхода)`}
-                        </div>
+                return (
+                  <div
+                    key={material.material_id}
+                    className={cn(
+                      "flex items-center gap-3 p-2 rounded-md transition-colors",
+                      isSelected ? "bg-primary/5" : "hover:bg-muted/50"
+                    )}
+                  >
+                    <Checkbox
+                      id={`mat-${operationIndex}-${material.material_id}`}
+                      checked={isSelected}
+                      onCheckedChange={(checked) =>
+                        handleToggleMaterial(
+                          material.material_id,
+                          checked as boolean
+                        )
+                      }
+                      disabled={disabled}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] px-1.5 py-0",
+                            productTypeColors[material.products.product_type]
+                          )}
+                        >
+                          {productTypeLabels[material.products.product_type]}
+                        </Badge>
+                        <span className="text-sm font-medium truncate">
+                          {material.products.name}
+                        </span>
                       </div>
-                      {isSelected && (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.001"
-                            value={quantity ?? ""}
-                            onChange={(e) =>
-                              handleQuantityChange(
-                                material.material_id,
-                                e.target.value
-                                  ? parseFloat(e.target.value)
-                                  : null
-                              )
-                            }
-                            className="w-20 h-8 text-sm"
-                            placeholder="Кол-во"
-                            disabled={disabled}
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            {material.products.unit}
-                          </span>
-                        </div>
-                      )}
+                      <div className="text-xs text-muted-foreground">
+                        {material.products.code} • Норма: {material.quantity}{" "}
+                        {material.products.unit}
+                        {material.waste_rate > 0 &&
+                          ` (+${material.waste_rate}% отхода)`}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
+                    {isSelected && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.001"
+                          value={quantity ?? ""}
+                          onChange={(e) =>
+                            handleQuantityChange(
+                              material.material_id,
+                              e.target.value
+                                ? parseFloat(e.target.value)
+                                : null
+                            )
+                          }
+                          className="w-20 h-8 text-sm"
+                          placeholder="Кол-во"
+                          disabled={disabled}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {material.products.unit}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
             
-            {needsPagination && (
-              <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                <span className="text-xs text-muted-foreground">
-                  Страница {currentPage} из {totalPages}
-                </span>
+            <div className="flex items-center justify-between mt-3 pt-3 border-t">
+              <span className="text-xs text-muted-foreground">
+                Показано {paginatedMaterials.length} из {specificationMaterials.length}
+              </span>
+              {needsPagination && (
                 <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground mr-2">
+                    Стр. {currentPage}/{totalPages}
+                  </span>
                   <Button
                     variant="outline"
                     size="sm"
@@ -257,8 +255,8 @@ export function OperationMaterialsSection({
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
       </CollapsibleContent>
