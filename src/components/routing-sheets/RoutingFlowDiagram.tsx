@@ -25,6 +25,7 @@ interface Operation {
   materials?: OperationMaterial[];
   is_external?: boolean;
   external_contractor?: string;
+  external_lead_time_days?: number;
 }
 
 interface RoutingFlowDiagramProps {
@@ -200,12 +201,19 @@ export function RoutingFlowDiagram({ operations, workCenters, className, editabl
                 {/* Work center or External contractor */}
                 <div className="text-xs text-muted-foreground space-y-0.5">
                   {op.is_external ? (
-                    <div className="flex items-center gap-1">
-                      <Building2 className="h-3 w-3" />
-                      <span className="truncate" title={op.external_contractor || 'Контрагент не указан'}>
-                        {op.external_contractor || 'Контрагент не указан'}
-                      </span>
-                    </div>
+                    <>
+                      <div className="flex items-center gap-1">
+                        <Building2 className="h-3 w-3" />
+                        <span className="truncate" title={op.external_contractor || 'Контрагент не указан'}>
+                          {op.external_contractor || 'Контрагент не указан'}
+                        </span>
+                      </div>
+                      {op.external_lead_time_days && op.external_lead_time_days > 0 && (
+                        <div className="text-xs opacity-75">
+                          Срок: {op.external_lead_time_days} дн.
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <>
                       <div className="flex items-center gap-1">
