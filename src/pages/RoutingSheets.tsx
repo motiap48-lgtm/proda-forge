@@ -597,6 +597,8 @@ const RoutingSheets = () => {
                               setup_time_minutes: op.setup_time_minutes || 0,
                               cycle_time_minutes: op.cycle_time_minutes || 0,
                               operation_type: op.operation_type || "production",
+                              is_external: op.is_external,
+                              external_contractor: op.contractors?.name || op.external_contractor,
                               materials: op.routing_operation_materials?.map((m: any) => ({
                                 product_id: m.product_id,
                                 product_name: m.products?.name,
