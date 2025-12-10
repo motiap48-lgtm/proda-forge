@@ -16,7 +16,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Trash2, Wand2, ArrowUp, ArrowDown, Factory, Clock, 
-  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle, Sparkles, ChevronDown
+  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle, Sparkles, ChevronDown, Building2
 } from "lucide-react";
 import {
   Tooltip,
@@ -59,6 +59,8 @@ interface Operation {
   cycle_time_minutes: number;
   operation_type: OperationType;
   materials?: OperationMaterial[];
+  is_external?: boolean;
+  external_contractor?: string;
 }
 
 interface RoutingSheetDialogProps {
@@ -123,7 +125,7 @@ export function RoutingSheetDialog({
         id: op.id,
         sequence: op.sequence,
         name: op.name,
-        work_center_id: op.work_center_id || op.work_centers?.id,
+        work_center_id: op.work_center_id || op.work_centers?.id || "",
         setup_time_minutes: op.setup_time_minutes || 0,
         cycle_time_minutes: op.cycle_time_minutes || 0,
         operation_type: op.operation_type || "production",
@@ -131,6 +133,8 @@ export function RoutingSheetDialog({
           product_id: m.product_id,
           quantity_per_operation: m.quantity_per_operation,
         })) || [],
+        is_external: op.is_external || false,
+        external_contractor: op.external_contractor || "",
       })) || [];
       
       setOperations(existingOps.sort((a: Operation, b: Operation) => a.sequence - b.sequence));
@@ -185,6 +189,8 @@ export function RoutingSheetDialog({
         cycle_time_minutes: type === "transport" ? 15 : 0,
         operation_type: type,
         materials: [],
+        is_external: false,
+        external_contractor: "",
       },
     ]);
 
@@ -208,6 +214,8 @@ export function RoutingSheetDialog({
         cycle_time_minutes: stdOp.default_cycle_time_minutes || 0,
         operation_type: stdOp.operation_type as OperationType,
         materials: [],
+        is_external: false,
+        external_contractor: "",
       },
     ]);
 
@@ -297,11 +305,18 @@ export function RoutingSheetDialog({
       return;
     }
     
+    // For external operations, work_center_id is not required but external_contractor is
     const invalidOps = operations.filter(
-      (op) => !op.name.trim() || !op.work_center_id
+      (op) => {
+        if (!op.name.trim()) return true;
+        if (op.is_external) {
+          return !op.external_contractor?.trim();
+        }
+        return !op.work_center_id;
+      }
     );
     if (invalidOps.length > 0) {
-      toast.error("Заполните все поля операций (название и участок)");
+      toast.error("Заполните все обязательные поля операций");
       return;
     }
 
@@ -780,6 +795,28 @@ export function RoutingSheetDialog({
                                   })}
                                 </div>
 
+                                {/* External operation toggle */}
+                                <div className="flex items-center gap-3 py-2 px-3 rounded-lg bg-muted/50">
+                                  <Switch
+                                    checked={op.is_external || false}
+                                    onCheckedChange={(checked) => 
+                                      updateOperation(index, { 
+                                        is_external: checked,
+                                        work_center_id: checked ? "" : op.work_center_id,
+                                      })
+                                    }
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm">Внешняя операция (на стороне)</span>
+                                  </div>
+                                  {op.is_external && (
+                                    <Badge variant="outline" className="ml-auto bg-orange-500/10 text-orange-600 border-orange-500/30">
+                                      Аутсорсинг
+                                    </Badge>
+                                  )}
+                                </div>
+
                                 <div className="grid gap-4 md:grid-cols-2">
                                   <div className="space-y-2">
                                     <Label>Название операции *</Label>
@@ -789,30 +826,46 @@ export function RoutingSheetDialog({
                                         updateOperation(index, { name: e.target.value })
                                       }
                                       placeholder={
-                                        op.operation_type === "transport" 
-                                          ? "Транспортировка в цех 2" 
-                                          : "Например: Токарная обработка"
+                                        op.is_external
+                                          ? "Например: Гальваническое покрытие"
+                                          : op.operation_type === "transport" 
+                                            ? "Транспортировка в цех 2" 
+                                            : "Например: Токарная обработка"
                                       }
                                     />
                                   </div>
 
-                                  <div className="space-y-2">
-                                    <Label>Производственный участок *</Label>
-                                    <SearchableSelect
-                                      options={workCenterOptions}
-                                      value={op.work_center_id}
-                                      onValueChange={(v) =>
-                                        updateOperation(index, { work_center_id: v })
-                                      }
-                                      placeholder={
-                                        op.operation_type === "transport"
-                                          ? "Участок назначения"
-                                          : "Выберите участок"
-                                      }
-                                      searchPlaceholder="Поиск..."
-                                      emptyText="Участок не найден"
-                                    />
-                                  </div>
+                                  {op.is_external ? (
+                                    <div className="space-y-2">
+                                      <Label>Контрагент (организация) *</Label>
+                                      <Input
+                                        value={op.external_contractor || ""}
+                                        onChange={(e) =>
+                                          updateOperation(index, { external_contractor: e.target.value })
+                                        }
+                                        placeholder="ООО Гальваника и Ко"
+                                        className="border-orange-500/30"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      <Label>Производственный участок *</Label>
+                                      <SearchableSelect
+                                        options={workCenterOptions}
+                                        value={op.work_center_id}
+                                        onValueChange={(v) =>
+                                          updateOperation(index, { work_center_id: v })
+                                        }
+                                        placeholder={
+                                          op.operation_type === "transport"
+                                            ? "Участок назначения"
+                                            : "Выберите участок"
+                                        }
+                                        searchPlaceholder="Поиск..."
+                                        emptyText="Участок не найден"
+                                      />
+                                    </div>
+                                  )}
 
                                   <div className="space-y-2">
                                     <Label>Время наладки (ПЗ), мин</Label>

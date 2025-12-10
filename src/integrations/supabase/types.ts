@@ -768,38 +768,44 @@ export type Database = {
         Row: {
           created_at: string
           cycle_time_minutes: number
+          external_contractor: string | null
           id: string
+          is_external: boolean
           name: string
           operation_type: string
           routing_sheet_id: string
           sequence: number
           setup_time_minutes: number
           standard_operation_id: string | null
-          work_center_id: string
+          work_center_id: string | null
         }
         Insert: {
           created_at?: string
           cycle_time_minutes: number
+          external_contractor?: string | null
           id?: string
+          is_external?: boolean
           name: string
           operation_type?: string
           routing_sheet_id: string
           sequence: number
           setup_time_minutes?: number
           standard_operation_id?: string | null
-          work_center_id: string
+          work_center_id?: string | null
         }
         Update: {
           created_at?: string
           cycle_time_minutes?: number
+          external_contractor?: string | null
           id?: string
+          is_external?: boolean
           name?: string
           operation_type?: string
           routing_sheet_id?: string
           sequence?: number
           setup_time_minutes?: number
           standard_operation_id?: string | null
-          work_center_id?: string
+          work_center_id?: string | null
         }
         Relationships: [
           {
