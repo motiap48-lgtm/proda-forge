@@ -599,6 +599,7 @@ const RoutingSheets = () => {
                               operation_type: op.operation_type || "production",
                               is_external: op.is_external,
                               external_contractor: op.contractors?.name || op.external_contractor,
+                              external_lead_time_days: op.external_lead_time_days,
                               materials: op.routing_operation_materials?.map((m: any) => ({
                                 product_id: m.product_id,
                                 product_name: m.products?.name,
