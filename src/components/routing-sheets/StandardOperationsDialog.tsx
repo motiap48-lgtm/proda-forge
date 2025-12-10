@@ -141,12 +141,16 @@ export function StandardOperationsDialog({
       };
       
       if (editingOperation) {
-        await updateMutation.mutateAsync({
+        const updatedOp = await updateMutation.mutateAsync({
           id: editingOperation.id,
           ...submitData,
         });
-        setIsEditing(false);
-        setEditingOperation(null);
+        // Stay in editing mode with updated operation data
+        setEditingOperation({
+          ...editingOperation,
+          ...submitData,
+          default_work_center_id: submitData.default_work_center_id ?? null,
+        });
       } else {
         await createMutation.mutateAsync(submitData);
         if (continueAdding) {
