@@ -139,7 +139,7 @@ export function RoutingSheetDialog({
         })) || [],
         is_external: op.is_external || false,
         external_contractor: op.external_contractor || "",
-        contractor_id: op.contractor_id || "",
+        contractor_id: op.contractor_id || op.contractors?.id || undefined,
         external_lead_time_days: op.external_lead_time_days || 0,
       })) || [];
       
@@ -203,7 +203,7 @@ export function RoutingSheetDialog({
         materials: [],
         is_external: false,
         external_contractor: "",
-        contractor_id: "",
+        contractor_id: undefined,
         external_lead_time_days: 0,
       },
     ]);
@@ -230,7 +230,7 @@ export function RoutingSheetDialog({
         materials: [],
         is_external: false,
         external_contractor: "",
-        contractor_id: "",
+        contractor_id: undefined,
         external_lead_time_days: 0,
       },
     ]);
