@@ -25,6 +25,7 @@ export const useSpecifications = () => {
       if (specsError) throw specsError;
 
       // Fetch ALL specification materials separately to avoid nested limit issues
+      // Using explicit limit to ensure we get all materials
       const { data: allMaterials, error: materialsError } = await supabase
         .from("specification_materials")
         .select(`
@@ -35,7 +36,8 @@ export const useSpecifications = () => {
           waste_rate,
           products:material_id(name, code, unit, product_type)
         `)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true })
+        .limit(10000);
 
       if (materialsError) throw materialsError;
 
