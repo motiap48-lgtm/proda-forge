@@ -6,18 +6,12 @@ export const useSpecifications = () => {
   return useQuery({
     queryKey: ["specifications"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch specifications with basic data
+      const { data: specs, error: specsError } = await supabase
         .from("specifications")
         .select(`
           *,
           products:product_id(name, code, product_type, unit),
-          specification_materials(
-            id,
-            material_id,
-            quantity,
-            waste_rate,
-            products:material_id(name, code, unit, product_type)
-          ),
           specification_history!specification_history_specification_id_fkey(
             id,
             change_type,
@@ -28,17 +22,43 @@ export const useSpecifications = () => {
         `)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      
-      // Sort history by created_at descending for each specification
-      const dataWithSortedHistory = data?.map(spec => ({
+      if (specsError) throw specsError;
+
+      // Fetch ALL specification materials separately to avoid nested limit issues
+      const { data: allMaterials, error: materialsError } = await supabase
+        .from("specification_materials")
+        .select(`
+          id,
+          specification_id,
+          material_id,
+          quantity,
+          waste_rate,
+          products:material_id(name, code, unit, product_type)
+        `)
+        .order("created_at", { ascending: true });
+
+      if (materialsError) throw materialsError;
+
+      // Group materials by specification_id
+      const materialsBySpecId = new Map<string, any[]>();
+      allMaterials?.forEach(material => {
+        const specId = material.specification_id;
+        if (!materialsBySpecId.has(specId)) {
+          materialsBySpecId.set(specId, []);
+        }
+        materialsBySpecId.get(specId)!.push(material);
+      });
+
+      // Combine specifications with their materials
+      const dataWithMaterials = specs?.map(spec => ({
         ...spec,
+        specification_materials: materialsBySpecId.get(spec.id) || [],
         specification_history: spec.specification_history?.sort((a: any, b: any) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         ) || []
       }));
       
-      return dataWithSortedHistory;
+      return dataWithMaterials;
     },
   });
 };
