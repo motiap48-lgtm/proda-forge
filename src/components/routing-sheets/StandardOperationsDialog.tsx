@@ -130,17 +130,39 @@ export function StandardOperationsDialog({
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const savedScrollTopRef = useRef<number>(0);
+  const editingOperationIdRef = useRef<string | null>(null);
+
+  // Save scroll position when entering edit mode
+  const saveScrollPosition = () => {
+    const scrollViewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollViewport) {
+      savedScrollTopRef.current = scrollViewport.scrollTop;
+    }
+  };
+
+  // Restore scroll position and scroll to edited row when returning to list
+  const restoreScrollAndFocusRow = (operationId: string | null) => {
+    requestAnimationFrame(() => {
+      const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = savedScrollTopRef.current;
+        // If we have an edited operation, scroll it into view if needed
+        if (operationId) {
+          requestAnimationFrame(() => {
+            const row = scrollAreaRef.current?.querySelector(`[data-operation-id="${operationId}"]`);
+            if (row) {
+              row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+          });
+        }
+      }
+    });
+  };
 
   const handleSubmit = async (continueAdding: boolean = false, closeAfter: boolean = false) => {
     if (!formData.name.trim()) {
       toast.error('Укажите название операции');
       return;
-    }
-
-    // Save scroll position before mutation
-    const scrollViewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-    if (scrollViewport) {
-      savedScrollTopRef.current = scrollViewport.scrollTop;
     }
 
     try {
@@ -155,21 +177,16 @@ export function StandardOperationsDialog({
           ...submitData,
         });
         if (closeAfter) {
+          const editedId = editingOperation.id;
           setIsEditing(false);
           setEditingOperation(null);
+          restoreScrollAndFocusRow(editedId);
         } else {
           // Stay in editing mode with updated operation data
           setEditingOperation({
             ...editingOperation,
             ...submitData,
             default_work_center_id: submitData.default_work_center_id ?? null,
-          });
-          // Restore scroll position after state update
-          requestAnimationFrame(() => {
-            const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-            if (viewport) {
-              viewport.scrollTop = savedScrollTopRef.current;
-            }
           });
         }
       } else {
@@ -188,6 +205,8 @@ export function StandardOperationsDialog({
   };
 
   const handleEdit = (operation: StandardOperation) => {
+    saveScrollPosition();
+    editingOperationIdRef.current = operation.id;
     setEditingOperation(operation);
     setIsEditing(true);
   };
@@ -205,8 +224,10 @@ export function StandardOperationsDialog({
   };
 
   const handleCancel = () => {
+    const editedId = editingOperationIdRef.current;
     setIsEditing(false);
     setEditingOperation(null);
+    restoreScrollAndFocusRow(editedId);
   };
 
   return (
@@ -370,7 +391,7 @@ export function StandardOperationsDialog({
                       {filteredOperations.map(op => {
                         const TypeIcon = getOperationTypeIcon(op.operation_type);
                         return (
-                          <TableRow key={op.id}>
+                          <TableRow key={op.id} data-operation-id={op.id}>
                             <TableCell className="font-mono text-sm">{op.code}</TableCell>
                             <TableCell className="font-medium">{op.name}</TableCell>
                             <TableCell>
