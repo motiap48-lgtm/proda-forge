@@ -155,8 +155,8 @@ export function OperationMaterialsSection({
               Выберите компоненты из спецификации, которые потребляются на этой
               операции
             </p>
-            <ScrollArea className="max-h-[400px]">
-              <div className="space-y-2">
+            <ScrollArea className="max-h-[500px] pr-3">
+              <div className="space-y-2 pb-1">
                 {paginatedMaterials.map((material) => {
                   const isSelected = isMaterialSelected(material.material_id);
                   const quantity = getSelectedQuantity(material.material_id);
