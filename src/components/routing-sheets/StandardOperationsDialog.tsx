@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -128,10 +128,19 @@ export function StandardOperationsDialog({
     op.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const savedScrollTopRef = useRef<number>(0);
+
   const handleSubmit = async (continueAdding: boolean = false, closeAfter: boolean = false) => {
     if (!formData.name.trim()) {
       toast.error('Укажите название операции');
       return;
+    }
+
+    // Save scroll position before mutation
+    const scrollViewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollViewport) {
+      savedScrollTopRef.current = scrollViewport.scrollTop;
     }
 
     try {
@@ -154,6 +163,13 @@ export function StandardOperationsDialog({
             ...editingOperation,
             ...submitData,
             default_work_center_id: submitData.default_work_center_id ?? null,
+          });
+          // Restore scroll position after state update
+          requestAnimationFrame(() => {
+            const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) {
+              viewport.scrollTop = savedScrollTopRef.current;
+            }
           });
         }
       } else {
@@ -328,7 +344,7 @@ export function StandardOperationsDialog({
                 </Button>
               </div>
 
-              <ScrollArea className="h-[400px]">
+              <ScrollArea className="h-[400px]" ref={scrollAreaRef}>
                 {isLoading ? (
                   <div className="p-8 text-center text-muted-foreground">
                     Загрузка...
