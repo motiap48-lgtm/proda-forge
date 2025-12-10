@@ -1,17 +1,16 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Package, ChevronDown, Trash2 } from "lucide-react";
+import { Package, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SpecificationMaterial {
@@ -54,6 +53,8 @@ const productTypeColors: Record<string, string> = {
   finished: "bg-blue-500/10 text-blue-600 border-blue-500/20",
 };
 
+const ITEMS_PER_PAGE = 20;
+
 export function OperationMaterialsSection({
   operationIndex,
   operationName,
@@ -63,6 +64,16 @@ export function OperationMaterialsSection({
   disabled,
 }: OperationMaterialsSectionProps) {
   const [isOpen, setIsOpen] = useState(selectedMaterials.length > 0);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(specificationMaterials.length / ITEMS_PER_PAGE);
+  const needsPagination = specificationMaterials.length > ITEMS_PER_PAGE;
+
+  const paginatedMaterials = useMemo(() => {
+    if (!needsPagination) return specificationMaterials;
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return specificationMaterials.slice(start, start + ITEMS_PER_PAGE);
+  }, [specificationMaterials, currentPage, needsPagination]);
 
   const handleToggleMaterial = (productId: string, checked: boolean) => {
     if (checked) {
@@ -123,6 +134,11 @@ export function OperationMaterialsSection({
                 {selectedMaterials.length}
               </Badge>
             )}
+            {needsPagination && (
+              <Badge variant="outline" className="ml-1 text-xs">
+                {specificationMaterials.length} всего
+              </Badge>
+            )}
           </div>
           <ChevronDown
             className={cn(
@@ -139,9 +155,9 @@ export function OperationMaterialsSection({
               Выберите компоненты из спецификации, которые потребляются на этой
               операции
             </p>
-            <ScrollArea className="max-h-72">
+            <ScrollArea className="max-h-[400px]">
               <div className="space-y-2">
-                {specificationMaterials.map((material) => {
+                {paginatedMaterials.map((material) => {
                   const isSelected = isMaterialSelected(material.material_id);
                   const quantity = getSelectedQuantity(material.material_id);
 
@@ -215,6 +231,34 @@ export function OperationMaterialsSection({
                 })}
               </div>
             </ScrollArea>
+            
+            {needsPagination && (
+              <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                <span className="text-xs text-muted-foreground">
+                  Страница {currentPage} из {totalPages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </CollapsibleContent>
