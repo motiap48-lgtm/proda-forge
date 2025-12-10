@@ -21,7 +21,10 @@ export const useRoutingSheets = () => {
             operation_type,
             is_external,
             external_contractor,
+            contractor_id,
+            external_lead_time_days,
             work_centers:work_center_id(id, name, code),
+            contractors:contractor_id(id, name, code),
             routing_operation_materials(
               id,
               product_id,
@@ -70,6 +73,8 @@ interface Operation {
   materials?: OperationMaterial[];
   is_external?: boolean;
   external_contractor?: string;
+  contractor_id?: string;
+  external_lead_time_days?: number;
 }
 
 interface RoutingSheetData {
@@ -111,6 +116,8 @@ export const useCreateRoutingSheet = () => {
           operation_type: op.operation_type || "production",
           is_external: op.is_external || false,
           external_contractor: op.is_external ? op.external_contractor : null,
+          contractor_id: op.is_external ? op.contractor_id : null,
+          external_lead_time_days: op.is_external ? op.external_lead_time_days : null,
         }));
 
         const { data: insertedOps, error: opsError } = await supabase
@@ -202,6 +209,8 @@ export const useUpdateRoutingSheet = () => {
           operation_type: op.operation_type || "production",
           is_external: op.is_external || false,
           external_contractor: op.is_external ? op.external_contractor : null,
+          contractor_id: op.is_external ? op.contractor_id : null,
+          external_lead_time_days: op.is_external ? op.external_lead_time_days : null,
         }));
 
         const { data: insertedOps, error: opsError } = await supabase
