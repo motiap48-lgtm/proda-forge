@@ -128,7 +128,7 @@ export function StandardOperationsDialog({
     op.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSubmit = async (continueAdding: boolean = false) => {
+  const handleSubmit = async (continueAdding: boolean = false, closeAfter: boolean = false) => {
     if (!formData.name.trim()) {
       toast.error('Укажите название операции');
       return;
@@ -141,16 +141,21 @@ export function StandardOperationsDialog({
       };
       
       if (editingOperation) {
-        const updatedOp = await updateMutation.mutateAsync({
+        await updateMutation.mutateAsync({
           id: editingOperation.id,
           ...submitData,
         });
-        // Stay in editing mode with updated operation data
-        setEditingOperation({
-          ...editingOperation,
-          ...submitData,
-          default_work_center_id: submitData.default_work_center_id ?? null,
-        });
+        if (closeAfter) {
+          setIsEditing(false);
+          setEditingOperation(null);
+        } else {
+          // Stay in editing mode with updated operation data
+          setEditingOperation({
+            ...editingOperation,
+            ...submitData,
+            default_work_center_id: submitData.default_work_center_id ?? null,
+          });
+        }
       } else {
         await createMutation.mutateAsync(submitData);
         if (continueAdding) {
@@ -295,7 +300,12 @@ export function StandardOperationsDialog({
                     Создать и добавить ещё
                   </Button>
                 )}
-                <Button onClick={() => handleSubmit(false)}>
+                {editingOperation && (
+                  <Button variant="secondary" onClick={() => handleSubmit(false, true)}>
+                    Сохранить и закрыть
+                  </Button>
+                )}
+                <Button onClick={() => handleSubmit(false, false)}>
                   {editingOperation ? 'Сохранить' : 'Создать'}
                 </Button>
               </div>
