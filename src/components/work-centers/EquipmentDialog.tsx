@@ -44,6 +44,7 @@ export const EquipmentDialog = ({
     purchase_date: "",
     last_maintenance_date: "",
     next_maintenance_date: "",
+    power_consumption_kwh: "",
     notes: "",
   });
 
@@ -63,6 +64,7 @@ export const EquipmentDialog = ({
         purchase_date: equipment.purchase_date || "",
         last_maintenance_date: equipment.last_maintenance_date || "",
         next_maintenance_date: equipment.next_maintenance_date || "",
+        power_consumption_kwh: equipment.power_consumption_kwh?.toString() || "",
         notes: equipment.notes || "",
       });
     } else {
@@ -77,6 +79,7 @@ export const EquipmentDialog = ({
         purchase_date: "",
         last_maintenance_date: "",
         next_maintenance_date: "",
+        power_consumption_kwh: "",
         notes: "",
       });
     }
@@ -94,6 +97,7 @@ export const EquipmentDialog = ({
       manufacturer: formData.manufacturer || null,
       model: formData.model || null,
       serial_number: formData.serial_number || null,
+      power_consumption_kwh: formData.power_consumption_kwh ? parseFloat(formData.power_consumption_kwh) : null,
       notes: formData.notes || null,
     };
 
@@ -244,6 +248,21 @@ export const EquipmentDialog = ({
                 onChange={(e) =>
                   setFormData({ ...formData, next_maintenance_date: e.target.value })
                 }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="power_consumption_kwh">Потребление, кВт/ч</Label>
+              <Input
+                id="power_consumption_kwh"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.power_consumption_kwh}
+                onChange={(e) =>
+                  setFormData({ ...formData, power_consumption_kwh: e.target.value })
+                }
+                placeholder="15.5"
               />
             </div>
           </div>

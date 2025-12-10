@@ -26,6 +26,7 @@ export type Database = {
           name: string
           next_maintenance_date: string | null
           notes: string | null
+          power_consumption_kwh: number | null
           purchase_date: string | null
           serial_number: string | null
           status: string
@@ -43,6 +44,7 @@ export type Database = {
           name: string
           next_maintenance_date?: string | null
           notes?: string | null
+          power_consumption_kwh?: number | null
           purchase_date?: string | null
           serial_number?: string | null
           status?: string
@@ -60,6 +62,7 @@ export type Database = {
           name?: string
           next_maintenance_date?: string | null
           notes?: string | null
+          power_consumption_kwh?: number | null
           purchase_date?: string | null
           serial_number?: string | null
           status?: string
