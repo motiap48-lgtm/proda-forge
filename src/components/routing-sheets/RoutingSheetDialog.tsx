@@ -237,9 +237,10 @@ export function RoutingSheetDialog({
 
     toast.success(`Добавлена операция "${stdOp.name}"`);
 
+    // Use longer timeout for standard operations since dropdown needs to close first
     setTimeout(() => {
       lastOperationRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 100);
+    }, 200);
   };
 
   const removeOperation = (index: number) => {
