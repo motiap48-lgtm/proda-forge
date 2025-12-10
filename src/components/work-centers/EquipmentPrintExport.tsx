@@ -39,6 +39,7 @@ interface EquipmentWithWorkCenter {
   purchase_date: string | null;
   last_maintenance_date: string | null;
   next_maintenance_date: string | null;
+  power_consumption_kwh: number | null;
   notes: string | null;
   work_centers: {
     code: string;
@@ -85,10 +86,16 @@ export const EquipmentPrintExport = () => {
     return grouped;
   };
 
+  const calculateTotalPower = (items: EquipmentWithWorkCenter[]): number => {
+    return items.reduce((sum, item) => sum + (item.power_consumption_kwh || 0), 0);
+  };
+
   const handlePrint = () => {
     const grouped = groupEquipmentByDepartmentAndWorkCenter();
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+
+    const totalPower = allEquipment ? calculateTotalPower(allEquipment as EquipmentWithWorkCenter[]) : 0;
 
     const html = `
       <!DOCTYPE html>
@@ -130,6 +137,15 @@ export const EquipmentPrintExport = () => {
               color: #666;
               margin-bottom: 10px;
             }
+            .summary { 
+              margin-top: 20px; 
+              padding: 10px; 
+              background: #f5f5f5; 
+              border: 1px solid #ddd;
+            }
+            .summary-row { display: flex; justify-content: space-between; margin: 5px 0; }
+            .power-cell { text-align: right; }
+            .subtotal { font-weight: bold; background: #e8e8e8; }
             @media print {
               h2 { page-break-before: auto; }
             }
@@ -141,54 +157,67 @@ export const EquipmentPrintExport = () => {
           ${Object.entries(grouped)
             .sort(([a], [b]) => a.localeCompare(b, "ru"))
             .map(
-              ([department, workCentersData]) => `
-              <h2>Цех: ${department}</h2>
-              ${Object.entries(workCentersData)
-                .sort(([a], [b]) => a.localeCompare(b, "ru"))
-                .map(
-                  ([workCenter, items]) => `
-                  <h3>Участок: ${workCenter}</h3>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Код</th>
-                        <th>Наименование</th>
-                        <th>Тип</th>
-                        <th>Статус</th>
-                        <th>Производитель</th>
-                        <th>Модель</th>
-                        <th>Серийный номер</th>
-                        <th>След. ТО</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${items
-                        .sort((a, b) => a.code.localeCompare(b.code, "ru"))
-                        .map(
-                          (item) => `
+              ([department, workCentersData]) => {
+                const deptPower = Object.values(workCentersData).flat().reduce((sum, item) => sum + (item.power_consumption_kwh || 0), 0);
+                return `
+                <h2>Цех: ${department} (Потребление: ${deptPower.toFixed(2)} кВт/ч)</h2>
+                ${Object.entries(workCentersData)
+                  .sort(([a], [b]) => a.localeCompare(b, "ru"))
+                  .map(
+                    ([workCenter, items]) => {
+                      const wcPower = items.reduce((sum, item) => sum + (item.power_consumption_kwh || 0), 0);
+                      return `
+                      <h3>Участок: ${workCenter} (Потребление: ${wcPower.toFixed(2)} кВт/ч)</h3>
+                      <table>
+                        <thead>
                           <tr>
-                            <td>${item.code}</td>
-                            <td>${item.name}</td>
-                            <td>${getTypeName(item.equipment_type)}</td>
-                            <td class="status-${item.status}">${getStatusLabel(item.status)}</td>
-                            <td>${item.manufacturer || "-"}</td>
-                            <td>${item.model || "-"}</td>
-                            <td>${item.serial_number || "-"}</td>
-                            <td>${formatDate(item.next_maintenance_date)}</td>
+                            <th>Код</th>
+                            <th>Наименование</th>
+                            <th>Тип</th>
+                            <th>Статус</th>
+                            <th>Производитель</th>
+                            <th>Модель</th>
+                            <th>кВт/ч</th>
+                            <th>След. ТО</th>
                           </tr>
-                        `
-                        )
-                        .join("")}
-                    </tbody>
-                  </table>
-                `
-                )
-                .join("")}
-            `
+                        </thead>
+                        <tbody>
+                          ${items
+                            .sort((a, b) => a.code.localeCompare(b.code, "ru"))
+                            .map(
+                              (item) => `
+                              <tr>
+                                <td>${item.code}</td>
+                                <td>${item.name}</td>
+                                <td>${getTypeName(item.equipment_type)}</td>
+                                <td class="status-${item.status}">${getStatusLabel(item.status)}</td>
+                                <td>${item.manufacturer || "-"}</td>
+                                <td>${item.model || "-"}</td>
+                                <td class="power-cell">${item.power_consumption_kwh?.toFixed(2) || "-"}</td>
+                                <td>${formatDate(item.next_maintenance_date)}</td>
+                              </tr>
+                            `
+                            )
+                            .join("")}
+                        </tbody>
+                      </table>
+                    `;
+                    }
+                  )
+                  .join("")}
+              `;
+              }
             )
             .join("")}
-          <div style="margin-top: 20px; font-size: 11px; color: #666;">
-            Всего единиц оборудования: ${allEquipment?.length || 0}
+          <div class="summary">
+            <div class="summary-row">
+              <span>Всего единиц оборудования:</span>
+              <strong>${allEquipment?.length || 0}</strong>
+            </div>
+            <div class="summary-row">
+              <span>Общее потребление электроэнергии:</span>
+              <strong>${totalPower.toFixed(2)} кВт/ч</strong>
+            </div>
           </div>
         </body>
       </html>
@@ -204,8 +233,8 @@ export const EquipmentPrintExport = () => {
   const handleExportExcel = () => {
     if (!allEquipment) return;
 
-    const data = allEquipment
-      .sort((a: EquipmentWithWorkCenter, b: EquipmentWithWorkCenter) => {
+    const data = (allEquipment as EquipmentWithWorkCenter[])
+      .sort((a, b) => {
         const deptA = a.work_centers?.department || "Без цеха";
         const deptB = b.work_centers?.department || "Без цеха";
         if (deptA !== deptB) return deptA.localeCompare(deptB, "ru");
@@ -214,7 +243,7 @@ export const EquipmentPrintExport = () => {
         if (wcA !== wcB) return wcA.localeCompare(wcB, "ru");
         return a.code.localeCompare(b.code, "ru");
       })
-      .map((item: EquipmentWithWorkCenter) => ({
+      .map((item) => ({
         "Цех": item.work_centers?.department || "Без цеха",
         "Код участка": item.work_centers?.code || "-",
         "Участок": item.work_centers?.name || "Без участка",
@@ -225,11 +254,32 @@ export const EquipmentPrintExport = () => {
         "Производитель": item.manufacturer || "",
         "Модель": item.model || "",
         "Серийный номер": item.serial_number || "",
+        "Потребление, кВт/ч": item.power_consumption_kwh || "",
         "Дата покупки": formatDate(item.purchase_date),
         "Последнее ТО": formatDate(item.last_maintenance_date),
         "Следующее ТО": formatDate(item.next_maintenance_date),
         "Примечания": item.notes || "",
       }));
+
+    // Add summary row
+    const totalPower = calculateTotalPower(allEquipment as EquipmentWithWorkCenter[]);
+    data.push({
+      "Цех": "",
+      "Код участка": "",
+      "Участок": "",
+      "Код оборудования": "",
+      "Наименование": "ИТОГО",
+      "Тип": "",
+      "Статус": "",
+      "Производитель": "",
+      "Модель": "",
+      "Серийный номер": "",
+      "Потребление, кВт/ч": totalPower,
+      "Дата покупки": "",
+      "Последнее ТО": "",
+      "Следующее ТО": "",
+      "Примечания": "",
+    });
 
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -247,6 +297,7 @@ export const EquipmentPrintExport = () => {
       { wch: 20 }, // Производитель
       { wch: 20 }, // Модель
       { wch: 20 }, // Серийный номер
+      { wch: 15 }, // Потребление
       { wch: 12 }, // Дата покупки
       { wch: 12 }, // Последнее ТО
       { wch: 12 }, // Следующее ТО
