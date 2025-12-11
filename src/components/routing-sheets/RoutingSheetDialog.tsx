@@ -430,6 +430,14 @@ export function RoutingSheetDialog({
   const distributeByProductType = () => {
     const unlinkedMats = getUnlinkedMaterials();
     
+    // Debug logging
+    console.log("=== SMART DISTRIBUTION DEBUG ===");
+    console.log("Unlinked materials count:", unlinkedMats.length);
+    console.log("Unlinked materials:", unlinkedMats);
+    console.log("Sample material structure:", unlinkedMats[0]);
+    console.log("Production operations count:", productionOps.length);
+    console.log("Production operations:", productionOps);
+    
     if (unlinkedMats.length === 0) {
       toast.info("Все компоненты уже распределены по операциям");
       return;
@@ -448,6 +456,10 @@ export function RoutingSheetDialog({
     );
     const finishedGoods = unlinkedMats.filter((m: any) => m.products?.product_type === "finished");
     const unknown = unlinkedMats.filter((m: any) => !m.products?.product_type);
+    
+    console.log("Raw materials:", rawMaterials.length, rawMaterials.map((m: any) => m.products?.code));
+    console.log("Components (ПФ/СБ):", components.length, components.map((m: any) => m.products?.code));
+    console.log("Unknown (no type):", unknown.length, unknown.map((m: any) => ({ material_id: m.material_id, products: m.products })));
 
     const firstProductionSeq = productionOps[0].sequence;
     const lastProductionSeq = productionOps[productionOps.length - 1].sequence;
