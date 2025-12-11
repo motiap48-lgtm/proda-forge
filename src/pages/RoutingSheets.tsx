@@ -593,6 +593,7 @@ const RoutingSheets = () => {
             </CardContent>
           </Card>
         ) : (
+          <>
           <div className="space-y-4">
             {filteredSheets.map((sheet, index) => {
               const operations = sheet.routing_operations || [];
@@ -807,6 +808,20 @@ const RoutingSheets = () => {
               );
             })}
           </div>
+          
+          {/* Bottom create button when more than 5 sheets */}
+          {filteredSheets.length > 5 && (
+            <div className="flex justify-center pt-6">
+              <Button onClick={() => {
+                setSelectedSheet(null);
+                setDialogOpen(true);
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Создать техмаршрут
+              </Button>
+            </div>
+          )}
+        </>
         )}
       </main>
 
