@@ -122,10 +122,12 @@ const RoutingSheets = () => {
         groupKey = sheet.product_id || 'no-product';
         groupName = sheet.products ? `${sheet.products.code} — ${sheet.products.name}` : 'Без продукта';
       } else {
-        // Department grouping - use the last operation's work center department
+        // Department grouping - use the last internal operation's work center department
         const operations = sheet.routing_operations || [];
-        const lastOp = operations.length > 0 ? operations[operations.length - 1] : null;
-        const department = lastOp?.work_centers?.department;
+        // Find last internal operation (non-external) with a work center
+        const sortedOps = [...operations].sort((a: any, b: any) => b.sequence - a.sequence);
+        const lastInternalOp = sortedOps.find((op: any) => !op.is_external && op.work_center_id);
+        const department = lastInternalOp?.work_centers?.department;
         groupKey = department || 'no-department';
         groupName = department || 'Без отдела';
       }
