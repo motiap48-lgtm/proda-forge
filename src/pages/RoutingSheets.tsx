@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers } from "lucide-react";
-import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet } from "@/hooks/useRoutingSheets";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
+import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet, useReorderRoutingSheets } from "@/hooks/useRoutingSheets";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
 import { RoutingFlowDiagram } from "@/components/routing-sheets/RoutingFlowDiagram";
@@ -42,6 +42,7 @@ const RoutingSheets = () => {
   const createMutation = useCreateRoutingSheet();
   const updateMutation = useUpdateRoutingSheet();
   const deleteMutation = useDeleteRoutingSheet();
+  const reorderMutation = useReorderRoutingSheets();
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -80,12 +81,46 @@ const RoutingSheets = () => {
     };
   };
 
-  const filteredSheets = routingSheets?.filter(
+  // Sort sheets by sort_order for display
+  const sortedSheets = [...(routingSheets || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+  const filteredSheets = sortedSheets.filter(
     (sheet) =>
       sheet.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sheet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sheet.products?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  );
+
+  const handleMoveUp = (sheet: any) => {
+    const currentIndex = sortedSheets.findIndex(s => s.id === sheet.id);
+    if (currentIndex <= 0) return;
+    
+    const prevSheet = sortedSheets[currentIndex - 1];
+    const updates = [
+      { id: sheet.id, sort_order: prevSheet.sort_order || currentIndex - 1 },
+      { id: prevSheet.id, sort_order: sheet.sort_order || currentIndex }
+    ];
+    reorderMutation.mutate(updates);
+  };
+
+  const handleMoveDown = (sheet: any) => {
+    const currentIndex = sortedSheets.findIndex(s => s.id === sheet.id);
+    if (currentIndex >= sortedSheets.length - 1) return;
+    
+    const nextSheet = sortedSheets[currentIndex + 1];
+    const updates = [
+      { id: sheet.id, sort_order: nextSheet.sort_order || currentIndex + 1 },
+      { id: nextSheet.id, sort_order: sheet.sort_order || currentIndex }
+    ];
+    reorderMutation.mutate(updates);
+  };
+
+  const handleInsertBefore = (sheet: any) => {
+    setSelectedSheet(null);
+    setDialogOpen(true);
+    // After creation, the new sheet will get the next sort_order, then we'll need to reorder
+    toast.info(`Создайте новый техмаршрут. После сохранения используйте стрелки для перемещения.`);
+  };
 
   const handleSave = async (data: any) => {
     // Use selectedSheet.id to determine if this is an update or create
@@ -454,12 +489,14 @@ const RoutingSheets = () => {
           </Card>
         ) : (
           <div className="space-y-4">
-            {filteredSheets.map((sheet) => {
+            {filteredSheets.map((sheet, index) => {
               const operations = sheet.routing_operations || [];
               const totalTime = operations.reduce(
                 (sum: number, op: any) => sum + (op.setup_time_minutes || 0) + (op.cycle_time_minutes || 0),
                 0
               );
+              const isFirst = index === 0;
+              const isLast = index === filteredSheets.length - 1;
 
               return (
                 <Card
@@ -469,6 +506,48 @@ const RoutingSheets = () => {
                   <CardContent className="p-6">
                     <div className="mb-4 flex items-start justify-between">
                       <div className="flex items-center gap-3">
+                        {/* Reorder controls */}
+                        {!searchQuery && (
+                          <div className="flex flex-col items-center gap-1 mr-2">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => handleMoveUp(sheet)}
+                                    disabled={isFirst || reorderMutation.isPending}
+                                  >
+                                    <ArrowUp className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">
+                                  <p>Поднять вверх</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <span className="text-xs text-muted-foreground font-medium">{index + 1}</span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => handleMoveDown(sheet)}
+                                    disabled={isLast || reorderMutation.isPending}
+                                  >
+                                    <ArrowDown className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">
+                                  <p>Опустить вниз</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        )}
                         <div className="rounded-lg bg-primary/10 p-3">
                           <GitBranch className="h-6 w-6 text-primary" />
                         </div>
@@ -503,6 +582,22 @@ const RoutingSheets = () => {
                             <Copy className="mr-2 h-4 w-4" />
                             Копировать
                           </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleMoveUp(sheet)}
+                            disabled={isFirst || reorderMutation.isPending}
+                          >
+                            <ArrowUp className="mr-2 h-4 w-4" />
+                            Поднять вверх
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleMoveDown(sheet)}
+                            disabled={isLast || reorderMutation.isPending}
+                          >
+                            <ArrowDown className="mr-2 h-4 w-4" />
+                            Опустить вниз
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handlePrintSheet(sheet)}>
                             <Printer className="mr-2 h-4 w-4" />
                             Печать
