@@ -269,6 +269,7 @@ const RoutingSheets = () => {
   const handleSave = async (data: any) => {
     // Use selectedSheet.id to determine if this is an update or create
     // When copying, id is set to undefined, so we should create a new sheet
+    const isCreating = !selectedSheet?.id;
     if (selectedSheet?.id) {
       await updateMutation.mutateAsync({ id: selectedSheet.id, ...data });
     } else {
@@ -276,6 +277,13 @@ const RoutingSheets = () => {
     }
     setDialogOpen(false);
     setSelectedSheet(null);
+    
+    // Auto-scroll to bottom after creating new routing sheet
+    if (isCreating) {
+      setTimeout(() => {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+      }, 300);
+    }
   };
 
   const handleEdit = (sheet: any) => {
