@@ -440,19 +440,14 @@ export function RoutingSheetDialog({
       return;
     }
 
-    // Get product info for each material
-    const materialsWithInfo = unlinkedMats.map((m: any) => ({
-      ...m,
-      productInfo: products?.find(p => p.id === m.material_id),
-    }));
-
+    // Product type info is already available in specification_materials via the join (m.products.product_type)
     // Separate by type: materials go to first production op, assemblies/semi-finished to last
-    const rawMaterials = materialsWithInfo.filter((m: any) => m.productInfo?.product_type === "material");
-    const components = materialsWithInfo.filter((m: any) => 
-      m.productInfo?.product_type === "semi-finished" || m.productInfo?.product_type === "assembly"
+    const rawMaterials = unlinkedMats.filter((m: any) => m.products?.product_type === "material");
+    const components = unlinkedMats.filter((m: any) => 
+      m.products?.product_type === "semi-finished" || m.products?.product_type === "assembly"
     );
-    const finishedGoods = materialsWithInfo.filter((m: any) => m.productInfo?.product_type === "finished");
-    const unknown = materialsWithInfo.filter((m: any) => !m.productInfo);
+    const finishedGoods = unlinkedMats.filter((m: any) => m.products?.product_type === "finished");
+    const unknown = unlinkedMats.filter((m: any) => !m.products?.product_type);
 
     const firstProductionSeq = productionOps[0].sequence;
     const lastProductionSeq = productionOps[productionOps.length - 1].sequence;
