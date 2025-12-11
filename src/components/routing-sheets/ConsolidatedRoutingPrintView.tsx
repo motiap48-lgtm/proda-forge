@@ -90,15 +90,15 @@ export const ConsolidatedRoutingPrintView = forwardRef<HTMLDivElement, Consolida
             </div>
             <div>
               <span className="text-gray-600">Время наладки:</span>
-              <span className="ml-2 font-semibold">{totals.totalSetupTime} мин</span>
+              <span className="ml-2 font-semibold">{totals.totalSetupTime.toFixed(1)} мин ({(totals.totalSetupTime / 60).toFixed(1)} ч)</span>
             </div>
             <div>
               <span className="text-gray-600">Время на единицу:</span>
-              <span className="ml-2 font-semibold">{totals.totalCycleTime} мин</span>
+              <span className="ml-2 font-semibold">{totals.totalCycleTime.toFixed(1)} мин ({(totals.totalCycleTime / 60).toFixed(1)} ч)</span>
             </div>
             <div>
               <span className="text-gray-600">Общее время:</span>
-              <span className="ml-2 font-semibold">{totals.totalSetupTime + totals.totalCycleTime} мин</span>
+              <span className="ml-2 font-semibold">{(totals.totalSetupTime + totals.totalCycleTime).toFixed(1)} мин ({((totals.totalSetupTime + totals.totalCycleTime) / 60).toFixed(1)} ч)</span>
             </div>
           </div>
           {totals.nodesWithoutRouting > 0 && (
