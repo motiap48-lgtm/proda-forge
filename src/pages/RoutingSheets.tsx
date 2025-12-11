@@ -40,6 +40,7 @@ const RoutingSheets = () => {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [scrollDirection, setScrollDirection] = useState<'down' | 'up'>('down');
   const printRef = useRef<HTMLDivElement>(null);
+  const bottomButtonRef = useRef<HTMLDivElement>(null);
   
   const { data: routingSheets, isLoading } = useRoutingSheets();
   const { data: specifications } = useSpecifications();
@@ -278,11 +279,14 @@ const RoutingSheets = () => {
     setDialogOpen(false);
     setSelectedSheet(null);
     
-    // Auto-scroll to bottom after creating new routing sheet
-    // Wait longer for data refetch and DOM update
+    // Auto-scroll to bottom button after creating new routing sheet
     if (isCreating) {
       setTimeout(() => {
-        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+        if (bottomButtonRef.current) {
+          bottomButtonRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+        }
       }, 800);
     }
   };
@@ -859,7 +863,7 @@ const RoutingSheets = () => {
           
           {/* Bottom create button when more than 5 sheets */}
           {filteredSheets.length > 5 && (
-            <div className="flex justify-center pt-6">
+            <div ref={bottomButtonRef} className="flex justify-center pt-6">
               <Button onClick={() => {
                 setSelectedSheet(null);
                 setDialogOpen(true);
