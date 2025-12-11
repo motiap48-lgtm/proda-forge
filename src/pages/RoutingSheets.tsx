@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -124,9 +124,62 @@ const RoutingSheets = () => {
     toast.info(`Создайте новый техмаршрут. После сохранения используйте стрелки для перемещения.`);
   };
 
+  // Auto-scroll during drag
+  const scrollIntervalRef = useRef<number | null>(null);
+  const isDraggingRef = useRef(false);
+
+  const startAutoScroll = useCallback((direction: 'up' | 'down') => {
+    if (scrollIntervalRef.current) return;
+    const scrollSpeed = direction === 'up' ? -15 : 15;
+    scrollIntervalRef.current = window.setInterval(() => {
+      window.scrollBy({ top: scrollSpeed, behavior: 'auto' });
+    }, 16);
+  }, []);
+
+  const stopAutoScroll = useCallback(() => {
+    if (scrollIntervalRef.current) {
+      clearInterval(scrollIntervalRef.current);
+      scrollIntervalRef.current = null;
+    }
+  }, []);
+
+  // Global drag event for auto-scroll
+  useEffect(() => {
+    const handleGlobalDrag = (e: DragEvent) => {
+      if (!isDraggingRef.current) return;
+      
+      const scrollThreshold = 100;
+      const mouseY = e.clientY;
+      const windowHeight = window.innerHeight;
+
+      if (mouseY < scrollThreshold) {
+        startAutoScroll('up');
+      } else if (mouseY > windowHeight - scrollThreshold) {
+        startAutoScroll('down');
+      } else {
+        stopAutoScroll();
+      }
+    };
+
+    const handleGlobalDragEnd = () => {
+      stopAutoScroll();
+      isDraggingRef.current = false;
+    };
+
+    document.addEventListener('drag', handleGlobalDrag);
+    document.addEventListener('dragend', handleGlobalDragEnd);
+
+    return () => {
+      document.removeEventListener('drag', handleGlobalDrag);
+      document.removeEventListener('dragend', handleGlobalDragEnd);
+      stopAutoScroll();
+    };
+  }, [startAutoScroll, stopAutoScroll]);
+
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
+    isDraggingRef.current = true;
     e.dataTransfer.effectAllowed = 'move';
   };
 
@@ -144,6 +197,7 @@ const RoutingSheets = () => {
 
   const handleDrop = (e: React.DragEvent, targetIndex: number) => {
     e.preventDefault();
+    stopAutoScroll();
     if (draggedIndex === null || draggedIndex === targetIndex) {
       setDraggedIndex(null);
       setDragOverIndex(null);
@@ -169,6 +223,8 @@ const RoutingSheets = () => {
   const handleDragEnd = () => {
     setDraggedIndex(null);
     setDragOverIndex(null);
+    stopAutoScroll();
+    isDraggingRef.current = false;
   };
 
   const handleSave = async (data: any) => {
