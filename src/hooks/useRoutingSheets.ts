@@ -33,10 +33,36 @@ export const useRoutingSheets = () => {
             )
           )
         `)
-        .order("created_at", { ascending: false });
+        .order("sort_order", { ascending: true });
 
       if (error) throw error;
       return data;
+    },
+  });
+};
+
+export const useReorderRoutingSheets = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      // Update all sort_orders in parallel
+      const promises = updates.map(({ id, sort_order }) =>
+        supabase
+          .from("routing_sheets")
+          .update({ sort_order })
+          .eq("id", id)
+      );
+      
+      const results = await Promise.all(promises);
+      const error = results.find(r => r.error)?.error;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["routing-sheets"] });
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка перемещения: " + error.message);
     },
   });
 };
