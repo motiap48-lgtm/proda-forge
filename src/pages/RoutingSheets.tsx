@@ -279,10 +279,11 @@ const RoutingSheets = () => {
     setSelectedSheet(null);
     
     // Auto-scroll to bottom after creating new routing sheet
+    // Wait longer for data refetch and DOM update
     if (isCreating) {
       setTimeout(() => {
         window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
-      }, 300);
+      }, 800);
     }
   };
 
