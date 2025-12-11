@@ -50,6 +50,7 @@ const RoutingSheets = () => {
   const [scrollDirection, setScrollDirection] = useState<'down' | 'up'>('down');
   const [expectedSheetCount, setExpectedSheetCount] = useState<number | null>(null);
   const [groupingMode, setGroupingMode] = useState<GroupingMode>('none');
+  const [useInternalOperationOnly, setUseInternalOperationOnly] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const printRef = useRef<HTMLDivElement>(null);
   const bottomButtonRef = useRef<HTMLDivElement>(null);
@@ -122,14 +123,29 @@ const RoutingSheets = () => {
         groupKey = sheet.product_id || 'no-product';
         groupName = sheet.products ? `${sheet.products.code} — ${sheet.products.name}` : 'Без продукта';
       } else {
-        // Department grouping - use the last internal operation's work center department
+        // Department grouping
         const operations = sheet.routing_operations || [];
-        // Find last internal operation (non-external) with a work center
         const sortedOps = [...operations].sort((a: any, b: any) => b.sequence - a.sequence);
-        const lastInternalOp = sortedOps.find((op: any) => !op.is_external && op.work_center_id);
-        const department = lastInternalOp?.work_centers?.department;
-        groupKey = department || 'no-department';
-        groupName = department || 'Без отдела';
+        
+        let targetOp;
+        if (useInternalOperationOnly) {
+          // Find last internal operation (non-external) with a work center
+          targetOp = sortedOps.find((op: any) => !op.is_external && op.work_center_id);
+        } else {
+          // Use last operation regardless of type
+          targetOp = sortedOps[0];
+        }
+        
+        // For external operations without work center, use contractor name
+        if (targetOp?.is_external && !targetOp.work_center_id) {
+          const contractorName = targetOp.contractors?.name || targetOp.external_contractor || 'Внешняя операция';
+          groupKey = `external-${contractorName}`;
+          groupName = `Внешние: ${contractorName}`;
+        } else {
+          const department = targetOp?.work_centers?.department;
+          groupKey = department || 'no-department';
+          groupName = department || 'Без отдела';
+        }
       }
       
       if (!groups[groupKey]) {
@@ -139,7 +155,7 @@ const RoutingSheets = () => {
     });
     
     return Object.entries(groups).sort((a, b) => a[1].name.localeCompare(b[1].name, 'ru'));
-  }, [filteredSheets, groupingMode]);
+  }, [filteredSheets, groupingMode, useInternalOperationOnly]);
 
   const toggleGroup = (groupKey: string) => {
     setExpandedGroups(prev => {
@@ -697,6 +713,20 @@ const RoutingSheets = () => {
                     <SelectItem value="department">По отделам</SelectItem>
                   </SelectContent>
                 </Select>
+                {groupingMode === 'department' && (
+                  <Select 
+                    value={useInternalOperationOnly ? 'internal' : 'any'} 
+                    onValueChange={(v) => setUseInternalOperationOnly(v === 'internal')}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="internal">Внутренние операции</SelectItem>
+                      <SelectItem value="any">Все операции</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
                 {groupingMode !== 'none' && groupedSheets && groupedSheets.length > 0 && (
                   <div className="flex gap-1">
                     <Button variant="ghost" size="sm" onClick={expandAllGroups}>
