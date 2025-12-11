@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers, ArrowUp, ArrowDown, GripVertical, ChevronsDown, ChevronsUp } from "lucide-react";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers, ArrowUp, ArrowDown, GripVertical, ChevronsDown, ChevronsUp, FolderOpen, ChevronRight } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet, useReorderRoutingSheets } from "@/hooks/useRoutingSheets";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
@@ -25,6 +25,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type GroupingMode = 'none' | 'product' | 'department';
 
 const RoutingSheets = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,6 +49,8 @@ const RoutingSheets = () => {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [scrollDirection, setScrollDirection] = useState<'down' | 'up'>('down');
   const [expectedSheetCount, setExpectedSheetCount] = useState<number | null>(null);
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>('none');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const printRef = useRef<HTMLDivElement>(null);
   const bottomButtonRef = useRef<HTMLDivElement>(null);
   
@@ -96,6 +107,59 @@ const RoutingSheets = () => {
       sheet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sheet.products?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Grouping logic
+  const groupedSheets = useMemo(() => {
+    if (groupingMode === 'none') return null;
+    
+    const groups: Record<string, { name: string; sheets: typeof filteredSheets }> = {};
+    
+    filteredSheets.forEach(sheet => {
+      let groupKey: string;
+      let groupName: string;
+      
+      if (groupingMode === 'product') {
+        groupKey = sheet.product_id || 'no-product';
+        groupName = sheet.products ? `${sheet.products.code} — ${sheet.products.name}` : 'Без продукта';
+      } else {
+        // Department grouping - use the last operation's work center department
+        const operations = sheet.routing_operations || [];
+        const lastOp = operations.length > 0 ? operations[operations.length - 1] : null;
+        const department = lastOp?.work_centers?.department;
+        groupKey = department || 'no-department';
+        groupName = department || 'Без отдела';
+      }
+      
+      if (!groups[groupKey]) {
+        groups[groupKey] = { name: groupName, sheets: [] };
+      }
+      groups[groupKey].sheets.push(sheet);
+    });
+    
+    return Object.entries(groups).sort((a, b) => a[1].name.localeCompare(b[1].name, 'ru'));
+  }, [filteredSheets, groupingMode]);
+
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
+  };
+
+  const expandAllGroups = () => {
+    if (groupedSheets) {
+      setExpandedGroups(new Set(groupedSheets.map(([key]) => key)));
+    }
+  };
+
+  const collapseAllGroups = () => {
+    setExpandedGroups(new Set());
+  };
 
   const handleMoveUp = (sheet: any) => {
     const currentIndex = sortedSheets.findIndex(s => s.id === sheet.id);
@@ -596,27 +660,52 @@ const RoutingSheets = () => {
           </Card>
         </Collapsible>
 
-        {/* Search */}
+        {/* Search and Grouping */}
         <Card className="mb-6">
           <CardContent className="p-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Поиск по номеру, названию или продукту..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10"
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                  onClick={() => setSearchQuery("")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по номеру, названию или продукту..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                <Select value={groupingMode} onValueChange={(v) => setGroupingMode(v as GroupingMode)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Группировка" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Без группировки</SelectItem>
+                    <SelectItem value="product">По продуктам</SelectItem>
+                    <SelectItem value="department">По отделам</SelectItem>
+                  </SelectContent>
+                </Select>
+                {groupingMode !== 'none' && groupedSheets && groupedSheets.length > 0 && (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={expandAllGroups}>
+                      <ChevronsDown className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={collapseAllGroups}>
+                      <ChevronsUp className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -652,7 +741,203 @@ const RoutingSheets = () => {
           </Card>
         ) : (
           <>
-          <div className="space-y-4">
+          {groupingMode !== 'none' && groupedSheets ? (
+            // Grouped view
+            <div className="space-y-4">
+              {groupedSheets.map(([groupKey, group]) => {
+                const isExpanded = expandedGroups.has(groupKey);
+                return (
+                  <div key={groupKey} className="space-y-2">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-between px-4 py-3 h-auto bg-muted/50 hover:bg-muted"
+                      onClick={() => toggleGroup(groupKey)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                        <FolderOpen className="h-4 w-4 text-primary" />
+                        <span className="font-medium">{group.name}</span>
+                        <Badge variant="secondary" className="ml-2">
+                          {group.sheets.length}
+                        </Badge>
+                      </div>
+                    </Button>
+                    {isExpanded && (
+                      <div className="space-y-3 pl-4 border-l-2 border-primary/20 ml-2">
+                        {group.sheets.map((sheet) => {
+                          const operations = sheet.routing_operations || [];
+                          const totalTime = operations.reduce(
+                            (sum: number, op: any) => sum + (op.setup_time_minutes || 0) + (op.cycle_time_minutes || 0),
+                            0
+                          );
+                          return (
+                            <Card
+                              key={sheet.id}
+                              className="transition-all hover:border-primary hover:shadow-md"
+                            >
+                              <CardContent className="p-6">
+                                <div className="mb-4 flex items-start justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="rounded-lg bg-primary/10 p-3">
+                                      <GitBranch className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <h3 className="font-semibold text-foreground">{sheet.code}</h3>
+                                        {sheet.is_active && (
+                                          <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20">
+                                            Активен
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="text-sm font-medium text-foreground">{sheet.name}</p>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        {sheet.products && getProductTypeBadge(sheet.products.product_type)}
+                                        <p className="text-xs text-muted-foreground">
+                                          {sheet.products?.code} — {sheet.products?.name || "Не указан"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="outline" size="sm">⋮</Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => handleEdit(sheet)}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Редактировать
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleCopy(sheet)}>
+                                        <Copy className="mr-2 h-4 w-4" />
+                                        Копировать
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => handlePrintSheet(sheet)}>
+                                        <Printer className="mr-2 h-4 w-4" />
+                                        Печать
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleExportToExcel(sheet)}>
+                                        <FileSpreadsheet className="mr-2 h-4 w-4" />
+                                        Экспорт в Excel
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => {
+                                        setConsolidatedRoutingProduct({
+                                          id: sheet.product_id,
+                                          name: sheet.products?.name || '',
+                                          code: sheet.products?.code || '',
+                                        });
+                                        setConsolidatedRoutingOpen(true);
+                                      }}>
+                                        <Layers className="mr-2 h-4 w-4" />
+                                        Сводный маршрут
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem 
+                                        onClick={() => handleDelete(sheet)}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Удалить
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+
+                                <div className="grid gap-4 md:grid-cols-3 mb-4">
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Settings className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-muted-foreground">Операций:</span>
+                                    <span className="font-medium text-foreground">{operations.length}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-muted-foreground">Общее время:</span>
+                                    <span className="font-medium text-foreground">
+                                      {totalTime.toFixed(1)} мин ({(totalTime / 60).toFixed(1)} ч)
+                                    </span>
+                                  </div>
+                                  {(() => {
+                                    const stats = getSheetComponentStats(sheet);
+                                    if (!stats.hasSpec || stats.totalSpecComponents === 0) return null;
+                                    return (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <div className="flex items-center gap-2 text-sm">
+                                              <Package className="h-4 w-4 text-muted-foreground" />
+                                              <span className="text-muted-foreground">Компоненты:</span>
+                                              <span className="font-medium text-foreground">
+                                                {stats.linkedCount}/{stats.totalSpecComponents}
+                                              </span>
+                                              {stats.unlinkedCount > 0 && (
+                                                <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
+                                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                                  {stats.unlinkedCount} не привязано
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>
+                                              {stats.linkedCount} из {stats.totalSpecComponents} компонентов спецификации привязаны к операциям
+                                            </p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    );
+                                  })()}
+                                </div>
+
+                                {operations.length > 0 && (
+                                  <Collapsible className="mt-4 border-t pt-4 group">
+                                    <CollapsibleTrigger asChild>
+                                      <Button variant="ghost" className="w-full justify-between px-0 hover:bg-transparent">
+                                        <span className="text-sm font-medium text-foreground">Маршрут:</span>
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 -rotate-90 group-data-[state=open]:rotate-0" />
+                                      </Button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="pt-3">
+                                      <RoutingFlowDiagram
+                                        operations={operations.map((op: any) => ({
+                                          sequence: op.sequence,
+                                          name: op.name,
+                                          work_center_id: op.work_center_id,
+                                          work_center_name: op.work_centers?.name,
+                                          work_center_code: op.work_centers?.code,
+                                          setup_time_minutes: op.setup_time_minutes || 0,
+                                          cycle_time_minutes: op.cycle_time_minutes || 0,
+                                          operation_type: op.operation_type || "production",
+                                          is_external: op.is_external,
+                                          external_contractor: op.contractors?.name || op.external_contractor,
+                                          external_lead_time_days: op.external_lead_time_days,
+                                          materials: op.routing_operation_materials?.map((m: any) => ({
+                                            product_id: m.product_id,
+                                            product_name: m.products?.name,
+                                            product_code: m.products?.code,
+                                            product_type: m.products?.product_type,
+                                            quantity: m.quantity_per_operation,
+                                            unit: m.products?.unit,
+                                          })) || [],
+                                        }))}
+                                      />
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            // Non-grouped view
+            <div className="space-y-4">
             {filteredSheets.map((sheet, index) => {
               const operations = sheet.routing_operations || [];
               const totalTime = operations.reduce(
@@ -867,8 +1152,8 @@ const RoutingSheets = () => {
                 </Card>
               );
             })}
-          </div>
-          
+            </div>
+          )}
           {/* Bottom create button when more than 5 sheets */}
           {filteredSheets.length > 5 && (
             <div ref={bottomButtonRef} className="flex justify-center pt-6">
