@@ -123,6 +123,16 @@ export const useCreateRoutingSheet = () => {
       if (!data.product_id || data.product_id === "undefined" || data.product_id.trim() === "") {
         throw new Error("Не выбран продукт для техмаршрута");
       }
+
+      // Get max sort_order to place new sheet at the end
+      const { data: maxSortData } = await supabase
+        .from("routing_sheets")
+        .select("sort_order")
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .single();
+      
+      const nextSortOrder = (maxSortData?.sort_order ?? -1) + 1;
       
       // Create the routing sheet
       const { data: sheet, error: sheetError } = await supabase
@@ -132,6 +142,7 @@ export const useCreateRoutingSheet = () => {
           name: data.name,
           product_id: data.product_id,
           is_active: data.is_active,
+          sort_order: nextSortOrder,
         })
         .select()
         .single();
