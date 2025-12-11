@@ -71,15 +71,19 @@ const UserManagement = () => {
 
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId }
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users-with-roles"] });
       toast.success("Пользователь удален");
     },
-    onError: () => {
-      toast.error("Ошибка при удалении");
+    onError: (error: Error) => {
+      toast.error("Ошибка при удалении: " + error.message);
     },
   });
 

@@ -60,14 +60,31 @@ const Auth = () => {
     }
   };
 
+  const validatePassword = (password: string): string | null => {
+    if (password.length < 8) {
+      return "Пароль должен содержать минимум 8 символов";
+    }
+    if (!/[A-ZА-ЯЁ]/.test(password)) {
+      return "Пароль должен содержать хотя бы одну заглавную букву";
+    }
+    if (!/[a-zа-яё]/.test(password)) {
+      return "Пароль должен содержать хотя бы одну строчную букву";
+    }
+    if (!/[0-9]/.test(password)) {
+      return "Пароль должен содержать хотя бы одну цифру";
+    }
+    return null;
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    if (signupPassword.length < 6) {
+    const passwordError = validatePassword(signupPassword);
+    if (passwordError) {
       toast({
         title: "Слабый пароль",
-        description: "Пароль должен содержать минимум 6 символов",
+        description: passwordError,
         variant: "destructive",
       });
       setLoading(false);
@@ -199,13 +216,13 @@ const Auth = () => {
                     onChange={(e) => setSignupPassword(e.target.value)}
                     required
                     disabled={loading}
-                    minLength={6}
+                    minLength={8}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Минимум 6 символов
+                    Минимум 8 символов, заглавная и строчная буква, цифра
                   </p>
                 </div>
-                <Button 
+                <Button
                   type="submit" 
                   className="w-full bg-gradient-to-r from-primary to-primary-glow"
                   disabled={loading}
