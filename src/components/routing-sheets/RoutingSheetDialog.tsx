@@ -461,11 +461,21 @@ export function RoutingSheetDialog({
     console.log("Components (ПФ/СБ):", components.length, components.map((m: any) => m.products?.code));
     console.log("Unknown (no type):", unknown.length, unknown.map((m: any) => ({ material_id: m.material_id, products: m.products })));
 
-    const firstProductionSeq = productionOps[0].sequence;
-    const lastProductionSeq = productionOps[productionOps.length - 1].sequence;
+    // Get production operations sorted by sequence
+    const sortedProductionOps = [...productionOps].sort((a, b) => a.sequence - b.sequence);
+    
+    const firstProductionSeq = sortedProductionOps[0].sequence;
+    const lastProductionSeq = sortedProductionOps[sortedProductionOps.length - 1].sequence;
     // Middle operation if available (only use if we have 3+ production operations)
-    const middleIdx = Math.floor(productionOps.length / 2);
-    const middleProductionSeq = productionOps.length >= 3 ? productionOps[middleIdx].sequence : null;
+    const middleIdx = Math.floor(sortedProductionOps.length / 2);
+    const middleProductionSeq = sortedProductionOps.length >= 3 ? sortedProductionOps[middleIdx].sequence : null;
+
+    console.log("First production seq:", firstProductionSeq);
+    console.log("Middle production seq:", middleProductionSeq);
+    console.log("Last production seq:", lastProductionSeq);
+    console.log("All operations sequences:", operations.map(op => ({ seq: op.sequence, type: op.operation_type, name: op.name })));
+
+    let distributedToOperations: string[] = [];
 
     const updatedOperations = operations.map(op => {
       let materialsToAdd: any[] = [];
@@ -476,42 +486,50 @@ export function RoutingSheetDialog({
           product_id: m.material_id,
           quantity_per_operation: m.quantity,
         }));
+        if (materialsToAdd.length > 0) {
+          console.log(`Adding ${materialsToAdd.length} raw materials to first op (seq ${op.sequence}): ${op.name}`);
+        }
       }
 
       // Components (ПФ, СБ) go to middle operation if 3+ ops, otherwise to last
       if (middleProductionSeq && op.sequence === middleProductionSeq) {
-        materialsToAdd = [
-          ...materialsToAdd,
-          ...components.map((m: any) => ({
-            product_id: m.material_id,
-            quantity_per_operation: m.quantity,
-          })),
-        ];
+        const componentMaterials = components.map((m: any) => ({
+          product_id: m.material_id,
+          quantity_per_operation: m.quantity,
+        }));
+        materialsToAdd = [...materialsToAdd, ...componentMaterials];
+        if (componentMaterials.length > 0) {
+          console.log(`Adding ${componentMaterials.length} components to middle op (seq ${op.sequence}): ${op.name}`);
+        }
       }
 
       // Last operation gets: finished goods, unknown, and components if no middle operation
       if (op.sequence === lastProductionSeq) {
-        materialsToAdd = [
-          ...materialsToAdd,
-          ...finishedGoods.map((m: any) => ({
-            product_id: m.material_id,
-            quantity_per_operation: m.quantity,
-          })),
-          ...unknown.map((m: any) => ({
-            product_id: m.material_id,
-            quantity_per_operation: m.quantity,
-          })),
-        ];
+        const finishedMaterials = finishedGoods.map((m: any) => ({
+          product_id: m.material_id,
+          quantity_per_operation: m.quantity,
+        }));
+        const unknownMaterials = unknown.map((m: any) => ({
+          product_id: m.material_id,
+          quantity_per_operation: m.quantity,
+        }));
+        
+        materialsToAdd = [...materialsToAdd, ...finishedMaterials, ...unknownMaterials];
         
         // If no middle operation (1-2 production ops), components also go to last
         if (!middleProductionSeq) {
-          materialsToAdd = [
-            ...materialsToAdd,
-            ...components.map((m: any) => ({
-              product_id: m.material_id,
-              quantity_per_operation: m.quantity,
-            })),
-          ];
+          const componentMaterials = components.map((m: any) => ({
+            product_id: m.material_id,
+            quantity_per_operation: m.quantity,
+          }));
+          materialsToAdd = [...materialsToAdd, ...componentMaterials];
+          if (componentMaterials.length > 0) {
+            console.log(`Adding ${componentMaterials.length} components to last op (seq ${op.sequence}): ${op.name} (no middle op)`);
+          }
+        }
+        
+        if (finishedMaterials.length > 0 || unknownMaterials.length > 0) {
+          console.log(`Adding ${finishedMaterials.length} finished + ${unknownMaterials.length} unknown to last op (seq ${op.sequence}): ${op.name}`);
         }
       }
 
@@ -521,6 +539,12 @@ export function RoutingSheetDialog({
         const existingIds = new Set(existingMaterials.map(m => m.product_id));
         const newMaterials = materialsToAdd.filter(m => !existingIds.has(m.product_id));
         
+        if (newMaterials.length > 0) {
+          distributedToOperations.push(`"${op.name}" (${newMaterials.length} шт)`);
+          console.log(`FINAL: Adding ${newMaterials.length} materials to op "${op.name}" (seq ${op.sequence})`);
+          console.log("New materials:", newMaterials);
+        }
+        
         return {
           ...op,
           materials: [...existingMaterials, ...newMaterials],
@@ -529,6 +553,13 @@ export function RoutingSheetDialog({
       return op;
     });
 
+    console.log("Updated operations:", updatedOperations.map(op => ({ 
+      name: op.name, 
+      seq: op.sequence, 
+      materialsCount: op.materials?.length || 0,
+      materials: op.materials 
+    })));
+
     setOperations(updatedOperations);
     
     const distributed = {
@@ -536,9 +567,14 @@ export function RoutingSheetDialog({
       components: components.length,
       other: finishedGoods.length + unknown.length,
     };
-    toast.success(
-      `Распределено: ${distributed.materials} материалов на первую операцию, ${distributed.components} ПФ/СБ ${middleProductionSeq ? 'на среднюю' : 'на последнюю'}, ${distributed.other} прочих на последнюю`
-    );
+    
+    if (distributedToOperations.length > 0) {
+      toast.success(`Распределено на: ${distributedToOperations.join(", ")}`);
+    } else {
+      toast.info(
+        `Распределено: ${distributed.materials} материалов на первую операцию, ${distributed.components} ПФ/СБ ${middleProductionSeq ? 'на среднюю' : 'на последнюю'}, ${distributed.other} прочих на последнюю`
+      );
+    }
   };
 
   return (
