@@ -35,6 +35,8 @@ const RoutingSheets = () => {
   const [standardOpsDialogOpen, setStandardOpsDialogOpen] = useState(false);
   const [consolidatedRoutingOpen, setConsolidatedRoutingOpen] = useState(false);
   const [consolidatedRoutingProduct, setConsolidatedRoutingProduct] = useState<{id: string; name: string; code: string} | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
   
   const { data: routingSheets, isLoading } = useRoutingSheets();
@@ -120,6 +122,53 @@ const RoutingSheets = () => {
     setDialogOpen(true);
     // After creation, the new sheet will get the next sort_order, then we'll need to reorder
     toast.info(`Создайте новый техмаршрут. После сохранения используйте стрелки для перемещения.`);
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    // Reorder the sheets
+    const newSheets = [...sortedSheets];
+    const [draggedSheet] = newSheets.splice(draggedIndex, 1);
+    newSheets.splice(targetIndex, 0, draggedSheet);
+
+    // Create updates with new sort_order values
+    const updates = newSheets.map((sheet, idx) => ({
+      id: sheet.id,
+      sort_order: idx + 1
+    }));
+
+    reorderMutation.mutate(updates);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const handleSave = async (data: any) => {
@@ -497,55 +546,44 @@ const RoutingSheets = () => {
               );
               const isFirst = index === 0;
               const isLast = index === filteredSheets.length - 1;
+              const isDragging = draggedIndex === index;
+              const isDragOver = dragOverIndex === index;
+              const canDrag = !searchQuery;
 
               return (
                 <Card
                   key={sheet.id}
-                  className="transition-all hover:border-primary hover:shadow-md"
+                  className={`transition-all hover:border-primary hover:shadow-md ${
+                    isDragging ? 'opacity-50 scale-[0.98] border-primary border-dashed' : ''
+                  } ${
+                    isDragOver ? 'border-primary border-2 shadow-lg' : ''
+                  } ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  draggable={canDrag}
+                  onDragStart={canDrag ? (e) => handleDragStart(e, index) : undefined}
+                  onDragOver={canDrag ? (e) => handleDragOver(e, index) : undefined}
+                  onDragLeave={canDrag ? handleDragLeave : undefined}
+                  onDrop={canDrag ? (e) => handleDrop(e, index) : undefined}
+                  onDragEnd={canDrag ? handleDragEnd : undefined}
                 >
                   <CardContent className="p-6">
                     <div className="mb-4 flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         {/* Reorder controls */}
                         {!searchQuery && (
-                          <div className="flex flex-col items-center gap-1 mr-2">
+                          <div className="flex flex-col items-center gap-0.5 mr-2">
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    onClick={() => handleMoveUp(sheet)}
-                                    disabled={isFirst || reorderMutation.isPending}
-                                  >
-                                    <ArrowUp className="h-4 w-4" />
-                                  </Button>
+                                  <div className="p-1 cursor-grab">
+                                    <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+                                  </div>
                                 </TooltipTrigger>
                                 <TooltipContent side="left">
-                                  <p>Поднять вверх</p>
+                                  <p>Перетащите для изменения порядка</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                             <span className="text-xs text-muted-foreground font-medium">{index + 1}</span>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    onClick={() => handleMoveDown(sheet)}
-                                    disabled={isLast || reorderMutation.isPending}
-                                  >
-                                    <ArrowDown className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left">
-                                  <p>Опустить вниз</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
                           </div>
                         )}
                         <div className="rounded-lg bg-primary/10 p-3">
