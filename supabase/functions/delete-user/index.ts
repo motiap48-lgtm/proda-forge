@@ -106,9 +106,10 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Unexpected error in delete-user function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Unexpected error in delete-user function:', errorMessage);
     return new Response(
-      JSON.stringify({ error: 'Internal server error: ' + error.message }),
+      JSON.stringify({ error: 'Internal server error: ' + errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
