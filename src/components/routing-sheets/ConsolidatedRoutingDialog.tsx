@@ -522,8 +522,9 @@ export function ConsolidatedRoutingDialog({
             <Separator orientation="vertical" className="h-4" />
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{totals.totalSetupTime + totals.totalCycleTime}</span>
-              <span className="text-muted-foreground">мин всего</span>
+              <span className="font-medium">
+                {(totals.totalSetupTime + totals.totalCycleTime).toFixed(1)} мин ({((totals.totalSetupTime + totals.totalCycleTime) / 60).toFixed(1)} ч)
+              </span>
             </div>
             {totals.nodesWithoutRouting > 0 && (
               <>
