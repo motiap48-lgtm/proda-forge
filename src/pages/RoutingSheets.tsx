@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers, ArrowUp, ArrowDown, GripVertical, ChevronsDown } from "lucide-react";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers, ArrowUp, ArrowDown, GripVertical, ChevronsDown, ChevronsUp } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet, useReorderRoutingSheets } from "@/hooks/useRoutingSheets";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
@@ -38,6 +38,7 @@ const RoutingSheets = () => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [scrollDirection, setScrollDirection] = useState<'down' | 'up'>('down');
   const printRef = useRef<HTMLDivElement>(null);
   
   const { data: routingSheets, isLoading } = useRoutingSheets();
@@ -177,14 +178,28 @@ const RoutingSheets = () => {
     };
   }, [startAutoScroll, stopAutoScroll]);
 
-  // Track scroll position to show/hide scroll-to-bottom button
+  // Track scroll position to show/hide scroll button and determine direction
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY;
       const windowHeight = window.innerHeight;
       const documentHeight = document.documentElement.scrollHeight;
       const distanceFromBottom = documentHeight - scrollTop - windowHeight;
-      setShowScrollButton(distanceFromBottom > 500);
+      const distanceFromTop = scrollTop;
+      
+      // Show button if page is scrollable enough
+      const showButton = documentHeight > windowHeight + 500;
+      setShowScrollButton(showButton);
+      
+      // Determine direction based on position
+      if (distanceFromBottom < 200) {
+        setScrollDirection('up');
+      } else if (distanceFromTop < 200) {
+        setScrollDirection('down');
+      } else {
+        // In the middle - prefer down if closer to top, up if closer to bottom
+        setScrollDirection(scrollTop < documentHeight / 2 ? 'down' : 'up');
+      }
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -192,8 +207,12 @@ const RoutingSheets = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToBottom = () => {
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  const handleScrollButton = () => {
+    if (scrollDirection === 'down') {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // Drag and drop handlers
@@ -898,15 +917,19 @@ const RoutingSheets = () => {
         )}
       </div>
 
-      {/* Scroll to bottom button */}
+      {/* Scroll button */}
       {showScrollButton && filteredSheets.length > 5 && (
         <Button
           variant="outline"
           size="icon"
-          className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg hover:shadow-xl bg-background/95 backdrop-blur"
-          onClick={scrollToBottom}
+          className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg hover:shadow-xl bg-background/95 backdrop-blur transition-transform"
+          onClick={handleScrollButton}
         >
-          <ChevronsDown className="h-5 w-5" />
+          {scrollDirection === 'down' ? (
+            <ChevronsDown className="h-5 w-5" />
+          ) : (
+            <ChevronsUp className="h-5 w-5" />
+          )}
         </Button>
       )}
     </div>
