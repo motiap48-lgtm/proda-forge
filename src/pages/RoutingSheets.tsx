@@ -39,11 +39,11 @@ const RoutingSheets = () => {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [scrollDirection, setScrollDirection] = useState<'down' | 'up'>('down');
-  const [pendingScrollToBottom, setPendingScrollToBottom] = useState(false);
+  const [expectedSheetCount, setExpectedSheetCount] = useState<number | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const bottomButtonRef = useRef<HTMLDivElement>(null);
   
-  const { data: routingSheets, isLoading, isFetching } = useRoutingSheets();
+  const { data: routingSheets, isLoading } = useRoutingSheets();
   const { data: specifications } = useSpecifications();
   const createMutation = useCreateRoutingSheet();
   const updateMutation = useUpdateRoutingSheet();
@@ -209,20 +209,16 @@ const RoutingSheets = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Effect to scroll to bottom after data loads when pending
+  // Effect to scroll to bottom after new sheet is added
   useEffect(() => {
-    if (pendingScrollToBottom && !isFetching) {
-      // Small delay to ensure DOM is updated
+    if (expectedSheetCount !== null && routingSheets && routingSheets.length >= expectedSheetCount) {
+      // Data has loaded with new sheet - scroll to bottom
       setTimeout(() => {
-        if (bottomButtonRef.current) {
-          bottomButtonRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-          window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
-        }
-        setPendingScrollToBottom(false);
-      }, 100);
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+        setExpectedSheetCount(null);
+      }, 150);
     }
-  }, [pendingScrollToBottom, isFetching]);
+  }, [expectedSheetCount, routingSheets]);
 
   const handleScrollButton = () => {
     if (scrollDirection === 'down') {
@@ -295,9 +291,9 @@ const RoutingSheets = () => {
     setDialogOpen(false);
     setSelectedSheet(null);
     
-    // Set flag to scroll after data reloads
+    // Set expected count to trigger scroll after data reloads
     if (isCreating) {
-      setPendingScrollToBottom(true);
+      setExpectedSheetCount((routingSheets?.length || 0) + 1);
     }
   };
 
