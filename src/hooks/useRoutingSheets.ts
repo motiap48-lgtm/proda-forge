@@ -23,7 +23,7 @@ export const useRoutingSheets = () => {
             external_contractor,
             contractor_id,
             external_lead_time_days,
-            work_centers:work_center_id(id, name, code),
+            work_centers:work_center_id(id, name, code, department),
             contractors:contractor_id(id, name, code),
             routing_operation_materials(
               id,
