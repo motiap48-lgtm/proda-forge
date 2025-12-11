@@ -39,10 +39,11 @@ const RoutingSheets = () => {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [scrollDirection, setScrollDirection] = useState<'down' | 'up'>('down');
+  const [pendingScrollToBottom, setPendingScrollToBottom] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const bottomButtonRef = useRef<HTMLDivElement>(null);
   
-  const { data: routingSheets, isLoading } = useRoutingSheets();
+  const { data: routingSheets, isLoading, isFetching } = useRoutingSheets();
   const { data: specifications } = useSpecifications();
   const createMutation = useCreateRoutingSheet();
   const updateMutation = useUpdateRoutingSheet();
@@ -208,6 +209,21 @@ const RoutingSheets = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Effect to scroll to bottom after data loads when pending
+  useEffect(() => {
+    if (pendingScrollToBottom && !isFetching) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        if (bottomButtonRef.current) {
+          bottomButtonRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+        }
+        setPendingScrollToBottom(false);
+      }, 100);
+    }
+  }, [pendingScrollToBottom, isFetching]);
+
   const handleScrollButton = () => {
     if (scrollDirection === 'down') {
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
@@ -279,24 +295,9 @@ const RoutingSheets = () => {
     setDialogOpen(false);
     setSelectedSheet(null);
     
-    // Auto-scroll to bottom button after creating new routing sheet
-    // Retry multiple times to ensure data is loaded
+    // Set flag to scroll after data reloads
     if (isCreating) {
-      const scrollToBottom = (attempt: number) => {
-        setTimeout(() => {
-          if (bottomButtonRef.current) {
-            bottomButtonRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          } else if (attempt < 5) {
-            // Ref not available yet, try again
-            scrollToBottom(attempt + 1);
-          } else {
-            // Fallback: scroll to end of page
-            window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
-          }
-        }, attempt === 1 ? 500 : 300);
-      };
-      
-      scrollToBottom(1);
+      setPendingScrollToBottom(true);
     }
   };
 
