@@ -160,11 +160,11 @@ export const ConsolidatedRoutingPrintView = forwardRef<HTMLDivElement, Consolida
                         
                         <div className="text-right text-sm shrink-0">
                           <div className="font-medium">
-                            {(op.operation.setup_time_minutes || 0) + (op.operation.cycle_time_minutes || 0)} мин
+                            {((op.operation.setup_time_minutes || 0) + (op.operation.cycle_time_minutes || 0)).toFixed(1)} мин ({(((op.operation.setup_time_minutes || 0) + (op.operation.cycle_time_minutes || 0)) / 60).toFixed(2)} ч)
                           </div>
                           {op.operation.setup_time_minutes > 0 && (
                             <div className="text-xs text-gray-500">
-                              ПЗ: {op.operation.setup_time_minutes}м | Шт: {op.operation.cycle_time_minutes}м
+                              ПЗ: {(op.operation.setup_time_minutes || 0).toFixed(1)}м | Шт: {(op.operation.cycle_time_minutes || 0).toFixed(1)}м
                             </div>
                           )}
                         </div>
