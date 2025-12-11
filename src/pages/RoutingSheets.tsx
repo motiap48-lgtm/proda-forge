@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers, ArrowUp, ArrowDown, GripVertical, ChevronsDown } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet, useReorderRoutingSheets } from "@/hooks/useRoutingSheets";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
@@ -37,6 +37,7 @@ const RoutingSheets = () => {
   const [consolidatedRoutingProduct, setConsolidatedRoutingProduct] = useState<{id: string; name: string; code: string} | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   
   const { data: routingSheets, isLoading } = useRoutingSheets();
@@ -175,6 +176,25 @@ const RoutingSheets = () => {
       stopAutoScroll();
     };
   }, [startAutoScroll, stopAutoScroll]);
+
+  // Track scroll position to show/hide scroll-to-bottom button
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      const distanceFromBottom = documentHeight - scrollTop - windowHeight;
+      setShowScrollButton(distanceFromBottom > 500);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Initial check
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToBottom = () => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  };
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -877,6 +897,18 @@ const RoutingSheets = () => {
           />
         )}
       </div>
+
+      {/* Scroll to bottom button */}
+      {showScrollButton && filteredSheets.length > 5 && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg hover:shadow-xl bg-background/95 backdrop-blur"
+          onClick={scrollToBottom}
+        >
+          <ChevronsDown className="h-5 w-5" />
+        </Button>
+      )}
     </div>
   );
 };
