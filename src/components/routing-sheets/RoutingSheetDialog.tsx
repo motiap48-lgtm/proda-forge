@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, DragEvent } from "react";
+import { useState, useEffect, useRef, DragEvent, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -371,30 +371,45 @@ export function RoutingSheetDialog({
   );
   const specificationMaterials = productSpecification?.specification_materials || [];
 
-  // Calculate unlinked specification components
-  const linkedMaterialIds = new Set<string>();
-  operations.forEach(op => {
-    op.materials?.forEach(m => linkedMaterialIds.add(m.product_id));
-  });
-  
-  const unlinkedMaterials = specificationMaterials.filter(
-    (m: any) => !linkedMaterialIds.has(m.material_id)
-  );
-  
-  const hasUnlinkedComponents = unlinkedMaterials.length > 0 && specificationMaterials.length > 0;
+  // Calculate unlinked specification components - must use useMemo to ensure recalculation
+  const { linkedMaterialIds, unlinkedMaterials, hasUnlinkedComponents } = useMemo(() => {
+    const linked = new Set<string>();
+    operations.forEach(op => {
+      op.materials?.forEach(m => {
+        if (m.product_id) {
+          linked.add(m.product_id);
+        }
+      });
+    });
+    
+    const unlinked = specificationMaterials.filter(
+      (m: any) => !linked.has(m.material_id)
+    );
+    
+    console.log("=== LINKED CHECK (useMemo) ===");
+    console.log("Operations total:", operations.length);
+    console.log("Operations with materials:", operations.filter(op => (op.materials?.length || 0) > 0).map(op => ({
+      name: op.name,
+      seq: op.sequence,
+      materialsCount: op.materials?.length
+    })));
+    console.log("Linked IDs:", Array.from(linked));
+    console.log("Spec material IDs:", specificationMaterials.map((m: any) => m.material_id));
+    console.log("Unlinked count:", unlinked.length);
+    
+    return {
+      linkedMaterialIds: linked,
+      unlinkedMaterials: unlinked,
+      hasUnlinkedComponents: unlinked.length > 0 && specificationMaterials.length > 0
+    };
+  }, [operations, specificationMaterials]);
 
   // Get production operations for menu
   const productionOps = operations.filter(op => op.operation_type === "production");
 
-  // Helper to get unlinked materials
+  // Helper to get unlinked materials - uses the memoized value
   const getUnlinkedMaterials = () => {
-    const alreadyLinkedIds = new Set<string>();
-    operations.forEach(op => {
-      op.materials?.forEach(m => alreadyLinkedIds.add(m.product_id));
-    });
-    return specificationMaterials.filter(
-      (m: any) => !alreadyLinkedIds.has(m.material_id)
-    );
+    return unlinkedMaterials;
   };
 
   // Auto-distribute to specific operation
