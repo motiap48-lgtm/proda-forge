@@ -521,20 +521,40 @@ const ProductionReportsContent = () => {
                                               <h4 className="text-sm font-semibold text-muted-foreground mb-2">
                                                 Выпускаемая продукция ({report.products.length})
                                               </h4>
-                                              <div className="flex flex-wrap gap-2">
-                                                {report.products.map((product) => (
-                                                  <div 
-                                                    key={product.product_id}
-                                                    className="flex items-center gap-2 p-2 bg-muted/30 rounded-md text-sm"
-                                                  >
-                                                    {getProductTypeBadge(product.product_type)}
-                                                    <div>
-                                                      <p className="font-medium">{product.product_name}</p>
-                                                      <p className="text-xs text-muted-foreground">{product.product_code}</p>
-                                                    </div>
-                                                  </div>
-                                                ))}
-                                              </div>
+                                              <Table>
+                                                <TableHeader>
+                                                  <TableRow>
+                                                    <TableHead>Изделие</TableHead>
+                                                    <TableHead className="text-right">План</TableHead>
+                                                    <TableHead className="text-right">Факт</TableHead>
+                                                    <TableHead className="text-right">Откл.</TableHead>
+                                                    <TableHead className="text-right">%</TableHead>
+                                                  </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                  {report.products.map((product) => (
+                                                    <TableRow key={product.product_id}>
+                                                      <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                          {getProductTypeBadge(product.product_type)}
+                                                          <div>
+                                                            <p className="font-medium">{product.product_name}</p>
+                                                            <p className="text-xs text-muted-foreground">{product.product_code}</p>
+                                                          </div>
+                                                        </div>
+                                                      </TableCell>
+                                                      <TableCell className="text-right">{product.planned_quantity}</TableCell>
+                                                      <TableCell className="text-right">{product.completed_quantity}</TableCell>
+                                                      <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {product.deviation > 0 ? '+' : ''}{product.deviation}
+                                                      </TableCell>
+                                                      <TableCell className={`text-right ${product.deviation_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {product.deviation_percent > 0 ? '+' : ''}{product.deviation_percent.toFixed(1)}%
+                                                      </TableCell>
+                                                    </TableRow>
+                                                  ))}
+                                                </TableBody>
+                                              </Table>
                                             </div>
                                           )}
 
