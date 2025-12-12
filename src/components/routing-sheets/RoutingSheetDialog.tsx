@@ -371,8 +371,8 @@ export function RoutingSheetDialog({
   );
   const specificationMaterials = productSpecification?.specification_materials || [];
 
-  // Calculate unlinked specification components - must use useMemo to ensure recalculation
-  const { linkedMaterialIds, unlinkedMaterials, hasUnlinkedComponents } = useMemo(() => {
+  // Calculate linked material IDs from current operations state
+  const linkedMaterialIds = useMemo(() => {
     const linked = new Set<string>();
     operations.forEach(op => {
       op.materials?.forEach(m => {
@@ -381,17 +381,15 @@ export function RoutingSheetDialog({
         }
       });
     });
-    
-    const unlinked = specificationMaterials.filter(
-      (m: any) => !linked.has(m.material_id)
-    );
-    
-    return {
-      linkedMaterialIds: linked,
-      unlinkedMaterials: unlinked,
-      hasUnlinkedComponents: unlinked.length > 0 && specificationMaterials.length > 0
-    };
-  }, [operations, specificationMaterials]);
+    return linked;
+  }, [operations]);
+
+  // Calculate unlinked materials - depends on both linked IDs and spec materials
+  const unlinkedMaterials = specificationMaterials.filter(
+    (m: any) => !linkedMaterialIds.has(m.material_id)
+  );
+  
+  const hasUnlinkedComponents = unlinkedMaterials.length > 0 && specificationMaterials.length > 0;
 
   // Get production operations for menu
   const productionOps = operations.filter(op => op.operation_type === "production");
