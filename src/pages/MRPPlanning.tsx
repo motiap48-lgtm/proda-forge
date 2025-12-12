@@ -16,7 +16,9 @@ import {
   TrendingDown,
   Printer,
   ListChecks,
-  ChevronDown
+  ChevronDown,
+  ChevronsDown,
+  ChevronsUp
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +46,7 @@ const MRPPlanning = () => {
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [useSelectedOrders, setUseSelectedOrders] = useState(false);
   const [orderSelectionOpen, setOrderSelectionOpen] = useState(false);
+  const [expandedWorkCenters, setExpandedWorkCenters] = useState<Set<string>>(new Set());
   
   const { data: productionOrders, isLoading: ordersLoading } = useMRPProductionOrders(planningHorizon);
   const { data: mrpResult, isLoading, refetch } = useMRPCalculation(
@@ -658,28 +661,51 @@ const MRPPlanning = () => {
                       Производственные задания по участкам
                     </CardDescription>
                   </div>
-                  {workCenterReports.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => printMRPReport({
-                        type: "workcenter",
-                        allWorkCenterReports: workCenterReports,
-                        planningHorizon,
-                        startDate
-                      })}
-                    >
-                      <Printer className="h-4 w-4 mr-2" />
-                      Печать всех
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {workCenterReports.length > 0 && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const allIds = workCenterReports.map(r => r.work_center_id);
+                            setExpandedWorkCenters(new Set(allIds));
+                          }}
+                        >
+                          <ChevronsDown className="h-4 w-4 mr-1" />
+                          Развернуть
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setExpandedWorkCenters(new Set())}
+                        >
+                          <ChevronsUp className="h-4 w-4 mr-1" />
+                          Свернуть
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => printMRPReport({
+                            type: "workcenter",
+                            allWorkCenterReports: workCenterReports,
+                            planningHorizon,
+                            startDate
+                          })}
+                        >
+                          <Printer className="h-4 w-4 mr-1" />
+                          Печать
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <p className="text-center py-8 text-muted-foreground">Загрузка...</p>
                 ) : workCenterReports.length > 0 ? (
-                  <div className="space-y-8">
+                  <div className="space-y-6">
                     {/* Группируем по подразделениям (как в 1С ERP) */}
                     {(() => {
                       const departmentGroups = workCenterReports.reduce((acc, report) => {
@@ -690,7 +716,7 @@ const MRPPlanning = () => {
                       }, {} as Record<string, WorkCenterReport[]>);
                       
                       return Object.entries(departmentGroups).map(([department, reports]) => (
-                        <div key={department} className="space-y-4">
+                        <div key={department} className="space-y-3">
                           {/* Заголовок подразделения */}
                           <div className="flex items-center gap-3 border-b-2 border-primary/30 pb-2">
                             <div className="p-2 rounded-lg bg-primary/10">
@@ -704,66 +730,95 @@ const MRPPlanning = () => {
                             </div>
                           </div>
                           
-                          {/* Участки в подразделении */}
-                          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-                            {reports.map((report) => (
-                              <Card key={report.work_center_id} className="border-2 border-l-4 border-l-primary">
-                                <CardHeader className="bg-muted/50 py-3">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <CardTitle className="text-base flex items-center gap-2">
-                                        <Warehouse className="h-4 w-4" />
-                                        {report.work_center_name}
-                                      </CardTitle>
-                                      <CardDescription className="text-xs">
-                                        Код: {report.work_center_code} | Позиций: {report.total_items}
-                                      </CardDescription>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                      <div className="text-right">
-                                        <p className="text-xl font-bold text-primary">{report.total_quantity.toFixed(0)}</p>
-                                        <p className="text-xs text-muted-foreground">ед.</p>
-                                      </div>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => printMRPReport({
-                                          type: "workcenter",
-                                          workCenterReport: report,
-                                          planningHorizon,
-                                          startDate
-                                        })}
-                                        title="Печать рапорта"
-                                      >
-                                        <Printer className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </CardHeader>
-                                <CardContent className="pt-3 pb-3">
-                                  <div className="space-y-1.5">
-                                    {report.items.map((item, idx) => (
-                                      <div 
-                                        key={`${item.product_id}-${idx}`}
-                                        className="flex items-center justify-between p-2 bg-muted/30 rounded-md text-sm"
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          {getProductTypeBadge(item.product_type)}
-                                          <div>
-                                            <p className="font-medium">{item.product_name}</p>
-                                            <p className="text-xs text-muted-foreground">{item.product_code}</p>
+                          {/* Участки в подразделении - вертикальный список */}
+                          <div className="space-y-2">
+                            {reports.map((report) => {
+                              const isExpanded = expandedWorkCenters.has(report.work_center_id);
+                              return (
+                                <Collapsible 
+                                  key={report.work_center_id} 
+                                  open={isExpanded}
+                                  onOpenChange={(open) => {
+                                    setExpandedWorkCenters(prev => {
+                                      const next = new Set(prev);
+                                      if (open) {
+                                        next.add(report.work_center_id);
+                                      } else {
+                                        next.delete(report.work_center_id);
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  <Card className="border-2 border-l-4 border-l-primary">
+                                    <CollapsibleTrigger asChild>
+                                      <CardHeader className="bg-muted/50 py-3 cursor-pointer hover:bg-muted/70 transition-colors">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-3">
+                                            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
+                                            <div>
+                                              <CardTitle className="text-base flex items-center gap-2">
+                                                <Warehouse className="h-4 w-4" />
+                                                {report.work_center_name}
+                                              </CardTitle>
+                                              <CardDescription className="text-xs">
+                                                Код: {report.work_center_code} | Позиций: {report.total_items}
+                                              </CardDescription>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-3">
+                                            <div className="text-right">
+                                              <p className="text-xl font-bold text-primary">{report.total_quantity.toFixed(0)}</p>
+                                              <p className="text-xs text-muted-foreground">ед.</p>
+                                            </div>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                printMRPReport({
+                                                  type: "workcenter",
+                                                  workCenterReport: report,
+                                                  planningHorizon,
+                                                  startDate
+                                                });
+                                              }}
+                                              title="Печать рапорта"
+                                            >
+                                              <Printer className="h-4 w-4" />
+                                            </Button>
                                           </div>
                                         </div>
-                                        <div className="text-right">
-                                          <p className="font-bold">{item.quantity.toFixed(2)}</p>
-                                          <p className="text-xs text-muted-foreground">{item.unit}</p>
+                                      </CardHeader>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                      <CardContent className="pt-3 pb-3">
+                                        <div className="space-y-1.5">
+                                          {report.items.map((item, idx) => (
+                                            <div 
+                                              key={`${item.product_id}-${idx}`}
+                                              className="flex items-center justify-between p-2 bg-muted/30 rounded-md text-sm"
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                {getProductTypeBadge(item.product_type)}
+                                                <div>
+                                                  <p className="font-medium">{item.product_name}</p>
+                                                  <p className="text-xs text-muted-foreground">{item.product_code}</p>
+                                                </div>
+                                              </div>
+                                              <div className="text-right">
+                                                <p className="font-bold">{item.quantity.toFixed(2)}</p>
+                                                <p className="text-xs text-muted-foreground">{item.unit}</p>
+                                              </div>
+                                            </div>
+                                          ))}
                                         </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))}
+                                      </CardContent>
+                                    </CollapsibleContent>
+                                  </Card>
+                                </Collapsible>
+                              );
+                            })}
                           </div>
                         </div>
                       ));
