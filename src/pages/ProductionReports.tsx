@@ -49,6 +49,7 @@ import { useReactToPrint } from "react-to-print";
 import { exportWorkCenterReportsToExcel, sortProductsByField } from "@/components/reports/WorkCenterReportExport";
 import { WorkCenterReportPrintView } from "@/components/reports/WorkCenterReportPrintView";
 import { ProductOperationsReport } from "@/components/reports/ProductOperationsReport";
+import { TimelineAnalytics } from "@/components/reports/TimelineAnalytics";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -919,17 +920,10 @@ const ProductionReportsContent = () => {
           </TabsContent>
 
           <TabsContent value="timeline" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Временная аналитика</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Временная аналитика в разработке</p>
-                </div>
-              </CardContent>
-            </Card>
+            <TimelineAnalytics 
+              startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+              endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+            />
           </TabsContent>
         </Tabs>
       </main>
