@@ -17,6 +17,7 @@ import { RoutingSheetPrintView } from "@/components/routing-sheets/RoutingSheetP
 import { StandardOperationsDialog } from "@/components/routing-sheets/StandardOperationsDialog";
 import { ConsolidatedRoutingDialog } from "@/components/routing-sheets/ConsolidatedRoutingDialog";
 import { BulkDistributionDialog } from "@/components/routing-sheets/BulkDistributionDialog";
+import { BulkClearDistributionDialog } from "@/components/routing-sheets/BulkClearDistributionDialog";
 import { DistributionHistoryDialog } from "@/components/routing-sheets/DistributionHistoryDialog";
 import { useDistributionHistory } from "@/hooks/useDistributionHistory";
 import { DistributionStrategy } from "@/hooks/useSmartDistribution";
@@ -64,6 +65,8 @@ const RoutingSheets = () => {
   const [selectedSheetIds, setSelectedSheetIds] = useState<Set<string>>(new Set());
   const [bulkDistributionOpen, setBulkDistributionOpen] = useState(false);
   const [bulkDistributionLoading, setBulkDistributionLoading] = useState(false);
+  const [bulkClearOpen, setBulkClearOpen] = useState(false);
+  const [bulkClearLoading, setBulkClearLoading] = useState(false);
   // History dialog
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [historySheetId, setHistorySheetId] = useState<string | undefined>();
@@ -597,6 +600,21 @@ const RoutingSheets = () => {
       });
   };
 
+  const getSelectedSheetsForClear = () => {
+    return sortedSheets
+      .filter(s => selectedSheetIds.has(s.id))
+      .map(sheet => {
+        const stats = getSheetComponentStats(sheet);
+        return {
+          id: sheet.id,
+          code: sheet.code,
+          name: sheet.name,
+          linkedCount: stats.linkedCount,
+          productionOpsCount: stats.totalProductionOps,
+        };
+      });
+  };
+
   // Bulk distribution logic
   const handleBulkDistribution = async (strategy: DistributionStrategy): Promise<{ success: number; failed: number }> => {
     setBulkDistributionLoading(true);
@@ -735,6 +753,53 @@ const RoutingSheets = () => {
     
     if (successCount > 0) {
       toast.success(`Распределение завершено: ${successCount} техмаршрутов`);
+    }
+
+    return { success: successCount, failed: failedCount };
+  };
+
+  // Bulk clear distribution logic
+  const handleBulkClearDistribution = async (): Promise<{ success: number; failed: number }> => {
+    setBulkClearLoading(true);
+    let successCount = 0;
+    let failedCount = 0;
+
+    const selectedSheets = sortedSheets.filter(s => selectedSheetIds.has(s.id));
+
+    for (const sheet of selectedSheets) {
+      try {
+        const stats = getSheetComponentStats(sheet);
+        if (stats.linkedCount === 0) continue;
+
+        const operations = sheet.routing_operations || [];
+        const operationIds = operations.map((op: any) => op.id);
+
+        if (operationIds.length === 0) continue;
+
+        // Delete all materials for all operations of this sheet
+        const { error } = await supabase
+          .from("routing_operation_materials")
+          .delete()
+          .in("routing_operation_id", operationIds);
+
+        if (error) {
+          console.error(`Failed to clear distribution for sheet ${sheet.id}:`, error);
+          failedCount++;
+        } else {
+          successCount++;
+        }
+      } catch (error) {
+        console.error(`Failed to clear distribution for sheet ${sheet.id}:`, error);
+        failedCount++;
+      }
+    }
+
+    setBulkClearLoading(false);
+    await refetchSheets();
+    clearSelection();
+
+    if (successCount > 0) {
+      toast.success(`Очищено: ${successCount} техмаршрутов`);
     }
 
     return { success: successCount, failed: failedCount };
@@ -990,15 +1055,26 @@ const RoutingSheets = () => {
                       Выбрать неполные
                     </Button>
                     {selectedSheetIds.size > 0 && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => setBulkDistributionOpen(true)}
-                        className="gap-1.5 bg-gradient-to-r from-primary to-primary-glow"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        Распределить ({selectedSheetIds.size})
-                      </Button>
+                      <>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => setBulkDistributionOpen(true)}
+                          className="gap-1.5 bg-gradient-to-r from-primary to-primary-glow"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          Распределить ({selectedSheetIds.size})
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setBulkClearOpen(true)}
+                          className="gap-1.5 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Очистить
+                        </Button>
+                      </>
                     )}
                   </>
                 )}
@@ -1688,6 +1764,15 @@ const RoutingSheets = () => {
         onOpenChange={setHistoryDialogOpen}
         routingSheetId={historySheetId}
         routingSheetName={historySheetName}
+      />
+
+      {/* Bulk Clear Distribution Dialog */}
+      <BulkClearDistributionDialog
+        open={bulkClearOpen}
+        onOpenChange={setBulkClearOpen}
+        selectedSheets={getSelectedSheetsForClear()}
+        onClear={handleBulkClearDistribution}
+        isLoading={bulkClearLoading}
       />
     </div>
   );
