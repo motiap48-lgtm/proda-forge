@@ -16,7 +16,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Trash2, Wand2, ArrowUp, ArrowDown, Factory, Clock, 
-  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle, Sparkles, ChevronDown, Building2
+  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle, Sparkles, ChevronDown, Building2, Undo2
 } from "lucide-react";
 import {
   Tooltip,
@@ -42,7 +42,9 @@ import { useActiveContractors } from "@/hooks/useContractors";
 import { toast } from "sonner";
 import { RoutingFlowDiagram } from "./RoutingFlowDiagram";
 import { OperationMaterialsSection } from "./OperationMaterialsSection";
-import { useSmartDistribution } from "@/hooks/useSmartDistribution";
+import { DistributionPreviewDialog } from "./DistributionPreviewDialog";
+import { useSmartDistribution, DistributionStrategy, DistributionPreviewItem } from "@/hooks/useSmartDistribution";
+import { useDistributionSettings, DISTRIBUTION_STRATEGY_LABELS } from "@/hooks/useDistributionSettings";
 import { cn } from "@/lib/utils";
 
 type OperationType = "production" | "transport" | "control" | "setup";
@@ -116,6 +118,12 @@ export function RoutingSheetDialog({
   const [activeTab, setActiveTab] = useState("edit");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<DistributionPreviewItem[]>([]);
+  const [previewStrategy, setPreviewStrategy] = useState<DistributionStrategy | "manual">("smart");
+  const [pendingManualOperation, setPendingManualOperation] = useState<number | null>(null);
+  
+  const { defaultStrategy } = useDistributionSettings();
 
   const isEditing = !!routingSheet;
 
@@ -381,6 +389,10 @@ export function RoutingSheetDialog({
     distributeByProductType,
     distributeToAllOperations,
     distributeEvenly,
+    generatePreview,
+    generatePreviewForOperation,
+    undoDistribution,
+    canUndo,
   } = useSmartDistribution({
     operations,
     setOperations,
@@ -389,6 +401,53 @@ export function RoutingSheetDialog({
 
   // Get production operations for menu
   const productionOps = operations.filter(op => op.operation_type === "production");
+
+  // Handle preview for strategies
+  const handleShowPreview = (strategy: DistributionStrategy) => {
+    const preview = generatePreview(strategy);
+    if (preview.length === 0) {
+      toast.info("Нет компонентов для распределения");
+      return;
+    }
+    setPreviewData(preview);
+    setPreviewStrategy(strategy);
+    setPendingManualOperation(null);
+    setPreviewOpen(true);
+  };
+
+  // Handle preview for manual operation
+  const handleShowPreviewForOperation = (sequence: number) => {
+    const preview = generatePreviewForOperation(sequence);
+    if (preview.length === 0) {
+      toast.info("Нет компонентов для распределения");
+      return;
+    }
+    setPreviewData(preview);
+    setPreviewStrategy("manual");
+    setPendingManualOperation(sequence);
+    setPreviewOpen(true);
+  };
+
+  // Confirm distribution from preview
+  const handleConfirmDistribution = () => {
+    if (previewStrategy === "manual" && pendingManualOperation !== null) {
+      distributeToOperation(pendingManualOperation);
+    } else if (previewStrategy === "smart") {
+      distributeByProductType();
+    } else if (previewStrategy === "all_operations") {
+      distributeToAllOperations();
+    } else if (previewStrategy === "even") {
+      distributeEvenly();
+    }
+  };
+
+  const getStrategyName = () => {
+    if (previewStrategy === "manual") {
+      const op = operations.find(o => o.sequence === pendingManualOperation);
+      return `На операцию "${op?.name || pendingManualOperation}"`;
+    }
+    return DISTRIBUTION_STRATEGY_LABELS[previewStrategy as DistributionStrategy]?.name || "";
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -487,69 +546,112 @@ export function RoutingSheetDialog({
                         {unlinkedMaterials.length > 3 && ` и ещё ${unlinkedMaterials.length - 3}...`}
                       </span>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                    <div className="flex items-center gap-2">
+                      {canUndo() && (
                         <Button 
-                          variant="outline" 
+                          variant="ghost" 
                           size="sm" 
                           className="shrink-0 gap-1.5"
+                          onClick={undoDistribution}
                         >
-                          <Sparkles className="h-4 w-4" />
-                          Авто
-                          <ChevronDown className="h-3 w-3" />
+                          <Undo2 className="h-4 w-4" />
+                          Отменить
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-64">
-                        <DropdownMenuItem onClick={distributeByProductType} className="gap-2">
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          <div className="flex flex-col">
-                            <span>По типу продукта</span>
-                            <span className="text-xs text-muted-foreground">Материалы → первая, ПФ/СБ → последняя</span>
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={distributeToAllOperations} className="gap-2">
-                          <Factory className="h-4 w-4 text-blue-500" />
-                          <div className="flex flex-col">
-                            <span>На все операции</span>
-                            <span className="text-xs text-muted-foreground">Каждый компонент → все производственные</span>
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={distributeEvenly} className="gap-2">
-                          <Settings className="h-4 w-4 text-green-500" />
-                          <div className="flex flex-col">
-                            <span>Равномерно</span>
-                            <span className="text-xs text-muted-foreground">Компоненты распределяются поровну</span>
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger className="gap-2">
-                            <ClipboardCheck className="h-4 w-4" />
-                            Выбрать операцию вручную
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            {productionOps.length === 0 ? (
-                              <DropdownMenuItem disabled>
-                                Нет производственных операций
-                              </DropdownMenuItem>
-                            ) : (
-                              productionOps.map(op => (
-                                <DropdownMenuItem 
-                                  key={op.sequence} 
-                                  onClick={() => distributeToOperation(op.sequence)}
-                                  className="gap-2"
-                                >
-                                  <span className="text-xs text-muted-foreground w-4">{op.sequence}.</span>
-                                  {op.name || "Без названия"}
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="shrink-0 gap-1.5"
+                          >
+                            <Sparkles className="h-4 w-4" />
+                            Авто
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-72">
+                          <DropdownMenuItem onClick={() => handleShowPreview("smart")} className="gap-2">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            <div className="flex flex-col flex-1">
+                              <div className="flex items-center justify-between">
+                                <span>По типу продукта</span>
+                                {defaultStrategy === "smart" && (
+                                  <span className="text-xs text-primary">(по умолчанию)</span>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground">Материалы → первая, ПФ/СБ → последняя</span>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShowPreview("all_operations")} className="gap-2">
+                            <Factory className="h-4 w-4 text-blue-500" />
+                            <div className="flex flex-col flex-1">
+                              <div className="flex items-center justify-between">
+                                <span>На все операции</span>
+                                {defaultStrategy === "all_operations" && (
+                                  <span className="text-xs text-primary">(по умолчанию)</span>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground">Каждый компонент → все производственные</span>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShowPreview("even")} className="gap-2">
+                            <Settings className="h-4 w-4 text-green-500" />
+                            <div className="flex flex-col flex-1">
+                              <div className="flex items-center justify-between">
+                                <span>Равномерно</span>
+                                {defaultStrategy === "even" && (
+                                  <span className="text-xs text-primary">(по умолчанию)</span>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground">Компоненты распределяются поровну</span>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger className="gap-2">
+                              <ClipboardCheck className="h-4 w-4" />
+                              Выбрать операцию вручную
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              {productionOps.length === 0 ? (
+                                <DropdownMenuItem disabled>
+                                  Нет производственных операций
                                 </DropdownMenuItem>
-                              ))
-                            )}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                              ) : (
+                                productionOps.map(op => (
+                                  <DropdownMenuItem 
+                                    key={op.sequence} 
+                                    onClick={() => handleShowPreviewForOperation(op.sequence)}
+                                    className="gap-2"
+                                  >
+                                    <span className="text-xs text-muted-foreground w-4">{op.sequence}.</span>
+                                    {op.name || "Без названия"}
+                                  </DropdownMenuItem>
+                                ))
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </AlertDescription>
                 </Alert>
+              )}
+
+              {/* Undo button when all components are linked but undo is available */}
+              {!hasUnlinkedComponents && canUndo() && operations.length > 0 && (
+                <div className="flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-1.5"
+                    onClick={undoDistribution}
+                  >
+                    <Undo2 className="h-4 w-4" />
+                    Отменить распределение
+                  </Button>
+                </div>
               )}
 
               <div className="space-y-4">
@@ -964,6 +1066,14 @@ export function RoutingSheetDialog({
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      <DistributionPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        preview={previewData}
+        strategyName={getStrategyName()}
+        onConfirm={handleConfirmDistribution}
+      />
     </Dialog>
   );
 }
