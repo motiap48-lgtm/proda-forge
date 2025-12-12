@@ -81,6 +81,14 @@ const RoutingSheets = () => {
     // Collect all linked component IDs from all operations
     const linkedComponentIds = new Set<string>();
     const operations = sheet.routing_operations || [];
+    
+    // Count production operations and those with materials
+    const productionOps = operations.filter((op: any) => op.operation_type === "production");
+    const productionOpsWithMaterials = productionOps.filter((op: any) => 
+      op.routing_operation_materials && op.routing_operation_materials.length > 0
+    ).length;
+    const totalProductionOps = productionOps.length;
+    
     operations.forEach((op: any) => {
       op.routing_operation_materials?.forEach((m: any) => {
         linkedComponentIds.add(m.product_id);
@@ -96,6 +104,9 @@ const RoutingSheets = () => {
       unlinkedCount,
       hasSpec: !!spec,
       linkedComponentIds,
+      productionOpsWithMaterials,
+      totalProductionOps,
+      allOpsHaveMaterials: productionOpsWithMaterials === totalProductionOps,
     };
   };
 
@@ -909,12 +920,25 @@ const RoutingSheets = () => {
                                                   {stats.unlinkedCount} не привязано
                                                 </Badge>
                                               )}
+                                              {stats.totalProductionOps > 0 && !stats.allOpsHaveMaterials && stats.unlinkedCount === 0 && (
+                                                <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
+                                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                                  не на всех операциях ({stats.productionOpsWithMaterials}/{stats.totalProductionOps})
+                                                </Badge>
+                                              )}
                                             </div>
                                           </TooltipTrigger>
                                           <TooltipContent>
-                                            <p>
-                                              {stats.linkedCount} из {stats.totalSpecComponents} компонентов спецификации привязаны к операциям
-                                            </p>
+                                            <div className="space-y-1">
+                                              <p>
+                                                {stats.linkedCount} из {stats.totalSpecComponents} компонентов спецификации привязаны к операциям
+                                              </p>
+                                              {stats.totalProductionOps > 0 && (
+                                                <p>
+                                                  Операции с компонентами: {stats.productionOpsWithMaterials} из {stats.totalProductionOps}
+                                                </p>
+                                              )}
+                                            </div>
                                           </TooltipContent>
                                         </Tooltip>
                                       </TooltipProvider>
@@ -1117,40 +1141,53 @@ const RoutingSheets = () => {
                         const stats = getSheetComponentStats(sheet);
                         if (!stats.hasSpec || stats.totalSpecComponents === 0) return null;
                         return (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Package className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-muted-foreground">Компоненты:</span>
-                                  <span className="font-medium text-foreground">
-                                    {stats.linkedCount}/{stats.totalSpecComponents}
-                                  </span>
-                                  {stats.unlinkedCount > 0 && (
-                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
-                                      <AlertTriangle className="h-3 w-3 mr-1" />
-                                      {stats.unlinkedCount} не привязано
-                                    </Badge>
-                                  )}
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-2 text-sm">
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-muted-foreground">Компоненты:</span>
+                                <span className="font-medium text-foreground">
+                                  {stats.linkedCount}/{stats.totalSpecComponents}
+                                </span>
+                                {stats.unlinkedCount > 0 && (
+                                  <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    {stats.unlinkedCount} не привязано
+                                  </Badge>
+                                )}
+                                {stats.totalProductionOps > 0 && !stats.allOpsHaveMaterials && stats.unlinkedCount === 0 && (
+                                  <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    не на всех операциях ({stats.productionOpsWithMaterials}/{stats.totalProductionOps})
+                                  </Badge>
+                                )}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="space-y-1">
                                 <p>
                                   {stats.linkedCount} из {stats.totalSpecComponents} компонентов спецификации привязаны к операциям
                                 </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        );
-                      })()}
-                    </div>
+                                {stats.totalProductionOps > 0 && (
+                                  <p>
+                                    Операции с компонентами: {stats.productionOpsWithMaterials} из {stats.totalProductionOps}
+                                  </p>
+                                )}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })()}
+                  </div>
 
-                    {operations.length > 0 && (
-                      <Collapsible className="mt-4 border-t pt-4 group">
-                        <CollapsibleTrigger asChild>
-                          <Button variant="ghost" className="w-full justify-between px-0 hover:bg-transparent">
-                            <span className="text-sm font-medium text-foreground">Маршрут:</span>
-                            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 -rotate-90 group-data-[state=open]:rotate-0" />
+                  {operations.length > 0 && (
+                    <Collapsible className="mt-4 border-t pt-4 group">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between px-0 hover:bg-transparent">
+                          <span className="text-sm font-medium text-foreground">Маршрут:</span>
+                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 -rotate-90 group-data-[state=open]:rotate-0" />
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pt-3">
