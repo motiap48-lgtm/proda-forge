@@ -386,17 +386,6 @@ export function RoutingSheetDialog({
       (m: any) => !linked.has(m.material_id)
     );
     
-    console.log("=== LINKED CHECK (useMemo) ===");
-    console.log("Operations total:", operations.length);
-    console.log("Operations with materials:", operations.filter(op => (op.materials?.length || 0) > 0).map(op => ({
-      name: op.name,
-      seq: op.sequence,
-      materialsCount: op.materials?.length
-    })));
-    console.log("Linked IDs:", Array.from(linked));
-    console.log("Spec material IDs:", specificationMaterials.map((m: any) => m.material_id));
-    console.log("Unlinked count:", unlinked.length);
-    
     return {
       linkedMaterialIds: linked,
       unlinkedMaterials: unlinked,
@@ -475,10 +464,6 @@ export function RoutingSheetDialog({
         (m: any) => !currentLinkedIds.has(m.material_id)
       );
       
-      console.log("=== SMART DISTRIBUTION (functional update) ===");
-      console.log("Current linked IDs:", Array.from(currentLinkedIds));
-      console.log("Unlinked materials:", unlinkedMats.length);
-      
       if (unlinkedMats.length === 0) {
         toast.info("Все компоненты уже распределены по операциям");
         return currentOperations; // Return unchanged
@@ -499,8 +484,6 @@ export function RoutingSheetDialog({
       const finishedGoods = unlinkedMats.filter((m: any) => m.products?.product_type === "finished");
       const unknown = unlinkedMats.filter((m: any) => !m.products?.product_type);
 
-      console.log("Categorized: raw=", rawMaterials.length, "components=", components.length, "finished=", finishedGoods.length, "unknown=", unknown.length);
-
       // Get production operations sorted by sequence
       const sortedProductionOps = [...currentProductionOps].sort((a, b) => a.sequence - b.sequence);
       
@@ -509,7 +492,7 @@ export function RoutingSheetDialog({
       const middleIdx = Math.floor(sortedProductionOps.length / 2);
       const middleProductionSeq = sortedProductionOps.length >= 3 ? sortedProductionOps[middleIdx].sequence : null;
 
-      console.log("Target sequences: first=", firstProductionSeq, "middle=", middleProductionSeq, "last=", lastProductionSeq);
+      
 
       let distributedToOperations: string[] = [];
 
@@ -563,7 +546,7 @@ export function RoutingSheetDialog({
           
           if (newMaterials.length > 0) {
             distributedToOperations.push(`"${op.name}" (${newMaterials.length} шт)`);
-            console.log("Adding", newMaterials.length, "materials to", op.name, "(seq", op.sequence, ")");
+            
             
             return {
               ...op,
@@ -573,11 +556,6 @@ export function RoutingSheetDialog({
         }
         return op;
       });
-
-      console.log("Final operations with materials:", updatedOperations.filter(op => (op.materials?.length || 0) > 0).map(op => ({
-        name: op.name,
-        materialsCount: op.materials?.length
-      })));
 
       // Show toast after state update is queued
       setTimeout(() => {
