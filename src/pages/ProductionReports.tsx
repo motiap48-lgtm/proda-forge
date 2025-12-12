@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProductionReports, useProductionSummary } from "@/hooks/useProductionReports";
-import { useWorkCenterReports, WorkCenterReportData } from "@/hooks/useWorkCenterReports";
+import { useWorkCenterReports, WorkCenterReportData, WorkCenterProductItem } from "@/hooks/useWorkCenterReports";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,7 +20,12 @@ import {
   Factory,
   ChevronDown,
   ChevronsDown,
-  ChevronsUp
+  ChevronsUp,
+  FileSpreadsheet,
+  Printer,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -36,6 +41,16 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
+import { useReactToPrint } from "react-to-print";
+import { exportWorkCenterReportsToExcel, sortProductsByField } from "@/components/reports/WorkCenterReportExport";
+import { WorkCenterReportPrintView } from "@/components/reports/WorkCenterReportPrintView";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 const statusConfig = {
   planned: { label: "Запланирован", variant: "secondary" as const },
@@ -65,6 +80,11 @@ const ProductionReportsContent = () => {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [expandedWorkCenters, setExpandedWorkCenters] = useState<Set<string>>(new Set());
+  const [sortField, setSortField] = useState<'name' | 'code' | 'type' | 'planned' | 'completed' | 'deviation'>('type');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [printWorkCenterId, setPrintWorkCenterId] = useState<string | undefined>(undefined);
+  
+  const printRef = useRef<HTMLDivElement>(null);
 
   const { data: reports, isLoading } = useProductionReports(
     startDate ? format(startDate, "yyyy-MM-dd") : undefined,
@@ -84,6 +104,50 @@ const ProductionReportsContent = () => {
   const handleReset = () => {
     setStartDate(undefined);
     setEndDate(undefined);
+  };
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Отчет_по_цехам_${format(new Date(), 'yyyy-MM-dd')}`,
+  });
+
+  const handleExportExcel = () => {
+    if (workCenterReports) {
+      exportWorkCenterReportsToExcel(
+        workCenterReports,
+        startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+        endDate ? format(endDate, "yyyy-MM-dd") : undefined
+      );
+    }
+  };
+
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: typeof sortField) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1" />;
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" /> 
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const sortProducts = (products: WorkCenterProductItem[]) => {
+    return sortProductsByField(products, sortField, sortDirection);
+  };
+
+  const groupProductsByType = (products: WorkCenterProductItem[]) => {
+    const sorted = sortProducts(products);
+    return {
+      finished: sorted.filter(p => p.product_type === 'finished'),
+      assembly: sorted.filter(p => p.product_type === 'assembly'),
+      'semi-finished': sorted.filter(p => p.product_type === 'semi-finished'),
+    };
   };
 
   const chartData = reports?.slice(0, 10).map((report) => ({
@@ -343,6 +407,17 @@ const ProductionReportsContent = () => {
           </TabsContent>
 
           <TabsContent value="work-centers" className="space-y-6">
+            {/* Скрытый компонент для печати */}
+            <div className="hidden">
+              <WorkCenterReportPrintView 
+                ref={printRef}
+                reports={workCenterReports || []}
+                singleWorkCenterId={printWorkCenterId}
+                startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+                endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+              />
+            </div>
+
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -352,12 +427,84 @@ const ProductionReportsContent = () => {
                       Отчет по цехам и производственным участкам
                     </CardTitle>
                     <CardDescription>
-                      Выполнение плана по цехам и участкам
+                      Выполнение плана по цехам и участкам с полной разузловкой
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
                     {workCenterReports && workCenterReports.length > 0 && (
                       <>
+                        {/* Кнопка экспорта в Excel */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleExportExcel}
+                        >
+                          <FileSpreadsheet className="h-4 w-4 mr-1" />
+                          Excel
+                        </Button>
+
+                        {/* Меню печати */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <Printer className="h-4 w-4 mr-1" />
+                              Печать
+                              <ChevronDown className="h-3 w-3 ml-1" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => {
+                              setPrintWorkCenterId(undefined);
+                              setTimeout(() => handlePrint(), 100);
+                            }}>
+                              Все участки
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {workCenterReports.map(report => (
+                              <DropdownMenuItem 
+                                key={report.work_center_id}
+                                onClick={() => {
+                                  setPrintWorkCenterId(report.work_center_id);
+                                  setTimeout(() => handlePrint(), 100);
+                                }}
+                              >
+                                {report.work_center_name}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* Меню сортировки */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <ArrowUpDown className="h-4 w-4 mr-1" />
+                              Сортировка
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleSort('type')}>
+                              По типу {sortField === 'type' && (sortDirection === 'asc' ? '↑' : '↓')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSort('name')}>
+                              По названию {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSort('code')}>
+                              По коду {sortField === 'code' && (sortDirection === 'asc' ? '↑' : '↓')}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleSort('planned')}>
+                              По плану {sortField === 'planned' && (sortDirection === 'asc' ? '↑' : '↓')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSort('completed')}>
+                              По факту {sortField === 'completed' && (sortDirection === 'asc' ? '↑' : '↓')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSort('deviation')}>
+                              По отклонению {sortField === 'deviation' && (sortDirection === 'asc' ? '↑' : '↓')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
                         <Button
                           variant="outline"
                           size="sm"
@@ -515,46 +662,108 @@ const ProductionReportsContent = () => {
                                       </CollapsibleTrigger>
                                       <CollapsibleContent>
                                         <CardContent className="pt-3 pb-3 space-y-4">
-                                          {/* Выпускаемая продукция */}
+                                          {/* Выпускаемая продукция по типам */}
                                           {report.products && report.products.length > 0 && (
-                                            <div>
-                                              <h4 className="text-sm font-semibold text-muted-foreground mb-2">
-                                                Выпускаемая продукция ({report.products.length})
-                                              </h4>
-                                              <Table>
-                                                <TableHeader>
-                                                  <TableRow>
-                                                    <TableHead>Изделие</TableHead>
-                                                    <TableHead className="text-right">План</TableHead>
-                                                    <TableHead className="text-right">Факт</TableHead>
-                                                    <TableHead className="text-right">Откл.</TableHead>
-                                                    <TableHead className="text-right">%</TableHead>
-                                                  </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                  {report.products.map((product) => (
-                                                    <TableRow key={product.product_id}>
-                                                      <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                          {getProductTypeBadge(product.product_type)}
-                                                          <div>
-                                                            <p className="font-medium">{product.product_name}</p>
-                                                            <p className="text-xs text-muted-foreground">{product.product_code}</p>
-                                                          </div>
+                                            <div className="space-y-4">
+                                              {(() => {
+                                                const grouped = groupProductsByType(report.products);
+                                                const typeLabels = {
+                                                  finished: { label: 'Готовая продукция', color: 'bg-blue-50 border-blue-200' },
+                                                  assembly: { label: 'Сборочные узлы', color: 'bg-purple-50 border-purple-200' },
+                                                  'semi-finished': { label: 'Полуфабрикаты', color: 'bg-orange-50 border-orange-200' },
+                                                };
+                                                
+                                                return (['finished', 'assembly', 'semi-finished'] as const).map(type => {
+                                                  const products = grouped[type];
+                                                  if (products.length === 0) return null;
+                                                  
+                                                  const typeInfo = typeLabels[type];
+                                                  const typeTotalPlanned = products.reduce((s, p) => s + p.planned_quantity, 0);
+                                                  const typeTotalCompleted = products.reduce((s, p) => s + p.completed_quantity, 0);
+                                                  
+                                                  return (
+                                                    <div key={type} className={`rounded-lg border ${typeInfo.color} p-3`}>
+                                                      <div className="flex items-center justify-between mb-2">
+                                                        <h4 className="text-sm font-semibold flex items-center gap-2">
+                                                          {getProductTypeBadge(type)}
+                                                          <span>{typeInfo.label} ({products.length})</span>
+                                                        </h4>
+                                                        <div className="text-xs text-muted-foreground flex gap-3">
+                                                          <span>План: <strong>{typeTotalPlanned}</strong></span>
+                                                          <span>Факт: <strong>{typeTotalCompleted}</strong></span>
                                                         </div>
-                                                      </TableCell>
-                                                      <TableCell className="text-right">{product.planned_quantity}</TableCell>
-                                                      <TableCell className="text-right">{product.completed_quantity}</TableCell>
-                                                      <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                        {product.deviation > 0 ? '+' : ''}{product.deviation}
-                                                      </TableCell>
-                                                      <TableCell className={`text-right ${product.deviation_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                        {product.deviation_percent > 0 ? '+' : ''}{product.deviation_percent.toFixed(1)}%
-                                                      </TableCell>
-                                                    </TableRow>
-                                                  ))}
-                                                </TableBody>
-                                              </Table>
+                                                      </div>
+                                                      <Table>
+                                                        <TableHeader>
+                                                          <TableRow>
+                                                            <TableHead 
+                                                              className="cursor-pointer hover:bg-muted/50"
+                                                              onClick={() => handleSort('code')}
+                                                            >
+                                                              <div className="flex items-center">
+                                                                Код {getSortIcon('code')}
+                                                              </div>
+                                                            </TableHead>
+                                                            <TableHead 
+                                                              className="cursor-pointer hover:bg-muted/50"
+                                                              onClick={() => handleSort('name')}
+                                                            >
+                                                              <div className="flex items-center">
+                                                                Наименование {getSortIcon('name')}
+                                                              </div>
+                                                            </TableHead>
+                                                            <TableHead 
+                                                              className="text-right cursor-pointer hover:bg-muted/50"
+                                                              onClick={() => handleSort('planned')}
+                                                            >
+                                                              <div className="flex items-center justify-end">
+                                                                План {getSortIcon('planned')}
+                                                              </div>
+                                                            </TableHead>
+                                                            <TableHead 
+                                                              className="text-right cursor-pointer hover:bg-muted/50"
+                                                              onClick={() => handleSort('completed')}
+                                                            >
+                                                              <div className="flex items-center justify-end">
+                                                                Факт {getSortIcon('completed')}
+                                                              </div>
+                                                            </TableHead>
+                                                            <TableHead 
+                                                              className="text-right cursor-pointer hover:bg-muted/50"
+                                                              onClick={() => handleSort('deviation')}
+                                                            >
+                                                              <div className="flex items-center justify-end">
+                                                                Откл. {getSortIcon('deviation')}
+                                                              </div>
+                                                            </TableHead>
+                                                            <TableHead className="text-right">%</TableHead>
+                                                          </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                          {products.map((product) => (
+                                                            <TableRow key={product.product_id}>
+                                                              <TableCell className="font-mono text-xs">
+                                                                {product.product_code}
+                                                              </TableCell>
+                                                              <TableCell>
+                                                                <p className="font-medium">{product.product_name}</p>
+                                                              </TableCell>
+                                                              <TableCell className="text-right">{product.planned_quantity}</TableCell>
+                                                              <TableCell className="text-right">{product.completed_quantity}</TableCell>
+                                                              <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                {product.deviation > 0 ? '+' : ''}{product.deviation}
+                                                              </TableCell>
+                                                              <TableCell className={`text-right ${product.deviation_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                {product.deviation_percent > 0 ? '+' : ''}{product.deviation_percent.toFixed(1)}%
+                                                              </TableCell>
+                                                            </TableRow>
+                                                          ))}
+                                                        </TableBody>
+                                                      </Table>
+                                                    </div>
+                                                  );
+                                                });
+                                              })()}
                                             </div>
                                           )}
 
