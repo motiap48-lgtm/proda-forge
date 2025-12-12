@@ -941,9 +941,33 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
                           <span className="font-semibold">{typeInfo.label}</span>
                           <Badge variant="secondary">{typeProducts.length}</Badge>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>Цехов: <strong>{typeDepts.size}</strong></span>
-                          <span>Участков: <strong>{typeWCs.size}</strong></span>
+                        <div className="flex items-center gap-4 text-xs">
+                          {(() => {
+                            const totalPlanned = typeProducts.reduce((s, p) => s + p.planned_quantity, 0);
+                            const totalCompleted = typeProducts.reduce((s, p) => s + p.completed_quantity, 0);
+                            const totalDeviation = totalCompleted - totalPlanned;
+                            const deviationPercent = totalPlanned > 0 ? (totalDeviation / totalPlanned) * 100 : 0;
+                            return (
+                              <>
+                                <span className="text-muted-foreground">План: <strong>{totalPlanned}</strong></span>
+                                <span className="text-muted-foreground">Факт: <strong>{totalCompleted}</strong></span>
+                                <span className={`font-medium ${
+                                  totalDeviation > 0 
+                                    ? 'text-green-600' 
+                                    : totalDeviation < 0 
+                                      ? 'text-destructive' 
+                                      : 'text-muted-foreground'
+                                }`}>
+                                  Откл: {totalDeviation > 0 ? '+' : ''}{totalDeviation}
+                                  {totalPlanned > 0 && (
+                                    <span className="ml-1">({deviationPercent > 0 ? '+' : ''}{deviationPercent.toFixed(0)}%)</span>
+                                  )}
+                                </span>
+                              </>
+                            );
+                          })()}
+                          <span className="text-muted-foreground border-l pl-4 ml-2">Цехов: <strong>{typeDepts.size}</strong></span>
+                          <span className="text-muted-foreground">Участков: <strong>{typeWCs.size}</strong></span>
                         </div>
                       </div>
                       
@@ -976,8 +1000,32 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
                             <span className="font-semibold">{dept}</span>
                             <Badge variant="secondary">{deptProducts.length} изд.</Badge>
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span>Участков: <strong>{deptWCs.size}</strong></span>
+                          <div className="flex items-center gap-4 text-xs">
+                            {(() => {
+                              const totalPlanned = deptProducts.reduce((s, p) => s + p.planned_quantity, 0);
+                              const totalCompleted = deptProducts.reduce((s, p) => s + p.completed_quantity, 0);
+                              const totalDeviation = totalCompleted - totalPlanned;
+                              const deviationPercent = totalPlanned > 0 ? (totalDeviation / totalPlanned) * 100 : 0;
+                              return (
+                                <>
+                                  <span className="text-muted-foreground">План: <strong>{totalPlanned}</strong></span>
+                                  <span className="text-muted-foreground">Факт: <strong>{totalCompleted}</strong></span>
+                                  <span className={`font-medium ${
+                                    totalDeviation > 0 
+                                      ? 'text-green-600' 
+                                      : totalDeviation < 0 
+                                        ? 'text-destructive' 
+                                        : 'text-muted-foreground'
+                                  }`}>
+                                    Откл: {totalDeviation > 0 ? '+' : ''}{totalDeviation}
+                                    {totalPlanned > 0 && (
+                                      <span className="ml-1">({deviationPercent > 0 ? '+' : ''}{deviationPercent.toFixed(0)}%)</span>
+                                    )}
+                                  </span>
+                                </>
+                              );
+                            })()}
+                            <span className="text-muted-foreground border-l pl-4 ml-2">Участков: <strong>{deptWCs.size}</strong></span>
                           </div>
                         </div>
                         
