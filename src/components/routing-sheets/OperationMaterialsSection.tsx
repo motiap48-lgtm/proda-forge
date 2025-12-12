@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,6 +64,15 @@ export function OperationMaterialsSection({
 }: OperationMaterialsSectionProps) {
   const [isOpen, setIsOpen] = useState(selectedMaterials.length > 0);
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Auto-open when materials are added via smart distribution
+  const prevSelectedLength = useRef(selectedMaterials.length);
+  useEffect(() => {
+    if (selectedMaterials.length > prevSelectedLength.current && selectedMaterials.length > 0) {
+      setIsOpen(true);
+    }
+    prevSelectedLength.current = selectedMaterials.length;
+  }, [selectedMaterials.length]);
 
   const totalPages = Math.ceil(specificationMaterials.length / ITEMS_PER_PAGE);
   const needsPagination = specificationMaterials.length > ITEMS_PER_PAGE;
