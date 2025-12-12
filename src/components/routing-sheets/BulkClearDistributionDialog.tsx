@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import { Trash2, Loader2, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
 
 interface RoutingSheetForClear {
@@ -27,6 +28,8 @@ interface BulkClearDistributionDialogProps {
   isLoading?: boolean;
 }
 
+const CONFIRMATION_THRESHOLD = 10;
+
 export function BulkClearDistributionDialog({
   open,
   onOpenChange,
@@ -35,9 +38,14 @@ export function BulkClearDistributionDialog({
   isLoading,
 }: BulkClearDistributionDialogProps) {
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
+  const [confirmText, setConfirmText] = useState("");
 
   // Filter sheets that have linked components
   const eligibleSheets = selectedSheets.filter((s) => s.linkedCount > 0);
+  
+  const requiresConfirmation = eligibleSheets.length > CONFIRMATION_THRESHOLD;
+  const confirmationWord = "УДАЛИТЬ";
+  const isConfirmed = !requiresConfirmation || confirmText === confirmationWord;
 
   const handleClear = async () => {
     const res = await onClear();
@@ -46,6 +54,7 @@ export function BulkClearDistributionDialog({
 
   const handleClose = () => {
     setResult(null);
+    setConfirmText("");
     onOpenChange(false);
   };
 
@@ -130,6 +139,23 @@ export function BulkClearDistributionDialog({
                     Будет удалено: <span className="font-medium">{totalComponents}</span> привязок
                     из <span className="font-medium">{eligibleSheets.length}</span> техмаршрутов
                   </div>
+
+                  {requiresConfirmation && (
+                    <div className="space-y-2 p-3 border-2 border-destructive/50 rounded-lg bg-destructive/5">
+                      <p className="text-sm font-medium text-destructive">
+                        Вы удаляете привязки из {eligibleSheets.length} техмаршрутов!
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Для подтверждения введите <span className="font-mono font-bold text-destructive">{confirmationWord}</span>:
+                      </p>
+                      <Input
+                        value={confirmText}
+                        onChange={(e) => setConfirmText(e.target.value)}
+                        placeholder={confirmationWord}
+                        className="font-mono"
+                      />
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -141,7 +167,7 @@ export function BulkClearDistributionDialog({
               <Button
                 variant="destructive"
                 onClick={handleClear}
-                disabled={isLoading || eligibleSheets.length === 0}
+                disabled={isLoading || eligibleSheets.length === 0 || !isConfirmed}
               >
                 {isLoading ? (
                   <>

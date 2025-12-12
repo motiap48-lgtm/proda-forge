@@ -579,6 +579,16 @@ const RoutingSheets = () => {
     setSelectedSheetIds(new Set(incompleteIds));
   };
 
+  const selectAllWithLinked = () => {
+    const linkedIds = sortedSheets
+      .filter(sheet => {
+        const stats = getSheetComponentStats(sheet);
+        return stats.linkedCount > 0;
+      })
+      .map(s => s.id);
+    setSelectedSheetIds(new Set(linkedIds));
+  };
+
   const clearSelection = () => {
     setSelectedSheetIds(new Set());
     setSelectionMode(false);
@@ -990,28 +1000,32 @@ const RoutingSheets = () => {
 
         {/* Search and Grouping */}
         <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Поиск по номеру, названию или продукту..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-10"
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                    onClick={() => setSearchQuery("")}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-3">
+              {/* Top row: Search + Main action buttons */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <Input
+                    placeholder="Поиск..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-8 h-9"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="h-6 w-px bg-border" />
+
                 {/* Selection mode toggle */}
                 <TooltipProvider>
                   <Tooltip>
@@ -1026,19 +1040,19 @@ const RoutingSheets = () => {
                             setSelectionMode(true);
                           }
                         }}
-                        className="gap-1.5"
+                        className="gap-1.5 h-9"
                       >
                         <Sparkles className="h-4 w-4" />
                         Массовое
                         {selectedSheetIds.size > 0 && (
-                          <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                          <Badge variant="secondary" className="h-5 px-1.5">
                             {selectedSheetIds.size}
                           </Badge>
                         )}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Массовое распределение компонентов</p>
+                      <p>Массовое распределение/очистка компонентов</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -1049,10 +1063,19 @@ const RoutingSheets = () => {
                       variant="outline"
                       size="sm"
                       onClick={selectAllIncomplete}
-                      className="gap-1.5"
+                      className="gap-1.5 h-9"
                     >
                       <AlertTriangle className="h-4 w-4" />
-                      Выбрать неполные
+                      Неполные
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={selectAllWithLinked}
+                      className="gap-1.5 h-9"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      С привязками
                     </Button>
                     {selectedSheetIds.size > 0 && (
                       <>
@@ -1060,7 +1083,7 @@ const RoutingSheets = () => {
                           variant="default"
                           size="sm"
                           onClick={() => setBulkDistributionOpen(true)}
-                          className="gap-1.5 bg-gradient-to-r from-primary to-primary-glow"
+                          className="gap-1.5 h-9 bg-gradient-to-r from-primary to-primary-glow"
                         >
                           <Sparkles className="h-4 w-4" />
                           Распределить ({selectedSheetIds.size})
@@ -1069,7 +1092,7 @@ const RoutingSheets = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => setBulkClearOpen(true)}
-                          className="gap-1.5 text-destructive hover:text-destructive"
+                          className="gap-1.5 h-9 text-destructive hover:text-destructive border-destructive/30"
                         >
                           <Trash2 className="h-4 w-4" />
                           Очистить
@@ -1079,60 +1102,43 @@ const RoutingSheets = () => {
                   </>
                 )}
 
-                <div className="h-6 w-px bg-border mx-1" />
+                <div className="h-6 w-px bg-border" />
 
                 {/* History button */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openHistoryDialog()}
-                        className="gap-1.5"
-                      >
-                        <History className="h-4 w-4" />
-                        История
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>История распределений компонентов</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openHistoryDialog()}
+                  className="gap-1.5 h-9"
+                >
+                  <History className="h-4 w-4" />
+                  История
+                </Button>
+              </div>
 
-                <div className="h-6 w-px bg-border mx-1" />
-
+              {/* Second row: Filters and grouping */}
+              <div className="flex flex-wrap items-center gap-2">
                 {/* Incomplete filter button */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant={showIncompleteOnly ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setShowIncompleteOnly(!showIncompleteOnly)}
-                        className="gap-1.5"
-                      >
-                        <AlertTriangle className="h-4 w-4" />
-                        Неполные
-                        {incompleteCount > 0 && (
-                          <Badge variant={showIncompleteOnly ? "secondary" : "destructive"} className="ml-1 h-5 px-1.5">
-                            {incompleteCount}
-                          </Badge>
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Показать техмаршруты с неполным распределением компонентов</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Button
+                  variant={showIncompleteOnly ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowIncompleteOnly(!showIncompleteOnly)}
+                  className="gap-1.5 h-9"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  Неполные
+                  {incompleteCount > 0 && (
+                    <Badge variant={showIncompleteOnly ? "secondary" : "destructive"} className="h-5 px-1.5">
+                      {incompleteCount}
+                    </Badge>
+                  )}
+                </Button>
 
-                <div className="h-6 w-px bg-border mx-1" />
+                <div className="h-6 w-px bg-border" />
 
                 <FolderOpen className="h-4 w-4 text-muted-foreground" />
                 <Select value={groupingMode} onValueChange={(v) => setGroupingMode(v as GroupingMode)}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[160px] h-9">
                     <SelectValue placeholder="Группировка" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1146,7 +1152,7 @@ const RoutingSheets = () => {
                     value={useInternalOperationOnly ? 'internal' : 'any'} 
                     onValueChange={(v) => setUseInternalOperationOnly(v === 'internal')}
                   >
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger className="w-[180px] h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1157,10 +1163,10 @@ const RoutingSheets = () => {
                 )}
                 {groupingMode !== 'none' && groupedSheets && groupedSheets.length > 0 && (
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={expandAllGroups}>
+                    <Button variant="ghost" size="sm" onClick={expandAllGroups} className="h-9 w-9 p-0">
                       <ChevronsDown className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={collapseAllGroups}>
+                    <Button variant="ghost" size="sm" onClick={collapseAllGroups} className="h-9 w-9 p-0">
                       <ChevronsUp className="h-4 w-4" />
                     </Button>
                   </div>
