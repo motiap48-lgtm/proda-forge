@@ -70,7 +70,7 @@ export function useSmartDistribution({
 }: UseSmartDistributionProps) {
   // Store previous state for undo functionality
   const previousOperationsRef = useRef<Operation[] | null>(null);
-  const canUndoRef = useRef(false);
+  const hasDistributedRef = useRef(false);
   
   // Calculate linked material IDs from operations - memoized for display purposes
   const linkedMaterialIds = useMemo(() => {
@@ -214,14 +214,14 @@ export function useSmartDistribution({
   // Save current state before distribution
   const saveStateForUndo = useCallback(() => {
     previousOperationsRef.current = JSON.parse(JSON.stringify(operations));
-    canUndoRef.current = true;
+    hasDistributedRef.current = true;
   }, [operations]);
 
   // Undo last distribution
   const undoDistribution = useCallback(() => {
-    if (previousOperationsRef.current && canUndoRef.current) {
+    if (previousOperationsRef.current && hasDistributedRef.current) {
       setOperations(previousOperationsRef.current);
-      canUndoRef.current = false;
+      hasDistributedRef.current = false;
       toast.success("Распределение отменено");
       return true;
     }
@@ -229,8 +229,8 @@ export function useSmartDistribution({
     return false;
   }, [setOperations]);
 
-  // Check if undo is available
-  const canUndo = useCallback(() => canUndoRef.current, []);
+  // Check if undo is available - only when distribution was actually performed
+  const canUndo = useCallback(() => hasDistributedRef.current && previousOperationsRef.current !== null, []);
 
   // Distribute to specific operation
   const distributeToOperation = useCallback((targetSequence: number) => {
