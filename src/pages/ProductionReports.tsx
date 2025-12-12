@@ -25,8 +25,11 @@ import {
   Printer,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Search,
+  X
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -83,6 +86,7 @@ const ProductionReportsContent = () => {
   const [sortField, setSortField] = useState<'name' | 'code' | 'type' | 'planned' | 'completed' | 'deviation'>('type');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [printWorkCenterId, setPrintWorkCenterId] = useState<string | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState("");
   
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -149,6 +153,38 @@ const ProductionReportsContent = () => {
       'semi-finished': sorted.filter(p => p.product_type === 'semi-finished'),
     };
   };
+
+  // Фильтрация отчётов по поисковому запросу
+  const filterReportsBySearch = (reports: WorkCenterReportData[]): WorkCenterReportData[] => {
+    if (!searchQuery.trim()) return reports;
+    
+    const query = searchQuery.toLowerCase().trim();
+    
+    return reports.map(report => {
+      // Проверяем совпадение по участку или цеху
+      const matchesWorkCenter = 
+        report.work_center_name.toLowerCase().includes(query) ||
+        report.work_center_code.toLowerCase().includes(query) ||
+        (report.department && report.department.toLowerCase().includes(query));
+      
+      // Фильтруем продукцию
+      const filteredProducts = report.products?.filter(product => 
+        product.product_name.toLowerCase().includes(query) ||
+        product.product_code.toLowerCase().includes(query)
+      ) || [];
+      
+      // Если участок совпадает - показываем всю его продукцию
+      // Если нет - показываем только совпавшую продукцию
+      if (matchesWorkCenter) {
+        return report;
+      } else if (filteredProducts.length > 0) {
+        return { ...report, products: filteredProducts };
+      }
+      return null;
+    }).filter((r): r is WorkCenterReportData => r !== null);
+  };
+
+  const filteredWorkCenterReports = workCenterReports ? filterReportsBySearch(workCenterReports) : [];
 
   const chartData = reports?.slice(0, 10).map((report) => ({
     name: report.order_number,
@@ -530,13 +566,41 @@ const ProductionReportsContent = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Поле поиска */}
+                <div className="mb-4">
+                  <div className="relative max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Поиск по цеху, участку или продукции..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 pr-9"
+                    />
+                    {searchQuery && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                        onClick={() => setSearchQuery("")}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {searchQuery && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Найдено участков: {filteredWorkCenterReports.length} из {workCenterReports?.length || 0}
+                    </p>
+                  )}
+                </div>
+
                 {wcLoading ? (
                   <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
-                ) : workCenterReports && workCenterReports.length > 0 ? (
+                ) : filteredWorkCenterReports.length > 0 ? (
                   <div className="space-y-6">
                     {(() => {
                       // Группируем по цехам
-                      const departmentGroups = workCenterReports.reduce((acc, report) => {
+                      const departmentGroups = filteredWorkCenterReports.reduce((acc, report) => {
                         const dept = report.department || 'Без цеха';
                         if (!acc[dept]) acc[dept] = [];
                         acc[dept].push(report);
@@ -834,7 +898,11 @@ const ProductionReportsContent = () => {
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Нет данных для отображения</p>
+                    {searchQuery ? (
+                      <p>По запросу "{searchQuery}" ничего не найдено</p>
+                    ) : (
+                      <p>Нет данных для отображения</p>
+                    )}
                   </div>
                 )}
               </CardContent>
