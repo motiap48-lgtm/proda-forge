@@ -59,6 +59,47 @@ export type Database = {
         }
         Relationships: []
       }
+      distribution_history: {
+        Row: {
+          components_distributed: number
+          created_at: string
+          id: string
+          notes: string | null
+          operations_affected: number
+          routing_sheet_id: string
+          strategy: string
+          user_id: string | null
+        }
+        Insert: {
+          components_distributed?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          operations_affected?: number
+          routing_sheet_id: string
+          strategy: string
+          user_id?: string | null
+        }
+        Update: {
+          components_distributed?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          operations_affected?: number
+          routing_sheet_id?: string
+          strategy?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distribution_history_routing_sheet_id_fkey"
+            columns: ["routing_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "routing_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipment: {
         Row: {
           code: string
