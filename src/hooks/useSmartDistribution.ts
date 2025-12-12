@@ -37,6 +37,8 @@ interface UseSmartDistributionProps {
   specificationMaterials: SpecificationMaterial[];
 }
 
+export type DistributionStrategy = "smart" | "all_operations" | "even";
+
 // Helper function to calculate linked material IDs
 function calculateLinkedIds(ops: Operation[]): Set<string> {
   const linked = new Set<string>();
@@ -119,10 +121,9 @@ export function useSmartDistribution({
     });
   }, [specificationMaterials, setOperations]);
 
-  // Smart distribution by product type - uses functional update
+  // Strategy 1: Smart distribution by product type (materials → first, ПФ/СБ → last)
   const distributeByProductType = useCallback(() => {
     setOperations(prevOperations => {
-      // Calculate linked IDs from PREVIOUS state
       const currentLinkedIds = calculateLinkedIds(prevOperations);
       
       const unlinkedMats = specificationMaterials.filter(
@@ -149,24 +150,13 @@ export function useSmartDistribution({
       const finishedGoods = unlinkedMats.filter(m => m.products?.product_type === "finished");
       const unknown = unlinkedMats.filter(m => !m.products?.product_type);
 
-      console.log("[Smart Distribution] Unlinked materials:", unlinkedMats.map(m => ({
-        name: m.products?.name,
-        code: m.products?.code,
-        type: m.products?.product_type
-      })));
-      console.log("[Smart Distribution] Categorized - raw:", rawMaterials.length, "components:", components.length, "finished:", finishedGoods.length, "unknown:", unknown.length);
-
       // Get production operations sorted by sequence
       const sortedProductionOps = [...productionOps].sort((a, b) => a.sequence - b.sequence);
-      
-      console.log("[Smart Distribution] Production ops:", sortedProductionOps.map(op => ({ name: op.name, seq: op.sequence })));
 
       const firstProductionSeq = sortedProductionOps[0].sequence;
       const lastProductionSeq = sortedProductionOps[sortedProductionOps.length - 1].sequence;
       const middleIdx = Math.floor(sortedProductionOps.length / 2);
       const middleProductionSeq = sortedProductionOps.length >= 3 ? sortedProductionOps[middleIdx].sequence : null;
-
-      console.log("[Smart Distribution] Target seqs - first:", firstProductionSeq, "middle:", middleProductionSeq, "last:", lastProductionSeq);
 
       const distributedToOperations: string[] = [];
 
@@ -243,11 +233,148 @@ export function useSmartDistribution({
     });
   }, [specificationMaterials, setOperations]);
 
+  // Strategy 2: Distribute all components to ALL production operations
+  const distributeToAllOperations = useCallback(() => {
+    setOperations(prevOperations => {
+      const currentLinkedIds = calculateLinkedIds(prevOperations);
+      
+      const unlinkedMats = specificationMaterials.filter(
+        m => !currentLinkedIds.has(m.material_id)
+      );
+
+      if (unlinkedMats.length === 0) {
+        setTimeout(() => toast.info("Все компоненты уже распределены по операциям"), 0);
+        return prevOperations;
+      }
+
+      const productionOps = prevOperations.filter(op => op.operation_type === "production");
+
+      if (productionOps.length === 0) {
+        setTimeout(() => toast.error("Добавьте производственные операции для распределения"), 0);
+        return prevOperations;
+      }
+
+      const distributedToOperations: string[] = [];
+
+      const newOperations = prevOperations.map(op => {
+        if (op.operation_type !== "production") {
+          return op;
+        }
+
+        const existingMaterials = op.materials || [];
+        const existingIds = new Set(existingMaterials.map(m => m.product_id));
+        
+        const newMaterials = unlinkedMats
+          .filter(m => !existingIds.has(m.material_id))
+          .map(m => ({
+            product_id: m.material_id,
+            quantity_per_operation: m.quantity,
+          }));
+
+        if (newMaterials.length > 0) {
+          distributedToOperations.push(`"${op.name}" (${newMaterials.length} шт)`);
+          return {
+            ...op,
+            materials: [...existingMaterials, ...newMaterials],
+          };
+        }
+        return op;
+      });
+
+      setTimeout(() => {
+        if (distributedToOperations.length > 0) {
+          toast.success(`Распределено на: ${distributedToOperations.join(", ")}`);
+        } else {
+          toast.info("Все компоненты уже были распределены");
+        }
+      }, 0);
+
+      return newOperations;
+    });
+  }, [specificationMaterials, setOperations]);
+
+  // Strategy 3: Distribute components evenly across production operations
+  const distributeEvenly = useCallback(() => {
+    setOperations(prevOperations => {
+      const currentLinkedIds = calculateLinkedIds(prevOperations);
+      
+      const unlinkedMats = specificationMaterials.filter(
+        m => !currentLinkedIds.has(m.material_id)
+      );
+
+      if (unlinkedMats.length === 0) {
+        setTimeout(() => toast.info("Все компоненты уже распределены по операциям"), 0);
+        return prevOperations;
+      }
+
+      const productionOps = prevOperations.filter(op => op.operation_type === "production");
+
+      if (productionOps.length === 0) {
+        setTimeout(() => toast.error("Добавьте производственные операции для распределения"), 0);
+        return prevOperations;
+      }
+
+      // Sort production ops by sequence
+      const sortedProductionOps = [...productionOps].sort((a, b) => a.sequence - b.sequence);
+      
+      // Create a map of sequence -> materials to add
+      const operationMaterialsMap = new Map<number, OperationMaterial[]>();
+      sortedProductionOps.forEach(op => {
+        operationMaterialsMap.set(op.sequence, []);
+      });
+
+      // Distribute unlinked materials evenly using round-robin
+      unlinkedMats.forEach((mat, index) => {
+        const targetOpIndex = index % sortedProductionOps.length;
+        const targetSeq = sortedProductionOps[targetOpIndex].sequence;
+        operationMaterialsMap.get(targetSeq)?.push({
+          product_id: mat.material_id,
+          quantity_per_operation: mat.quantity,
+        });
+      });
+
+      const distributedToOperations: string[] = [];
+
+      const newOperations = prevOperations.map(op => {
+        const materialsToAdd = operationMaterialsMap.get(op.sequence);
+        if (!materialsToAdd || materialsToAdd.length === 0) {
+          return op;
+        }
+
+        const existingMaterials = op.materials || [];
+        const existingIds = new Set(existingMaterials.map(m => m.product_id));
+        
+        const newMaterials = materialsToAdd.filter(m => !existingIds.has(m.product_id));
+
+        if (newMaterials.length > 0) {
+          distributedToOperations.push(`"${op.name}" (${newMaterials.length} шт)`);
+          return {
+            ...op,
+            materials: [...existingMaterials, ...newMaterials],
+          };
+        }
+        return op;
+      });
+
+      setTimeout(() => {
+        if (distributedToOperations.length > 0) {
+          toast.success(`Равномерно распределено на: ${distributedToOperations.join(", ")}`);
+        } else {
+          toast.info("Все компоненты уже были распределены");
+        }
+      }, 0);
+
+      return newOperations;
+    });
+  }, [specificationMaterials, setOperations]);
+
   return {
     linkedMaterialIds,
     unlinkedMaterials,
     hasUnlinkedComponents,
     distributeToOperation,
     distributeByProductType,
+    distributeToAllOperations,
+    distributeEvenly,
   };
 }

@@ -379,6 +379,8 @@ export function RoutingSheetDialog({
     hasUnlinkedComponents,
     distributeToOperation,
     distributeByProductType,
+    distributeToAllOperations,
+    distributeEvenly,
   } = useSmartDistribution({
     operations,
     setOperations,
@@ -497,19 +499,33 @@ export function RoutingSheetDialog({
                           <ChevronDown className="h-3 w-3" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuContent align="end" className="w-64">
                         <DropdownMenuItem onClick={distributeByProductType} className="gap-2">
                           <Sparkles className="h-4 w-4 text-primary" />
                           <div className="flex flex-col">
-                            <span>Умное распределение</span>
+                            <span>По типу продукта</span>
                             <span className="text-xs text-muted-foreground">Материалы → первая, ПФ/СБ → последняя</span>
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={distributeToAllOperations} className="gap-2">
+                          <Factory className="h-4 w-4 text-blue-500" />
+                          <div className="flex flex-col">
+                            <span>На все операции</span>
+                            <span className="text-xs text-muted-foreground">Каждый компонент → все производственные</span>
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={distributeEvenly} className="gap-2">
+                          <Settings className="h-4 w-4 text-green-500" />
+                          <div className="flex flex-col">
+                            <span>Равномерно</span>
+                            <span className="text-xs text-muted-foreground">Компоненты распределяются поровну</span>
                           </div>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuSub>
                           <DropdownMenuSubTrigger className="gap-2">
-                            <Factory className="h-4 w-4" />
-                            Выбрать операцию
+                            <ClipboardCheck className="h-4 w-4" />
+                            Выбрать операцию вручную
                           </DropdownMenuSubTrigger>
                           <DropdownMenuSubContent>
                             {productionOps.length === 0 ? (
