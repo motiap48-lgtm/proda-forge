@@ -52,6 +52,7 @@ const RoutingSheets = () => {
   const [groupingMode, setGroupingMode] = useState<GroupingMode>('none');
   const [useInternalOperationOnly, setUseInternalOperationOnly] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const bottomButtonRef = useRef<HTMLDivElement>(null);
   
@@ -113,12 +114,35 @@ const RoutingSheets = () => {
   // Sort sheets by sort_order for display
   const sortedSheets = [...(routingSheets || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-  const filteredSheets = sortedSheets.filter(
-    (sheet) =>
+  const filteredSheets = sortedSheets.filter((sheet) => {
+    // Text search filter
+    const matchesSearch = 
       sheet.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sheet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sheet.products?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      sheet.products?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // Incomplete distribution filter
+    if (showIncompleteOnly) {
+      const stats = getSheetComponentStats(sheet);
+      // Show if has unlinked components OR not all production ops have materials
+      const hasIssues = stats.unlinkedCount > 0 || 
+        (stats.totalProductionOps > 0 && !stats.allOpsHaveMaterials);
+      return hasIssues;
+    }
+    
+    return true;
+  });
+
+  // Count incomplete sheets for badge
+  const incompleteCount = useMemo(() => {
+    return sortedSheets.filter(sheet => {
+      const stats = getSheetComponentStats(sheet);
+      return stats.unlinkedCount > 0 || 
+        (stats.totalProductionOps > 0 && !stats.allOpsHaveMaterials);
+    }).length;
+  }, [sortedSheets, specifications]);
 
   // Grouping logic
   const groupedSheets = useMemo(() => {
@@ -712,7 +736,34 @@ const RoutingSheets = () => {
                   </Button>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Incomplete filter button */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={showIncompleteOnly ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowIncompleteOnly(!showIncompleteOnly)}
+                        className="gap-1.5"
+                      >
+                        <AlertTriangle className="h-4 w-4" />
+                        Неполные
+                        {incompleteCount > 0 && (
+                          <Badge variant={showIncompleteOnly ? "secondary" : "destructive"} className="ml-1 h-5 px-1.5">
+                            {incompleteCount}
+                          </Badge>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Показать техмаршруты с неполным распределением компонентов</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <div className="h-6 w-px bg-border mx-1" />
+
                 <FolderOpen className="h-4 w-4 text-muted-foreground" />
                 <Select value={groupingMode} onValueChange={(v) => setGroupingMode(v as GroupingMode)}>
                   <SelectTrigger className="w-[180px]">
