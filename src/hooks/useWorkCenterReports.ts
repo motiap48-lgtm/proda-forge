@@ -69,7 +69,7 @@ interface RoutingCache {
 
 export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
   return useQuery({
-    queryKey: ["work-center-reports", startDate, endDate],
+    queryKey: ["work-center-reports-v2", startDate, endDate],
     queryFn: async () => {
       // 1. Получаем все производственные заказы
       let ordersQuery = supabase
