@@ -109,13 +109,17 @@ const EditProductionOrder = () => {
       });
 
       // Автоматически переводим в работу если увеличили количество у завершенного заказа
+      // или если заказ завершен, но выпущено меньше чем требуется
       let newStatus = formData.status;
-      if (order && order.status === 'completed' && formData.quantity > Number(order.quantity)) {
+      const quantityIncreased = formData.quantity > Number(order?.quantity || 0);
+      const incompleteBecauseOfNewQuantity = formData.quantity > Number(order?.completed_quantity || 0);
+      
+      if (order && order.status === 'completed' && quantityIncreased && incompleteBecauseOfNewQuantity) {
         newStatus = 'in_progress';
         toast.info("Заказ переведён обратно в работу из-за увеличения количества");
       }
 
-      await updateOrder.mutateAsync({
+      const updateData: any = {
         id: order!.id,
         product_id: formData.product_id,
         quantity: formData.quantity,
@@ -127,8 +131,14 @@ const EditProductionOrder = () => {
         routing_sheet_id: formData.routing_sheet_id || null,
         work_center_id: formData.work_center_id || null,
         responsible_person: formData.responsible_person || null,
-        actual_end_date: newStatus === 'in_progress' && order?.status === 'completed' ? null : undefined,
-      });
+      };
+
+      // Сбрасываем дату завершения если заказ возвращается в работу
+      if (newStatus === 'in_progress' && order?.status === 'completed') {
+        updateData.actual_end_date = null;
+      }
+
+      await updateOrder.mutateAsync(updateData);
 
       toast.success("Заказ успешно обновлен");
       navigate(`/production-orders/${order?.order_number}`);
