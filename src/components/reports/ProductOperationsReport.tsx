@@ -207,8 +207,17 @@ const ProductOperationsPrintView = ({
                     </div>
                     <div style={{ fontSize: '11px', textAlign: 'right' }}>
                       <div>План: <strong>{product.planned_quantity}</strong></div>
-                      <div style={{ color: product.deviation >= 0 ? '#16a34a' : '#dc2626' }}>
-                        Факт: <strong>{product.completed_quantity}</strong>
+                      <div>Факт: <strong>{product.completed_quantity}</strong></div>
+                      <div style={{ 
+                        color: product.deviation > 0 ? '#16a34a' : product.deviation < 0 ? '#dc2626' : '#666',
+                        fontWeight: 'bold'
+                      }}>
+                        Откл: {product.deviation > 0 ? '+' : ''}{product.deviation}
+                        {product.planned_quantity > 0 && (
+                          <span style={{ fontSize: '10px', marginLeft: '4px' }}>
+                            ({product.deviation_percent > 0 ? '+' : ''}{product.deviation_percent.toFixed(0)}%)
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -340,10 +349,22 @@ const ProductCard = ({
               )}
             </div>
           )}
-          <div className="text-right min-w-[100px]">
-            <div className="font-medium">План: {product.planned_quantity}</div>
-            <div className={`text-xs ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              Факт: {product.completed_quantity}
+          <div className="text-right min-w-[120px]">
+            <div className="text-xs text-muted-foreground">План: {product.planned_quantity}</div>
+            <div className="text-xs text-muted-foreground">Факт: {product.completed_quantity}</div>
+            <div className={`text-sm font-medium ${
+              product.deviation > 0 
+                ? 'text-green-600' 
+                : product.deviation < 0 
+                  ? 'text-destructive' 
+                  : 'text-muted-foreground'
+            }`}>
+              Откл: {product.deviation > 0 ? '+' : ''}{product.deviation}
+              {product.planned_quantity > 0 && (
+                <span className="text-xs ml-1">
+                  ({product.deviation_percent > 0 ? '+' : ''}{product.deviation_percent.toFixed(0)}%)
+                </span>
+              )}
             </div>
           </div>
         </div>
