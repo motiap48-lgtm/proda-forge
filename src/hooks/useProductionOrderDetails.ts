@@ -52,6 +52,14 @@ export const useProductionOrderHistory = (orderId?: string) => {
   });
 };
 
+export interface OperationReportData {
+  quantity: number;
+  defectQuantity: number;
+  setupTimeActual: number | null;
+  cycleTimeActual: number | null;
+  notes: string;
+}
+
 export const useUpdateOperationStatus = () => {
   const queryClient = useQueryClient();
 
@@ -59,24 +67,26 @@ export const useUpdateOperationStatus = () => {
     mutationFn: async ({ 
       id, 
       status, 
-      completedQuantity 
+      reportData,
+      userId
     }: { 
       id: string; 
       status: string; 
-      completedQuantity?: number 
+      reportData?: OperationReportData;
+      userId?: string;
     }) => {
       const updates: any = {};
       
       // Получаем текущую операцию и заказ
       const { data: currentOp } = await supabase
         .from("production_order_operations")
-        .select("completed_quantity, production_order_id, status, actual_start_date")
+        .select("completed_quantity, production_order_id, status, actual_start_date, routing_operations(name)")
         .eq("id", id)
         .single();
 
       const { data: productionOrder } = await supabase
         .from("production_orders")
-        .select("quantity")
+        .select("quantity, order_number")
         .eq("id", currentOp?.production_order_id)
         .single();
 
@@ -86,12 +96,35 @@ export const useUpdateOperationStatus = () => {
       if (status === 'in_progress' && !currentOp?.actual_start_date) {
         updates.actual_start_date = new Date().toISOString();
         updates.status = 'in_progress';
+        
+        // Записываем в историю начало операции
+        if (userId && currentOp?.production_order_id) {
+          await supabase.from("production_order_history").insert({
+            production_order_id: currentOp.production_order_id,
+            user_id: userId,
+            change_type: "operation_started",
+            description: `Начата операция: ${currentOp.routing_operations?.name || 'Неизвестно'}`,
+            new_value: new Date().toISOString(),
+          });
+        }
       }
       
-      if (status === 'completed' && completedQuantity !== undefined) {
-        // Добавляем к текущему значению
-        const newCompleted = currentCompleted + completedQuantity;
+      if (status === 'completed' && reportData) {
+        // Учитываем брак: добавляем только годные изделия
+        const goodQuantity = Math.max(0, reportData.quantity - reportData.defectQuantity);
+        const newCompleted = currentCompleted + goodQuantity;
         updates.completed_quantity = newCompleted;
+        
+        // Сохраняем фактическое время
+        if (reportData.setupTimeActual !== null) {
+          updates.setup_time_actual = reportData.setupTimeActual;
+        }
+        if (reportData.cycleTimeActual !== null) {
+          updates.cycle_time_actual = reportData.cycleTimeActual;
+        }
+        if (reportData.notes) {
+          updates.notes = reportData.notes;
+        }
         
         // Устанавливаем статус "завершено" только если выполнено все количество
         if (newCompleted >= orderQuantity) {
@@ -101,7 +134,24 @@ export const useUpdateOperationStatus = () => {
           // Если не все выполнено, оставляем "в процессе"
           updates.status = 'in_progress';
         }
-      } else if (status !== 'in_progress') {
+        
+        // Записываем в историю регистрацию выработки
+        if (userId && currentOp?.production_order_id) {
+          let historyDescription = `Зарегистрирована выработка: ${currentOp.routing_operations?.name || 'Неизвестно'} — ${goodQuantity} шт.`;
+          if (reportData.defectQuantity > 0) {
+            historyDescription += ` (брак: ${reportData.defectQuantity} шт.)`;
+          }
+          
+          await supabase.from("production_order_history").insert({
+            production_order_id: currentOp.production_order_id,
+            user_id: userId,
+            change_type: "output_registered",
+            description: historyDescription,
+            old_value: currentCompleted.toString(),
+            new_value: newCompleted.toString(),
+          });
+        }
+      } else if (status !== 'in_progress' && status !== 'completed') {
         updates.status = status;
       }
 
@@ -115,7 +165,7 @@ export const useUpdateOperationStatus = () => {
       if (error) throw error;
 
       // Обновляем прогресс производственного заказа
-      if (operation && completedQuantity !== undefined) {
+      if (operation && reportData) {
         // Получаем все операции заказа
         const { data: allOperations } = await supabase
           .from("production_order_operations")
@@ -142,13 +192,29 @@ export const useUpdateOperationStatus = () => {
           }
 
           // Обновляем производственный заказ
+          const orderUpdates: any = { 
+            completed_quantity: minCompleted,
+            status: orderStatus,
+          };
+          
+          if (orderStatus === 'completed') {
+            orderUpdates.actual_end_date = new Date().toISOString().split('T')[0];
+          }
+          
+          // Устанавливаем actual_start_date если это первая регистрация выработки
+          const { data: currentOrder } = await supabase
+            .from("production_orders")
+            .select("actual_start_date")
+            .eq("id", operation.production_order_id)
+            .single();
+            
+          if (!currentOrder?.actual_start_date) {
+            orderUpdates.actual_start_date = new Date().toISOString().split('T')[0];
+          }
+
           await supabase
             .from("production_orders")
-            .update({ 
-              completed_quantity: minCompleted,
-              status: orderStatus,
-              actual_end_date: orderStatus === 'completed' ? new Date().toISOString().split('T')[0] : null
-            })
+            .update(orderUpdates)
             .eq("id", operation.production_order_id);
         }
       }
@@ -159,10 +225,10 @@ export const useUpdateOperationStatus = () => {
       queryClient.invalidateQueries({ queryKey: ["production-order-operations"] });
       queryClient.invalidateQueries({ queryKey: ["production-orders"] });
       queryClient.invalidateQueries({ queryKey: ["production-order"] });
-      toast.success("Операция обновлена");
+      toast.success("Выработка зарегистрирована");
     },
     onError: (error) => {
-      toast.error("Ошибка при обновлении: " + error.message);
+      toast.error("Ошибка при регистрации: " + error.message);
     },
   });
 };

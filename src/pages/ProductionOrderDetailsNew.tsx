@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Trash2, CheckCircle, Play } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useProductionOrder, useDeleteProductionOrder } from "@/hooks/useProductionOrders";
 import { 
@@ -15,7 +15,7 @@ import {
   useUpdateOperationStatus 
 } from "@/hooks/useProductionOrderDetails";
 import { useAuth } from "@/contexts/AuthContext";
-import { CompleteOperationDialog } from "@/components/production/CompleteOperationDialog";
+import { CompleteOperationDialog, OperationReportData } from "@/components/production/CompleteOperationDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -215,7 +215,7 @@ const ProductionOrderDetailsNew = () => {
                         <p className="text-sm text-muted-foreground mb-2">
                           {operation.routing_operations?.work_centers?.name}
                         </p>
-                        <div className="grid gap-2 md:grid-cols-3 text-sm">
+                        <div className="grid gap-2 md:grid-cols-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">Выполнено: </span>
                             <span className="font-medium text-foreground">
@@ -228,6 +228,21 @@ const ProductionOrderDetailsNew = () => {
                               {operation.profiles?.full_name || "Не назначен"}
                             </span>
                           </div>
+                          {(operation.setup_time_actual !== null || operation.cycle_time_actual !== null) && (
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-muted-foreground">Факт: </span>
+                              <span className="font-medium text-foreground">
+                                {operation.setup_time_actual ?? '—'}/{operation.cycle_time_actual ?? '—'} мин
+                              </span>
+                            </div>
+                          )}
+                          {operation.notes && (
+                            <div className="flex items-center gap-1 col-span-full">
+                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                              <span className="text-muted-foreground text-xs">{operation.notes}</span>
+                            </div>
+                          )}
                         </div>
                         {operation.status !== "pending" && (
                           <div className="mt-3">
@@ -241,7 +256,8 @@ const ProductionOrderDetailsNew = () => {
                           variant="outline"
                           onClick={() => updateStatus.mutate({ 
                             id: operation.id, 
-                            status: "in_progress" 
+                            status: "in_progress",
+                            userId: user?.id
                           })}
                         >
                           <Play className="mr-2 h-4 w-4" />
@@ -347,12 +363,13 @@ const ProductionOrderDetailsNew = () => {
           <CompleteOperationDialog
             open={completeDialogOpen}
             onOpenChange={setCompleteDialogOpen}
-            onConfirm={(quantity) => {
+            onConfirm={(reportData: OperationReportData) => {
               updateStatus.mutate(
                 {
                   id: selectedOperation.id,
                   status: "completed",
-                  completedQuantity: quantity,
+                  reportData,
+                  userId: user?.id,
                 },
                 {
                   onSuccess: () => {
@@ -364,6 +381,9 @@ const ProductionOrderDetailsNew = () => {
             }}
             maxQuantity={order.quantity - Number(selectedOperation.completed_quantity)}
             operationName={selectedOperation.routing_operations?.name || ""}
+            workCenterName={selectedOperation.routing_operations?.work_centers?.name}
+            plannedSetupTime={selectedOperation.routing_operations?.setup_time_minutes}
+            plannedCycleTime={Number(selectedOperation.routing_operations?.cycle_time_minutes)}
             isLoading={updateStatus.isPending}
           />
         )}
