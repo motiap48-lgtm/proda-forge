@@ -108,18 +108,26 @@ const EditProductionOrder = () => {
         priority: formData.priority,
       });
 
+      // Автоматически переводим в работу если увеличили количество у завершенного заказа
+      let newStatus = formData.status;
+      if (order && order.status === 'completed' && formData.quantity > Number(order.quantity)) {
+        newStatus = 'in_progress';
+        toast.info("Заказ переведён обратно в работу из-за увеличения количества");
+      }
+
       await updateOrder.mutateAsync({
         id: order!.id,
         product_id: formData.product_id,
         quantity: formData.quantity,
         planned_start_date: formData.planned_start_date,
         planned_end_date: formData.planned_end_date,
-        status: formData.status,
+        status: newStatus,
         priority: formData.priority,
         specification_id: formData.specification_id || null,
         routing_sheet_id: formData.routing_sheet_id || null,
         work_center_id: formData.work_center_id || null,
         responsible_person: formData.responsible_person || null,
+        actual_end_date: newStatus === 'in_progress' && order?.status === 'completed' ? null : undefined,
       });
 
       toast.success("Заказ успешно обновлен");
@@ -362,6 +370,7 @@ const EditProductionOrder = () => {
                         <SelectItem value="planned">Запланировано</SelectItem>
                         <SelectItem value="released">Запущен</SelectItem>
                         <SelectItem value="in_progress">В производстве</SelectItem>
+                        <SelectItem value="on_hold">Приостановлен</SelectItem>
                         <SelectItem value="completed">Завершено</SelectItem>
                         <SelectItem value="cancelled">Отменено</SelectItem>
                       </SelectContent>

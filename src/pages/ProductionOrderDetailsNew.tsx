@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useProductionOrder, useDeleteProductionOrder } from "@/hooks/useProductionOrders";
+import { useProductionOrder, useDeleteProductionOrder, useUpdateProductionOrder } from "@/hooks/useProductionOrders";
 import { 
   useProductionOrderOperations, 
   useProductionOrderHistory,
@@ -32,6 +32,7 @@ const statusConfig = {
   planned: { label: "Запланировано", variant: "secondary" as const },
   released: { label: "Запущен", variant: "default" as const },
   in_progress: { label: "В производстве", variant: "default" as const },
+  on_hold: { label: "Приостановлен", variant: "outline" as const },
   completed: { label: "Завершено", variant: "outline" as const },
   cancelled: { label: "Отменено", variant: "destructive" as const },
 };
@@ -55,6 +56,21 @@ const ProductionOrderDetailsNew = () => {
   const { data: history } = useProductionOrderHistory(order?.id || "");
   const updateStatus = useUpdateOperationStatus();
   const deleteOrder = useDeleteProductionOrder();
+  const updateOrder = useUpdateProductionOrder();
+
+  const handleHoldOrder = () => {
+    if (order) {
+      updateOrder.mutate({ id: order.id, status: 'on_hold' });
+    }
+  };
+
+  const handleResumeOrder = () => {
+    if (order) {
+      // Возвращаем в производство или запущен в зависимости от прогресса
+      const newStatus = order.completed_quantity > 0 ? 'in_progress' : 'released';
+      updateOrder.mutate({ id: order.id, status: newStatus });
+    }
+  };
 
   const handleDelete = () => {
     if (order) {
@@ -114,7 +130,30 @@ const ProductionOrderDetailsNew = () => {
               <p className="text-xl text-foreground">{order.products?.name}</p>
               <p className="text-muted-foreground">Спецификация: {order.specifications?.code}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {/* Кнопки приостановки/возобновления */}
+              {order.status === 'on_hold' ? (
+                <Button
+                  variant="outline"
+                  onClick={handleResumeOrder}
+                  disabled={updateOrder.isPending}
+                  className="border-green-500 text-green-600 hover:bg-green-50"
+                >
+                  <PlayCircle className="mr-2 h-4 w-4" />
+                  Возобновить
+                </Button>
+              ) : (order.status === 'in_progress' || order.status === 'released') && (
+                <Button
+                  variant="outline"
+                  onClick={handleHoldOrder}
+                  disabled={updateOrder.isPending}
+                  className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                >
+                  <Pause className="mr-2 h-4 w-4" />
+                  Приостановить
+                </Button>
+              )}
+              
               <Button 
                 variant="outline"
                 onClick={() => navigate(`/production-orders/${order.order_number}/edit`)}
