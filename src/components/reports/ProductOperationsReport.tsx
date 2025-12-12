@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useProductOperationsReport, ProductReportItem, ProductOperationInfo } from "@/hooks/useProductOperationsReport";
+import { useState, useRef, useMemo } from "react";
+import { useProductOperationsReport, ProductReportItem } from "@/hooks/useProductOperationsReport";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,11 +30,24 @@ import {
   ExternalLink,
   FileSpreadsheet,
   Printer,
+  Filter,
+  Layers,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useReactToPrint } from "react-to-print";
+
+type GroupingMode = 'type' | 'department';
 
 interface ProductOperationsReportProps {
   startDate?: string;
@@ -118,7 +131,6 @@ const ProductOperationsPrintView = ({
 
   return (
     <div className="p-8 bg-white text-black" style={{ fontFamily: 'Arial, sans-serif' }}>
-      {/* Заголовок */}
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>
           ОТЧЕТ ПО ИЗДЕЛИЯМ
@@ -135,7 +147,6 @@ const ProductOperationsPrintView = ({
         </p>
       </div>
 
-      {/* Сводка */}
       <div style={{ marginBottom: '24px', padding: '12px', border: '1px solid #ddd', borderRadius: '4px' }}>
         <h2 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px' }}>Сводка по типам продукции</h2>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
@@ -171,7 +182,6 @@ const ProductOperationsPrintView = ({
         </table>
       </div>
 
-      {/* Детализация по изделиям */}
       {(['finished', 'assembly', 'semi-finished'] as const).map(type => {
         const typeProducts = groupedProducts[type];
         if (typeProducts.length === 0) return null;
@@ -184,7 +194,6 @@ const ProductOperationsPrintView = ({
 
             {typeProducts.map(product => (
               <div key={product.product_id} style={{ marginBottom: '16px', border: '1px solid #ddd', padding: '12px' }}>
-                {/* Заголовок изделия */}
                 <div style={{ marginBottom: '12px', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
@@ -204,7 +213,6 @@ const ProductOperationsPrintView = ({
                     </div>
                   </div>
                   
-                  {/* Цехи и участки */}
                   <div style={{ marginTop: '8px', fontSize: '11px' }}>
                     {product.departments.length > 0 && (
                       <span style={{ marginRight: '16px' }}>
@@ -219,7 +227,6 @@ const ProductOperationsPrintView = ({
                   </div>
                 </div>
 
-                {/* Таблица операций */}
                 {product.operations.length > 0 ? (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
                     <thead>
@@ -263,7 +270,6 @@ const ProductOperationsPrintView = ({
         );
       })}
 
-      {/* Подпись */}
       <div style={{ marginTop: '32px', fontSize: '10px', color: '#666', textAlign: 'center' }}>
         <p>ERP Vostok Auto — Отчет по изделиям</p>
       </div>
@@ -271,29 +277,240 @@ const ProductOperationsPrintView = ({
   );
 };
 
+// Компонент карточки изделия
+const ProductCard = ({ 
+  product, 
+  isExpanded, 
+  onToggle 
+}: { 
+  product: ProductReportItem; 
+  isExpanded: boolean; 
+  onToggle: () => void;
+}) => (
+  <Collapsible open={isExpanded} onOpenChange={onToggle}>
+    <CollapsibleTrigger className="w-full p-4 hover:bg-muted/50 transition-colors text-left">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <ChevronDown 
+            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+              isExpanded ? 'rotate-0' : '-rotate-90'
+            }`}
+          />
+          <div>
+            <div className="flex items-center gap-2">
+              {getProductTypeBadge(product.product_type)}
+              <span className="font-medium">{product.product_name}</span>
+            </div>
+            <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5 flex-wrap">
+              <span className="font-mono">{product.product_code}</span>
+              {product.routing_sheet_code && (
+                <>
+                  <span>•</span>
+                  <span>Маршрут: {product.routing_sheet_code}</span>
+                </>
+              )}
+              {product.departments.length > 0 && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Building2 className="h-3 w-3" />
+                    {product.departments.join(', ')}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 text-sm">
+          {product.operations.length > 0 && (
+            <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground max-w-md truncate">
+              {product.operations
+                .filter(op => op.operation_type === 'production')
+                .slice(0, 4)
+                .map((op, idx, arr) => (
+                  <span key={op.operation_id} className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-xs px-1.5 py-0">
+                      {op.work_center_code || op.work_center_name}
+                    </Badge>
+                    {idx < arr.length - 1 && <ArrowRight className="h-3 w-3" />}
+                  </span>
+                ))}
+              {product.operations.filter(op => op.operation_type === 'production').length > 4 && (
+                <span className="text-xs">...</span>
+              )}
+            </div>
+          )}
+          <div className="text-right min-w-[100px]">
+            <div className="font-medium">План: {product.planned_quantity}</div>
+            <div className={`text-xs ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              Факт: {product.completed_quantity}
+            </div>
+          </div>
+        </div>
+      </div>
+    </CollapsibleTrigger>
+    <CollapsibleContent>
+      <div className="px-4 pb-4 pt-2">
+        {product.operations.length > 0 ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-4 mb-3 p-3 bg-muted/30 rounded-lg">
+              {product.departments.length > 0 && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Цехи:</span>
+                  {product.departments.map(dept => (
+                    <Badge key={dept} variant="secondary" className="text-xs">
+                      {dept}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {product.work_centers.length > 0 && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Factory className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Участки:</span>
+                  {product.work_centers.map(wc => (
+                    <Badge key={wc} variant="outline" className="text-xs">
+                      {wc}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">№</TableHead>
+                  <TableHead>Операция</TableHead>
+                  <TableHead>Тип</TableHead>
+                  <TableHead>Цех</TableHead>
+                  <TableHead>Участок</TableHead>
+                  <TableHead className="text-right">Тпз, мин</TableHead>
+                  <TableHead className="text-right">Тшт, мин</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {product.operations.map((op) => (
+                  <TableRow key={op.operation_id}>
+                    <TableCell className="font-mono text-muted-foreground">
+                      {op.sequence}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {op.is_external && (
+                          <ExternalLink className="h-3 w-3 text-orange-500" />
+                        )}
+                        <span>{op.operation_name}</span>
+                      </div>
+                      {op.is_external && op.contractor_name && (
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Подрядчик: {op.contractor_name}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        {getOperationTypeIcon(op.operation_type)}
+                        <span className="text-sm">{getOperationTypeLabel(op.operation_type)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {op.department ? (
+                        <Badge variant="secondary" className="text-xs">
+                          {op.department}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-xs font-mono">
+                          {op.work_center_code}
+                        </Badge>
+                        <span className="text-sm">{op.work_center_name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {op.setup_time || '—'}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {op.cycle_time || '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="text-center py-4 text-muted-foreground text-sm">
+            <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            Нет технологического маршрута для этого изделия
+          </div>
+        )}
+      </div>
+    </CollapsibleContent>
+  </Collapsible>
+);
+
 export const ProductOperationsReport = ({ startDate, endDate }: ProductOperationsReportProps) => {
   const { data: products, isLoading } = useProductOperationsReport(startDate, endDate);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>('type');
+  const [selectedDepartments, setSelectedDepartments] = useState<Set<string>>(new Set());
+  const [selectedWorkCenters, setSelectedWorkCenters] = useState<Set<string>>(new Set());
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Фильтрация по поиску
-  const filteredProducts = products?.filter(product => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      product.product_name.toLowerCase().includes(query) ||
-      product.product_code.toLowerCase().includes(query) ||
-      product.routing_sheet_name.toLowerCase().includes(query) ||
-      product.departments.some(d => d.toLowerCase().includes(query)) ||
-      product.work_centers.some(wc => wc.toLowerCase().includes(query)) ||
-      product.operations.some(op => 
-        op.operation_name.toLowerCase().includes(query) ||
-        op.work_center_name.toLowerCase().includes(query) ||
-        (op.department && op.department.toLowerCase().includes(query))
-      )
-    );
-  }) || [];
+  // Все доступные цехи и участки
+  const allAvailableDepartments = useMemo(() => {
+    const deps = new Set<string>();
+    products?.forEach(p => p.departments.forEach(d => deps.add(d)));
+    return Array.from(deps).sort((a, b) => a.localeCompare(b, 'ru'));
+  }, [products]);
+
+  const allAvailableWorkCenters = useMemo(() => {
+    const wcs = new Set<string>();
+    products?.forEach(p => p.work_centers.forEach(wc => wcs.add(wc)));
+    return Array.from(wcs).sort((a, b) => a.localeCompare(b, 'ru'));
+  }, [products]);
+
+  // Фильтрация по поиску и выбранным фильтрам
+  const filteredProducts = useMemo(() => {
+    return products?.filter(product => {
+      // Поиск
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = 
+          product.product_name.toLowerCase().includes(query) ||
+          product.product_code.toLowerCase().includes(query) ||
+          product.routing_sheet_name.toLowerCase().includes(query) ||
+          product.departments.some(d => d.toLowerCase().includes(query)) ||
+          product.work_centers.some(wc => wc.toLowerCase().includes(query)) ||
+          product.operations.some(op => 
+            op.operation_name.toLowerCase().includes(query) ||
+            op.work_center_name.toLowerCase().includes(query) ||
+            (op.department && op.department.toLowerCase().includes(query))
+          );
+        if (!matchesSearch) return false;
+      }
+
+      // Фильтр по цехам
+      if (selectedDepartments.size > 0) {
+        const hasMatchingDept = product.departments.some(d => selectedDepartments.has(d));
+        if (!hasMatchingDept) return false;
+      }
+
+      // Фильтр по участкам
+      if (selectedWorkCenters.size > 0) {
+        const hasMatchingWC = product.work_centers.some(wc => selectedWorkCenters.has(wc));
+        if (!hasMatchingWC) return false;
+      }
+
+      return true;
+    }) || [];
+  }, [products, searchQuery, selectedDepartments, selectedWorkCenters]);
 
   const toggleProduct = (id: string) => {
     setExpandedProducts(prev => {
@@ -308,14 +525,43 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
   };
 
   const expandAll = () => {
-    if (filteredProducts) {
-      setExpandedProducts(new Set(filteredProducts.map(p => p.product_id)));
-    }
+    setExpandedProducts(new Set(filteredProducts.map(p => p.product_id)));
   };
 
   const collapseAll = () => {
     setExpandedProducts(new Set());
   };
+
+  const toggleDepartment = (dept: string) => {
+    setSelectedDepartments(prev => {
+      const next = new Set(prev);
+      if (next.has(dept)) {
+        next.delete(dept);
+      } else {
+        next.add(dept);
+      }
+      return next;
+    });
+  };
+
+  const toggleWorkCenter = (wc: string) => {
+    setSelectedWorkCenters(prev => {
+      const next = new Set(prev);
+      if (next.has(wc)) {
+        next.delete(wc);
+      } else {
+        next.add(wc);
+      }
+      return next;
+    });
+  };
+
+  const clearFilters = () => {
+    setSelectedDepartments(new Set());
+    setSelectedWorkCenters(new Set());
+  };
+
+  const hasActiveFilters = selectedDepartments.size > 0 || selectedWorkCenters.size > 0;
 
   // Экспорт в Excel
   const handleExportExcel = () => {
@@ -323,7 +569,6 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
 
     const wb = XLSX.utils.book_new();
 
-    // Лист 1: Сводка по изделиям
     const summaryData: any[] = [
       ['ОТЧЕТ ПО ИЗДЕЛИЯМ'],
       [startDate || endDate ? `Период: ${startDate || '—'} — ${endDate || '—'}` : 'Период: Все время'],
@@ -355,7 +600,6 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
     ];
     XLSX.utils.book_append_sheet(wb, summarySheet, 'Изделия');
 
-    // Лист 2: Операции
     const operationsData: any[] = [
       ['ОПЕРАЦИИ ПО ИЗДЕЛИЯМ'],
       [],
@@ -390,7 +634,6 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
     ];
     XLSX.utils.book_append_sheet(wb, operationsSheet, 'Операции');
 
-    // Лист 3: По цехам и участкам
     const deptData: any[] = [
       ['РАСПРЕДЕЛЕНИЕ ПО ЦЕХАМ И УЧАСТКАМ'],
       [],
@@ -436,18 +679,36 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
     XLSX.writeFile(wb, `Отчет_по_изделиям_${dateStr}.xlsx`);
   };
 
-  // Печать
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Отчет_по_изделиям_${format(new Date(), 'yyyy-MM-dd')}`,
   });
 
   // Группировка по типам
-  const groupedProducts = {
+  const groupedByType = useMemo(() => ({
     finished: filteredProducts.filter(p => p.product_type === 'finished'),
     assembly: filteredProducts.filter(p => p.product_type === 'assembly'),
     'semi-finished': filteredProducts.filter(p => p.product_type === 'semi-finished'),
-  };
+  }), [filteredProducts]);
+
+  // Группировка по цехам
+  const groupedByDepartment = useMemo(() => {
+    const groups: Record<string, ProductReportItem[]> = {};
+    filteredProducts.forEach(product => {
+      if (product.departments.length === 0) {
+        if (!groups['Без цеха']) groups['Без цеха'] = [];
+        groups['Без цеха'].push(product);
+      } else {
+        product.departments.forEach(dept => {
+          if (!groups[dept]) groups[dept] = [];
+          if (!groups[dept].find(p => p.product_id === product.product_id)) {
+            groups[dept].push(product);
+          }
+        });
+      }
+    });
+    return groups;
+  }, [filteredProducts]);
 
   const typeLabels = {
     finished: { label: 'Готовая продукция', color: 'bg-blue-50 border-blue-200' },
@@ -455,14 +716,12 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
     'semi-finished': { label: 'Полуфабрикаты', color: 'bg-orange-50 border-orange-200' },
   };
 
-  // Статистика по цехам и участкам
   const allDepartments = new Set(filteredProducts.flatMap(p => p.departments));
   const allWorkCenters = new Set(filteredProducts.flatMap(p => p.work_centers));
   const totalOperations = filteredProducts.reduce((s, p) => s + p.operations.length, 0);
 
   return (
     <>
-      {/* Скрытый компонент для печати */}
       <div className="hidden">
         <div ref={printRef}>
           <ProductOperationsPrintView 
@@ -486,11 +745,10 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
               </CardDescription>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Поиск */}
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Поиск по изделию, участку, цеху..."
+                  placeholder="Поиск..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 pr-8"
@@ -506,6 +764,73 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
                   </Button>
                 )}
               </div>
+              
+              {/* Фильтр по цехам */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className={selectedDepartments.size > 0 ? 'border-primary' : ''}>
+                    <Building2 className="h-4 w-4 mr-1" />
+                    Цехи
+                    {selectedDepartments.size > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5">{selectedDepartments.size}</Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-background">
+                  <DropdownMenuLabel>Фильтр по цехам</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {allAvailableDepartments.length > 0 ? (
+                    allAvailableDepartments.map(dept => (
+                      <DropdownMenuCheckboxItem
+                        key={dept}
+                        checked={selectedDepartments.has(dept)}
+                        onCheckedChange={() => toggleDepartment(dept)}
+                      >
+                        {dept}
+                      </DropdownMenuCheckboxItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">Нет цехов</div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Фильтр по участкам */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className={selectedWorkCenters.size > 0 ? 'border-primary' : ''}>
+                    <Factory className="h-4 w-4 mr-1" />
+                    Участки
+                    {selectedWorkCenters.size > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5">{selectedWorkCenters.size}</Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-64 overflow-y-auto bg-background">
+                  <DropdownMenuLabel>Фильтр по участкам</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {allAvailableWorkCenters.length > 0 ? (
+                    allAvailableWorkCenters.map(wc => (
+                      <DropdownMenuCheckboxItem
+                        key={wc}
+                        checked={selectedWorkCenters.has(wc)}
+                        onCheckedChange={() => toggleWorkCenter(wc)}
+                      >
+                        {wc}
+                      </DropdownMenuCheckboxItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">Нет участков</div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="h-4 w-4 mr-1" />
+                  Сбросить
+                </Button>
+              )}
               
               {filteredProducts.length > 0 && (
                 <>
@@ -531,241 +856,130 @@ export const ProductOperationsReport = ({ startDate, endDate }: ProductOperation
             </div>
           </div>
           
-          {/* Статистика */}
-          {filteredProducts.length > 0 && (
-            <div className="flex flex-wrap items-center gap-4 mt-3 text-sm">
-              <div className="flex items-center gap-1.5">
-                <Package className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Изделий:</span>
-                <Badge variant="secondary">{filteredProducts.length}</Badge>
+          {/* Переключатель группировки и статистика */}
+          <div className="flex items-center justify-between flex-wrap gap-4 mt-4">
+            <Tabs value={groupingMode} onValueChange={(v) => setGroupingMode(v as GroupingMode)}>
+              <TabsList>
+                <TabsTrigger value="type" className="flex items-center gap-1.5">
+                  <Layers className="h-4 w-4" />
+                  По типам
+                </TabsTrigger>
+                <TabsTrigger value="department" className="flex items-center gap-1.5">
+                  <Building2 className="h-4 w-4" />
+                  По цехам
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {filteredProducts.length > 0 && (
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex items-center gap-1.5">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Изделий:</span>
+                  <Badge variant="secondary">{filteredProducts.length}</Badge>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Wrench className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Операций:</span>
+                  <Badge variant="secondary">{totalOperations}</Badge>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Цехов:</span>
+                  <Badge variant="secondary">{allDepartments.size}</Badge>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Factory className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Участков:</span>
+                  <Badge variant="secondary">{allWorkCenters.size}</Badge>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Wrench className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Операций:</span>
-                <Badge variant="secondary">{totalOperations}</Badge>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Цехов:</span>
-                <Badge variant="secondary">{allDepartments.size}</Badge>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Factory className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Участков:</span>
-                <Badge variant="secondary">{allWorkCenters.size}</Badge>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
           ) : filteredProducts.length > 0 ? (
             <div className="space-y-6">
-              {(['finished', 'assembly', 'semi-finished'] as const).map(type => {
-                const typeProducts = groupedProducts[type];
-                if (typeProducts.length === 0) return null;
+              {groupingMode === 'type' ? (
+                // Группировка по типам
+                (['finished', 'assembly', 'semi-finished'] as const).map(type => {
+                  const typeProducts = groupedByType[type];
+                  if (typeProducts.length === 0) return null;
 
-                const typeInfo = typeLabels[type];
-                const typeDepts = new Set(typeProducts.flatMap(p => p.departments));
-                const typeWCs = new Set(typeProducts.flatMap(p => p.work_centers));
+                  const typeInfo = typeLabels[type];
+                  const typeDepts = new Set(typeProducts.flatMap(p => p.departments));
+                  const typeWCs = new Set(typeProducts.flatMap(p => p.work_centers));
 
-                return (
-                  <div key={type} className={`rounded-lg border ${typeInfo.color} overflow-hidden`}>
-                    <div className="p-3 bg-background/50 border-b flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        {getProductTypeBadge(type)}
-                        <span className="font-semibold">{typeInfo.label}</span>
-                        <Badge variant="secondary">{typeProducts.length}</Badge>
+                  return (
+                    <div key={type} className={`rounded-lg border ${typeInfo.color} overflow-hidden`}>
+                      <div className="p-3 bg-background/50 border-b flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          {getProductTypeBadge(type)}
+                          <span className="font-semibold">{typeInfo.label}</span>
+                          <Badge variant="secondary">{typeProducts.length}</Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>Цехов: <strong>{typeDepts.size}</strong></span>
+                          <span>Участков: <strong>{typeWCs.size}</strong></span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>Цехов: <strong>{typeDepts.size}</strong></span>
-                        <span>Участков: <strong>{typeWCs.size}</strong></span>
+                      
+                      <div className="divide-y">
+                        {typeProducts.map(product => (
+                          <ProductCard
+                            key={product.product_id}
+                            product={product}
+                            isExpanded={expandedProducts.has(product.product_id)}
+                            onToggle={() => toggleProduct(product.product_id)}
+                          />
+                        ))}
                       </div>
                     </div>
-                    
-                    <div className="divide-y">
-                      {typeProducts.map(product => (
-                        <Collapsible
-                          key={product.product_id}
-                          open={expandedProducts.has(product.product_id)}
-                          onOpenChange={() => toggleProduct(product.product_id)}
-                        >
-                          <CollapsibleTrigger className="w-full p-4 hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <ChevronDown 
-                                  className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                                    expandedProducts.has(product.product_id) ? 'rotate-0' : '-rotate-90'
-                                  }`}
-                                />
-                                <div className="text-left">
-                                  <div className="font-medium">{product.product_name}</div>
-                                  <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5 flex-wrap">
-                                    <span className="font-mono">{product.product_code}</span>
-                                    {product.routing_sheet_code && (
-                                      <>
-                                        <span>•</span>
-                                        <span>Маршрут: {product.routing_sheet_code}</span>
-                                      </>
-                                    )}
-                                    {product.departments.length > 0 && (
-                                      <>
-                                        <span>•</span>
-                                        <span className="flex items-center gap-1">
-                                          <Building2 className="h-3 w-3" />
-                                          {product.departments.join(', ')}
-                                        </span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-4 text-sm">
-                                {/* Показываем путь: участки */}
-                                {product.operations.length > 0 && (
-                                  <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground max-w-md truncate">
-                                    {product.operations
-                                      .filter(op => op.operation_type === 'production')
-                                      .slice(0, 4)
-                                      .map((op, idx, arr) => (
-                                        <span key={op.operation_id} className="flex items-center gap-1">
-                                          <Badge variant="outline" className="text-xs px-1.5 py-0">
-                                            {op.work_center_code || op.work_center_name}
-                                          </Badge>
-                                          {idx < arr.length - 1 && <ArrowRight className="h-3 w-3" />}
-                                        </span>
-                                      ))}
-                                    {product.operations.filter(op => op.operation_type === 'production').length > 4 && (
-                                      <span className="text-xs">...</span>
-                                    )}
-                                  </div>
-                                )}
-                                <div className="text-right min-w-[100px]">
-                                  <div className="font-medium">План: {product.planned_quantity}</div>
-                                  <div className={`text-xs ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    Факт: {product.completed_quantity}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="px-4 pb-4 pt-2">
-                              {product.operations.length > 0 ? (
-                                <div className="space-y-3">
-                                  {/* Сводка по цехам и участкам */}
-                                  <div className="flex flex-wrap gap-4 mb-3 p-3 bg-muted/30 rounded-lg">
-                                    {product.departments.length > 0 && (
-                                      <div className="flex items-center gap-1.5 text-sm">
-                                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-muted-foreground">Цехи:</span>
-                                        {product.departments.map(dept => (
-                                          <Badge key={dept} variant="secondary" className="text-xs">
-                                            {dept}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    )}
-                                    {product.work_centers.length > 0 && (
-                                      <div className="flex items-center gap-1.5 text-sm">
-                                        <Factory className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-muted-foreground">Участки:</span>
-                                        {product.work_centers.map(wc => (
-                                          <Badge key={wc} variant="outline" className="text-xs">
-                                            {wc}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
+                  );
+                })
+              ) : (
+                // Группировка по цехам
+                Object.entries(groupedByDepartment)
+                  .sort(([a], [b]) => a.localeCompare(b, 'ru'))
+                  .map(([dept, deptProducts]) => {
+                    const deptWCs = new Set(deptProducts.flatMap(p => p.work_centers));
+                    const deptOps = deptProducts.reduce((s, p) => s + p.operations.filter(op => op.department === dept || (!op.department && dept === 'Без цеха')).length, 0);
 
-                                  {/* Таблица операций */}
-                                  <Table>
-                                    <TableHeader>
-                                      <TableRow>
-                                        <TableHead className="w-12">№</TableHead>
-                                        <TableHead>Операция</TableHead>
-                                        <TableHead>Тип</TableHead>
-                                        <TableHead>Цех</TableHead>
-                                        <TableHead>Участок</TableHead>
-                                        <TableHead className="text-right">Тпз, мин</TableHead>
-                                        <TableHead className="text-right">Тшт, мин</TableHead>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {product.operations.map((op) => (
-                                        <TableRow key={op.operation_id}>
-                                          <TableCell className="font-mono text-muted-foreground">
-                                            {op.sequence}
-                                          </TableCell>
-                                          <TableCell>
-                                            <div className="flex items-center gap-2">
-                                              {op.is_external && (
-                                                <ExternalLink className="h-3 w-3 text-orange-500" />
-                                              )}
-                                              <span>{op.operation_name}</span>
-                                            </div>
-                                            {op.is_external && op.contractor_name && (
-                                              <div className="text-xs text-muted-foreground mt-0.5">
-                                                Подрядчик: {op.contractor_name}
-                                              </div>
-                                            )}
-                                          </TableCell>
-                                          <TableCell>
-                                            <div className="flex items-center gap-1.5">
-                                              {getOperationTypeIcon(op.operation_type)}
-                                              <span className="text-sm">{getOperationTypeLabel(op.operation_type)}</span>
-                                            </div>
-                                          </TableCell>
-                                          <TableCell>
-                                            {op.department ? (
-                                              <Badge variant="secondary" className="text-xs">
-                                                {op.department}
-                                              </Badge>
-                                            ) : (
-                                              <span className="text-muted-foreground text-xs">—</span>
-                                            )}
-                                          </TableCell>
-                                          <TableCell>
-                                            <div className="flex items-center gap-1.5">
-                                              <Badge variant="outline" className="text-xs font-mono">
-                                                {op.work_center_code}
-                                              </Badge>
-                                              <span className="text-sm">{op.work_center_name}</span>
-                                            </div>
-                                          </TableCell>
-                                          <TableCell className="text-right font-mono">
-                                            {op.setup_time || '—'}
-                                          </TableCell>
-                                          <TableCell className="text-right font-mono">
-                                            {op.cycle_time || '—'}
-                                          </TableCell>
-                                        </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
-                                </div>
-                              ) : (
-                                <div className="text-center py-4 text-muted-foreground text-sm">
-                                  <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                  Нет технологического маршрута для этого изделия
-                                </div>
-                              )}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
+                    return (
+                      <div key={dept} className="rounded-lg border bg-card overflow-hidden">
+                        <div className="p-3 bg-muted/50 border-b flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-semibold">{dept}</span>
+                            <Badge variant="secondary">{deptProducts.length} изд.</Badge>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span>Участков: <strong>{deptWCs.size}</strong></span>
+                          </div>
+                        </div>
+                        
+                        <div className="divide-y">
+                          {deptProducts.map(product => (
+                            <ProductCard
+                              key={`${dept}-${product.product_id}`}
+                              product={product}
+                              isExpanded={expandedProducts.has(product.product_id)}
+                              onToggle={() => toggleProduct(product.product_id)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              {searchQuery ? (
-                <p>По запросу "{searchQuery}" ничего не найдено</p>
+              {searchQuery || hasActiveFilters ? (
+                <p>По заданным фильтрам ничего не найдено</p>
               ) : (
                 <p>Нет данных для отображения</p>
               )}
