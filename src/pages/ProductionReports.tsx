@@ -81,7 +81,7 @@ const ProductionReportsContent = () => {
             </TabsTrigger>
             <TabsTrigger value="work-centers" className="gap-2">
               <Building2 className="h-4 w-4" />
-              <span className="hidden sm:inline">По участкам</span>
+              <span className="hidden sm:inline">По цехам</span>
             </TabsTrigger>
             <TabsTrigger value="products" className="gap-2">
               <Package className="h-4 w-4" />
@@ -309,12 +309,12 @@ const ProductionReportsContent = () => {
           <TabsContent value="work-centers" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Отчет по рабочим центрам</CardTitle>
+                <CardTitle>Отчет по цехам и производственным участкам</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-12 text-muted-foreground">
                   <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Отчетность по рабочим центрам в разработке</p>
+                  <p>Отчетность по цехам и производственным участкам в разработке</p>
                 </div>
               </CardContent>
             </Card>
