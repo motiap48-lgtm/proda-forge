@@ -20,6 +20,10 @@ export interface WorkCenterProductItem {
   product_type: string;
   routing_sheet_name: string;
   routing_sheet_code: string;
+  planned_quantity: number;
+  completed_quantity: number;
+  deviation: number;
+  deviation_percent: number;
 }
 
 export interface WorkCenterReportData {
@@ -49,7 +53,8 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
           completed_quantity,
           status,
           work_center_id,
-          products:product_id(name, code, product_type),
+          product_id,
+          products:product_id(id, name, code, product_type),
           work_centers:work_center_id(id, code, name, department)
         `)
         .order("planned_start_date", { ascending: false });
@@ -131,16 +136,21 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
             product_type: product.product_type,
             routing_sheet_name: op.routing_sheets.name,
             routing_sheet_code: op.routing_sheets.code,
+            planned_quantity: 0,
+            completed_quantity: 0,
+            deviation: 0,
+            deviation_percent: 0,
           });
         }
       });
 
-      // Добавляем данные из заказов
+      // Добавляем данные из заказов и агрегируем по продуктам
       ordersData.forEach((order: any) => {
         const wcId = order.work_center_id || "unassigned";
         const wcName = order.work_centers?.name || "Без участка";
         const wcCode = order.work_centers?.code || "-";
         const department = order.work_centers?.department || "Без цеха";
+        const productId = order.products?.id;
 
         if (!workCenterMap.has(wcId)) {
           workCenterMap.set(wcId, {
@@ -160,6 +170,30 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
         const wcData = workCenterMap.get(wcId)!;
         const planned = Number(order.quantity);
         const completed = Number(order.completed_quantity);
+
+        // Обновляем данные продукта, если он есть
+        if (productId) {
+          let productItem = wcData.products.find(p => p.product_id === productId);
+          if (!productItem) {
+            // Если продукт не был добавлен из маршрутных карт, добавляем его
+            productItem = {
+              product_id: productId,
+              product_name: order.products?.name || "N/A",
+              product_code: order.products?.code || "N/A",
+              product_type: order.products?.product_type || "material",
+              routing_sheet_name: "",
+              routing_sheet_code: "",
+              planned_quantity: 0,
+              completed_quantity: 0,
+              deviation: 0,
+              deviation_percent: 0,
+            };
+            wcData.products.push(productItem);
+          }
+          productItem.planned_quantity += planned;
+          productItem.completed_quantity += completed;
+        }
+
         const deviation = completed - planned;
         const deviationPercent = planned > 0 ? (deviation / planned) * 100 : 0;
 
@@ -186,6 +220,14 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
         wc.completion_percent = wc.total_planned > 0 
           ? (wc.total_completed / wc.total_planned) * 100 
           : 0;
+        
+        // Вычисляем отклонение для каждого продукта
+        wc.products.forEach(p => {
+          p.deviation = p.completed_quantity - p.planned_quantity;
+          p.deviation_percent = p.planned_quantity > 0 
+            ? (p.deviation / p.planned_quantity) * 100 
+            : 0;
+        });
         
         // Сортируем продукты по типу и имени
         wc.products.sort((a, b) => {
