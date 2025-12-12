@@ -232,6 +232,12 @@ export function useSmartDistribution({
   // Check if undo is available - only when distribution was actually performed
   const canUndo = useCallback(() => hasDistributedRef.current && previousOperationsRef.current !== null, []);
 
+  // Reset undo state (call when dialog opens)
+  const resetUndoState = useCallback(() => {
+    previousOperationsRef.current = null;
+    hasDistributedRef.current = false;
+  }, []);
+
   // Distribute to specific operation
   const distributeToOperation = useCallback((targetSequence: number) => {
     saveStateForUndo();
@@ -548,5 +554,6 @@ export function useSmartDistribution({
     generatePreviewForOperation,
     undoDistribution,
     canUndo,
+    resetUndoState,
   };
 }

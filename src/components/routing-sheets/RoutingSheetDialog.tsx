@@ -393,11 +393,19 @@ export function RoutingSheetDialog({
     generatePreviewForOperation,
     undoDistribution,
     canUndo,
+    resetUndoState,
   } = useSmartDistribution({
     operations,
     setOperations,
     specificationMaterials,
   });
+
+  // Reset undo state when dialog opens
+  useEffect(() => {
+    if (open) {
+      resetUndoState();
+    }
+  }, [open, resetUndoState]);
 
   // Get production operations for menu
   const productionOps = operations.filter(op => op.operation_type === "production");
