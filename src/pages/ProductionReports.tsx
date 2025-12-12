@@ -2,13 +2,26 @@ import { useState } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProductionReports, useProductionSummary } from "@/hooks/useProductionReports";
+import { useWorkCenterReports, WorkCenterReportData } from "@/hooks/useWorkCenterReports";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, TrendingDown, TrendingUp, BarChart3, Building2, Package, Clock } from "lucide-react";
+import { 
+  CalendarIcon, 
+  TrendingDown, 
+  TrendingUp, 
+  BarChart3, 
+  Building2, 
+  Package, 
+  Clock, 
+  Factory,
+  ChevronDown,
+  ChevronsDown,
+  ChevronsUp
+} from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -21,6 +34,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
 
 const statusConfig = {
   planned: { label: "Запланирован", variant: "secondary" as const },
@@ -31,9 +46,25 @@ const statusConfig = {
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--muted))', 'hsl(var(--destructive))'];
 
+const getProductTypeBadge = (type: string) => {
+  switch (type) {
+    case "material":
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">МАТ</Badge>;
+    case "semi-finished":
+      return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">ПФ</Badge>;
+    case "assembly":
+      return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">СБ</Badge>;
+    case "finished":
+      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">ГП</Badge>;
+    default:
+      return null;
+  }
+};
+
 const ProductionReportsContent = () => {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+  const [expandedWorkCenters, setExpandedWorkCenters] = useState<Set<string>>(new Set());
 
   const { data: reports, isLoading } = useProductionReports(
     startDate ? format(startDate, "yyyy-MM-dd") : undefined,
@@ -41,6 +72,11 @@ const ProductionReportsContent = () => {
   );
 
   const { data: summary } = useProductionSummary(
+    startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+    endDate ? format(endDate, "yyyy-MM-dd") : undefined
+  );
+
+  const { data: workCenterReports, isLoading: wcLoading } = useWorkCenterReports(
     startDate ? format(startDate, "yyyy-MM-dd") : undefined,
     endDate ? format(endDate, "yyyy-MM-dd") : undefined
   );
@@ -309,13 +345,236 @@ const ProductionReportsContent = () => {
           <TabsContent value="work-centers" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Отчет по цехам и производственным участкам</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Factory className="h-5 w-5 text-primary" />
+                      Отчет по цехам и производственным участкам
+                    </CardTitle>
+                    <CardDescription>
+                      Выполнение плана по цехам и участкам
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {workCenterReports && workCenterReports.length > 0 && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const allIds = workCenterReports.map(r => r.work_center_id);
+                            setExpandedWorkCenters(new Set(allIds));
+                          }}
+                        >
+                          <ChevronsDown className="h-4 w-4 mr-1" />
+                          Развернуть
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setExpandedWorkCenters(new Set())}
+                        >
+                          <ChevronsUp className="h-4 w-4 mr-1" />
+                          Свернуть
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Отчетность по цехам и производственным участкам в разработке</p>
-                </div>
+                {wcLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
+                ) : workCenterReports && workCenterReports.length > 0 ? (
+                  <div className="space-y-6">
+                    {(() => {
+                      // Группируем по цехам
+                      const departmentGroups = workCenterReports.reduce((acc, report) => {
+                        const dept = report.department || 'Без цеха';
+                        if (!acc[dept]) acc[dept] = [];
+                        acc[dept].push(report);
+                        return acc;
+                      }, {} as Record<string, WorkCenterReportData[]>);
+                      
+                      // Сортируем цеха
+                      const sortedDepts = Object.keys(departmentGroups).sort((a, b) => a.localeCompare(b, "ru"));
+                      
+                      return sortedDepts.map((department) => {
+                        const reports = departmentGroups[department];
+                        // Сортируем участки внутри цеха
+                        reports.sort((a, b) => a.work_center_name.localeCompare(b.work_center_name, "ru"));
+                        
+                        // Суммируем по цеху
+                        const deptTotalPlanned = reports.reduce((s, r) => s + r.total_planned, 0);
+                        const deptTotalCompleted = reports.reduce((s, r) => s + r.total_completed, 0);
+                        const deptCompletionPercent = deptTotalPlanned > 0 
+                          ? (deptTotalCompleted / deptTotalPlanned) * 100 
+                          : 0;
+                        
+                        return (
+                          <div key={department} className="space-y-3">
+                            {/* Заголовок цеха */}
+                            <div className="flex items-center justify-between border-b-2 border-primary/30 pb-2">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-primary/10">
+                                  <Factory className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-bold text-foreground">{department}</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    Участков: {reports.length} | Заказов: {reports.reduce((s, r) => s + r.items.length, 0)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="flex items-center gap-4">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">План</p>
+                                    <p className="font-semibold">{deptTotalPlanned}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Факт</p>
+                                    <p className="font-semibold">{deptTotalCompleted}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Выполнение</p>
+                                    <p className={`font-bold ${deptCompletionPercent >= 100 ? 'text-green-600' : deptCompletionPercent >= 80 ? 'text-amber-600' : 'text-red-600'}`}>
+                                      {deptCompletionPercent.toFixed(1)}%
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Участки в цехе */}
+                            <div className="space-y-2 pl-4">
+                              {reports.map((report) => {
+                                const isExpanded = expandedWorkCenters.has(report.work_center_id);
+                                return (
+                                  <Collapsible 
+                                    key={report.work_center_id} 
+                                    open={isExpanded}
+                                    onOpenChange={(open) => {
+                                      setExpandedWorkCenters(prev => {
+                                        const next = new Set(prev);
+                                        if (open) {
+                                          next.add(report.work_center_id);
+                                        } else {
+                                          next.delete(report.work_center_id);
+                                        }
+                                        return next;
+                                      });
+                                    }}
+                                  >
+                                    <Card className="border-2 border-l-4 border-l-primary">
+                                      <CollapsibleTrigger asChild>
+                                        <CardHeader className="bg-muted/50 py-3 cursor-pointer hover:bg-muted/70 transition-colors">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
+                                              <div>
+                                                <CardTitle className="text-base flex items-center gap-2">
+                                                  <Building2 className="h-4 w-4" />
+                                                  {report.work_center_name}
+                                                </CardTitle>
+                                                <CardDescription className="text-xs">
+                                                  Код: {report.work_center_code} | Заказов: {report.items.length}
+                                                </CardDescription>
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center gap-6">
+                                              <div className="text-right">
+                                                <p className="text-xs text-muted-foreground">План</p>
+                                                <p className="font-semibold">{report.total_planned}</p>
+                                              </div>
+                                              <div className="text-right">
+                                                <p className="text-xs text-muted-foreground">Факт</p>
+                                                <p className="font-semibold">{report.total_completed}</p>
+                                              </div>
+                                              <div className="text-right">
+                                                <p className="text-xs text-muted-foreground">Отклонение</p>
+                                                <p className={`font-semibold ${report.total_deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                  {report.total_deviation > 0 ? '+' : ''}{report.total_deviation}
+                                                </p>
+                                              </div>
+                                              <div className="w-24">
+                                                <p className="text-xs text-muted-foreground mb-1">Выполнение</p>
+                                                <div className="flex items-center gap-2">
+                                                  <Progress 
+                                                    value={Math.min(report.completion_percent, 100)} 
+                                                    className="h-2"
+                                                  />
+                                                  <span className={`text-xs font-bold ${report.completion_percent >= 100 ? 'text-green-600' : report.completion_percent >= 80 ? 'text-amber-600' : 'text-red-600'}`}>
+                                                    {report.completion_percent.toFixed(0)}%
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </CardHeader>
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent>
+                                        <CardContent className="pt-3 pb-3">
+                                          <Table>
+                                            <TableHeader>
+                                              <TableRow>
+                                                <TableHead>Заказ</TableHead>
+                                                <TableHead>Изделие</TableHead>
+                                                <TableHead className="text-right">План</TableHead>
+                                                <TableHead className="text-right">Факт</TableHead>
+                                                <TableHead className="text-right">Откл.</TableHead>
+                                                <TableHead className="text-right">%</TableHead>
+                                                <TableHead>Статус</TableHead>
+                                              </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                              {report.items.map((item, idx) => (
+                                                <TableRow key={`${item.order_number}-${idx}`}>
+                                                  <TableCell className="font-medium">{item.order_number}</TableCell>
+                                                  <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                      {getProductTypeBadge(item.product_type)}
+                                                      <div>
+                                                        <p className="font-medium">{item.product_name}</p>
+                                                        <p className="text-xs text-muted-foreground">{item.product_code}</p>
+                                                      </div>
+                                                    </div>
+                                                  </TableCell>
+                                                  <TableCell className="text-right">{item.planned_quantity}</TableCell>
+                                                  <TableCell className="text-right">{item.completed_quantity}</TableCell>
+                                                  <TableCell className={`text-right ${item.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {item.deviation > 0 ? '+' : ''}{item.deviation}
+                                                  </TableCell>
+                                                  <TableCell className={`text-right ${item.deviation_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {item.deviation_percent > 0 ? '+' : ''}{item.deviation_percent.toFixed(1)}%
+                                                  </TableCell>
+                                                  <TableCell>
+                                                    <Badge variant={statusConfig[item.status as keyof typeof statusConfig]?.variant || "secondary"}>
+                                                      {statusConfig[item.status as keyof typeof statusConfig]?.label || item.status}
+                                                    </Badge>
+                                                  </TableCell>
+                                                </TableRow>
+                                              ))}
+                                            </TableBody>
+                                          </Table>
+                                        </CardContent>
+                                      </CollapsibleContent>
+                                    </Card>
+                                  </Collapsible>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Нет данных для отображения</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
