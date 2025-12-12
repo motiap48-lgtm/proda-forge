@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProductionReports, useProductionSummary } from "@/hooks/useProductionReports";
 import { useWorkCenterReports, WorkCenterReportData, WorkCenterProductItem } from "@/hooks/useWorkCenterReports";
+import { useProductOperationsReport, ProductReportItem } from "@/hooks/useProductOperationsReport";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -47,6 +48,7 @@ import { Progress } from "@/components/ui/progress";
 import { useReactToPrint } from "react-to-print";
 import { exportWorkCenterReportsToExcel, sortProductsByField } from "@/components/reports/WorkCenterReportExport";
 import { WorkCenterReportPrintView } from "@/components/reports/WorkCenterReportPrintView";
+import { ProductOperationsReport } from "@/components/reports/ProductOperationsReport";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -910,17 +912,10 @@ const ProductionReportsContent = () => {
           </TabsContent>
 
           <TabsContent value="products" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Отчет по изделиям</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Отчетность по изделиям в разработке</p>
-                </div>
-              </CardContent>
-            </Card>
+            <ProductOperationsReport 
+              startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+              endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+            />
           </TabsContent>
 
           <TabsContent value="timeline" className="space-y-6">
