@@ -16,7 +16,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Trash2, Wand2, ArrowUp, ArrowDown, Factory, Clock, 
-  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle, Sparkles, ChevronDown, Building2, Undo2
+  Truck, ClipboardCheck, Settings, Eye, Edit, GripVertical, AlertTriangle, Sparkles, ChevronDown, Building2, Undo2, Package
 } from "lucide-react";
 import {
   Tooltip,
@@ -652,6 +652,60 @@ export function RoutingSheetDialog({
                     Отменить распределение
                   </Button>
                 </div>
+              )}
+
+              {/* Distribution status indicator */}
+              {specificationMaterials.length > 0 && operations.length > 0 && (
+                (() => {
+                  const productionOpsWithMaterials = productionOps.filter(
+                    op => op.materials && op.materials.length > 0
+                  ).length;
+                  const totalProductionOps = productionOps.length;
+                  const allDistributed = !hasUnlinkedComponents;
+                  const allOpsHaveMaterials = productionOpsWithMaterials === totalProductionOps;
+                  
+                  return (
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="flex items-center gap-1.5">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Компоненты:</span>
+                        <span className={cn(
+                          "font-medium",
+                          allDistributed ? "text-green-600" : "text-amber-600"
+                        )}>
+                          {specificationMaterials.length - unlinkedMaterials.length}/{specificationMaterials.length}
+                        </span>
+                      </div>
+                      {totalProductionOps > 0 && (
+                        <>
+                          <span className="text-muted-foreground">|</span>
+                          <div className="flex items-center gap-1.5">
+                            <Factory className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Операции с компонентами:</span>
+                            <span className={cn(
+                              "font-medium",
+                              allOpsHaveMaterials ? "text-green-600" : "text-amber-600"
+                            )}>
+                              {productionOpsWithMaterials}/{totalProductionOps}
+                            </span>
+                            {!allOpsHaveMaterials && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Не все производственные операции имеют привязанные компоненты</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()
               )}
 
               <div className="space-y-4">
