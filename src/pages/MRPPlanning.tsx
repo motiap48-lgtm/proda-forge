@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Calculator, 
-  Package, 
   AlertTriangle, 
   CheckCircle2, 
   FileWarning,
@@ -15,7 +14,6 @@ import {
   ShoppingCart,
   Warehouse,
   TrendingDown,
-  TrendingUp,
   Printer,
   ListChecks,
   ChevronDown
@@ -25,7 +23,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   useMRPCalculation, 
-  usePurchaseRequisitions, 
   useSaveMRPCalculation,
   useMRPProductionOrders,
   PurchaseRequirement,
@@ -53,7 +50,6 @@ const MRPPlanning = () => {
     planningHorizon, 
     useSelectedOrders ? selectedOrderIds : undefined
   );
-  const { data: purchaseReqs } = usePurchaseRequisitions();
   const saveMutation = useSaveMRPCalculation();
 
   const purchaseRequirements = mrpResult?.purchaseRequirements || [];
@@ -381,7 +377,7 @@ const MRPPlanning = () => {
 
         {/* Results */}
         <Tabs defaultValue="purchase" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="purchase" className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4" />
               Потребность к закупке
@@ -393,10 +389,6 @@ const MRPPlanning = () => {
             <TabsTrigger value="workcenters" className="flex items-center gap-2">
               <Warehouse className="h-4 w-4" />
               Рапорты по участкам
-            </TabsTrigger>
-            <TabsTrigger value="requisitions" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Заявки на закупку
             </TabsTrigger>
           </TabsList>
 
@@ -780,65 +772,6 @@ const MRPPlanning = () => {
                 ) : (
                   <p className="text-center py-8 text-muted-foreground">
                     Нет данных. Выполните расчет MRP.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Purchase Requisitions Tab */}
-          <TabsContent value="requisitions" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Сформированные заявки на закупку</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {purchaseReqs && purchaseReqs.length > 0 ? (
-                  <>
-                    <div className="space-y-3">
-                      {purchaseReqs.map((pr: any) => (
-                        <Card key={pr.id} className="hover:border-primary transition-all cursor-pointer">
-                          <CardContent className="p-4">
-                            <div className="grid gap-4 md:grid-cols-5">
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Номер заявки</p>
-                                <p className="font-semibold text-foreground">{pr.requisition_number}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Материал</p>
-                                <p className="text-sm text-foreground">{pr.products?.code} - {pr.products?.name}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Количество</p>
-                                <p className="text-sm font-medium text-foreground">{Number(pr.quantity).toFixed(2)} {pr.products?.unit}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Требуемая дата</p>
-                                <p className="text-sm text-foreground">{format(new Date(pr.required_date), "dd.MM.yyyy")}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Статус</p>
-                                <Badge variant={pr.status === 'pending' ? 'default' : 'outline'}>
-                                  {pr.status === 'pending' ? 'Ожидает' : pr.status}
-                                </Badge>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                    <div className="mt-4 flex gap-2">
-                      <Button>
-                        Создать заказы поставщикам
-                      </Button>
-                      <Button variant="outline">
-                        Экспортировать
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-center py-8 text-muted-foreground">
-                    Заявки на закупку отсутствуют
                   </p>
                 )}
               </CardContent>
