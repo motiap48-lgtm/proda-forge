@@ -93,6 +93,9 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
 
       // Группируем по участкам
       const workCenterMap = new Map<string, WorkCenterReportData>();
+      
+      // Создаем карту: product_id -> work_center_id[] (какие участки производят этот продукт)
+      const productToWorkCenters = new Map<string, Set<string>>();
 
       // Добавляем данные из маршрутных карт (какие изделия производятся на участках)
       routingData.forEach((op: any) => {
@@ -108,6 +111,12 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
         
         // Только ПФ, СБ, ГП
         if (!["semi-finished", "assembly", "finished"].includes(product.product_type)) return;
+
+        // Запоминаем связь продукт -> участок
+        if (!productToWorkCenters.has(product.id)) {
+          productToWorkCenters.set(product.id, new Set());
+        }
+        productToWorkCenters.get(product.id)!.add(wcId);
 
         if (!workCenterMap.has(wcId)) {
           workCenterMap.set(wcId, {
@@ -145,72 +154,106 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
       });
 
       // Добавляем данные из заказов и агрегируем по продуктам
+      // Заказы распределяем на участки на основе маршрутных карт продуктов
       ordersData.forEach((order: any) => {
-        const wcId = order.work_center_id || "unassigned";
-        const wcName = order.work_centers?.name || "Без участка";
-        const wcCode = order.work_centers?.code || "-";
-        const department = order.work_centers?.department || "Без цеха";
         const productId = order.products?.id;
-
-        if (!workCenterMap.has(wcId)) {
-          workCenterMap.set(wcId, {
-            work_center_id: wcId,
-            work_center_code: wcCode,
-            work_center_name: wcName,
-            department: department,
-            items: [],
-            products: [],
-            total_planned: 0,
-            total_completed: 0,
-            total_deviation: 0,
-            completion_percent: 0,
-          });
-        }
-
-        const wcData = workCenterMap.get(wcId)!;
         const planned = Number(order.quantity);
         const completed = Number(order.completed_quantity);
-
-        // Обновляем данные продукта, если он есть
-        if (productId) {
-          let productItem = wcData.products.find(p => p.product_id === productId);
-          if (!productItem) {
-            // Если продукт не был добавлен из маршрутных карт, добавляем его
-            productItem = {
-              product_id: productId,
-              product_name: order.products?.name || "N/A",
-              product_code: order.products?.code || "N/A",
-              product_type: order.products?.product_type || "material",
-              routing_sheet_name: "",
-              routing_sheet_code: "",
-              planned_quantity: 0,
-              completed_quantity: 0,
-              deviation: 0,
-              deviation_percent: 0,
-            };
-            wcData.products.push(productItem);
-          }
-          productItem.planned_quantity += planned;
-          productItem.completed_quantity += completed;
-        }
-
         const deviation = completed - planned;
         const deviationPercent = planned > 0 ? (deviation / planned) * 100 : 0;
 
-        wcData.items.push({
-          order_number: order.order_number,
-          product_name: order.products?.name || "N/A",
-          product_code: order.products?.code || "N/A",
-          product_type: order.products?.product_type || "material",
-          planned_quantity: planned,
-          completed_quantity: completed,
-          deviation: deviation,
-          deviation_percent: deviationPercent,
-          status: order.status,
-        });
+        // Получаем участки, на которых производится этот продукт
+        const workCenterIds = productId ? productToWorkCenters.get(productId) : null;
+        
+        if (workCenterIds && workCenterIds.size > 0) {
+          // Распределяем заказ на все участки, где производится этот продукт
+          workCenterIds.forEach(wcId => {
+            const wcData = workCenterMap.get(wcId);
+            if (!wcData) return;
 
-        wcData.total_planned += planned;
-        wcData.total_completed += completed;
+            // Обновляем данные продукта
+            const productItem = wcData.products.find(p => p.product_id === productId);
+            if (productItem) {
+              productItem.planned_quantity += planned;
+              productItem.completed_quantity += completed;
+            }
+
+            wcData.items.push({
+              order_number: order.order_number,
+              product_name: order.products?.name || "N/A",
+              product_code: order.products?.code || "N/A",
+              product_type: order.products?.product_type || "material",
+              planned_quantity: planned,
+              completed_quantity: completed,
+              deviation: deviation,
+              deviation_percent: deviationPercent,
+              status: order.status,
+            });
+
+            wcData.total_planned += planned;
+            wcData.total_completed += completed;
+          });
+        } else {
+          // Если нет маршрутной карты, используем work_center_id из заказа
+          const wcId = order.work_center_id || "unassigned";
+          const wcName = order.work_centers?.name || "Без участка";
+          const wcCode = order.work_centers?.code || "-";
+          const department = order.work_centers?.department || "Без цеха";
+
+          if (!workCenterMap.has(wcId)) {
+            workCenterMap.set(wcId, {
+              work_center_id: wcId,
+              work_center_code: wcCode,
+              work_center_name: wcName,
+              department: department,
+              items: [],
+              products: [],
+              total_planned: 0,
+              total_completed: 0,
+              total_deviation: 0,
+              completion_percent: 0,
+            });
+          }
+
+          const wcData = workCenterMap.get(wcId)!;
+
+          // Добавляем продукт если его нет
+          if (productId) {
+            let productItem = wcData.products.find(p => p.product_id === productId);
+            if (!productItem) {
+              productItem = {
+                product_id: productId,
+                product_name: order.products?.name || "N/A",
+                product_code: order.products?.code || "N/A",
+                product_type: order.products?.product_type || "material",
+                routing_sheet_name: "",
+                routing_sheet_code: "",
+                planned_quantity: 0,
+                completed_quantity: 0,
+                deviation: 0,
+                deviation_percent: 0,
+              };
+              wcData.products.push(productItem);
+            }
+            productItem.planned_quantity += planned;
+            productItem.completed_quantity += completed;
+          }
+
+          wcData.items.push({
+            order_number: order.order_number,
+            product_name: order.products?.name || "N/A",
+            product_code: order.products?.code || "N/A",
+            product_type: order.products?.product_type || "material",
+            planned_quantity: planned,
+            completed_quantity: completed,
+            deviation: deviation,
+            deviation_percent: deviationPercent,
+            status: order.status,
+          });
+
+          wcData.total_planned += planned;
+          wcData.total_completed += completed;
+        }
       });
 
       // Вычисляем итоговые показатели
