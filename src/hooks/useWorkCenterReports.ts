@@ -13,12 +13,22 @@ export interface WorkCenterReportItem {
   status: string;
 }
 
+export interface WorkCenterProductItem {
+  product_id: string;
+  product_name: string;
+  product_code: string;
+  product_type: string;
+  routing_sheet_name: string;
+  routing_sheet_code: string;
+}
+
 export interface WorkCenterReportData {
   work_center_id: string;
   work_center_code: string;
   work_center_name: string;
   department: string | null;
   items: WorkCenterReportItem[];
+  products: WorkCenterProductItem[];
   total_planned: number;
   total_completed: number;
   total_deviation: number;
@@ -30,7 +40,7 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
     queryKey: ["work-center-reports", startDate, endDate],
     queryFn: async () => {
       // Получаем все производственные заказы с участками
-      let query = supabase
+      let ordersQuery = supabase
         .from("production_orders")
         .select(`
           id,
@@ -45,20 +55,88 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
         .order("planned_start_date", { ascending: false });
 
       if (startDate) {
-        query = query.gte("planned_start_date", startDate);
+        ordersQuery = ordersQuery.gte("planned_start_date", startDate);
       }
       if (endDate) {
-        query = query.lte("planned_end_date", endDate);
+        ordersQuery = ordersQuery.lte("planned_end_date", endDate);
       }
 
-      const { data, error } = await query;
+      // Получаем все маршрутные карты с операциями для определения продукции по участкам
+      const routingQuery = supabase
+        .from("routing_operations")
+        .select(`
+          id,
+          work_center_id,
+          routing_sheets:routing_sheet_id(
+            id,
+            code,
+            name,
+            is_active,
+            products:product_id(id, name, code, product_type)
+          ),
+          work_centers:work_center_id(id, code, name, department)
+        `)
+        .eq("operation_type", "production");
 
-      if (error) throw error;
+      const [ordersResult, routingResult] = await Promise.all([ordersQuery, routingQuery]);
+
+      if (ordersResult.error) throw ordersResult.error;
+      if (routingResult.error) throw routingResult.error;
+
+      const ordersData = ordersResult.data;
+      const routingData = routingResult.data;
 
       // Группируем по участкам
       const workCenterMap = new Map<string, WorkCenterReportData>();
 
-      data.forEach((order: any) => {
+      // Добавляем данные из маршрутных карт (какие изделия производятся на участках)
+      routingData.forEach((op: any) => {
+        if (!op.work_center_id || !op.routing_sheets?.is_active) return;
+        
+        const wcId = op.work_center_id;
+        const wcName = op.work_centers?.name || "Без участка";
+        const wcCode = op.work_centers?.code || "-";
+        const department = op.work_centers?.department || "Без цеха";
+        const product = op.routing_sheets?.products;
+        
+        if (!product) return;
+        
+        // Только ПФ, СБ, ГП
+        if (!["semi-finished", "assembly", "finished"].includes(product.product_type)) return;
+
+        if (!workCenterMap.has(wcId)) {
+          workCenterMap.set(wcId, {
+            work_center_id: wcId,
+            work_center_code: wcCode,
+            work_center_name: wcName,
+            department: department,
+            items: [],
+            products: [],
+            total_planned: 0,
+            total_completed: 0,
+            total_deviation: 0,
+            completion_percent: 0,
+          });
+        }
+
+        const wcData = workCenterMap.get(wcId)!;
+        
+        // Проверяем, не добавлен ли уже этот продукт
+        const existingProduct = wcData.products.find(p => p.product_id === product.id);
+        if (!existingProduct) {
+          wcData.products.push({
+            product_id: product.id,
+            product_name: product.name,
+            product_code: product.code,
+            product_type: product.product_type,
+            routing_sheet_name: op.routing_sheets.name,
+            routing_sheet_code: op.routing_sheets.code,
+          });
+        }
+      });
+
+      // Добавляем данные из заказов
+      ordersData.forEach((order: any) => {
         const wcId = order.work_center_id || "unassigned";
         const wcName = order.work_centers?.name || "Без участка";
         const wcCode = order.work_centers?.code || "-";
@@ -71,6 +149,7 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
             work_center_name: wcName,
             department: department,
             items: [],
+            products: [],
             total_planned: 0,
             total_completed: 0,
             total_deviation: 0,
@@ -107,6 +186,16 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
         wc.completion_percent = wc.total_planned > 0 
           ? (wc.total_completed / wc.total_planned) * 100 
           : 0;
+        
+        // Сортируем продукты по типу и имени
+        wc.products.sort((a, b) => {
+          const typeOrder = { finished: 0, assembly: 1, "semi-finished": 2 };
+          const typeCompare = (typeOrder[a.product_type as keyof typeof typeOrder] || 3) - 
+                             (typeOrder[b.product_type as keyof typeof typeOrder] || 3);
+          if (typeCompare !== 0) return typeCompare;
+          return a.product_name.localeCompare(b.product_name, "ru");
+        });
+        
         result.push(wc);
       });
 
