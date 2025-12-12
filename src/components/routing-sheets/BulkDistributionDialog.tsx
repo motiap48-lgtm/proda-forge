@@ -110,8 +110,8 @@ export function BulkDistributionDialog({
                 </div>
               ) : (
                 <>
-                  <ScrollArea className="max-h-[150px] border rounded-lg p-2">
-                    <div className="space-y-1">
+                  <ScrollArea className="h-[150px] border rounded-lg">
+                    <div className="space-y-1 p-2">
                       {eligibleSheets.map((sheet) => (
                         <div
                           key={sheet.id}
