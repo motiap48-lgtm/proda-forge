@@ -12,7 +12,9 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const statusConfig = {
   planned: { label: "Запланировано", variant: "secondary" as const },
+  released: { label: "Запущен", variant: "default" as const },
   in_progress: { label: "В производстве", variant: "default" as const },
+  on_hold: { label: "Приостановлен", variant: "outline" as const },
   completed: { label: "Завершено", variant: "outline" as const },
   cancelled: { label: "Отменено", variant: "destructive" as const },
 };
