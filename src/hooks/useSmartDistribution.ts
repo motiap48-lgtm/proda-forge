@@ -149,13 +149,24 @@ export function useSmartDistribution({
       const finishedGoods = unlinkedMats.filter(m => m.products?.product_type === "finished");
       const unknown = unlinkedMats.filter(m => !m.products?.product_type);
 
+      console.log("[Smart Distribution] Unlinked materials:", unlinkedMats.map(m => ({
+        name: m.products?.name,
+        code: m.products?.code,
+        type: m.products?.product_type
+      })));
+      console.log("[Smart Distribution] Categorized - raw:", rawMaterials.length, "components:", components.length, "finished:", finishedGoods.length, "unknown:", unknown.length);
+
       // Get production operations sorted by sequence
       const sortedProductionOps = [...productionOps].sort((a, b) => a.sequence - b.sequence);
+      
+      console.log("[Smart Distribution] Production ops:", sortedProductionOps.map(op => ({ name: op.name, seq: op.sequence })));
 
       const firstProductionSeq = sortedProductionOps[0].sequence;
       const lastProductionSeq = sortedProductionOps[sortedProductionOps.length - 1].sequence;
       const middleIdx = Math.floor(sortedProductionOps.length / 2);
       const middleProductionSeq = sortedProductionOps.length >= 3 ? sortedProductionOps[middleIdx].sequence : null;
+
+      console.log("[Smart Distribution] Target seqs - first:", firstProductionSeq, "middle:", middleProductionSeq, "last:", lastProductionSeq);
 
       const distributedToOperations: string[] = [];
 
