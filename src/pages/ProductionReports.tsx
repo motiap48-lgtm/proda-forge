@@ -478,7 +478,7 @@ const ProductionReportsContent = () => {
                                                   {report.work_center_name}
                                                 </CardTitle>
                                                 <CardDescription className="text-xs">
-                                                  Код: {report.work_center_code} | Заказов: {report.items.length}
+                                                  Код: {report.work_center_code} | Продукция: {report.products?.length || 0} | Заказов: {report.items.length}
                                                 </CardDescription>
                                               </div>
                                             </div>
@@ -514,49 +514,82 @@ const ProductionReportsContent = () => {
                                         </CardHeader>
                                       </CollapsibleTrigger>
                                       <CollapsibleContent>
-                                        <CardContent className="pt-3 pb-3">
-                                          <Table>
-                                            <TableHeader>
-                                              <TableRow>
-                                                <TableHead>Заказ</TableHead>
-                                                <TableHead>Изделие</TableHead>
-                                                <TableHead className="text-right">План</TableHead>
-                                                <TableHead className="text-right">Факт</TableHead>
-                                                <TableHead className="text-right">Откл.</TableHead>
-                                                <TableHead className="text-right">%</TableHead>
-                                                <TableHead>Статус</TableHead>
-                                              </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                              {report.items.map((item, idx) => (
-                                                <TableRow key={`${item.order_number}-${idx}`}>
-                                                  <TableCell className="font-medium">{item.order_number}</TableCell>
-                                                  <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                      {getProductTypeBadge(item.product_type)}
-                                                      <div>
-                                                        <p className="font-medium">{item.product_name}</p>
-                                                        <p className="text-xs text-muted-foreground">{item.product_code}</p>
-                                                      </div>
+                                        <CardContent className="pt-3 pb-3 space-y-4">
+                                          {/* Выпускаемая продукция */}
+                                          {report.products && report.products.length > 0 && (
+                                            <div>
+                                              <h4 className="text-sm font-semibold text-muted-foreground mb-2">
+                                                Выпускаемая продукция ({report.products.length})
+                                              </h4>
+                                              <div className="flex flex-wrap gap-2">
+                                                {report.products.map((product) => (
+                                                  <div 
+                                                    key={product.product_id}
+                                                    className="flex items-center gap-2 p-2 bg-muted/30 rounded-md text-sm"
+                                                  >
+                                                    {getProductTypeBadge(product.product_type)}
+                                                    <div>
+                                                      <p className="font-medium">{product.product_name}</p>
+                                                      <p className="text-xs text-muted-foreground">{product.product_code}</p>
                                                     </div>
-                                                  </TableCell>
-                                                  <TableCell className="text-right">{item.planned_quantity}</TableCell>
-                                                  <TableCell className="text-right">{item.completed_quantity}</TableCell>
-                                                  <TableCell className={`text-right ${item.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {item.deviation > 0 ? '+' : ''}{item.deviation}
-                                                  </TableCell>
-                                                  <TableCell className={`text-right ${item.deviation_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {item.deviation_percent > 0 ? '+' : ''}{item.deviation_percent.toFixed(1)}%
-                                                  </TableCell>
-                                                  <TableCell>
-                                                    <Badge variant={statusConfig[item.status as keyof typeof statusConfig]?.variant || "secondary"}>
-                                                      {statusConfig[item.status as keyof typeof statusConfig]?.label || item.status}
-                                                    </Badge>
-                                                  </TableCell>
-                                                </TableRow>
-                                              ))}
-                                            </TableBody>
-                                          </Table>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Производственные заказы */}
+                                          {report.items.length > 0 ? (
+                                            <div>
+                                              <h4 className="text-sm font-semibold text-muted-foreground mb-2">
+                                                Производственные заказы ({report.items.length})
+                                              </h4>
+                                              <Table>
+                                                <TableHeader>
+                                                  <TableRow>
+                                                    <TableHead>Заказ</TableHead>
+                                                    <TableHead>Изделие</TableHead>
+                                                    <TableHead className="text-right">План</TableHead>
+                                                    <TableHead className="text-right">Факт</TableHead>
+                                                    <TableHead className="text-right">Откл.</TableHead>
+                                                    <TableHead className="text-right">%</TableHead>
+                                                    <TableHead>Статус</TableHead>
+                                                  </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                  {report.items.map((item, idx) => (
+                                                    <TableRow key={`${item.order_number}-${idx}`}>
+                                                      <TableCell className="font-medium">{item.order_number}</TableCell>
+                                                      <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                          {getProductTypeBadge(item.product_type)}
+                                                          <div>
+                                                            <p className="font-medium">{item.product_name}</p>
+                                                            <p className="text-xs text-muted-foreground">{item.product_code}</p>
+                                                          </div>
+                                                        </div>
+                                                      </TableCell>
+                                                      <TableCell className="text-right">{item.planned_quantity}</TableCell>
+                                                      <TableCell className="text-right">{item.completed_quantity}</TableCell>
+                                                      <TableCell className={`text-right ${item.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {item.deviation > 0 ? '+' : ''}{item.deviation}
+                                                      </TableCell>
+                                                      <TableCell className={`text-right ${item.deviation_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {item.deviation_percent > 0 ? '+' : ''}{item.deviation_percent.toFixed(1)}%
+                                                      </TableCell>
+                                                      <TableCell>
+                                                        <Badge variant={statusConfig[item.status as keyof typeof statusConfig]?.variant || "secondary"}>
+                                                          {statusConfig[item.status as keyof typeof statusConfig]?.label || item.status}
+                                                        </Badge>
+                                                      </TableCell>
+                                                    </TableRow>
+                                                  ))}
+                                                </TableBody>
+                                              </Table>
+                                            </div>
+                                          ) : (
+                                            <p className="text-sm text-muted-foreground">Нет активных заказов</p>
+                                          )}
                                         </CardContent>
                                       </CollapsibleContent>
                                     </Card>
