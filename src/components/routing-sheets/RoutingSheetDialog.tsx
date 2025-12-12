@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, DragEvent, useMemo } from "react";
+import { useState, useEffect, useRef, DragEvent } from "react";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +42,7 @@ import { useActiveContractors } from "@/hooks/useContractors";
 import { toast } from "sonner";
 import { RoutingFlowDiagram } from "./RoutingFlowDiagram";
 import { OperationMaterialsSection } from "./OperationMaterialsSection";
+import { useSmartDistribution } from "@/hooks/useSmartDistribution";
 import { cn } from "@/lib/utils";
 
 type OperationType = "production" | "transport" | "control" | "setup";
@@ -371,202 +372,21 @@ export function RoutingSheetDialog({
   );
   const specificationMaterials = productSpecification?.specification_materials || [];
 
-  // Calculate linked material IDs from current operations state
-  const linkedMaterialIds = useMemo(() => {
-    const linked = new Set<string>();
-    operations.forEach(op => {
-      op.materials?.forEach(m => {
-        if (m.product_id) {
-          linked.add(m.product_id);
-        }
-      });
-    });
-    return linked;
-  }, [operations]);
-
-  // Calculate unlinked materials - depends on both linked IDs and spec materials
-  const unlinkedMaterials = specificationMaterials.filter(
-    (m: any) => !linkedMaterialIds.has(m.material_id)
-  );
-  
-  const hasUnlinkedComponents = unlinkedMaterials.length > 0 && specificationMaterials.length > 0;
+  // Use smart distribution hook
+  const {
+    linkedMaterialIds,
+    unlinkedMaterials,
+    hasUnlinkedComponents,
+    distributeToOperation,
+    distributeByProductType,
+  } = useSmartDistribution({
+    operations,
+    setOperations,
+    specificationMaterials,
+  });
 
   // Get production operations for menu
   const productionOps = operations.filter(op => op.operation_type === "production");
-
-  // Auto-distribute to specific operation (using functional update)
-  const distributeToOperation = (targetSequence: number) => {
-    setOperations(currentOperations => {
-      // Calculate which materials are already linked
-      const currentLinkedIds = new Set<string>();
-      currentOperations.forEach(op => {
-        op.materials?.forEach(m => {
-          if (m.product_id) currentLinkedIds.add(m.product_id);
-        });
-      });
-      
-      const unlinkedMats = specificationMaterials.filter(
-        (m: any) => !currentLinkedIds.has(m.material_id)
-      );
-      
-      if (unlinkedMats.length === 0) {
-        setTimeout(() => toast.info("Все компоненты уже распределены по операциям"), 0);
-        return currentOperations;
-      }
-
-      const targetOp = currentOperations.find(op => op.sequence === targetSequence);
-      
-      const updatedOperations = currentOperations.map(op => {
-        if (op.sequence === targetSequence) {
-          const existingMaterials = op.materials || [];
-          const existingIds = new Set(existingMaterials.map(m => m.product_id));
-          const newMaterials = unlinkedMats
-            .filter((m: any) => !existingIds.has(m.material_id))
-            .map((m: any) => ({
-              product_id: m.material_id,
-              quantity_per_operation: m.quantity,
-            }));
-          
-          if (newMaterials.length > 0) {
-            setTimeout(() => {
-              toast.success(`${newMaterials.length} компонент(ов) распределено на операцию "${targetOp?.name || targetSequence}"`);
-            }, 0);
-            
-            return {
-              ...op,
-              materials: [...existingMaterials, ...newMaterials],
-            };
-          }
-        }
-        return op;
-      });
-
-      return updatedOperations;
-    });
-  };
-
-  // Smart distribution by product type
-  const distributeByProductType = () => {
-    // Use functional update to get the latest state
-    setOperations(currentOperations => {
-      // Calculate which materials are already linked in the CURRENT state
-      const currentLinkedIds = new Set<string>();
-      currentOperations.forEach(op => {
-        op.materials?.forEach(m => {
-          if (m.product_id) currentLinkedIds.add(m.product_id);
-        });
-      });
-      
-      // Get unlinked materials based on current state
-      const unlinkedMats = specificationMaterials.filter(
-        (m: any) => !currentLinkedIds.has(m.material_id)
-      );
-      
-      if (unlinkedMats.length === 0) {
-        toast.info("Все компоненты уже распределены по операциям");
-        return currentOperations; // Return unchanged
-      }
-
-      const currentProductionOps = currentOperations.filter(op => op.operation_type === "production");
-      
-      if (currentProductionOps.length === 0) {
-        toast.error("Добавьте производственные операции для распределения");
-        return currentOperations; // Return unchanged
-      }
-
-      // Categorize by product type
-      const rawMaterials = unlinkedMats.filter((m: any) => m.products?.product_type === "material");
-      const components = unlinkedMats.filter((m: any) => 
-        m.products?.product_type === "semi-finished" || m.products?.product_type === "assembly"
-      );
-      const finishedGoods = unlinkedMats.filter((m: any) => m.products?.product_type === "finished");
-      const unknown = unlinkedMats.filter((m: any) => !m.products?.product_type);
-
-      // Get production operations sorted by sequence
-      const sortedProductionOps = [...currentProductionOps].sort((a, b) => a.sequence - b.sequence);
-      
-      const firstProductionSeq = sortedProductionOps[0].sequence;
-      const lastProductionSeq = sortedProductionOps[sortedProductionOps.length - 1].sequence;
-      const middleIdx = Math.floor(sortedProductionOps.length / 2);
-      const middleProductionSeq = sortedProductionOps.length >= 3 ? sortedProductionOps[middleIdx].sequence : null;
-
-      
-
-      let distributedToOperations: string[] = [];
-
-      const updatedOperations = currentOperations.map(op => {
-        let materialsToAdd: any[] = [];
-
-        // Raw materials go to first production operation
-        if (op.sequence === firstProductionSeq && op.operation_type === "production") {
-          materialsToAdd = rawMaterials.map((m: any) => ({
-            product_id: m.material_id,
-            quantity_per_operation: m.quantity,
-          }));
-        }
-
-        // Components (ПФ, СБ) go to middle operation if 3+ ops
-        if (middleProductionSeq && op.sequence === middleProductionSeq && op.operation_type === "production") {
-          const componentMaterials = components.map((m: any) => ({
-            product_id: m.material_id,
-            quantity_per_operation: m.quantity,
-          }));
-          materialsToAdd = [...materialsToAdd, ...componentMaterials];
-        }
-
-        // Last operation gets: finished goods, unknown, and components if no middle operation
-        if (op.sequence === lastProductionSeq && op.operation_type === "production") {
-          const finishedMaterials = finishedGoods.map((m: any) => ({
-            product_id: m.material_id,
-            quantity_per_operation: m.quantity,
-          }));
-          const unknownMaterials = unknown.map((m: any) => ({
-            product_id: m.material_id,
-            quantity_per_operation: m.quantity,
-          }));
-          
-          materialsToAdd = [...materialsToAdd, ...finishedMaterials, ...unknownMaterials];
-          
-          // If no middle operation (1-2 production ops), components also go to last
-          if (!middleProductionSeq) {
-            const componentMaterials = components.map((m: any) => ({
-              product_id: m.material_id,
-              quantity_per_operation: m.quantity,
-            }));
-            materialsToAdd = [...materialsToAdd, ...componentMaterials];
-          }
-        }
-
-        if (materialsToAdd.length > 0) {
-          const existingMaterials = op.materials || [];
-          const existingIds = new Set(existingMaterials.map(m => m.product_id));
-          const newMaterials = materialsToAdd.filter(m => !existingIds.has(m.product_id));
-          
-          if (newMaterials.length > 0) {
-            distributedToOperations.push(`"${op.name}" (${newMaterials.length} шт)`);
-            
-            
-            return {
-              ...op,
-              materials: [...existingMaterials, ...newMaterials],
-            };
-          }
-        }
-        return op;
-      });
-
-      // Show toast after state update is queued
-      setTimeout(() => {
-        if (distributedToOperations.length > 0) {
-          toast.success(`Распределено на: ${distributedToOperations.join(", ")}`);
-        } else {
-          toast.info("Все компоненты уже были распределены");
-        }
-      }, 0);
-
-      return updatedOperations;
-    });
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
