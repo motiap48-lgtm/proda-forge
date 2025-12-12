@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2 } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles } from "lucide-react";
 import { MaterialCategoriesManagement } from "@/components/settings/MaterialCategoriesManagement";
 import { ContractorsManagement } from "@/components/settings/ContractorsManagement";
+import { DistributionStrategySettings } from "@/components/settings/DistributionStrategySettings";
 import {
   Select,
   SelectContent,
@@ -77,6 +78,22 @@ const Settings = () => {
                   onCheckedChange={setEmailNotifications}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Distribution Strategy Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Умное распределение
+              </CardTitle>
+              <CardDescription>
+                Настройте стратегию автоматического распределения компонентов по операциям в техмаршрутах
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DistributionStrategySettings />
             </CardContent>
           </Card>
 

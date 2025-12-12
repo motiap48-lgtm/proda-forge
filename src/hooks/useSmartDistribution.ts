@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 
 interface OperationMaterial {
@@ -39,6 +39,17 @@ interface UseSmartDistributionProps {
 
 export type DistributionStrategy = "smart" | "all_operations" | "even";
 
+export interface DistributionPreviewItem {
+  operationSequence: number;
+  operationName: string;
+  materials: {
+    productId: string;
+    productCode: string;
+    productName: string;
+    quantity: number;
+  }[];
+}
+
 // Helper function to calculate linked material IDs
 function calculateLinkedIds(ops: Operation[]): Set<string> {
   const linked = new Set<string>();
@@ -57,6 +68,9 @@ export function useSmartDistribution({
   setOperations,
   specificationMaterials,
 }: UseSmartDistributionProps) {
+  // Store previous state for undo functionality
+  const previousOperationsRef = useRef<Operation[] | null>(null);
+  const canUndoRef = useRef(false);
   
   // Calculate linked material IDs from operations - memoized for display purposes
   const linkedMaterialIds = useMemo(() => {
@@ -70,10 +84,159 @@ export function useSmartDistribution({
   
   const hasUnlinkedComponents = unlinkedMaterials.length > 0 && specificationMaterials.length > 0;
 
-  // Distribute to specific operation - uses functional update to ensure fresh state
+  // Generate preview for distribution without applying it
+  const generatePreview = useCallback((strategy: DistributionStrategy): DistributionPreviewItem[] => {
+    const currentLinkedIds = calculateLinkedIds(operations);
+    const unlinkedMats = specificationMaterials.filter(m => !currentLinkedIds.has(m.material_id));
+
+    if (unlinkedMats.length === 0) {
+      return [];
+    }
+
+    const productionOps = operations.filter(op => op.operation_type === "production");
+    if (productionOps.length === 0) {
+      return [];
+    }
+
+    const sortedProductionOps = [...productionOps].sort((a, b) => a.sequence - b.sequence);
+    const previewMap = new Map<number, DistributionPreviewItem>();
+
+    // Initialize preview map
+    sortedProductionOps.forEach(op => {
+      previewMap.set(op.sequence, {
+        operationSequence: op.sequence,
+        operationName: op.name,
+        materials: [],
+      });
+    });
+
+    if (strategy === "smart") {
+      // Smart distribution logic
+      const rawMaterials = unlinkedMats.filter(m => m.products?.product_type === "material");
+      const components = unlinkedMats.filter(m => 
+        m.products?.product_type === "semi-finished" || m.products?.product_type === "assembly"
+      );
+      const finishedGoods = unlinkedMats.filter(m => m.products?.product_type === "finished");
+      const unknown = unlinkedMats.filter(m => !m.products?.product_type);
+
+      const firstSeq = sortedProductionOps[0].sequence;
+      const lastSeq = sortedProductionOps[sortedProductionOps.length - 1].sequence;
+      const middleIdx = Math.floor(sortedProductionOps.length / 2);
+      const middleSeq = sortedProductionOps.length >= 3 ? sortedProductionOps[middleIdx].sequence : null;
+
+      // Raw materials to first
+      rawMaterials.forEach(m => {
+        previewMap.get(firstSeq)?.materials.push({
+          productId: m.material_id,
+          productCode: m.products?.code || "",
+          productName: m.products?.name || "",
+          quantity: m.quantity,
+        });
+      });
+
+      // Components to middle if exists
+      if (middleSeq) {
+        components.forEach(m => {
+          previewMap.get(middleSeq)?.materials.push({
+            productId: m.material_id,
+            productCode: m.products?.code || "",
+            productName: m.products?.name || "",
+            quantity: m.quantity,
+          });
+        });
+      }
+
+      // Finished, unknown, and components (if no middle) to last
+      [...finishedGoods, ...unknown, ...(middleSeq ? [] : components)].forEach(m => {
+        previewMap.get(lastSeq)?.materials.push({
+          productId: m.material_id,
+          productCode: m.products?.code || "",
+          productName: m.products?.name || "",
+          quantity: m.quantity,
+        });
+      });
+    } else if (strategy === "all_operations") {
+      // All operations get all materials
+      unlinkedMats.forEach(m => {
+        sortedProductionOps.forEach(op => {
+          previewMap.get(op.sequence)?.materials.push({
+            productId: m.material_id,
+            productCode: m.products?.code || "",
+            productName: m.products?.name || "",
+            quantity: m.quantity,
+          });
+        });
+      });
+    } else if (strategy === "even") {
+      // Distribute evenly using round-robin
+      unlinkedMats.forEach((m, index) => {
+        const targetOpIndex = index % sortedProductionOps.length;
+        const targetSeq = sortedProductionOps[targetOpIndex].sequence;
+        previewMap.get(targetSeq)?.materials.push({
+          productId: m.material_id,
+          productCode: m.products?.code || "",
+          productName: m.products?.name || "",
+          quantity: m.quantity,
+        });
+      });
+    }
+
+    // Filter out operations with no materials
+    return Array.from(previewMap.values()).filter(item => item.materials.length > 0);
+  }, [operations, specificationMaterials]);
+
+  // Generate preview for specific operation
+  const generatePreviewForOperation = useCallback((targetSequence: number): DistributionPreviewItem[] => {
+    const currentLinkedIds = calculateLinkedIds(operations);
+    const unlinkedMats = specificationMaterials.filter(m => !currentLinkedIds.has(m.material_id));
+    
+    if (unlinkedMats.length === 0) {
+      return [];
+    }
+
+    const targetOp = operations.find(op => op.sequence === targetSequence);
+    if (!targetOp) {
+      return [];
+    }
+
+    return [{
+      operationSequence: targetSequence,
+      operationName: targetOp.name,
+      materials: unlinkedMats.map(m => ({
+        productId: m.material_id,
+        productCode: m.products?.code || "",
+        productName: m.products?.name || "",
+        quantity: m.quantity,
+      })),
+    }];
+  }, [operations, specificationMaterials]);
+
+  // Save current state before distribution
+  const saveStateForUndo = useCallback(() => {
+    previousOperationsRef.current = JSON.parse(JSON.stringify(operations));
+    canUndoRef.current = true;
+  }, [operations]);
+
+  // Undo last distribution
+  const undoDistribution = useCallback(() => {
+    if (previousOperationsRef.current && canUndoRef.current) {
+      setOperations(previousOperationsRef.current);
+      canUndoRef.current = false;
+      toast.success("Распределение отменено");
+      return true;
+    }
+    toast.info("Нет действий для отмены");
+    return false;
+  }, [setOperations]);
+
+  // Check if undo is available
+  const canUndo = useCallback(() => canUndoRef.current, []);
+
+  // Distribute to specific operation
   const distributeToOperation = useCallback((targetSequence: number) => {
+    saveStateForUndo();
+    
     setOperations(prevOperations => {
-      // Calculate linked IDs from PREVIOUS state
       const currentLinkedIds = calculateLinkedIds(prevOperations);
       
       const unlinkedMats = specificationMaterials.filter(
@@ -81,7 +244,6 @@ export function useSmartDistribution({
       );
 
       if (unlinkedMats.length === 0) {
-        // Use setTimeout to show toast outside of state update
         setTimeout(() => toast.info("Все компоненты уже распределены по операциям"), 0);
         return prevOperations;
       }
@@ -119,10 +281,12 @@ export function useSmartDistribution({
 
       return newOperations;
     });
-  }, [specificationMaterials, setOperations]);
+  }, [specificationMaterials, setOperations, saveStateForUndo]);
 
   // Strategy 1: Smart distribution by product type (materials → first, ПФ/СБ → last)
   const distributeByProductType = useCallback(() => {
+    saveStateForUndo();
+    
     setOperations(prevOperations => {
       const currentLinkedIds = calculateLinkedIds(prevOperations);
       
@@ -231,10 +395,12 @@ export function useSmartDistribution({
 
       return newOperations;
     });
-  }, [specificationMaterials, setOperations]);
+  }, [specificationMaterials, setOperations, saveStateForUndo]);
 
   // Strategy 2: Distribute all components to ALL production operations
   const distributeToAllOperations = useCallback(() => {
+    saveStateForUndo();
+    
     setOperations(prevOperations => {
       const currentLinkedIds = calculateLinkedIds(prevOperations);
       
@@ -291,10 +457,12 @@ export function useSmartDistribution({
 
       return newOperations;
     });
-  }, [specificationMaterials, setOperations]);
+  }, [specificationMaterials, setOperations, saveStateForUndo]);
 
   // Strategy 3: Distribute components evenly across production operations
   const distributeEvenly = useCallback(() => {
+    saveStateForUndo();
+    
     setOperations(prevOperations => {
       const currentLinkedIds = calculateLinkedIds(prevOperations);
       
@@ -366,7 +534,7 @@ export function useSmartDistribution({
 
       return newOperations;
     });
-  }, [specificationMaterials, setOperations]);
+  }, [specificationMaterials, setOperations, saveStateForUndo]);
 
   return {
     linkedMaterialIds,
@@ -376,5 +544,9 @@ export function useSmartDistribution({
     distributeByProductType,
     distributeToAllOperations,
     distributeEvenly,
+    generatePreview,
+    generatePreviewForOperation,
+    undoDistribution,
+    canUndo,
   };
 }
