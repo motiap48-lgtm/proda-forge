@@ -164,6 +164,14 @@ const RoutingSheets = () => {
     }).length;
   }, [sortedSheets, specifications]);
 
+  // Count sheets with linked components for badge
+  const linkedCount = useMemo(() => {
+    return sortedSheets.filter(sheet => {
+      const stats = getSheetComponentStats(sheet);
+      return stats.linkedCount > 0;
+    }).length;
+  }, [sortedSheets, specifications]);
+
   // Grouping logic
   const groupedSheets = useMemo(() => {
     if (groupingMode === 'none') return null;
@@ -1067,6 +1075,11 @@ const RoutingSheets = () => {
                     >
                       <AlertTriangle className="h-4 w-4" />
                       Неполные
+                      {incompleteCount > 0 && (
+                        <Badge variant="secondary" className="h-5 px-1.5 ml-0.5">
+                          {incompleteCount}
+                        </Badge>
+                      )}
                     </Button>
                     <Button
                       variant="outline"
@@ -1076,9 +1089,24 @@ const RoutingSheets = () => {
                     >
                       <CheckCircle2 className="h-4 w-4" />
                       С привязками
+                      {linkedCount > 0 && (
+                        <Badge variant="secondary" className="h-5 px-1.5 ml-0.5">
+                          {linkedCount}
+                        </Badge>
+                      )}
                     </Button>
                     {selectedSheetIds.size > 0 && (
                       <>
+                        <div className="h-6 w-px bg-border" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedSheetIds(new Set())}
+                          className="gap-1.5 h-9 text-muted-foreground"
+                        >
+                          <X className="h-4 w-4" />
+                          Снять выделение
+                        </Button>
                         <Button
                           variant="default"
                           size="sm"
