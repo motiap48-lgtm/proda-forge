@@ -58,26 +58,15 @@ export function useSmartDistribution({
   
   // Calculate linked material IDs from operations - memoized for display purposes
   const linkedMaterialIds = useMemo(() => {
-    const ids = calculateLinkedIds(operations);
-    console.log("[useSmartDistribution] Calculating linkedMaterialIds, operations count:", operations.length);
-    console.log("[useSmartDistribution] Operations materials:", operations.map(op => ({
-      name: op.name,
-      seq: op.sequence,
-      materialsCount: op.materials?.length || 0
-    })));
-    console.log("[useSmartDistribution] Linked IDs:", Array.from(ids));
-    return ids;
+    return calculateLinkedIds(operations);
   }, [operations]);
 
   // Calculate unlinked materials for display
   const unlinkedMaterials = useMemo(() => {
-    const unlinked = specificationMaterials.filter(m => !linkedMaterialIds.has(m.material_id));
-    console.log("[useSmartDistribution] Unlinked materials count:", unlinked.length);
-    return unlinked;
+    return specificationMaterials.filter(m => !linkedMaterialIds.has(m.material_id));
   }, [specificationMaterials, linkedMaterialIds]);
   
   const hasUnlinkedComponents = unlinkedMaterials.length > 0 && specificationMaterials.length > 0;
-  console.log("[useSmartDistribution] hasUnlinkedComponents:", hasUnlinkedComponents);
 
   // Distribute to specific operation - uses functional update to ensure fresh state
   const distributeToOperation = useCallback((targetSequence: number) => {
@@ -160,27 +149,13 @@ export function useSmartDistribution({
       const finishedGoods = unlinkedMats.filter(m => m.products?.product_type === "finished");
       const unknown = unlinkedMats.filter(m => !m.products?.product_type);
 
-      console.log("[Smart Distribution] Unlinked materials with types:", unlinkedMats.map(m => ({
-        name: m.products?.name,
-        type: m.products?.product_type
-      })));
-      console.log("[Smart Distribution] Categorized - raw:", rawMaterials.length, "components:", components.length, "finished:", finishedGoods.length, "unknown:", unknown.length);
-
       // Get production operations sorted by sequence
       const sortedProductionOps = [...productionOps].sort((a, b) => a.sequence - b.sequence);
-      
-      console.log("[Smart Distribution] Production operations:", sortedProductionOps.map(op => ({
-        name: op.name,
-        seq: op.sequence,
-        type: op.operation_type
-      })));
 
       const firstProductionSeq = sortedProductionOps[0].sequence;
       const lastProductionSeq = sortedProductionOps[sortedProductionOps.length - 1].sequence;
       const middleIdx = Math.floor(sortedProductionOps.length / 2);
       const middleProductionSeq = sortedProductionOps.length >= 3 ? sortedProductionOps[middleIdx].sequence : null;
-
-      console.log("[Smart Distribution] Target sequences - first:", firstProductionSeq, "middle:", middleProductionSeq, "last:", lastProductionSeq);
 
       const distributedToOperations: string[] = [];
 
