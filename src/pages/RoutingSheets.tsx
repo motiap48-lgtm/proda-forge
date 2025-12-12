@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers, ArrowUp, ArrowDown, GripVertical, ChevronsDown, ChevronsUp, FolderOpen, ChevronRight } from "lucide-react";
+import { Plus, Search, GitBranch, Clock, Settings, Loader2, X, Edit, Trash2, ChevronDown, Package, AlertTriangle, Copy, Printer, FileSpreadsheet, HelpCircle, CheckCircle2, ArrowRight, Wand2, Layers, ArrowUp, ArrowDown, GripVertical, ChevronsDown, ChevronsUp, FolderOpen, ChevronRight, Sparkles, History } from "lucide-react";
 import { useRoutingSheets, useCreateRoutingSheet, useUpdateRoutingSheet, useDeleteRoutingSheet, useReorderRoutingSheets } from "@/hooks/useRoutingSheets";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { RoutingSheetDialog } from "@/components/routing-sheets/RoutingSheetDialog";
@@ -15,6 +16,11 @@ import { RoutingFlowDiagram } from "@/components/routing-sheets/RoutingFlowDiagr
 import { RoutingSheetPrintView } from "@/components/routing-sheets/RoutingSheetPrintView";
 import { StandardOperationsDialog } from "@/components/routing-sheets/StandardOperationsDialog";
 import { ConsolidatedRoutingDialog } from "@/components/routing-sheets/ConsolidatedRoutingDialog";
+import { BulkDistributionDialog } from "@/components/routing-sheets/BulkDistributionDialog";
+import { DistributionHistoryDialog } from "@/components/routing-sheets/DistributionHistoryDialog";
+import { useDistributionHistory } from "@/hooks/useDistributionHistory";
+import { DistributionStrategy } from "@/hooks/useSmartDistribution";
+import { supabase } from "@/integrations/supabase/client";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -53,11 +59,22 @@ const RoutingSheets = () => {
   const [useInternalOperationOnly, setUseInternalOperationOnly] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  // Bulk selection
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedSheetIds, setSelectedSheetIds] = useState<Set<string>>(new Set());
+  const [bulkDistributionOpen, setBulkDistributionOpen] = useState(false);
+  const [bulkDistributionLoading, setBulkDistributionLoading] = useState(false);
+  // History dialog
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [historySheetId, setHistorySheetId] = useState<string | undefined>();
+  const [historySheetName, setHistorySheetName] = useState<string | undefined>();
+  
   const printRef = useRef<HTMLDivElement>(null);
   const bottomButtonRef = useRef<HTMLDivElement>(null);
   
-  const { data: routingSheets, isLoading } = useRoutingSheets();
+  const { data: routingSheets, isLoading, refetch: refetchSheets } = useRoutingSheets();
   const { data: specifications } = useSpecifications();
+  const { addHistoryRecord } = useDistributionHistory();
   const createMutation = useCreateRoutingSheet();
   const updateMutation = useUpdateRoutingSheet();
   const deleteMutation = useDeleteRoutingSheet();
@@ -536,6 +553,199 @@ const RoutingSheets = () => {
     }
   };
 
+  // Bulk selection handlers
+  const toggleSheetSelection = (sheetId: string) => {
+    setSelectedSheetIds(prev => {
+      const next = new Set(prev);
+      if (next.has(sheetId)) {
+        next.delete(sheetId);
+      } else {
+        next.add(sheetId);
+      }
+      return next;
+    });
+  };
+
+  const selectAllIncomplete = () => {
+    const incompleteIds = sortedSheets
+      .filter(sheet => {
+        const stats = getSheetComponentStats(sheet);
+        return stats.unlinkedCount > 0 && stats.totalProductionOps > 0;
+      })
+      .map(s => s.id);
+    setSelectedSheetIds(new Set(incompleteIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedSheetIds(new Set());
+    setSelectionMode(false);
+  };
+
+  const getSelectedSheetsForBulk = () => {
+    return sortedSheets
+      .filter(s => selectedSheetIds.has(s.id))
+      .map(sheet => {
+        const stats = getSheetComponentStats(sheet);
+        return {
+          id: sheet.id,
+          code: sheet.code,
+          name: sheet.name,
+          productName: sheet.products?.name,
+          unlinkedCount: stats.unlinkedCount,
+          productionOpsCount: stats.totalProductionOps,
+        };
+      });
+  };
+
+  // Bulk distribution logic
+  const handleBulkDistribution = async (strategy: DistributionStrategy): Promise<{ success: number; failed: number }> => {
+    setBulkDistributionLoading(true);
+    let successCount = 0;
+    let failedCount = 0;
+
+    const selectedSheets = sortedSheets.filter(s => selectedSheetIds.has(s.id));
+
+    for (const sheet of selectedSheets) {
+      try {
+        const stats = getSheetComponentStats(sheet);
+        if (stats.unlinkedCount === 0 || stats.totalProductionOps === 0) continue;
+
+        // Get specification materials
+        const spec = specifications?.find(
+          (s) => s.product_id === sheet.product_id && s.is_active && !s.has_no_specification
+        );
+        if (!spec?.specification_materials) continue;
+
+        const specMaterials = spec.specification_materials;
+        const operations = sheet.routing_operations || [];
+        const productionOps = operations
+          .filter((op: any) => op.operation_type === "production")
+          .sort((a: any, b: any) => a.sequence - b.sequence);
+
+        if (productionOps.length === 0) continue;
+
+        // Calculate linked IDs
+        const linkedIds = new Set<string>();
+        operations.forEach((op: any) => {
+          op.routing_operation_materials?.forEach((m: any) => {
+            linkedIds.add(m.product_id);
+          });
+        });
+
+        // Get unlinked materials
+        const unlinkedMats = specMaterials.filter((m: any) => !linkedIds.has(m.material_id));
+        if (unlinkedMats.length === 0) continue;
+
+        // Prepare distribution based on strategy
+        const materialAssignments: { operation_id: string; materials: { product_id: string; quantity: number }[] }[] = [];
+
+        if (strategy === "smart") {
+          const rawMaterials = unlinkedMats.filter((m: any) => m.products?.product_type === "material");
+          const components = unlinkedMats.filter((m: any) => 
+            m.products?.product_type === "semi-finished" || m.products?.product_type === "assembly"
+          );
+          const other = unlinkedMats.filter((m: any) => 
+            m.products?.product_type === "finished" || !m.products?.product_type
+          );
+
+          const firstOp = productionOps[0];
+          const lastOp = productionOps[productionOps.length - 1];
+          const middleOp = productionOps.length >= 3 ? productionOps[Math.floor(productionOps.length / 2)] : null;
+
+          if (rawMaterials.length > 0) {
+            materialAssignments.push({
+              operation_id: firstOp.id,
+              materials: rawMaterials.map((m: any) => ({ product_id: m.material_id, quantity: m.quantity }))
+            });
+          }
+          if (middleOp && components.length > 0) {
+            materialAssignments.push({
+              operation_id: middleOp.id,
+              materials: components.map((m: any) => ({ product_id: m.material_id, quantity: m.quantity }))
+            });
+          }
+          const lastMaterials = [...other, ...(middleOp ? [] : components)];
+          if (lastMaterials.length > 0) {
+            materialAssignments.push({
+              operation_id: lastOp.id,
+              materials: lastMaterials.map((m: any) => ({ product_id: m.material_id, quantity: m.quantity }))
+            });
+          }
+        } else if (strategy === "all_operations") {
+          productionOps.forEach((op: any) => {
+            materialAssignments.push({
+              operation_id: op.id,
+              materials: unlinkedMats.map((m: any) => ({ product_id: m.material_id, quantity: m.quantity }))
+            });
+          });
+        } else if (strategy === "even") {
+          unlinkedMats.forEach((m: any, idx: number) => {
+            const targetOp = productionOps[idx % productionOps.length];
+            let assignment = materialAssignments.find(a => a.operation_id === targetOp.id);
+            if (!assignment) {
+              assignment = { operation_id: targetOp.id, materials: [] };
+              materialAssignments.push(assignment);
+            }
+            assignment.materials.push({ product_id: m.material_id, quantity: m.quantity });
+          });
+        }
+
+        // Insert materials to DB
+        let totalMaterialsAdded = 0;
+        let operationsAffected = 0;
+        for (const assignment of materialAssignments) {
+          const materialsToInsert = assignment.materials.map(m => ({
+            routing_operation_id: assignment.operation_id,
+            product_id: m.product_id,
+            quantity_per_operation: m.quantity,
+          }));
+
+          if (materialsToInsert.length > 0) {
+            const { error } = await supabase
+              .from("routing_operation_materials")
+              .insert(materialsToInsert);
+            
+            if (!error) {
+              totalMaterialsAdded += materialsToInsert.length;
+              operationsAffected++;
+            }
+          }
+        }
+
+        // Record history
+        if (totalMaterialsAdded > 0) {
+          await addHistoryRecord.mutateAsync({
+            routing_sheet_id: sheet.id,
+            strategy: strategy,
+            components_distributed: totalMaterialsAdded,
+            operations_affected: operationsAffected,
+            notes: `Массовое распределение`,
+          });
+          successCount++;
+        }
+      } catch (error) {
+        console.error(`Failed to distribute for sheet ${sheet.id}:`, error);
+        failedCount++;
+      }
+    }
+
+    setBulkDistributionLoading(false);
+    await refetchSheets();
+    clearSelection();
+    
+    if (successCount > 0) {
+      toast.success(`Распределение завершено: ${successCount} техмаршрутов`);
+    }
+
+    return { success: successCount, failed: failedCount };
+  };
+
+  const openHistoryDialog = (sheetId?: string, sheetName?: string) => {
+    setHistorySheetId(sheetId);
+    setHistorySheetName(sheetName);
+    setHistoryDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -737,6 +947,86 @@ const RoutingSheets = () => {
                 )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Selection mode toggle */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={selectionMode ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          if (selectionMode) {
+                            clearSelection();
+                          } else {
+                            setSelectionMode(true);
+                          }
+                        }}
+                        className="gap-1.5"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Массовое
+                        {selectedSheetIds.size > 0 && (
+                          <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                            {selectedSheetIds.size}
+                          </Badge>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Массовое распределение компонентов</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                {selectionMode && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={selectAllIncomplete}
+                      className="gap-1.5"
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                      Выбрать неполные
+                    </Button>
+                    {selectedSheetIds.size > 0 && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => setBulkDistributionOpen(true)}
+                        className="gap-1.5 bg-gradient-to-r from-primary to-primary-glow"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Распределить ({selectedSheetIds.size})
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                <div className="h-6 w-px bg-border mx-1" />
+
+                {/* History button */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openHistoryDialog()}
+                        className="gap-1.5"
+                      >
+                        <History className="h-4 w-4" />
+                        История
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>История распределений компонентов</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <div className="h-6 w-px bg-border mx-1" />
+
                 {/* Incomplete filter button */}
                 <TooltipProvider>
                   <Tooltip>
@@ -872,6 +1162,13 @@ const RoutingSheets = () => {
                               <CardContent className="p-6">
                                 <div className="mb-4 flex items-start justify-between">
                                   <div className="flex items-center gap-3">
+                                    {selectionMode && (
+                                      <Checkbox
+                                        checked={selectedSheetIds.has(sheet.id)}
+                                        onCheckedChange={() => toggleSheetSelection(sheet.id)}
+                                        className="mt-1"
+                                      />
+                                    )}
                                     <div className="rounded-lg bg-primary/10 p-3">
                                       <GitBranch className="h-6 w-6 text-primary" />
                                     </div>
@@ -926,6 +1223,11 @@ const RoutingSheets = () => {
                                       }}>
                                         <Layers className="mr-2 h-4 w-4" />
                                         Сводный маршрут
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => openHistoryDialog(sheet.id, sheet.code)}>
+                                        <History className="mr-2 h-4 w-4" />
+                                        История распределений
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem 
@@ -1093,6 +1395,13 @@ const RoutingSheets = () => {
                             <span className="text-xs text-muted-foreground font-medium">{index + 1}</span>
                           </div>
                         )}
+                        {selectionMode && (
+                          <Checkbox
+                            checked={selectedSheetIds.has(sheet.id)}
+                            onCheckedChange={() => toggleSheetSelection(sheet.id)}
+                            className="mt-1"
+                          />
+                        )}
                         <div className="rounded-lg bg-primary/10 p-3">
                           <GitBranch className="h-6 w-6 text-primary" />
                         </div>
@@ -1162,6 +1471,11 @@ const RoutingSheets = () => {
                           }}>
                             <Layers className="mr-2 h-4 w-4" />
                             Сводный маршрут
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => openHistoryDialog(sheet.id, sheet.code)}>
+                            <History className="mr-2 h-4 w-4" />
+                            История распределений
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
@@ -1358,6 +1672,23 @@ const RoutingSheets = () => {
           )}
         </Button>
       )}
+
+      {/* Bulk Distribution Dialog */}
+      <BulkDistributionDialog
+        open={bulkDistributionOpen}
+        onOpenChange={setBulkDistributionOpen}
+        selectedSheets={getSelectedSheetsForBulk()}
+        onDistribute={handleBulkDistribution}
+        isLoading={bulkDistributionLoading}
+      />
+
+      {/* Distribution History Dialog */}
+      <DistributionHistoryDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        routingSheetId={historySheetId}
+        routingSheetName={historySheetName}
+      />
     </div>
   );
 };
