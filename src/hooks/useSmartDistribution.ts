@@ -58,15 +58,26 @@ export function useSmartDistribution({
   
   // Calculate linked material IDs from operations - memoized for display purposes
   const linkedMaterialIds = useMemo(() => {
-    return calculateLinkedIds(operations);
+    const ids = calculateLinkedIds(operations);
+    console.log("[useSmartDistribution] Calculating linkedMaterialIds, operations count:", operations.length);
+    console.log("[useSmartDistribution] Operations materials:", operations.map(op => ({
+      name: op.name,
+      seq: op.sequence,
+      materialsCount: op.materials?.length || 0
+    })));
+    console.log("[useSmartDistribution] Linked IDs:", Array.from(ids));
+    return ids;
   }, [operations]);
 
   // Calculate unlinked materials for display
   const unlinkedMaterials = useMemo(() => {
-    return specificationMaterials.filter(m => !linkedMaterialIds.has(m.material_id));
+    const unlinked = specificationMaterials.filter(m => !linkedMaterialIds.has(m.material_id));
+    console.log("[useSmartDistribution] Unlinked materials count:", unlinked.length);
+    return unlinked;
   }, [specificationMaterials, linkedMaterialIds]);
   
   const hasUnlinkedComponents = unlinkedMaterials.length > 0 && specificationMaterials.length > 0;
+  console.log("[useSmartDistribution] hasUnlinkedComponents:", hasUnlinkedComponents);
 
   // Distribute to specific operation - uses functional update to ensure fresh state
   const distributeToOperation = useCallback((targetSequence: number) => {
