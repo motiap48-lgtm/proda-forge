@@ -88,7 +88,7 @@ const ProductionOrderDetailsNew = () => {
   const addHistory = useAddOrderHistory();
   
   // Realtime подписка
-  useProductionOperationsRealtime(order?.id);
+  useProductionOperationsRealtime(order?.id, id);
 
   const handleHoldOrder = () => {
     if (order && user) {
