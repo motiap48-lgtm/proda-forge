@@ -12,7 +12,8 @@ import { useProductionOrder, useDeleteProductionOrder, useUpdateProductionOrder 
 import { 
   useProductionOrderOperations, 
   useProductionOrderHistory,
-  useUpdateOperationStatus 
+  useUpdateOperationStatus,
+  useAddOrderHistory
 } from "@/hooks/useProductionOrderDetails";
 import { useAuth } from "@/contexts/AuthContext";
 import { CompleteOperationDialog, OperationReportData } from "@/components/production/CompleteOperationDialog";
@@ -57,18 +58,41 @@ const ProductionOrderDetailsNew = () => {
   const updateStatus = useUpdateOperationStatus();
   const deleteOrder = useDeleteProductionOrder();
   const updateOrder = useUpdateProductionOrder();
+  const addHistory = useAddOrderHistory();
 
   const handleHoldOrder = () => {
-    if (order) {
-      updateOrder.mutate({ id: order.id, status: 'on_hold' });
+    if (order && user) {
+      updateOrder.mutate({ id: order.id, status: 'on_hold' }, {
+        onSuccess: () => {
+          addHistory.mutate({
+            production_order_id: order.id,
+            user_id: user.id,
+            change_type: 'order_paused',
+            old_value: order.status,
+            new_value: 'on_hold',
+            description: 'Заказ приостановлен',
+          });
+        }
+      });
     }
   };
 
   const handleResumeOrder = () => {
-    if (order) {
+    if (order && user) {
       // Возвращаем в производство или запущен в зависимости от прогресса
       const newStatus = order.completed_quantity > 0 ? 'in_progress' : 'released';
-      updateOrder.mutate({ id: order.id, status: newStatus });
+      updateOrder.mutate({ id: order.id, status: newStatus }, {
+        onSuccess: () => {
+          addHistory.mutate({
+            production_order_id: order.id,
+            user_id: user.id,
+            change_type: 'order_resumed',
+            old_value: 'on_hold',
+            new_value: newStatus,
+            description: 'Заказ возобновлён',
+          });
+        }
+      });
     }
   };
 
