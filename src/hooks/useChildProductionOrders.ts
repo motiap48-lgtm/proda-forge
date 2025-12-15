@@ -67,103 +67,125 @@ export const useParentProductionOrder = (orderId: string) => {
   });
 };
 
-// Helper to recursively collect component requirements from BOM
+// Helper to collect component requirements from BOM using BFS (optimized)
 async function collectComponentRequirements(
   specificationId: string,
-  quantity: number,
-  ancestorIds: Set<string> = new Set()
+  quantity: number
 ): Promise<ChildOrderData[]> {
   const requirements: ChildOrderData[] = [];
+  const processedProducts = new Set<string>();
+  
+  // Queue: [specificationId, quantity, ancestorProductIds]
+  const queue: Array<{ specId: string; qty: number; ancestors: Set<string> }> = [
+    { specId: specificationId, qty: quantity, ancestors: new Set() }
+  ];
 
-  // Get specification materials with proper join
-  const { data: materials, error } = await supabase
-    .from("specification_materials")
-    .select(`
-      material_id,
-      quantity,
-      waste_rate
-    `)
-    .eq("specification_id", specificationId);
-
-  if (error) {
-    console.error("Error fetching specification materials:", error);
-    return requirements;
-  }
-
-  if (!materials || materials.length === 0) {
-    console.log("No materials found for specification:", specificationId);
-    return requirements;
-  }
-
-  // Get product details for all materials
-  const materialIds = materials.map(m => m.material_id);
-  const { data: products, error: productsError } = await supabase
-    .from("products")
-    .select("id, name, code, product_type, unit")
-    .in("id", materialIds);
-
-  if (productsError) {
-    console.error("Error fetching products:", productsError);
-    return requirements;
-  }
-
-  const productsMap = new Map(products?.map(p => [p.id, p]) || []);
-
-  for (const material of materials) {
-    const product = productsMap.get(material.material_id);
-    if (!product) {
-      console.log("Product not found for material_id:", material.material_id);
-      continue;
-    }
-
-    // Skip materials - they don't need production orders
-    if (product.product_type === 'material') {
-      continue;
-    }
-
-    // Skip if already in ancestor path (circular reference)
-    if (ancestorIds.has(product.id)) {
-      console.log("Skipping circular reference for product:", product.name);
-      continue;
-    }
-
-    // Calculate required quantity with waste rate
-    const wasteMultiplier = 1 + (Number(material.waste_rate) || 0) / 100;
-    const requiredQty = Number(material.quantity) * quantity * wasteMultiplier;
-
-    // Find specification and routing sheet for this product
-    const { data: spec } = await supabase
-      .from("specifications")
-      .select("id")
-      .eq("product_id", product.id)
-      .eq("is_active", true)
-      .limit(1)
-      .maybeSingle();
-
-    const { data: routing } = await supabase
-      .from("routing_sheets")
-      .select("id")
-      .eq("product_id", product.id)
-      .eq("is_active", true)
-      .limit(1)
-      .maybeSingle();
-
-    requirements.push({
-      product_id: product.id,
-      product_name: product.name,
-      product_code: product.code,
-      product_type: product.product_type,
-      quantity: requiredQty,
-      specification_id: spec?.id || null,
-      routing_sheet_id: routing?.id || null,
+  while (queue.length > 0) {
+    // Process all items at current level in parallel
+    const currentBatch = queue.splice(0, queue.length);
+    
+    // Fetch all specification materials for this batch in parallel
+    const materialsPromises = currentBatch.map(item =>
+      supabase
+        .from("specification_materials")
+        .select("material_id, quantity, waste_rate")
+        .eq("specification_id", item.specId)
+        .then(res => ({ ...item, materials: res.data || [] }))
+    );
+    
+    const batchResults = await Promise.all(materialsPromises);
+    
+    // Collect all unique product IDs from this batch
+    const allProductIds = new Set<string>();
+    batchResults.forEach(result => {
+      result.materials.forEach(m => allProductIds.add(m.material_id));
     });
-
-    // Recursively get requirements for this component if it has a specification
-    if (spec?.id) {
-      const newAncestorIds = new Set(ancestorIds);
-      newAncestorIds.add(product.id);
-      const childReqs = await collectComponentRequirements(spec.id, requiredQty, newAncestorIds);
-      requirements.push(...childReqs);
+    
+    if (allProductIds.size === 0) continue;
+    
+    // Fetch all products in one query
+    const { data: products } = await supabase
+      .from("products")
+      .select("id, name, code, product_type, unit")
+      .in("id", Array.from(allProductIds));
+    
+    const productsMap = new Map(products?.map(p => [p.id, p]) || []);
+    
+    // Get non-material product IDs for spec/routing lookup
+    const nonMaterialProductIds = Array.from(allProductIds).filter(id => {
+      const product = productsMap.get(id);
+      return product && product.product_type !== 'material';
+    });
+    
+    // Fetch all specifications and routing sheets in parallel
+    const [specsResult, routingsResult] = await Promise.all([
+      nonMaterialProductIds.length > 0
+        ? supabase
+            .from("specifications")
+            .select("id, product_id")
+            .in("product_id", nonMaterialProductIds)
+            .eq("is_active", true)
+        : Promise.resolve({ data: [] }),
+      nonMaterialProductIds.length > 0
+        ? supabase
+            .from("routing_sheets")
+            .select("id, product_id")
+            .in("product_id", nonMaterialProductIds)
+            .eq("is_active", true)
+        : Promise.resolve({ data: [] }),
+    ]);
+    
+    const specsMap = new Map<string, string>();
+    specsResult.data?.forEach(s => {
+      if (!specsMap.has(s.product_id)) specsMap.set(s.product_id, s.id);
+    });
+    
+    const routingsMap = new Map<string, string>();
+    routingsResult.data?.forEach(r => {
+      if (!routingsMap.has(r.product_id)) routingsMap.set(r.product_id, r.id);
+    });
+    
+    // Process each batch item
+    for (const result of batchResults) {
+      for (const material of result.materials) {
+        const product = productsMap.get(material.material_id);
+        if (!product) continue;
+        
+        // Skip materials - they don't need production orders
+        if (product.product_type === 'material') continue;
+        
+        // Skip if already in ancestor path (circular reference)
+        if (result.ancestors.has(product.id)) continue;
+        
+        // Calculate required quantity with waste rate
+        const wasteMultiplier = 1 + (Number(material.waste_rate) || 0) / 100;
+        const requiredQty = Number(material.quantity) * result.qty * wasteMultiplier;
+        
+        const specId = specsMap.get(product.id) || null;
+        const routingId = routingsMap.get(product.id) || null;
+        
+        // Add to requirements if not already processed
+        if (!processedProducts.has(product.id)) {
+          requirements.push({
+            product_id: product.id,
+            product_name: product.name,
+            product_code: product.code,
+            product_type: product.product_type,
+            quantity: requiredQty,
+            specification_id: specId,
+            routing_sheet_id: routingId,
+          });
+        }
+        
+        // Queue for next level if has specification
+        if (specId && !processedProducts.has(product.id)) {
+          const newAncestors = new Set(result.ancestors);
+          newAncestors.add(product.id);
+          queue.push({ specId, qty: requiredQty, ancestors: newAncestors });
+        }
+        
+        processedProducts.add(product.id);
+      }
     }
   }
 
