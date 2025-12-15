@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Sparkles } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useProductionOrder, useUpdateProductionOrder } from "@/hooks/useProductionOrders";
 import { useProducts } from "@/hooks/useProducts";
 import { useSpecifications } from "@/hooks/useSpecifications";
@@ -62,16 +63,23 @@ const EditProductionOrder = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [autoLoaded, setAutoLoaded] = useState({ specification: false, routing: false });
 
   useEffect(() => {
     if (order && specifications && routingSheets) {
+      let specAutoLoaded = false;
+      let routingAutoLoaded = false;
+
       // Если в заказе нет спецификации, попробуем найти для продукта
       let specId = order.specification_id || "";
       if (!specId && order.product_id) {
         const matchingSpec = specifications.find(
           (spec) => spec.product_id === order.product_id && spec.is_active
         );
-        specId = matchingSpec?.id || "";
+        if (matchingSpec) {
+          specId = matchingSpec.id;
+          specAutoLoaded = true;
+        }
       }
 
       // Если в заказе нет техмаршрута, попробуем найти для продукта
@@ -80,8 +88,13 @@ const EditProductionOrder = () => {
         const matchingRouting = routingSheets.find(
           (sheet) => sheet.product_id === order.product_id && sheet.is_active
         );
-        routingId = matchingRouting?.id || "";
+        if (matchingRouting) {
+          routingId = matchingRouting.id;
+          routingAutoLoaded = true;
+        }
       }
+
+      setAutoLoaded({ specification: specAutoLoaded, routing: routingAutoLoaded });
 
       setFormData({
         product_id: order.product_id || "",
@@ -316,12 +329,30 @@ const EditProductionOrder = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="specification_id">Спецификация</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="specification_id">Спецификация</Label>
+                      {autoLoaded.specification && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                <Sparkles className="h-3 w-3" />
+                                авто
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Автоматически подгружено для продукта</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                     <Select
                       value={formData.specification_id}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, specification_id: value })
-                      }
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, specification_id: value });
+                        setAutoLoaded((prev) => ({ ...prev, specification: false }));
+                      }}
                     >
                       <SelectTrigger id="specification_id">
                         <SelectValue placeholder="Выберите спецификацию" />
@@ -337,12 +368,30 @@ const EditProductionOrder = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="routing_sheet_id">Техмаршрут</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="routing_sheet_id">Техмаршрут</Label>
+                      {autoLoaded.routing && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                <Sparkles className="h-3 w-3" />
+                                авто
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Автоматически подгружено для продукта</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                     <Select
                       value={formData.routing_sheet_id}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, routing_sheet_id: value })
-                      }
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, routing_sheet_id: value });
+                        setAutoLoaded((prev) => ({ ...prev, routing: false }));
+                      }}
                     >
                       <SelectTrigger id="routing_sheet_id">
                         <SelectValue placeholder="Выберите техмаршрут" />
