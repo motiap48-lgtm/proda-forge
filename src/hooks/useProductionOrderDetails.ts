@@ -84,9 +84,10 @@ export const useUpdateOperationStatus = () => {
         .eq("id", id)
         .single();
 
+      // Важно: получаем актуальное количество заказа для проверки завершения
       const { data: productionOrder } = await supabase
         .from("production_orders")
-        .select("quantity, order_number")
+        .select("quantity, order_number, completed_quantity")
         .eq("id", currentOp?.production_order_id)
         .single();
 
