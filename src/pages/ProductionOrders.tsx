@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Filter, Download, Loader2, GitBranch, ArrowUp, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import * as XLSX from "xlsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,7 +57,10 @@ const ProductionOrdersContent = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilter>("all");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDeleteSelectedDialog, setShowDeleteSelectedDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const { data: orders, isLoading } = useProductionOrders();
 
   // Count orders by hierarchy type
@@ -102,26 +107,94 @@ const ProductionOrdersContent = () => {
     return orders?.some(o => o.parent_order_id === orderId);
   };
 
+  const toggleOrderSelection = (orderId: string) => {
+    const newSelected = new Set(selectedOrders);
+    if (newSelected.has(orderId)) {
+      newSelected.delete(orderId);
+    } else {
+      newSelected.add(orderId);
+    }
+    setSelectedOrders(newSelected);
+  };
+
+  const selectAllFiltered = () => {
+    const newSelected = new Set(filteredOrders.map(o => o.id));
+    setSelectedOrders(newSelected);
+  };
+
+  const deselectAll = () => {
+    setSelectedOrders(new Set());
+  };
+
+  const toggleSelectionMode = () => {
+    if (selectionMode) {
+      setSelectedOrders(new Set());
+    }
+    setSelectionMode(!selectionMode);
+  };
+
+  const deleteOrdersByIds = async (orderIds: string[]) => {
+    // Delete related data for these orders
+    for (const orderId of orderIds) {
+      await supabase.from("production_order_operations").delete().eq("production_order_id", orderId);
+      await supabase.from("production_order_history").delete().eq("production_order_id", orderId);
+      await supabase.from("material_reservations").delete().eq("production_order_id", orderId);
+      
+      // Get material issues for this order
+      const { data: issues } = await supabase
+        .from("material_issues")
+        .select("id")
+        .eq("production_order_id", orderId);
+      
+      if (issues) {
+        for (const issue of issues) {
+          await supabase.from("material_issue_lines").delete().eq("material_issue_id", issue.id);
+        }
+      }
+      await supabase.from("material_issues").delete().eq("production_order_id", orderId);
+    }
+    
+    // Delete the orders themselves
+    const { error } = await supabase
+      .from("production_orders")
+      .delete()
+      .in("id", orderIds);
+    
+    if (error) throw error;
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedOrders.size === 0) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteOrdersByIds(Array.from(selectedOrders));
+      
+      await queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      toast.success(`Удалено ${selectedOrders.size} заказов`);
+      setSelectedOrders(new Set());
+      setSelectionMode(false);
+    } catch (error: any) {
+      console.error("Error deleting orders:", error);
+      toast.error("Ошибка при удалении заказов: " + error.message);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteSelectedDialog(false);
+    }
+  };
+
   const handleDeleteAll = async () => {
     if (!orders || orders.length === 0) return;
     
     setIsDeleting(true);
     try {
       // Delete in correct order: first related data, then orders
-      // Delete all operations
       await supabase.from("production_order_operations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      
-      // Delete all history
       await supabase.from("production_order_history").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      
-      // Delete all material reservations for production orders
       await supabase.from("material_reservations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      
-      // Delete all material issues
       await supabase.from("material_issue_lines").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       await supabase.from("material_issues").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       
-      // Delete all production orders
       const { error } = await supabase.from("production_orders").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       
       if (error) throw error;
@@ -135,6 +208,47 @@ const ProductionOrdersContent = () => {
       setIsDeleting(false);
       setShowDeleteDialog(false);
     }
+  };
+
+  const handleExportToExcel = () => {
+    if (!filteredOrders || filteredOrders.length === 0) {
+      toast.error("Нет данных для экспорта");
+      return;
+    }
+
+    const parentIds = new Set(orders?.filter(o => o.parent_order_id).map(o => o.parent_order_id) || []);
+
+    const exportData = filteredOrders.map(order => ({
+      "Номер заказа": order.order_number,
+      "Продукт": order.products?.name || "N/A",
+      "Код продукта": order.products?.code || "N/A",
+      "Спецификация": order.specifications?.code || "N/A",
+      "Количество план": order.quantity,
+      "Количество факт": order.completed_quantity,
+      "Прогресс %": ((order.completed_quantity / order.quantity) * 100).toFixed(1),
+      "Статус": statusConfig[order.status as keyof typeof statusConfig]?.label || order.status,
+      "Приоритет": priorityConfig[order.priority as keyof typeof priorityConfig]?.label || order.priority,
+      "Дата начала план": new Date(order.planned_start_date).toLocaleDateString(),
+      "Дата окончания план": new Date(order.planned_end_date).toLocaleDateString(),
+      "Дата начала факт": order.actual_start_date ? new Date(order.actual_start_date).toLocaleDateString() : "",
+      "Дата окончания факт": order.actual_end_date ? new Date(order.actual_end_date).toLocaleDateString() : "",
+      "Производственный участок": order.work_centers?.name || "N/A",
+      "Ответственный": order.responsible_person || "Не назначен",
+      "Тип": order.parent_order_id ? "Дочерний" : parentIds.has(order.id) ? "Родительский" : "Одиночный",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Производственные заказы");
+    
+    // Auto-width columns
+    const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+      wch: Math.max(key.length, ...exportData.map(row => String(row[key as keyof typeof row] || "").length)) + 2
+    }));
+    ws["!cols"] = colWidths;
+
+    XLSX.writeFile(wb, `Производственные_заказы_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success("Экспорт завершён");
   };
 
   if (isLoading) {
@@ -161,21 +275,42 @@ const ProductionOrdersContent = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Производственные заказы</h1>
             <p className="text-sm sm:text-base text-muted-foreground">Управление и контроль производственных заказов</p>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {orders && orders.length > 0 && (
-              <Button
-                variant="destructive"
-                size="default"
-                className="w-full sm:w-auto"
-                onClick={() => setShowDeleteDialog(true)}
-              >
-                <Trash2 className="mr-2 h-5 w-5" />
-                Удалить все
-              </Button>
+              <>
+                <Button
+                  variant={selectionMode ? "default" : "outline"}
+                  size="default"
+                  onClick={toggleSelectionMode}
+                >
+                  {selectionMode ? <CheckSquare className="mr-2 h-5 w-5" /> : <Square className="mr-2 h-5 w-5" />}
+                  {selectionMode ? "Отмена" : "Выбор"}
+                </Button>
+                {selectionMode && selectedOrders.size > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="default"
+                    onClick={() => setShowDeleteSelectedDialog(true)}
+                  >
+                    <Trash2 className="mr-2 h-5 w-5" />
+                    Удалить ({selectedOrders.size})
+                  </Button>
+                )}
+                {!selectionMode && (
+                  <Button
+                    variant="destructive"
+                    size="default"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="mr-2 h-5 w-5" />
+                    Удалить все
+                  </Button>
+                )}
+              </>
             )}
             <Button
               size="default"
-              className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl w-full sm:w-auto"
+              className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
               onClick={() => navigate("/production-orders/new")}
             >
               <Plus className="mr-2 h-5 w-5" />
@@ -183,6 +318,23 @@ const ProductionOrdersContent = () => {
             </Button>
           </div>
         </div>
+
+        {/* Selection Controls */}
+        {selectionMode && (
+          <Card className="mb-4">
+            <CardContent className="p-4 flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Выбрано: {selectedOrders.size} из {filteredOrders.length}
+              </span>
+              <Button variant="outline" size="sm" onClick={selectAllFiltered}>
+                Выбрать все
+              </Button>
+              <Button variant="outline" size="sm" onClick={deselectAll}>
+                Снять выбор
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filters */}
         <Card className="mb-4 sm:mb-6">
@@ -255,9 +407,9 @@ const ProductionOrdersContent = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline" size="sm">
-                  <Download className="mr-2 h-4 w-4" />
-                  Экспорт
+                <Button variant="outline" size="sm" onClick={handleExportToExcel}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Экспорт в Excel
                 </Button>
               </div>
             </div>
@@ -268,82 +420,103 @@ const ProductionOrdersContent = () => {
         <div className="space-y-3 sm:space-y-4">
           {filteredOrders.map((order) => {
             const progress = (order.completed_quantity / order.quantity) * 100;
+            const isSelected = selectedOrders.has(order.id);
+            
             return (
               <Card
                 key={order.id}
-                className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
-                onClick={() => navigate(`/production-orders/${order.order_number}`)}
+                className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${
+                  isSelected ? "border-primary bg-primary/5" : ""
+                }`}
+                onClick={() => {
+                  if (selectionMode) {
+                    toggleOrderSelection(order.id);
+                  } else {
+                    navigate(`/production-orders/${order.order_number}`);
+                  }
+                }}
               >
                 <CardContent className="p-4 sm:p-6">
-                  <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                    {/* Order Info */}
-                    <div className="min-w-0">
-                      <div className="mb-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                        <h3 className="font-semibold text-foreground text-sm sm:text-base">{order.order_number}</h3>
-                        <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
-                          {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
-                        </Badge>
-                        <Badge variant={priorityConfig[order.priority as keyof typeof priorityConfig]?.variant || "secondary"} className="text-xs">
-                          {priorityConfig[order.priority as keyof typeof priorityConfig]?.label || order.priority}
-                        </Badge>
-                        {order.parent_order_id && (
-                          <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                            <GitBranch className="h-3 w-3 mr-1" />
-                            Дочерний
+                  <div className="flex gap-4">
+                    {selectionMode && (
+                      <div className="flex items-start pt-1">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleOrderSelection(order.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                      {/* Order Info */}
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                          <h3 className="font-semibold text-foreground text-sm sm:text-base">{order.order_number}</h3>
+                          <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                            {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
                           </Badge>
-                        )}
-                        {isParentOrder(order.id) && (
-                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                            <ArrowUp className="h-3 w-3 mr-1" />
-                            Родительский
+                          <Badge variant={priorityConfig[order.priority as keyof typeof priorityConfig]?.variant || "secondary"} className="text-xs">
+                            {priorityConfig[order.priority as keyof typeof priorityConfig]?.label || order.priority}
                           </Badge>
+                          {order.parent_order_id && (
+                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                              <GitBranch className="h-3 w-3 mr-1" />
+                              Дочерний
+                            </Badge>
+                          )}
+                          {isParentOrder(order.id) && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                              <ArrowUp className="h-3 w-3 mr-1" />
+                              Родительский
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-foreground truncate">{order.products?.name || "N/A"}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          Спецификация: {order.specifications?.code || "N/A"}
+                        </p>
+                      </div>
+
+                      {/* Production Info */}
+                      <div>
+                        <p className="mb-1 text-xs text-muted-foreground">Производство</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {order.completed_quantity} / {order.quantity} шт
+                        </p>
+                        {order.status === "in_progress" && (
+                          <div className="mt-2">
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                              <div
+                                className="h-full bg-gradient-to-r from-primary to-primary-glow transition-all"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">{progress.toFixed(0)}%</p>
+                          </div>
                         )}
                       </div>
-                      <p className="text-sm font-medium text-foreground truncate">{order.products?.name || "N/A"}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        Спецификация: {order.specifications?.code || "N/A"}
-                      </p>
-                    </div>
 
-                    {/* Production Info */}
-                    <div>
-                      <p className="mb-1 text-xs text-muted-foreground">Производство</p>
-                      <p className="text-sm font-medium text-foreground">
-                        {order.completed_quantity} / {order.quantity} шт
-                      </p>
-                      {order.status === "in_progress" && (
-                        <div className="mt-2">
-                          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                            <div
-                              className="h-full bg-gradient-to-r from-primary to-primary-glow transition-all"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                          <p className="mt-1 text-xs text-muted-foreground">{progress.toFixed(0)}%</p>
-                        </div>
-                      )}
-                    </div>
+                      {/* Dates */}
+                      <div>
+                        <p className="mb-1 text-xs text-muted-foreground">Сроки</p>
+                        <p className="text-sm text-foreground">
+                          Начало: {new Date(order.planned_start_date).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-foreground">
+                          Окончание: {new Date(order.planned_end_date).toLocaleDateString()}
+                        </p>
+                      </div>
 
-                    {/* Dates */}
-                    <div>
-                      <p className="mb-1 text-xs text-muted-foreground">Сроки</p>
-                      <p className="text-sm text-foreground">
-                        Начало: {new Date(order.planned_start_date).toLocaleDateString()}
-                      </p>
-                      <p className="text-sm text-foreground">
-                        Окончание: {new Date(order.planned_end_date).toLocaleDateString()}
-                      </p>
-                    </div>
-
-                    {/* Responsible */}
-                    <div>
-                      <p className="mb-1 text-xs text-muted-foreground">Исполнение</p>
-                      <p className="text-sm font-medium text-foreground">
-                        {order.work_centers?.name || "N/A"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {order.responsible_person || "Не назначен"}
-                      </p>
+                      {/* Responsible */}
+                      <div>
+                        <p className="mb-1 text-xs text-muted-foreground">Исполнение</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {order.work_centers?.name || "N/A"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {order.responsible_person || "Не назначен"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -387,6 +560,39 @@ const ProductionOrdersContent = () => {
                   <>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Удалить все
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Selected Confirmation Dialog */}
+        <AlertDialog open={showDeleteSelectedDialog} onOpenChange={setShowDeleteSelectedDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить выбранные заказы?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Вы уверены, что хотите удалить {selectedOrders.size} выбранных заказов? 
+                Это действие необратимо и удалит также все связанные данные.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteSelected}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Удаление...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Удалить ({selectedOrders.size})
                   </>
                 )}
               </AlertDialogAction>
