@@ -13,6 +13,10 @@ interface BaseRequirement {
   unit: string;
   product_type: ProductType;
   gross_requirement: number;
+  // Потребность от изменений плана (увеличение плана)
+  plan_increase_requirement: number;
+  // Уменьшение потребности (уменьшение плана)
+  plan_decrease_amount: number;
   on_hand: number;
   reserved: number;
   available: number;
@@ -261,6 +265,22 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
       const purchaseReqs = new Map<string, PurchaseRequirement>();
       const productionReqs = new Map<string, ProductionRequirement>();
       const ordersWithoutSpec: OrderWithoutSpec[] = [];
+      
+      // Отслеживание изменений плана (для каждого заказа отдельно)
+      const planChanges = new Map<string, { orderNumber: string; planDelta: number; productId: string }>();
+      
+      orders?.forEach(order => {
+        const originalQty = order.original_quantity ?? order.quantity;
+        const currentQty = order.quantity;
+        const planDelta = currentQty - originalQty;
+        if (planDelta !== 0) {
+          planChanges.set(order.id, {
+            orderNumber: order.order_number,
+            planDelta,
+            productId: order.product_id
+          });
+        }
+      });
 
       // Рекурсивная функция разузловки
       const explodeBOM = (
@@ -271,7 +291,8 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
         unit: string,
         requiredQty: number,
         sourceOrder: string,
-        ancestorPath: Set<string> = new Set() // Путь от корня для предотвращения циклов
+        ancestorPath: Set<string> = new Set(), // Путь от корня для предотвращения циклов
+        isPlanChange: 'increase' | 'decrease' | null = null // Флаг изменения плана
       ) => {
         // Защита от циклических ссылок (A -> B -> A)
         if (ancestorPath.has(productId)) {
@@ -292,6 +313,8 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
               unit: unit,
               product_type: 'material',
               gross_requirement: 0,
+              plan_increase_requirement: 0,
+              plan_decrease_amount: 0,
               on_hand: inv?.on_hand || 0,
               reserved: inv?.reserved || 0,
               available: inv?.available || 0,
@@ -300,6 +323,13 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
             });
           }
           const req = purchaseReqs.get(productId)!;
+          
+          // Учитываем изменения плана
+          if (isPlanChange === 'increase') {
+            req.plan_increase_requirement += requiredQty;
+          } else if (isPlanChange === 'decrease') {
+            req.plan_decrease_amount += requiredQty;
+          }
           req.gross_requirement += requiredQty;
           return;
         }
@@ -315,6 +345,8 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
             unit: unit,
             product_type: productType as 'semi-finished' | 'assembly' | 'finished',
             gross_requirement: 0,
+            plan_increase_requirement: 0,
+            plan_decrease_amount: 0,
             on_hand: inv?.on_hand || 0,
             reserved: inv?.reserved || 0,
             available: inv?.available || 0,
@@ -327,6 +359,13 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
           });
         }
         const prodReq = productionReqs.get(productId)!;
+        
+        // Учитываем изменения плана
+        if (isPlanChange === 'increase') {
+          prodReq.plan_increase_requirement += requiredQty;
+        } else if (isPlanChange === 'decrease') {
+          prodReq.plan_decrease_amount += requiredQty;
+        }
         prodReq.gross_requirement += requiredQty;
         if (!prodReq.source_orders.includes(sourceOrder)) {
           prodReq.source_orders.push(sourceOrder);
@@ -348,7 +387,8 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
               material.unit,
               materialQty,
               sourceOrder,
-              newAncestorPath
+              newAncestorPath,
+              isPlanChange // Передаём флаг изменения плана дальше по иерархии
             );
           });
         }
@@ -370,20 +410,111 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
           });
         }
 
-        // Запускаем разузловку от готовой продукции
-        const remainingQty = order.quantity - order.completed_quantity;
+        // Рассчитываем изменение плана
+        const originalQty = order.original_quantity ?? order.quantity;
+        const currentQty = order.quantity;
+        const planDelta = currentQty - originalQty;
+        
+        // Оставшееся количество к производству
+        const remainingQty = currentQty - order.completed_quantity;
+        
         if (remainingQty > 0) {
-          explodeBOM(
-            order.product_id,
-            product.code,
-            product.name,
-            product.product_type,
-            product.unit,
-            remainingQty,
-            order.order_number,
-            new Set()
-          );
+          // Если план увеличился, разузловываем отдельно для изменений
+          if (planDelta > 0) {
+            // Базовая потребность (по оригинальному плану минус выполнено)
+            const baseRemaining = Math.max(0, originalQty - order.completed_quantity);
+            // Дополнительная потребность от увеличения плана
+            const additionalRemaining = Math.min(planDelta, remainingQty);
+            
+            if (baseRemaining > 0) {
+              explodeBOM(
+                order.product_id,
+                product.code,
+                product.name,
+                product.product_type,
+                product.unit,
+                baseRemaining,
+                order.order_number,
+                new Set(),
+                null // Базовая потребность
+              );
+            }
+            
+            if (additionalRemaining > 0) {
+              explodeBOM(
+                order.product_id,
+                product.code,
+                product.name,
+                product.product_type,
+                product.unit,
+                additionalRemaining,
+                order.order_number,
+                new Set(),
+                'increase' // Потребность от увеличения плана
+              );
+            }
+          } else if (planDelta < 0) {
+            // Если план уменьшился - просто разузловываем оставшееся
+            // но помечаем уменьшение для информирования
+            explodeBOM(
+              order.product_id,
+              product.code,
+              product.name,
+              product.product_type,
+              product.unit,
+              remainingQty,
+              order.order_number,
+              new Set(),
+              null
+            );
+            
+            // Регистрируем уменьшение потребности (количество которое убрали)
+            // Это информационное значение - сколько бы потребовалось, если бы план не уменьшили
+            const decreaseAmount = Math.abs(planDelta);
+            if (decreaseAmount > 0 && spec && spec.materials.length > 0) {
+              spec.materials.forEach(material => {
+                const materialQty = material.quantity * (1 + material.waste_rate / 100) * decreaseAmount;
+                // Рекурсивно помечаем уменьшение
+                explodeBOM(
+                  material.product_id,
+                  material.product_code,
+                  material.product_name,
+                  material.product_type,
+                  material.unit,
+                  materialQty,
+                  order.order_number,
+                  new Set([order.product_id]),
+                  'decrease'
+                );
+              });
+            }
+          } else {
+            // План не менялся - стандартная разузловка
+            explodeBOM(
+              order.product_id,
+              product.code,
+              product.name,
+              product.product_type,
+              product.unit,
+              remainingQty,
+              order.order_number,
+              new Set(),
+              null
+            );
+          }
         }
+      });
+      
+      // Корректируем gross_requirement: вычитаем plan_decrease_amount (уменьшение уже учтено выше)
+      // plan_decrease_amount - это информационное поле о том, сколько убрали из потребности
+      purchaseReqs.forEach(req => {
+        // gross_requirement уже корректный (содержит только фактическую потребность)
+        // plan_decrease_amount показывает сколько сэкономили благодаря уменьшению плана
+      });
+      
+      productionReqs.forEach(req => {
+        // gross_requirement уже корректный (содержит только фактическую потребность)
+        // plan_decrease_amount показывает сколько сэкономили благодаря уменьшению плана
       });
 
       // Рассчитываем чистую потребность и статусы для закупок

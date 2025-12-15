@@ -490,7 +490,7 @@ const MRPPlanning = () => {
                       .map((item) => (
                       <Card key={item.product_id} className="border-l-4 border-l-green-500">
                         <CardContent className="p-4">
-                          <div className="grid gap-4 md:grid-cols-7">
+                          <div className="grid gap-4 md:grid-cols-8">
                             <div className="md:col-span-2">
                               <div className="flex items-center gap-2 mb-1">
                                 {getProductTypeBadge(item.product_type)}
@@ -504,6 +504,19 @@ const MRPPlanning = () => {
                               <p className="text-sm font-medium text-foreground">
                                 {item.gross_requirement.toFixed(2)} {item.unit}
                               </p>
+                              {/* Показываем изменения плана */}
+                              {item.plan_increase_requirement > 0 && (
+                                <p className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
+                                  <ChevronsUp className="h-3 w-3" />
+                                  +{item.plan_increase_requirement.toFixed(2)}
+                                </p>
+                              )}
+                              {item.plan_decrease_amount > 0 && (
+                                <p className="text-xs text-green-600 flex items-center gap-1 mt-0.5">
+                                  <ChevronsDown className="h-3 w-3" />
+                                  -{item.plan_decrease_amount.toFixed(2)}
+                                </p>
+                              )}
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">На складе</p>
@@ -528,6 +541,27 @@ const MRPPlanning = () => {
                               <p className={`text-sm font-bold ${item.net_requirement > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                 {item.net_requirement.toFixed(2)} {item.unit}
                               </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Δ плана</p>
+                              {item.plan_increase_requirement > 0 || item.plan_decrease_amount > 0 ? (
+                                <div>
+                                  {item.plan_increase_requirement > 0 && (
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                                      <ChevronsUp className="h-3 w-3 mr-1" />
+                                      +{item.plan_increase_requirement.toFixed(2)}
+                                    </Badge>
+                                  )}
+                                  {item.plan_decrease_amount > 0 && (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                                      <ChevronsDown className="h-3 w-3 mr-1" />
+                                      -{item.plan_decrease_amount.toFixed(2)}
+                                    </Badge>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">—</p>
+                              )}
                             </div>
                           </div>
                         </CardContent>
@@ -582,7 +616,7 @@ const MRPPlanning = () => {
                     {productionRequirements.map((item) => (
                       <Card key={item.product_id} className="border-l-4 border-l-blue-500">
                         <CardContent className="p-4">
-                          <div className="grid gap-4 md:grid-cols-7">
+                          <div className="grid gap-4 md:grid-cols-8">
                             <div className="md:col-span-2">
                               <div className="flex items-center gap-2 mb-1">
                                 {getProductTypeBadge(item.product_type)}
@@ -601,6 +635,18 @@ const MRPPlanning = () => {
                               <p className="text-sm font-medium text-foreground">
                                 {item.gross_requirement.toFixed(2)} {item.unit}
                               </p>
+                              {item.plan_increase_requirement > 0 && (
+                                <p className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
+                                  <ChevronsUp className="h-3 w-3" />
+                                  +{item.plan_increase_requirement.toFixed(2)}
+                                </p>
+                              )}
+                              {item.plan_decrease_amount > 0 && (
+                                <p className="text-xs text-green-600 flex items-center gap-1 mt-0.5">
+                                  <ChevronsDown className="h-3 w-3" />
+                                  -{item.plan_decrease_amount.toFixed(2)}
+                                </p>
+                              )}
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">На складе</p>
@@ -625,6 +671,27 @@ const MRPPlanning = () => {
                               <p className={`text-sm font-bold ${item.net_requirement > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                 {item.net_requirement.toFixed(2)} {item.unit}
                               </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Δ плана</p>
+                              {item.plan_increase_requirement > 0 || item.plan_decrease_amount > 0 ? (
+                                <div>
+                                  {item.plan_increase_requirement > 0 && (
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                                      <ChevronsUp className="h-3 w-3 mr-1" />
+                                      +{item.plan_increase_requirement.toFixed(2)}
+                                    </Badge>
+                                  )}
+                                  {item.plan_decrease_amount > 0 && (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                                      <ChevronsDown className="h-3 w-3 mr-1" />
+                                      -{item.plan_decrease_amount.toFixed(2)}
+                                    </Badge>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">—</p>
+                              )}
                             </div>
                           </div>
                           {item.source_orders && item.source_orders.length > 0 && (
