@@ -12,6 +12,54 @@ export interface ChildOrderData {
   routing_sheet_id: string | null;
 }
 
+export interface AnalysisProgress {
+  currentLevel: number;
+  totalLevels: number;
+  processedProducts: number;
+  status: 'analyzing' | 'complete';
+}
+
+// Cache for specification analysis results (key: specificationId, value: {data, timestamp})
+const specAnalysisCache = new Map<string, { 
+  data: ChildOrderData[]; 
+  timestamp: number;
+  baseQuantity: number;
+}>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
+
+function getCacheKey(specificationId: string): string {
+  return specificationId;
+}
+
+function getCachedResult(specificationId: string, quantity: number): ChildOrderData[] | null {
+  const key = getCacheKey(specificationId);
+  const cached = specAnalysisCache.get(key);
+  
+  if (!cached) return null;
+  
+  // Check if cache is still valid
+  if (Date.now() - cached.timestamp > CACHE_TTL) {
+    specAnalysisCache.delete(key);
+    return null;
+  }
+  
+  // Scale quantities based on requested quantity vs cached base quantity
+  const ratio = quantity / cached.baseQuantity;
+  return cached.data.map(item => ({
+    ...item,
+    quantity: item.quantity * ratio
+  }));
+}
+
+function setCachedResult(specificationId: string, data: ChildOrderData[], baseQuantity: number): void {
+  const key = getCacheKey(specificationId);
+  specAnalysisCache.set(key, {
+    data: data.map(item => ({ ...item })), // Clone data
+    timestamp: Date.now(),
+    baseQuantity
+  });
+}
+
 // Fetch child orders for a parent order
 export const useChildProductionOrders = (parentOrderId: string) => {
   return useQuery({
@@ -70,7 +118,8 @@ export const useParentProductionOrder = (orderId: string) => {
 // Helper to collect component requirements from BOM using BFS (optimized)
 async function collectComponentRequirements(
   specificationId: string,
-  quantity: number
+  quantity: number,
+  onProgress?: (progress: AnalysisProgress) => void
 ): Promise<ChildOrderData[]> {
   const requirements: ChildOrderData[] = [];
   const processedProducts = new Set<string>();
@@ -80,7 +129,19 @@ async function collectComponentRequirements(
     { specId: specificationId, qty: quantity, ancestors: new Set() }
   ];
 
+  let currentLevel = 0;
+
   while (queue.length > 0) {
+    currentLevel++;
+    
+    // Report progress
+    onProgress?.({
+      currentLevel,
+      totalLevels: currentLevel, // We don't know total in advance
+      processedProducts: processedProducts.size,
+      status: 'analyzing'
+    });
+    
     // Process all items at current level in parallel
     const currentBatch = queue.splice(0, queue.length);
     
@@ -188,6 +249,14 @@ async function collectComponentRequirements(
       }
     }
   }
+
+  // Final progress update
+  onProgress?.({
+    currentLevel,
+    totalLevels: currentLevel,
+    processedProducts: processedProducts.size,
+    status: 'complete'
+  });
 
   return requirements;
 }
@@ -367,21 +436,57 @@ export const useUpdateChildOrdersQuantity = () => {
   });
 };
 
-// Preview what child orders would be created
+// Preview what child orders would be created (with caching and progress)
 export const usePreviewChildOrders = () => {
   return useMutation({
     mutationFn: async ({
       specificationId,
       quantity,
+      onProgress,
     }: {
       specificationId: string;
       quantity: number;
+      onProgress?: (progress: AnalysisProgress) => void;
     }) => {
-      const requirements = await collectComponentRequirements(specificationId, quantity);
+      // Check cache first
+      const cached = getCachedResult(specificationId, quantity);
+      if (cached) {
+        onProgress?.({
+          currentLevel: 0,
+          totalLevels: 0,
+          processedProducts: cached.length,
+          status: 'complete'
+        });
+        
+        // Aggregate cached results
+        const aggregated = new Map<string, ChildOrderData>();
+        cached.forEach(req => {
+          if (aggregated.has(req.product_id)) {
+            const existing = aggregated.get(req.product_id)!;
+            existing.quantity += req.quantity;
+          } else {
+            aggregated.set(req.product_id, { ...req });
+          }
+        });
+        return Array.from(aggregated.values());
+      }
+      
+      // Use base quantity of 1 for caching, then scale
+      const baseQuantity = 1;
+      const requirements = await collectComponentRequirements(specificationId, baseQuantity, onProgress);
+      
+      // Cache the base result
+      setCachedResult(specificationId, requirements, baseQuantity);
+      
+      // Scale quantities
+      const scaledRequirements = requirements.map(req => ({
+        ...req,
+        quantity: req.quantity * quantity
+      }));
 
       // Aggregate
       const aggregated = new Map<string, ChildOrderData>();
-      requirements.forEach(req => {
+      scaledRequirements.forEach(req => {
         if (aggregated.has(req.product_id)) {
           const existing = aggregated.get(req.product_id)!;
           existing.quantity += req.quantity;
@@ -393,4 +498,13 @@ export const usePreviewChildOrders = () => {
       return Array.from(aggregated.values());
     },
   });
+};
+
+// Clear cache for a specific specification (call when spec is modified)
+export const clearSpecAnalysisCache = (specificationId?: string) => {
+  if (specificationId) {
+    specAnalysisCache.delete(getCacheKey(specificationId));
+  } else {
+    specAnalysisCache.clear();
+  }
 };
