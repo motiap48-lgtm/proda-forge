@@ -1,14 +1,21 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Filter, Download, Loader2 } from "lucide-react";
+import { Plus, Search, Filter, Download, Loader2, GitBranch, ArrowUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 const statusConfig = {
   planned: { label: "Запланировано", variant: "secondary" as const },
@@ -26,20 +33,58 @@ const priorityConfig = {
   urgent: { label: "Срочный", variant: "destructive" as const },
 };
 
+type HierarchyFilter = "all" | "parent" | "child" | "standalone";
+
 const ProductionOrdersContent = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilter>("all");
   const { data: orders, isLoading } = useProductionOrders();
 
-  const filteredOrders = (orders || []).filter((order) => {
-    const productName = order.products?.name || "";
-    const matchesSearch =
-      order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      productName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // Count orders by hierarchy type
+  const hierarchyCounts = useMemo(() => {
+    if (!orders) return { parent: 0, child: 0, standalone: 0 };
+    
+    const parentIds = new Set(orders.filter(o => o.parent_order_id).map(o => o.parent_order_id));
+    
+    return {
+      parent: orders.filter(o => parentIds.has(o.id)).length,
+      child: orders.filter(o => o.parent_order_id).length,
+      standalone: orders.filter(o => !o.parent_order_id && !parentIds.has(o.id)).length,
+    };
+  }, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    if (!orders) return [];
+    
+    const parentIds = new Set(orders.filter(o => o.parent_order_id).map(o => o.parent_order_id));
+    
+    return orders.filter((order) => {
+      const productName = order.products?.name || "";
+      const matchesSearch =
+        order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        productName.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+      
+      // Hierarchy filter
+      let matchesHierarchy = true;
+      if (hierarchyFilter === "parent") {
+        matchesHierarchy = parentIds.has(order.id);
+      } else if (hierarchyFilter === "child") {
+        matchesHierarchy = !!order.parent_order_id;
+      } else if (hierarchyFilter === "standalone") {
+        matchesHierarchy = !order.parent_order_id && !parentIds.has(order.id);
+      }
+      
+      return matchesSearch && matchesStatus && matchesHierarchy;
+    });
+  }, [orders, searchQuery, statusFilter, hierarchyFilter]);
+
+  // Helper to check if an order is a parent
+  const isParentOrder = (orderId: string) => {
+    return orders?.some(o => o.parent_order_id === orderId);
+  };
 
   if (isLoading) {
     return (
@@ -119,10 +164,33 @@ const ProductionOrdersContent = () => {
                 </Button>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Фильтры
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant={hierarchyFilter !== "all" ? "default" : "outline"} size="sm">
+                      <GitBranch className="mr-2 h-4 w-4" />
+                      {hierarchyFilter === "all" ? "Иерархия" : 
+                       hierarchyFilter === "parent" ? "Родительские" :
+                       hierarchyFilter === "child" ? "Дочерние" : "Одиночные"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setHierarchyFilter("all")}>
+                      Все заказы
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setHierarchyFilter("parent")}>
+                      <ArrowUp className="mr-2 h-4 w-4" />
+                      Родительские ({hierarchyCounts.parent})
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setHierarchyFilter("child")}>
+                      <GitBranch className="mr-2 h-4 w-4" />
+                      Дочерние ({hierarchyCounts.child})
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setHierarchyFilter("standalone")}>
+                      Одиночные ({hierarchyCounts.standalone})
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="outline" size="sm">
                   <Download className="mr-2 h-4 w-4" />
                   Экспорт
@@ -154,6 +222,18 @@ const ProductionOrdersContent = () => {
                         <Badge variant={priorityConfig[order.priority as keyof typeof priorityConfig]?.variant || "secondary"}>
                           {priorityConfig[order.priority as keyof typeof priorityConfig]?.label || order.priority}
                         </Badge>
+                        {order.parent_order_id && (
+                          <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                            <GitBranch className="h-3 w-3 mr-1" />
+                            Дочерний
+                          </Badge>
+                        )}
+                        {isParentOrder(order.id) && (
+                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                            <ArrowUp className="h-3 w-3 mr-1" />
+                            Родительский
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm font-medium text-foreground">{order.products?.name || "N/A"}</p>
                       <p className="text-xs text-muted-foreground">

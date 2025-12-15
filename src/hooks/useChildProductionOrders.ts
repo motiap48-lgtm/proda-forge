@@ -45,7 +45,7 @@ export const useParentProductionOrder = (orderId: string) => {
         .from("production_orders")
         .select("parent_order_id")
         .eq("id", orderId)
-        .single();
+        .maybeSingle();
 
       if (orderError) throw orderError;
       if (!order?.parent_order_id) return null;
@@ -58,7 +58,7 @@ export const useParentProductionOrder = (orderId: string) => {
           products:product_id(name, code, product_type, unit)
         `)
         .eq("id", order.parent_order_id)
-        .single();
+        .maybeSingle();
 
       if (parentError) throw parentError;
       return parentOrder;
@@ -102,14 +102,14 @@ async function collectComponentRequirements(
     const wasteMultiplier = 1 + (material.waste_rate || 0) / 100;
     const requiredQty = material.quantity * quantity * wasteMultiplier;
 
-    // Find specification and routing sheet for this product
+  // Find specification and routing sheet for this product
     const { data: spec } = await supabase
       .from("specifications")
       .select("id")
       .eq("product_id", product.id)
       .eq("is_active", true)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     const { data: routing } = await supabase
       .from("routing_sheets")
@@ -117,7 +117,7 @@ async function collectComponentRequirements(
       .eq("product_id", product.id)
       .eq("is_active", true)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     requirements.push({
       product_id: product.id,

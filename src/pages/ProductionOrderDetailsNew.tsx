@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle, Package, Lock, Layers } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle, Package, Lock, Layers, GitBranch } from "lucide-react";
+import { OrderHierarchyCard } from "@/components/production/OrderHierarchyCard";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
@@ -341,6 +342,11 @@ const ProductionOrderDetailsNew = () => {
               <p className="text-xl font-bold text-foreground">{order.work_centers?.name || "Не указан"}</p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Order Hierarchy */}
+        <div className="mb-6">
+          <OrderHierarchyCard orderId={order.id} />
         </div>
 
         <Tabs defaultValue="operations" className="space-y-6">
