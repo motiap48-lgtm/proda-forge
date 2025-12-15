@@ -476,34 +476,56 @@ const ProductionOrderDetailsNew = () => {
           </TabsContent>
         </Tabs>
 
-        {selectedOperation && (
-          <CompleteOperationDialog
-            open={completeDialogOpen}
-            onOpenChange={setCompleteDialogOpen}
-            onConfirm={(reportData: OperationReportData) => {
-              updateStatus.mutate(
-                {
-                  id: selectedOperation.id,
-                  status: "completed",
-                  reportData,
-                  userId: user?.id,
-                },
-                {
-                  onSuccess: () => {
-                    setCompleteDialogOpen(false);
-                    setSelectedOperation(null);
+        {selectedOperation && (() => {
+          // Найти предыдущую операцию (по sequence)
+          const prevOperation = operations?.find(
+            (op) => op.sequence === selectedOperation.sequence - 1
+          );
+          
+          // Максимум для текущей операции = мин(план - уже выполнено, выполнено на пред.операции - уже выполнено на текущей)
+          const remainingForPlan = order.quantity - Number(selectedOperation.completed_quantity);
+          
+          let maxFromPrevious = remainingForPlan;
+          if (prevOperation) {
+            // Можем выпустить не больше, чем выпущено на предыдущей операции минус уже выполнено на текущей
+            maxFromPrevious = Number(prevOperation.completed_quantity) - Number(selectedOperation.completed_quantity);
+          }
+          
+          const effectiveMaxQuantity = Math.max(0, Math.min(remainingForPlan, maxFromPrevious));
+          const isBlockedByPrevious = prevOperation && maxFromPrevious <= 0;
+
+          return (
+            <CompleteOperationDialog
+              open={completeDialogOpen}
+              onOpenChange={setCompleteDialogOpen}
+              onConfirm={(reportData: OperationReportData) => {
+                updateStatus.mutate(
+                  {
+                    id: selectedOperation.id,
+                    status: "completed",
+                    reportData,
+                    userId: user?.id,
                   },
-                }
-              );
-            }}
-            maxQuantity={order.quantity - Number(selectedOperation.completed_quantity)}
-            operationName={selectedOperation.routing_operations?.name || ""}
-            workCenterName={selectedOperation.routing_operations?.work_centers?.name}
-            plannedSetupTime={selectedOperation.routing_operations?.setup_time_minutes}
-            plannedCycleTime={Number(selectedOperation.routing_operations?.cycle_time_minutes)}
-            isLoading={updateStatus.isPending}
-          />
-        )}
+                  {
+                    onSuccess: () => {
+                      setCompleteDialogOpen(false);
+                      setSelectedOperation(null);
+                    },
+                  }
+                );
+              }}
+              maxQuantity={effectiveMaxQuantity}
+              operationName={selectedOperation.routing_operations?.name || ""}
+              workCenterName={selectedOperation.routing_operations?.work_centers?.name}
+              plannedSetupTime={selectedOperation.routing_operations?.setup_time_minutes}
+              plannedCycleTime={Number(selectedOperation.routing_operations?.cycle_time_minutes)}
+              isLoading={updateStatus.isPending}
+              blockedByPrevious={isBlockedByPrevious}
+              previousOperationName={prevOperation?.routing_operations?.name}
+              previousCompleted={prevOperation ? Number(prevOperation.completed_quantity) : undefined}
+            />
+          );
+        })()}
 
         {/* Диалог приостановки */}
         <Dialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>

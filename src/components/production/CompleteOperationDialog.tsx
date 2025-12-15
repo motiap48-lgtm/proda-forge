@@ -25,6 +25,9 @@ interface CompleteOperationDialogProps {
   plannedSetupTime?: number;
   plannedCycleTime?: number;
   isLoading?: boolean;
+  blockedByPrevious?: boolean;
+  previousOperationName?: string;
+  previousCompleted?: number;
 }
 
 export const CompleteOperationDialog = ({
@@ -37,6 +40,9 @@ export const CompleteOperationDialog = ({
   plannedSetupTime,
   plannedCycleTime,
   isLoading = false,
+  blockedByPrevious = false,
+  previousOperationName,
+  previousCompleted,
 }: CompleteOperationDialogProps) => {
   const [quantity, setQuantity] = useState(maxQuantity.toString());
   const [defectQuantity, setDefectQuantity] = useState("0");
@@ -94,6 +100,18 @@ export const CompleteOperationDialog = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {blockedByPrevious && (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-destructive">Невозможно зарегистрировать выработку</p>
+                <p className="text-muted-foreground mt-1">
+                  На предыдущей операции «{previousOperationName}» выпущено {previousCompleted} шт., 
+                  что не превышает уже выполненное на текущей операции. Сначала завершите предыдущую операцию.
+                </p>
+              </div>
+            </div>
+          )}
           {/* Количество */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -205,7 +223,7 @@ export const CompleteOperationDialog = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Отмена
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || blockedByPrevious || maxQuantity <= 0}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {!isLoading && <CheckCircle className="mr-2 h-4 w-4" />}
               Зарегистрировать
