@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export const useProductionOperationsRealtime = (orderId?: string) => {
+export const useProductionOperationsRealtime = (orderId?: string, orderNumber?: string) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -23,6 +23,11 @@ export const useProductionOperationsRealtime = (orderId?: string) => {
         (payload) => {
           console.log("Realtime operation update:", payload);
           queryClient.invalidateQueries({ queryKey: ["production-order-operations", orderId] });
+          // Также инвалидируем заказ, так как статус может измениться
+          if (orderNumber) {
+            queryClient.invalidateQueries({ queryKey: ["production-order", orderNumber] });
+          }
+          queryClient.invalidateQueries({ queryKey: ["production-orders"] });
         }
       )
       .on(
@@ -35,7 +40,9 @@ export const useProductionOperationsRealtime = (orderId?: string) => {
         },
         (payload) => {
           console.log("Realtime order update:", payload);
-          queryClient.invalidateQueries({ queryKey: ["production-order", orderId] });
+          if (orderNumber) {
+            queryClient.invalidateQueries({ queryKey: ["production-order", orderNumber] });
+          }
           queryClient.invalidateQueries({ queryKey: ["production-orders"] });
         }
       )
@@ -60,5 +67,5 @@ export const useProductionOperationsRealtime = (orderId?: string) => {
       console.log("Removing realtime subscription for order:", orderId);
       supabase.removeChannel(channel);
     };
-  }, [orderId, queryClient]);
+  }, [orderId, orderNumber, queryClient]);
 };
