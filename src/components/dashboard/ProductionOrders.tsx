@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 
@@ -30,7 +30,8 @@ export const ProductionOrders = () => {
     );
   }
 
-  const activeOrders = orders?.filter(o => o.status !== 'completed' && o.status !== 'cancelled').slice(0, 4) || [];
+  const activeOrders = orders?.filter(o => o.status !== 'completed' && o.status !== 'cancelled').slice(0, 10) || [];
+  const totalActiveOrders = orders?.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length || 0;
 
   return (
     <Card>
@@ -87,6 +88,18 @@ export const ProductionOrders = () => {
           })}
         </div>
       </CardContent>
+      {totalActiveOrders > 10 && (
+        <CardFooter className="pt-0">
+          <Button 
+            variant="ghost" 
+            className="w-full text-muted-foreground hover:text-foreground"
+            onClick={() => navigate("/production-orders")}
+          >
+            Показать все заказы ({totalActiveOrders})
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 };
