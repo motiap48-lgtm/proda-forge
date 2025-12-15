@@ -256,7 +256,7 @@ const ProductionOrderDetailsNew = () => {
                   variant="outline"
                   onClick={() => setPauseDialogOpen(true)}
                   disabled={updateOrder.isPending}
-                  className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                  className="border-amber-500 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
                 >
                   <Pause className="mr-2 h-4 w-4" />
                   Приостановить
