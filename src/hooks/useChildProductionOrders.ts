@@ -253,6 +253,69 @@ export const useCreateChildOrders = () => {
   });
 };
 
+// Update existing child orders when parent quantity increases
+export const useUpdateChildOrdersQuantity = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      parentOrderId,
+      specificationId,
+      oldQuantity,
+      newQuantity,
+    }: {
+      parentOrderId: string;
+      specificationId: string;
+      oldQuantity: number;
+      newQuantity: number;
+    }) => {
+      if (newQuantity <= oldQuantity) {
+        return { updated: 0 };
+      }
+
+      // Get existing child orders
+      const { data: existingChildOrders } = await supabase
+        .from("production_orders")
+        .select("id, product_id, quantity")
+        .eq("parent_order_id", parentOrderId);
+
+      if (!existingChildOrders || existingChildOrders.length === 0) {
+        return { updated: 0, noChildren: true };
+      }
+
+      // Calculate the multiplier for quantity increase
+      const multiplier = newQuantity / oldQuantity;
+
+      let updatedCount = 0;
+
+      for (const childOrder of existingChildOrders) {
+        const newChildQuantity = Math.ceil(Number(childOrder.quantity) * multiplier);
+        
+        const { error } = await supabase
+          .from("production_orders")
+          .update({ quantity: newChildQuantity })
+          .eq("id", childOrder.id);
+
+        if (!error) {
+          updatedCount++;
+        }
+      }
+
+      return { updated: updatedCount };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["child-production-orders"] });
+      if (result.updated > 0) {
+        toast.success(`Обновлено количество в ${result.updated} дочерних заказах`);
+      }
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка при обновлении дочерних заказов: " + error.message);
+    },
+  });
+};
+
 // Preview what child orders would be created
 export const usePreviewChildOrders = () => {
   return useMutation({

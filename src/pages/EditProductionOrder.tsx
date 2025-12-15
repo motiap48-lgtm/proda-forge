@@ -22,6 +22,7 @@ import { useSpecifications } from "@/hooks/useSpecifications";
 import { useWorkCenters } from "@/hooks/useWorkCenters";
 import { useRoutingSheets } from "@/hooks/useRoutingSheets";
 import { useAddOrderHistory } from "@/hooks/useProductionOrderDetails";
+import { useChildProductionOrders, useUpdateChildOrdersQuantity } from "@/hooks/useChildProductionOrders";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -48,6 +49,10 @@ const EditProductionOrder = () => {
   const { data: routingSheets } = useRoutingSheets();
   const updateOrder = useUpdateProductionOrder();
   const addHistory = useAddOrderHistory();
+  const updateChildOrdersQuantity = useUpdateChildOrdersQuantity();
+  
+  // Fetch child orders for this order
+  const { data: childOrders } = useChildProductionOrders(order?.id || "");
 
   const [formData, setFormData] = useState({
     product_id: "",
@@ -209,6 +214,16 @@ const EditProductionOrder = () => {
           new_value: newQuantity.toString(),
           description: `Изменение плана: ${oldQuantity} → ${newQuantity} (${diffStr})`,
         });
+
+        // Автоматически обновляем дочерние заказы при увеличении количества
+        if (newQuantity > oldQuantity && childOrders && childOrders.length > 0 && formData.specification_id) {
+          await updateChildOrdersQuantity.mutateAsync({
+            parentOrderId: order.id,
+            specificationId: formData.specification_id,
+            oldQuantity,
+            newQuantity,
+          });
+        }
       }
 
       // Инвалидируем кэш для обновления данных на странице деталей
@@ -216,6 +231,7 @@ const EditProductionOrder = () => {
       await queryClient.invalidateQueries({ queryKey: ["production-order-operations", order?.id] });
       await queryClient.invalidateQueries({ queryKey: ["production-order-history", order?.id] });
       await queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      await queryClient.invalidateQueries({ queryKey: ["child-production-orders", order?.id] });
 
       toast.success("Заказ успешно обновлен");
       navigate(`/production-orders/${order?.order_number}`);
