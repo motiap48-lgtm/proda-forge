@@ -6,8 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle, Package } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useProductionOrder, useDeleteProductionOrder, useUpdateProductionOrder } from "@/hooks/useProductionOrders";
 import { 
   useProductionOrderOperations, 
@@ -43,6 +53,15 @@ const operationStatusConfig = {
   in_progress: { label: "Выполняется", variant: "default" as const },
   completed: { label: "Завершено", variant: "outline" as const },
 };
+const historyTypeConfig: Record<string, { label: string; color: string }> = {
+  order_created: { label: "Создание заказа", color: "bg-green-500" },
+  order_paused: { label: "Приостановка", color: "bg-amber-500" },
+  order_resumed: { label: "Возобновление", color: "bg-green-500" },
+  status_changed: { label: "Изменение статуса", color: "bg-blue-500" },
+  operation_started: { label: "Начало операции", color: "bg-blue-500" },
+  output_registered: { label: "Регистрация выработки", color: "bg-purple-500" },
+  quantity_changed: { label: "Изменение количества", color: "bg-orange-500" },
+};
 
 const ProductionOrderDetailsNew = () => {
   const { id } = useParams();
@@ -51,6 +70,8 @@ const ProductionOrderDetailsNew = () => {
   
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [selectedOperation, setSelectedOperation] = useState<any>(null);
+  const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
+  const [pauseReason, setPauseReason] = useState("");
   
   const { data: order, isLoading } = useProductionOrder(id || "");
   const { data: operations } = useProductionOrderOperations(order?.id || "");
@@ -62,6 +83,7 @@ const ProductionOrderDetailsNew = () => {
 
   const handleHoldOrder = () => {
     if (order && user) {
+      const reason = pauseReason.trim();
       updateOrder.mutate({ id: order.id, status: 'on_hold' }, {
         onSuccess: () => {
           addHistory.mutate({
@@ -70,8 +92,10 @@ const ProductionOrderDetailsNew = () => {
             change_type: 'order_paused',
             old_value: order.status,
             new_value: 'on_hold',
-            description: 'Заказ приостановлен',
+            description: reason ? `Заказ приостановлен: ${reason}` : 'Заказ приостановлен',
           });
+          setPauseDialogOpen(false);
+          setPauseReason("");
         }
       });
     }
@@ -169,7 +193,7 @@ const ProductionOrderDetailsNew = () => {
               ) : (order.status === 'in_progress' || order.status === 'released') && (
                 <Button
                   variant="outline"
-                  onClick={handleHoldOrder}
+                  onClick={() => setPauseDialogOpen(true)}
                   disabled={updateOrder.isPending}
                   className="border-amber-500 text-amber-600 hover:bg-amber-50"
                 >
@@ -399,20 +423,32 @@ const ProductionOrderDetailsNew = () => {
               <CardContent>
                 {history && history.length > 0 ? (
                   <div className="space-y-4">
-                    {history.map((entry) => (
-                      <div key={entry.id} className="flex gap-4 border-l-2 border-primary/20 pl-4">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">
-                            {entry.description || entry.change_type}
-                          </p>
-                          <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
-                            <span>{new Date(entry.created_at).toLocaleString()}</span>
-                            <span>•</span>
-                            <span>{entry.profiles?.full_name}</span>
+                    {history.map((entry) => {
+                      const typeConfig = historyTypeConfig[entry.change_type] || { 
+                        label: entry.change_type, 
+                        color: "bg-gray-500" 
+                      };
+                      return (
+                        <div key={entry.id} className="flex gap-4 border-l-2 border-primary/20 pl-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`inline-block w-2 h-2 rounded-full ${typeConfig.color}`} />
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {typeConfig.label}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-foreground">
+                              {entry.description || entry.change_type}
+                            </p>
+                            <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
+                              <span>{new Date(entry.created_at).toLocaleString()}</span>
+                              <span>•</span>
+                              <span>{entry.profiles?.full_name}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-muted-foreground text-center py-8">История изменений пуста</p>
@@ -450,6 +486,41 @@ const ProductionOrderDetailsNew = () => {
             isLoading={updateStatus.isPending}
           />
         )}
+
+        {/* Диалог приостановки */}
+        <Dialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Приостановка заказа</DialogTitle>
+              <DialogDescription>
+                Укажите причину приостановки заказа (необязательно)
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Label htmlFor="pause-reason">Причина приостановки</Label>
+              <Textarea
+                id="pause-reason"
+                value={pauseReason}
+                onChange={(e) => setPauseReason(e.target.value)}
+                placeholder="Например: ожидание материалов, переналадка оборудования..."
+                className="mt-2"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPauseDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button 
+                onClick={handleHoldOrder}
+                disabled={updateOrder.isPending}
+                className="bg-amber-500 hover:bg-amber-600"
+              >
+                <Pause className="mr-2 h-4 w-4" />
+                Приостановить
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
