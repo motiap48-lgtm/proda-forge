@@ -66,7 +66,7 @@ export const Navigation = () => {
   return (
     <nav className="border-b bg-card">
       <div className="container">
-        <div className="flex h-14 items-center space-x-1 overflow-x-auto">
+        <div className="flex h-12 sm:h-14 items-center gap-1 overflow-x-auto scrollbar-hide">
           {navigationItems.map((item) => {
             const Icon = item.icon;
             
@@ -76,14 +76,14 @@ export const Navigation = () => {
                 <DropdownMenu key={item.name}>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                      className={`flex items-center gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                         isActive
                           ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
                       <Icon className="h-4 w-4" />
-                      {item.name}
+                      <span className="hidden xs:inline">{item.name}</span>
                       <ChevronDown className="h-3 w-3" />
                     </button>
                   </DropdownMenuTrigger>
@@ -112,28 +112,28 @@ export const Navigation = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                {item.name}
+                <span className="hidden xs:inline">{item.name}</span>
               </Link>
             );
           })}
           {hasRole('admin') && (
             <Link
               to="/user-management"
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 location.pathname === "/user-management"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <Users className="h-4 w-4" />
-              Пользователи
+              <span className="hidden xs:inline">Пользователи</span>
             </Link>
           )}
         </div>

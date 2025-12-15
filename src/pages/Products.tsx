@@ -160,13 +160,13 @@ const Products = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <Navigation />
-      <main className="container py-6 space-y-6">
-        <div className="flex items-center justify-between">
+      <main className="container py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Номенклатура</h1>
-            <p className="text-muted-foreground">Управление продукцией и материалами</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Номенклатура</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Управление продукцией и материалами</p>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setDialogOpen(true)} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Добавить продукт
           </Button>
@@ -361,16 +361,16 @@ const Products = () => {
         </div>
 
         <Tabs defaultValue="all" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="all">Все ({filteredProducts?.length || 0})</TabsTrigger>
-            <TabsTrigger value="materials">Материалы ({materials.length})</TabsTrigger>
-            <TabsTrigger value="semi-finished">Полуфабрикаты ({semiFinished.length})</TabsTrigger>
-            <TabsTrigger value="assembly">Сборочные узлы ({assemblies.length})</TabsTrigger>
-            <TabsTrigger value="finished">Готовая продукция ({finishedProducts.length})</TabsTrigger>
+          <TabsList className="flex flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="all" className="text-xs sm:text-sm">Все ({filteredProducts?.length || 0})</TabsTrigger>
+            <TabsTrigger value="materials" className="text-xs sm:text-sm">Материалы ({materials.length})</TabsTrigger>
+            <TabsTrigger value="semi-finished" className="text-xs sm:text-sm">ПФ ({semiFinished.length})</TabsTrigger>
+            <TabsTrigger value="assembly" className="text-xs sm:text-sm">СБ ({assemblies.length})</TabsTrigger>
+            <TabsTrigger value="finished" className="text-xs sm:text-sm">ГП ({finishedProducts.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               {filteredProducts?.map((product) => (
                 <Card key={product.id}>
                   <CardHeader>
@@ -498,7 +498,7 @@ const Products = () => {
                 Удалить всю готовую продукцию
               </Button>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               {finishedProducts.map((product) => (
                 <Card key={product.id}>
                   <CardHeader>
@@ -597,7 +597,7 @@ const Products = () => {
                 Удалить все материалы
               </Button>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               {materials.map((product) => (
                 <Card key={product.id}>
                   <CardHeader>
@@ -657,7 +657,7 @@ const Products = () => {
                 Удалить все полуфабрикаты
               </Button>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               {semiFinished.map((product) => (
                 <Card key={product.id}>
                   <CardHeader>
@@ -756,7 +756,7 @@ const Products = () => {
                 Удалить все сборочные узлы
               </Button>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               {assemblies.map((product) => (
                 <Card key={product.id}>
                   <CardHeader>
