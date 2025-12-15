@@ -191,7 +191,8 @@ const ProductionReportsContent = () => {
 
   const chartData = reports?.slice(0, 10).map((report) => ({
     name: report.order_number,
-    план: report.planned_quantity,
+    "план (исх.)": report.original_planned_quantity,
+    "план (тек.)": report.planned_quantity,
     факт: report.completed_quantity,
   })) || [];
 
@@ -297,7 +298,15 @@ const ProductionReportsContent = () => {
                 <CardTitle className="text-sm font-medium">Плановый объем</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{summary.totalPlanned}</div>
+                <div className="text-2xl font-bold">{summary.totalPlannedOriginal}</div>
+                {summary.totalPlanChange !== 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Текущий: <span className="font-medium text-foreground">{summary.totalPlanned}</span>{" "}
+                    <span className={summary.totalPlanChange > 0 ? "text-amber-600" : "text-green-600"}>
+                      ({summary.totalPlanChange > 0 ? "+" : ""}{summary.totalPlanChange})
+                    </span>
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -351,7 +360,8 @@ const ProductionReportsContent = () => {
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="план" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="план (исх.)" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="план (тек.)" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="факт" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -400,7 +410,9 @@ const ProductionReportsContent = () => {
                   <TableRow>
                     <TableHead>Номер заказа</TableHead>
                     <TableHead>Изделие</TableHead>
-                    <TableHead className="text-right">План</TableHead>
+                    <TableHead className="text-right">План (исх.)</TableHead>
+                    <TableHead className="text-right">План (тек.)</TableHead>
+                    <TableHead className="text-right">Δ плана</TableHead>
                     <TableHead className="text-right">Факт</TableHead>
                     <TableHead className="text-right">Отклонение</TableHead>
                     <TableHead className="text-right">%</TableHead>
@@ -418,7 +430,11 @@ const ProductionReportsContent = () => {
                           <div className="text-sm text-muted-foreground">{report.product_code}</div>
                         </div>
                       </TableCell>
+                      <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
                       <TableCell className="text-right">{report.planned_quantity}</TableCell>
+                      <TableCell className={`text-right ${report.plan_change > 0 ? 'text-amber-600' : report.plan_change < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {report.plan_change > 0 ? '+' : ''}{report.plan_change}
+                      </TableCell>
                       <TableCell className="text-right">{report.completed_quantity}</TableCell>
                       <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {report.deviation > 0 ? '+' : ''}{report.deviation}
