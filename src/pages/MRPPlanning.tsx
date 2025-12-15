@@ -137,7 +137,7 @@ const MRPPlanning = () => {
 
         {/* Summary Cards */}
         {summary && (
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
+          <div className="grid gap-4 md:grid-cols-5 mb-6">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
@@ -173,6 +173,22 @@ const MRPPlanning = () => {
                   <div>
                     <p className="text-sm text-muted-foreground">Дефицит</p>
                     <p className="text-2xl font-bold">{summary.totalShortages}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-amber-100">
+                    <ChevronsUp className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Изм. плана</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-green-600">+{summary.totalPlanIncrease.toFixed(1)}</span>
+                      <span className="text-lg font-bold text-red-600">−{summary.totalPlanDecrease.toFixed(1)}</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
