@@ -834,39 +834,41 @@ const RoutingSheets = () => {
       <Header />
       <Navigation />
 
-      <main className="container py-8">
+      <main className="container py-4 sm:py-6 lg:py-8">
         {/* Page Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 sm:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Технологические маршруты</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Технологические маршруты</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Последовательность операций для производства продукции
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col xs:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => setStandardOpsDialogOpen(true)}
+              className="w-full xs:w-auto"
             >
               <Wand2 className="mr-2 h-4 w-4" />
-              Справочник операций
+              <span className="hidden sm:inline">Справочник операций</span>
+              <span className="sm:hidden">Операции</span>
             </Button>
             <Button
-              size="lg"
-              className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
+              className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl w-full xs:w-auto"
               onClick={() => {
                 setSelectedSheet(null);
                 setDialogOpen(true);
               }}
             >
               <Plus className="mr-2 h-5 w-5" />
-              Создать техмаршрут
+              <span className="hidden sm:inline">Создать техмаршрут</span>
+              <span className="sm:hidden">Создать</span>
             </Button>
           </div>
         </div>
 
         {/* Guide/Memo - collapsed by default */}
-        <Collapsible open={guideOpen} onOpenChange={setGuideOpen} className="mb-6">
+        <Collapsible open={guideOpen} onOpenChange={setGuideOpen} className="mb-4 sm:mb-6">
           <Card className="border-primary/20">
             <CollapsibleTrigger asChild>
               <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">

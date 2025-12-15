@@ -33,13 +33,13 @@ const Settings = () => {
       <Header />
       <Navigation />
 
-      <main className="container py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Настройки системы</h1>
-          <p className="text-muted-foreground">Управление параметрами приложения</p>
+      <main className="container py-4 sm:py-6 lg:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Настройки системы</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Управление параметрами приложения</p>
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid gap-4 sm:gap-6">
           {/* Notifications Settings */}
           <Card>
             <CardHeader>
@@ -51,7 +51,7 @@ const Settings = () => {
                 Настройте способы получения уведомлений о событиях системы
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="push-notifications">Push-уведомления</Label>

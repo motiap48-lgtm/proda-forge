@@ -52,20 +52,20 @@ const MaterialReservations = () => {
       <Header />
       <Navigation />
 
-      <main className="container py-8">
+      <main className="container py-4 sm:py-6 lg:py-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
             Резервирование материалов
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Управление резервированием материалов под производственные заказы
           </p>
         </div>
 
         {/* Search */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
+        <Card className="mb-4 sm:mb-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
