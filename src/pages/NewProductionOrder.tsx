@@ -16,7 +16,7 @@ import { useActiveSpecifications } from "@/hooks/useSpecifications";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { useCreateProductionOrder } from "@/hooks/useProductionOrders";
 import { useActiveRoutingSheets } from "@/hooks/useRoutingSheets";
-import { useCreateChildOrders, usePreviewChildOrders, ChildOrderData } from "@/hooks/useChildProductionOrders";
+import { useCreateChildOrders, usePreviewChildOrders, ChildOrderData, AnalysisProgress } from "@/hooks/useChildProductionOrders";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { supabase } from "@/integrations/supabase/client";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -46,6 +46,7 @@ const NewProductionOrderContent = () => {
   const [createChildOrdersFlag, setCreateChildOrdersFlag] = useState(true);
   const [childOrdersPreview, setChildOrdersPreview] = useState<ChildOrderData[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
 
   // Prepare options for searchable selects
   const productOptions = useMemo(() => {
@@ -108,12 +109,13 @@ const NewProductionOrderContent = () => {
         const qty = Number(formData.quantity);
         if (qty > 0) {
           setIsLoadingPreview(true);
+          setAnalysisProgress(null);
           try {
             const preview = await previewChildOrders.mutateAsync({
               specificationId: formData.specification,
               quantity: qty,
+              onProgress: setAnalysisProgress,
             });
-            console.log("Child orders preview:", preview);
             setChildOrdersPreview(preview);
           } catch (error) {
             console.error("Error previewing child orders:", error);
@@ -124,6 +126,7 @@ const NewProductionOrderContent = () => {
         }
       } else {
         setChildOrdersPreview([]);
+        setAnalysisProgress(null);
       }
     };
     previewChildren();
@@ -414,9 +417,21 @@ const NewProductionOrderContent = () => {
                   </div>
 
                   {createChildOrdersFlag && isLoadingPreview && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Анализ спецификации...
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>
+                          {analysisProgress?.status === 'analyzing' 
+                            ? `Анализ уровня ${analysisProgress.currentLevel}...`
+                            : 'Анализ спецификации...'}
+                        </span>
+                      </div>
+                      {analysisProgress && analysisProgress.currentLevel > 0 && (
+                        <div className="text-xs text-muted-foreground/70 pl-5">
+                          Обработано уровней: {analysisProgress.currentLevel}, 
+                          найдено изделий: {analysisProgress.processedProducts}
+                        </div>
+                      )}
                     </div>
                   )}
 
