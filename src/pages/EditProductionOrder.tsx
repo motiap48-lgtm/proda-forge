@@ -21,6 +21,7 @@ import { useWorkCenters } from "@/hooks/useWorkCenters";
 import { useRoutingSheets } from "@/hooks/useRoutingSheets";
 import { useAddOrderHistory } from "@/hooks/useProductionOrderDetails";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -142,6 +143,23 @@ const EditProductionOrder = () => {
       // Сбрасываем дату завершения если заказ возвращается в работу
       if (newStatus === 'in_progress' && order?.status === 'completed') {
         updateData.actual_end_date = null;
+        
+        // Обновляем статус операций, которые "завершены" но выполнено меньше нового плана
+        const { data: operations } = await supabase
+          .from("production_order_operations")
+          .select("id, completed_quantity, status")
+          .eq("production_order_id", order.id);
+          
+        if (operations) {
+          for (const op of operations) {
+            if (op.status === 'completed' && Number(op.completed_quantity) < newQuantity) {
+              await supabase
+                .from("production_order_operations")
+                .update({ status: 'in_progress' })
+                .eq("id", op.id);
+            }
+          }
+        }
       }
 
       await updateOrder.mutateAsync(updateData);
