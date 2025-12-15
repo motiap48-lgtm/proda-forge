@@ -55,18 +55,17 @@ const MaterialIssues = () => {
       <Header />
       <Navigation />
 
-      <main className="container py-8">
+      <main className="container py-4 sm:py-6 lg:py-8">
         {/* Page Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 sm:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Выдача материалов</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Выдача материалов</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Документы на выдачу материалов в производство
             </p>
           </div>
           <Button
-            size="lg"
-            className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
+            className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl w-full sm:w-auto"
           >
             <Plus className="mr-2 h-5 w-5" />
             Создать выдачу
@@ -74,8 +73,8 @@ const MaterialIssues = () => {
         </div>
 
         {/* Search */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
+        <Card className="mb-4 sm:mb-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input

@@ -52,39 +52,39 @@ const Profile = () => {
       <Header />
       <Navigation />
 
-      <main className="container py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Профиль пользователя</h1>
-          <p className="text-muted-foreground">Управление персональными данными и настройками</p>
+      <main className="container py-4 sm:py-6 lg:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Профиль пользователя</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Управление персональными данными и настройками</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
           {/* Profile Summary Card */}
-          <Card className="md:col-span-1">
-            <CardContent className="p-6">
+          <Card className="lg:col-span-1">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex flex-col items-center text-center">
-                <Avatar className="h-24 w-24 mb-4 border-4 border-primary/20">
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary-glow text-primary-foreground text-2xl">
+                <Avatar className="h-20 w-20 sm:h-24 sm:w-24 mb-4 border-4 border-primary/20">
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary-glow text-primary-foreground text-xl sm:text-2xl">
                     {getInitials(user?.email || "U")}
                   </AvatarFallback>
                 </Avatar>
-                <h3 className="text-lg font-semibold text-foreground mb-1">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1 break-all">
                   {user?.email}
                 </h3>
                 <div className="flex flex-wrap gap-2 justify-center mb-4">
                   {userRoles.map((role) => (
-                    <Badge key={role} variant="secondary">
+                    <Badge key={role} variant="secondary" className="text-xs">
                       {getRoleLabel(role)}
                     </Badge>
                   ))}
                 </div>
                 <div className="w-full space-y-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    <span>{user?.email}</span>
+                  <div className="flex items-center gap-2 justify-center sm:justify-start">
+                    <Mail className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{user?.email}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
+                  <div className="flex items-center gap-2 justify-center sm:justify-start">
+                    <Shield className="h-4 w-4 shrink-0" />
                     <span>ID: {user?.id.slice(0, 8)}...</span>
                   </div>
                 </div>
@@ -93,15 +93,15 @@ const Profile = () => {
           </Card>
 
           {/* Profile Details Card */}
-          <Card className="md:col-span-2">
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
                 Личные данные
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+            <CardContent className="space-y-4 p-4 sm:p-6">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">ФИО</Label>
                   <Input
@@ -145,7 +145,7 @@ const Profile = () => {
                 <Button
                   onClick={handleSaveProfile}
                   disabled={loading}
-                  className="bg-gradient-to-r from-primary to-primary-glow"
+                  className="bg-gradient-to-r from-primary to-primary-glow w-full sm:w-auto"
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Сохранить изменения
@@ -156,12 +156,12 @@ const Profile = () => {
         </div>
 
         {/* Account Information */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Информация об аккаунте</CardTitle>
+        <Card className="mt-4 sm:mt-6">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Информация об аккаунте</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Email</p>
                 <p className="font-medium text-foreground">{user?.email}</p>

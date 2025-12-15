@@ -71,12 +71,12 @@ const Inventory = () => {
       <Header />
       <Navigation />
 
-      <main className="container py-8">
+      <main className="container py-4 sm:py-6 lg:py-8">
         {/* Page Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 sm:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Управление остатками</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Управление остатками</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Учет материалов и продукции на складах
             </p>
           </div>

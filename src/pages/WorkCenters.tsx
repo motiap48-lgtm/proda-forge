@@ -450,20 +450,19 @@ const WorkCenters = () => {
       <Header />
       <Navigation />
 
-      <main className="container py-8">
+      <main className="container py-4 sm:py-6 lg:py-8">
         {/* Page Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 sm:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Производственные участки</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Производственные участки</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Управление производственными участками и оборудованием
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col xs:flex-row gap-2">
             <EquipmentPrintExport />
             <Button
-              size="lg"
-              className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
+              className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl w-full xs:w-auto"
               onClick={() => {
                 setSelectedWorkCenter(null);
                 setDialogOpen(true);

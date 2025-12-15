@@ -126,11 +126,11 @@ const MRPPlanning = () => {
       <Header />
       <Navigation />
 
-      <main className="container py-8">
+      <main className="container py-4 sm:py-6 lg:py-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">MRP Планирование</h1>
-          <p className="text-muted-foreground">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">MRP Планирование</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Расчет потребности в материалах и производственных мощностях
           </p>
         </div>

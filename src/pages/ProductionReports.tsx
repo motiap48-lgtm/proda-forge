@@ -206,16 +206,16 @@ const ProductionReportsContent = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <Navigation />
-      <main className="container py-6 space-y-6">
+      <main className="container py-4 sm:py-6 space-y-4 sm:space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Отчеты производства</h1>
-            <p className="text-muted-foreground">Аналитика и отчетность по производственным процессам</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Отчеты производства</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Аналитика и отчетность по производственным процессам</p>
           </div>
         </div>
 
-        <Tabs defaultValue="plan-fact" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
+        <Tabs defaultValue="plan-fact" className="space-y-4 sm:space-y-6">
+          <TabsList className="flex flex-wrap h-auto gap-1 p-1 lg:w-auto">
             <TabsTrigger value="plan-fact" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">План-факт</span>
