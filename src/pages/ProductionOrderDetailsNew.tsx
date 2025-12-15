@@ -397,19 +397,13 @@ const ProductionOrderDetailsNew = () => {
                       )}
                       {operation.status === "in_progress" && (
                         <div className="flex items-center gap-2">
-                          {isBlockedByPrevious && (
-                            <span className="text-xs text-amber-600 hidden md:block">
-                              +{availableFromPrevious} доступно
-                            </span>
-                          )}
                           <Button 
                             size="sm" 
-                            variant={isBlockedByPrevious ? "ghost" : "outline"}
+                            variant="outline"
                             onClick={() => {
                               setSelectedOperation(operation);
                               setCompleteDialogOpen(true);
                             }}
-                            className={isBlockedByPrevious ? "text-muted-foreground" : ""}
                           >
                             <CheckCircle className="mr-2 h-4 w-4" />
                             Завершить
