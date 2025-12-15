@@ -137,62 +137,62 @@ const MRPPlanning = () => {
 
         {/* Summary Cards */}
         {summary && (
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mb-6">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 mb-6">
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-green-100">
-                    <ShoppingCart className="h-6 w-6 text-green-600" />
+              <CardContent className="p-4 sm:pt-6 sm:px-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="p-2.5 sm:p-3 rounded-full bg-green-100 shrink-0">
+                    <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">К закупке</p>
-                    <p className="text-2xl font-bold">{summary.totalPurchaseItems}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground truncate">К закупке</p>
+                    <p className="text-xl sm:text-2xl font-bold">{summary.totalPurchaseItems}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-blue-100">
-                    <Factory className="h-6 w-6 text-blue-600" />
+              <CardContent className="p-4 sm:pt-6 sm:px-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="p-2.5 sm:p-3 rounded-full bg-blue-100 shrink-0">
+                    <Factory className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">К производству</p>
-                    <p className="text-2xl font-bold">{summary.totalProductionItems}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-red-100">
-                    <TrendingDown className="h-6 w-6 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Дефицит</p>
-                    <p className="text-2xl font-bold">{summary.totalShortages}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground truncate">К производству</p>
+                    <p className="text-xl sm:text-2xl font-bold">{summary.totalProductionItems}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-amber-100">
-                    <ChevronsUp className="h-6 w-6 text-amber-600" />
+              <CardContent className="p-4 sm:pt-6 sm:px-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="p-2.5 sm:p-3 rounded-full bg-red-100 shrink-0">
+                    <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground mb-1">Изменения плана</p>
-                    <div className="flex flex-col gap-0.5">
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground truncate">Дефицит</p>
+                    <p className="text-xl sm:text-2xl font-bold">{summary.totalShortages}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 sm:pt-6 sm:px-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="p-2.5 sm:p-3 rounded-full bg-amber-100 shrink-0">
+                    <ChevronsUp className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-muted-foreground truncate mb-1">Изменения плана</p>
+                    <div className="flex flex-col gap-0.5 text-sm">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-muted-foreground w-14">Увелич.:</span>
-                        <span className="text-sm font-semibold text-green-600">+{summary.totalPlanIncrease.toFixed(1)}</span>
+                        <span className="text-xs text-muted-foreground">Увелич.:</span>
+                        <span className="font-semibold text-green-600">+{summary.totalPlanIncrease.toFixed(1)}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-muted-foreground w-14">Уменьш.:</span>
-                        <span className="text-sm font-semibold text-red-600">−{summary.totalPlanDecrease.toFixed(1)}</span>
+                        <span className="text-xs text-muted-foreground">Уменьш.:</span>
+                        <span className="font-semibold text-red-600">−{summary.totalPlanDecrease.toFixed(1)}</span>
                       </div>
                     </div>
                   </div>
@@ -200,14 +200,14 @@ const MRPPlanning = () => {
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-purple-100">
-                    <Warehouse className="h-6 w-6 text-purple-600" />
+              <CardContent className="p-4 sm:pt-6 sm:px-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="p-2.5 sm:p-3 rounded-full bg-purple-100 shrink-0">
+                    <Warehouse className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Участков</p>
-                    <p className="text-2xl font-bold">{summary.totalWorkCenters}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground truncate">Участков</p>
+                    <p className="text-xl sm:text-2xl font-bold">{summary.totalWorkCenters}</p>
                   </div>
                 </div>
               </CardContent>
