@@ -64,11 +64,29 @@ const EditProductionOrder = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (order) {
+    if (order && specifications && routingSheets) {
+      // Если в заказе нет спецификации, попробуем найти для продукта
+      let specId = order.specification_id || "";
+      if (!specId && order.product_id) {
+        const matchingSpec = specifications.find(
+          (spec) => spec.product_id === order.product_id && spec.is_active
+        );
+        specId = matchingSpec?.id || "";
+      }
+
+      // Если в заказе нет техмаршрута, попробуем найти для продукта
+      let routingId = order.routing_sheet_id || "";
+      if (!routingId && order.product_id) {
+        const matchingRouting = routingSheets.find(
+          (sheet) => sheet.product_id === order.product_id && sheet.is_active
+        );
+        routingId = matchingRouting?.id || "";
+      }
+
       setFormData({
         product_id: order.product_id || "",
-        specification_id: order.specification_id || "",
-        routing_sheet_id: order.routing_sheet_id || "",
+        specification_id: specId,
+        routing_sheet_id: routingId,
         work_center_id: order.work_center_id || "",
         quantity: Number(order.quantity),
         planned_start_date: order.planned_start_date,
@@ -78,7 +96,7 @@ const EditProductionOrder = () => {
         responsible_person: order.responsible_person || "",
       });
     }
-  }, [order]);
+  }, [order, specifications, routingSheets]);
 
   // Автоматическая привязка спецификации и техмаршрута при изменении продукта
   const handleProductChange = (productId: string) => {
