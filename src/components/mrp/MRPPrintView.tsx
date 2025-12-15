@@ -170,6 +170,8 @@ const generatePurchaseRequirementsHTML = (
   const shortages = requirements.filter(r => r.status === "shortage").length;
   const warnings = requirements.filter(r => r.status === "warning").length;
   const hasChanges = requirements.some(r => r.plan_increase_requirement > 0 || r.plan_decrease_amount > 0);
+  const increaseTotal = requirements.reduce((sum, r) => sum + r.plan_increase_requirement, 0);
+  const decreaseTotal = requirements.reduce((sum, r) => sum + r.plan_decrease_amount, 0);
   
   return `
     <!DOCTYPE html>
@@ -207,6 +209,18 @@ const generatePurchaseRequirementsHTML = (
           <span>Позиций с изменением плана:</span>
           <strong>${requirements.filter(r => r.plan_increase_requirement > 0 || r.plan_decrease_amount > 0).length}</strong>
         </div>
+        ${increaseTotal > 0 ? `
+        <div class="summary-row">
+          <span>Общая сумма увеличения плана:</span>
+          <strong class="delta-increase">+${increaseTotal.toFixed(2)}</strong>
+        </div>
+        ` : ''}
+        ${decreaseTotal > 0 ? `
+        <div class="summary-row">
+          <span>Общая сумма уменьшения плана:</span>
+          <strong class="delta-decrease">-${decreaseTotal.toFixed(2)}</strong>
+        </div>
+        ` : ''}
         ` : ''}
       </div>
 
@@ -261,6 +275,8 @@ const generateProductionRequirementsHTML = (
 ) => {
   const shortages = requirements.filter(r => r.status === "shortage").length;
   const hasChanges = requirements.some(r => r.plan_increase_requirement > 0 || r.plan_decrease_amount > 0);
+  const increaseTotal = requirements.reduce((sum, r) => sum + r.plan_increase_requirement, 0);
+  const decreaseTotal = requirements.reduce((sum, r) => sum + r.plan_decrease_amount, 0);
   
   return `
     <!DOCTYPE html>
@@ -294,6 +310,18 @@ const generateProductionRequirementsHTML = (
           <span>Позиций с изменением плана:</span>
           <strong>${requirements.filter(r => r.plan_increase_requirement > 0 || r.plan_decrease_amount > 0).length}</strong>
         </div>
+        ${increaseTotal > 0 ? `
+        <div class="summary-row">
+          <span>Общая сумма увеличения плана:</span>
+          <strong class="delta-increase">+${increaseTotal.toFixed(2)}</strong>
+        </div>
+        ` : ''}
+        ${decreaseTotal > 0 ? `
+        <div class="summary-row">
+          <span>Общая сумма уменьшения плана:</span>
+          <strong class="delta-decrease">-${decreaseTotal.toFixed(2)}</strong>
+        </div>
+        ` : ''}
         ` : ''}
       </div>
 

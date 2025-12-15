@@ -45,6 +45,12 @@ export const exportMRPToExcel = (options: ExportOptions) => {
 
   const workbook = XLSX.utils.book_new();
 
+  // Calculate totals for plan changes
+  const purchaseIncreaseTotal = purchaseRequirements.reduce((sum, r) => sum + r.plan_increase_requirement, 0);
+  const purchaseDecreaseTotal = purchaseRequirements.reduce((sum, r) => sum + r.plan_decrease_amount, 0);
+  const productionIncreaseTotal = productionRequirements.reduce((sum, r) => sum + r.plan_increase_requirement, 0);
+  const productionDecreaseTotal = productionRequirements.reduce((sum, r) => sum + r.plan_decrease_amount, 0);
+
   // Sheet 1: Информация
   const infoData = [
     ["MRP РАСЧЕТ"],
@@ -62,10 +68,14 @@ export const exportMRPToExcel = (options: ExportOptions) => {
     ["Рабочих центров", workCenterReports.length],
     [],
     ["Изменения плана"],
-    ["Закупка - увеличение плана", purchaseRequirements.filter(r => r.plan_increase_requirement > 0).length],
-    ["Закупка - уменьшение плана", purchaseRequirements.filter(r => r.plan_decrease_amount > 0).length],
-    ["Производство - увеличение плана", productionRequirements.filter(r => r.plan_increase_requirement > 0).length],
-    ["Производство - уменьшение плана", productionRequirements.filter(r => r.plan_decrease_amount > 0).length],
+    ["Закупка - позиций с увеличением", purchaseRequirements.filter(r => r.plan_increase_requirement > 0).length],
+    ["Закупка - сумма увеличения", purchaseIncreaseTotal > 0 ? `+${purchaseIncreaseTotal.toFixed(2)}` : "—"],
+    ["Закупка - позиций с уменьшением", purchaseRequirements.filter(r => r.plan_decrease_amount > 0).length],
+    ["Закупка - сумма уменьшения", purchaseDecreaseTotal > 0 ? `-${purchaseDecreaseTotal.toFixed(2)}` : "—"],
+    ["Производство - позиций с увеличением", productionRequirements.filter(r => r.plan_increase_requirement > 0).length],
+    ["Производство - сумма увеличения", productionIncreaseTotal > 0 ? `+${productionIncreaseTotal.toFixed(2)}` : "—"],
+    ["Производство - позиций с уменьшением", productionRequirements.filter(r => r.plan_decrease_amount > 0).length],
+    ["Производство - сумма уменьшения", productionDecreaseTotal > 0 ? `-${productionDecreaseTotal.toFixed(2)}` : "—"],
   ];
   const infoSheet = XLSX.utils.aoa_to_sheet(infoData);
   infoSheet["!cols"] = [{ wch: 35 }, { wch: 25 }];
