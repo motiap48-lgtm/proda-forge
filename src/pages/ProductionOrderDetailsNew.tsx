@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle, Package } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle, Package, Lock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -290,10 +291,18 @@ const ProductionOrderDetailsNew = () => {
           </TabsList>
 
           <TabsContent value="operations" className="space-y-4">
-            {operations?.map((operation) => {
+            {operations?.map((operation, index) => {
               const opProgress = (Number(operation.completed_quantity) / order.quantity) * 100;
+              
+              // Проверка блокировки предыдущей операцией
+              const prevOperation = operations.find(op => op.sequence === operation.sequence - 1);
+              const availableFromPrevious = prevOperation 
+                ? Number(prevOperation.completed_quantity) - Number(operation.completed_quantity)
+                : Infinity;
+              const isBlockedByPrevious = prevOperation && availableFromPrevious <= 0 && operation.status === "in_progress";
+              
               return (
-                <Card key={operation.id}>
+                <Card key={operation.id} className={isBlockedByPrevious ? "border-amber-300 bg-amber-50/30" : ""}>
                   <CardContent className="p-6">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                       <div className="flex-1">
@@ -307,6 +316,24 @@ const ProductionOrderDetailsNew = () => {
                           <Badge variant={operationStatusConfig[operation.status as keyof typeof operationStatusConfig]?.variant}>
                             {operationStatusConfig[operation.status as keyof typeof operationStatusConfig]?.label}
                           </Badge>
+                          {isBlockedByPrevious && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded">
+                                    <Lock className="h-3 w-3" />
+                                    Ожидание
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Ожидание выработки на «{prevOperation?.routing_operations?.name}»</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Выполнено: {prevOperation?.completed_quantity} шт.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">
                           {operation.routing_operations?.work_centers?.name}
@@ -361,17 +388,25 @@ const ProductionOrderDetailsNew = () => {
                         </Button>
                       )}
                       {operation.status === "in_progress" && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedOperation(operation);
-                            setCompleteDialogOpen(true);
-                          }}
-                        >
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Завершить
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {isBlockedByPrevious && (
+                            <span className="text-xs text-amber-600 hidden md:block">
+                              +{availableFromPrevious} доступно
+                            </span>
+                          )}
+                          <Button 
+                            size="sm" 
+                            variant={isBlockedByPrevious ? "ghost" : "outline"}
+                            onClick={() => {
+                              setSelectedOperation(operation);
+                              setCompleteDialogOpen(true);
+                            }}
+                            className={isBlockedByPrevious ? "text-muted-foreground" : ""}
+                          >
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Завершить
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </CardContent>
