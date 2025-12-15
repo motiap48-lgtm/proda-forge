@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle, Package, Lock } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle, Package, Lock, Layers } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,8 +26,11 @@ import {
   useUpdateOperationStatus,
   useAddOrderHistory
 } from "@/hooks/useProductionOrderDetails";
+import { useProductionOperationsRealtime } from "@/hooks/useProductionOperationsRealtime";
 import { useAuth } from "@/contexts/AuthContext";
 import { CompleteOperationDialog, OperationReportData } from "@/components/production/CompleteOperationDialog";
+import { BulkCompleteOperationsDialog, BulkOperationReportData } from "@/components/production/BulkCompleteOperationsDialog";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,6 +76,8 @@ const ProductionOrderDetailsNew = () => {
   const [selectedOperation, setSelectedOperation] = useState<any>(null);
   const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
   const [pauseReason, setPauseReason] = useState("");
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
   
   const { data: order, isLoading } = useProductionOrder(id || "");
   const { data: operations } = useProductionOrderOperations(order?.id || "");
@@ -81,6 +86,9 @@ const ProductionOrderDetailsNew = () => {
   const deleteOrder = useDeleteProductionOrder();
   const updateOrder = useUpdateProductionOrder();
   const addHistory = useAddOrderHistory();
+  
+  // Realtime подписка
+  useProductionOperationsRealtime(order?.id);
 
   const handleHoldOrder = () => {
     if (order && user) {
@@ -128,6 +136,58 @@ const ProductionOrderDetailsNew = () => {
           navigate("/production-orders");
         },
       });
+    }
+  };
+
+  // Подготовка данных для массового завершения
+  const operationsForBulk = operations?.map((operation) => {
+    const prevOperation = operations.find(op => op.sequence === operation.sequence - 1);
+    const availableFromPrevious = prevOperation 
+      ? Number(prevOperation.completed_quantity) - Number(operation.completed_quantity)
+      : Infinity;
+    const isBlocked = !!(prevOperation && availableFromPrevious <= 0 && operation.status === "in_progress");
+    
+    const remainingForPlan = order ? order.quantity - Number(operation.completed_quantity) : 0;
+    const maxFromPrevious = prevOperation 
+      ? Number(prevOperation.completed_quantity) - Number(operation.completed_quantity)
+      : Infinity;
+    const maxQuantity = Math.max(0, Math.min(remainingForPlan, maxFromPrevious));
+    
+    return {
+      id: operation.id,
+      sequence: operation.sequence,
+      name: operation.routing_operations?.name || "Операция",
+      workCenterName: operation.routing_operations?.work_centers?.name,
+      completedQuantity: Number(operation.completed_quantity),
+      maxQuantity: operation.status === "in_progress" ? maxQuantity : 0,
+      isBlocked,
+      blockedByName: isBlocked ? prevOperation?.routing_operations?.name : undefined,
+    };
+  }) || [];
+
+  const handleBulkComplete = async (operationIds: string[], data: BulkOperationReportData) => {
+    if (!user || !order) return;
+    
+    setBulkLoading(true);
+    let successCount = 0;
+    
+    try {
+      for (const operationId of operationIds) {
+        await updateStatus.mutateAsync({
+          id: operationId,
+          status: "completed",
+          reportData: data,
+          userId: user.id,
+        });
+        successCount++;
+      }
+      
+      toast.success(`Зарегистрирована выработка для ${successCount} операций`);
+      setBulkDialogOpen(false);
+    } catch (error) {
+      toast.error(`Ошибка при регистрации. Успешно: ${successCount}/${operationIds.length}`);
+    } finally {
+      setBulkLoading(false);
     }
   };
 
@@ -291,6 +351,15 @@ const ProductionOrderDetailsNew = () => {
           </TabsList>
 
           <TabsContent value="operations" className="space-y-4">
+            {/* Кнопка массового завершения */}
+            {operations && operations.filter(op => op.status === "in_progress").length > 1 && (
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setBulkDialogOpen(true)}>
+                  <Layers className="mr-2 h-4 w-4" />
+                  Массовая регистрация
+                </Button>
+              </div>
+            )}
             {operations?.map((operation, index) => {
               const opProgress = (Number(operation.completed_quantity) / order.quantity) * 100;
               
@@ -598,6 +667,16 @@ const ProductionOrderDetailsNew = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Диалог массового завершения */}
+        <BulkCompleteOperationsDialog
+          open={bulkDialogOpen}
+          onOpenChange={setBulkDialogOpen}
+          onConfirm={handleBulkComplete}
+          operations={operationsForBulk}
+          orderQuantity={order.quantity}
+          isLoading={bulkLoading}
+        />
       </main>
     </div>
   );
