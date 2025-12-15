@@ -183,11 +183,17 @@ const MRPPlanning = () => {
                   <div className="p-3 rounded-full bg-amber-100">
                     <ChevronsUp className="h-6 w-6 text-amber-600" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Изм. плана</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-green-600">+{summary.totalPlanIncrease.toFixed(1)}</span>
-                      <span className="text-lg font-bold text-red-600">−{summary.totalPlanDecrease.toFixed(1)}</span>
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground mb-1">Изменения плана</p>
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground w-14">Увелич.:</span>
+                        <span className="text-sm font-semibold text-green-600">+{summary.totalPlanIncrease.toFixed(1)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground w-14">Уменьш.:</span>
+                        <span className="text-sm font-semibold text-red-600">−{summary.totalPlanDecrease.toFixed(1)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
