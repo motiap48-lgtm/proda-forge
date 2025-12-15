@@ -251,7 +251,7 @@ const ProductionOrderDetailsNew = () => {
                   <PlayCircle className="mr-2 h-4 w-4" />
                   Возобновить
                 </Button>
-              ) : (order.status === 'in_progress' || order.status === 'released') && (
+              ) : (order.status === 'in_progress' || order.status === 'released') ? (
                 <Button
                   variant="outline"
                   onClick={() => setPauseDialogOpen(true)}
@@ -261,7 +261,7 @@ const ProductionOrderDetailsNew = () => {
                   <Pause className="mr-2 h-4 w-4" />
                   Приостановить
                 </Button>
-              )}
+              ) : null}
               
               <Button 
                 variant="outline"
