@@ -682,6 +682,11 @@ export const useSaveMRPCalculation = () => {
       purchaseRequirements: PurchaseRequirement[];
       productionRequirements: ProductionRequirement[];
     }) => {
+      // Проверяем, есть ли данные для сохранения
+      if (purchaseRequirements.length === 0 && productionRequirements.length === 0) {
+        throw new Error("Нет данных для сохранения. Создайте производственные заказы перед расчетом MRP.");
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       
       // Создаем запись расчета
