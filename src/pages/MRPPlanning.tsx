@@ -202,8 +202,8 @@ const MRPPlanning = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
-              <div>
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex-1 min-w-[180px]">
                 <Label htmlFor="horizon">Горизонт планирования (дней)</Label>
                 <Input
                   id="horizon"
@@ -213,7 +213,7 @@ const MRPPlanning = () => {
                   className="mt-1"
                 />
               </div>
-              <div>
+              <div className="flex-1 min-w-[180px]">
                 <Label htmlFor="startDate">Дата начала</Label>
                 <Input 
                   id="startDate" 
@@ -223,34 +223,31 @@ const MRPPlanning = () => {
                   className="mt-1" 
                 />
               </div>
-              <div className="flex items-end">
-                <Button 
-                  className="w-full bg-gradient-to-r from-primary to-primary-glow"
-                  onClick={handleCalculate}
-                  disabled={isLoading || saveMutation.isPending}
+              <Button 
+                className="bg-gradient-to-r from-primary to-primary-glow"
+                onClick={handleCalculate}
+                disabled={isLoading || saveMutation.isPending}
+              >
+                <Calculator className="mr-2 h-4 w-4" />
+                {isLoading || saveMutation.isPending ? "Расчет..." : "Выполнить расчет"}
+              </Button>
+              <MRPHistoryDialog />
+              {mrpResult && (purchaseRequirements.length > 0 || productionRequirements.length > 0) && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => exportMRPToExcel({
+                    purchaseRequirements,
+                    productionRequirements,
+                    workCenterReports,
+                    planningHorizon,
+                    startDate
+                  })}
+                  title="Экспорт в Excel"
                 >
-                  <Calculator className="mr-2 h-4 w-4" />
-                  {isLoading || saveMutation.isPending ? "Расчет..." : "Выполнить расчет"}
+                  <FileSpreadsheet className="h-4 w-4" />
                 </Button>
-              </div>
-              <div className="flex items-end gap-2">
-                <MRPHistoryDialog />
-                {mrpResult && (purchaseRequirements.length > 0 || productionRequirements.length > 0) && (
-                  <Button
-                    variant="outline"
-                    onClick={() => exportMRPToExcel({
-                      purchaseRequirements,
-                      productionRequirements,
-                      workCenterReports,
-                      planningHorizon,
-                      startDate
-                    })}
-                  >
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    Excel
-                  </Button>
-                )}
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
