@@ -175,6 +175,24 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
 
       if (ordersError) throw ordersError;
 
+      // Если нет заказов - возвращаем пустой результат
+      if (!orders || orders.length === 0) {
+        return {
+          purchaseRequirements: [],
+          productionRequirements: [],
+          workCenterReports: [],
+          ordersWithoutSpec: [],
+          summary: {
+            totalPurchaseItems: 0,
+            totalProductionItems: 0,
+            totalShortages: 0,
+            totalWorkCenters: 0,
+            totalPlanIncrease: 0,
+            totalPlanDecrease: 0,
+          },
+        };
+      }
+
       // 2. Загружаем ВСЕ активные спецификации с материалами
       const { data: allSpecifications, error: specError } = await supabase
         .from("specifications")
