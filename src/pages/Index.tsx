@@ -20,8 +20,8 @@ const Index = () => {
       <Header />
       <Navigation />
       
-      <main className="container py-8">
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
+      <main className="container py-4 sm:py-6 lg:py-8">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-6 sm:mb-8">
           <MetricCard
             title="Заказов в работе"
             value={activeOrders.toString()}

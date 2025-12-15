@@ -40,13 +40,13 @@ export const Header = () => {
   if (!user) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="container flex h-14 sm:h-16 items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-glow">
-              <span className="text-lg font-bold text-primary-foreground">EVA</span>
+            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-glow">
+              <span className="text-sm sm:text-lg font-bold text-primary-foreground">EVA</span>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">ERP Vostok Auto</h1>
+            <div className="hidden sm:block">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground">ERP Vostok Auto</h1>
               <p className="text-xs text-muted-foreground">Управление производством</p>
             </div>
           </div>
@@ -54,6 +54,7 @@ export const Header = () => {
           <Button 
             onClick={() => navigate("/auth")}
             className="bg-gradient-to-r from-primary to-primary-glow"
+            size="sm"
           >
             Войти
           </Button>
@@ -64,13 +65,13 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container flex h-14 sm:h-16 items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-glow">
-            <span className="text-lg font-bold text-primary-foreground">EVA</span>
+          <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-glow">
+            <span className="text-sm sm:text-lg font-bold text-primary-foreground">EVA</span>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">ERP Vostok Auto</h1>
+          <div className="hidden sm:block">
+            <h1 className="text-lg sm:text-xl font-bold text-foreground">ERP Vostok Auto</h1>
             <p className="text-xs text-muted-foreground">Управление производством</p>
           </div>
         </div>
