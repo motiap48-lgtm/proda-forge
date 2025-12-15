@@ -345,6 +345,14 @@ const ProductionOrderDetailsNew = () => {
                               {operation.completed_quantity} / {order.quantity}
                             </span>
                           </div>
+                          {prevOperation && operation.status !== "completed" && (
+                            <div>
+                              <span className="text-muted-foreground">Доступно: </span>
+                              <span className={`font-medium ${availableFromPrevious <= 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                                {Math.max(0, availableFromPrevious)} шт.
+                              </span>
+                            </div>
+                          )}
                           <div>
                             <span className="text-muted-foreground">Оператор: </span>
                             <span className="font-medium text-foreground">
