@@ -18,7 +18,8 @@ import {
   ListChecks,
   ChevronDown,
   ChevronsDown,
-  ChevronsUp
+  ChevronsUp,
+  FileSpreadsheet
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,7 @@ import { MRPHistoryDialog } from "@/components/mrp/MRPHistoryDialog";
 import { format } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { printMRPReport } from "@/components/mrp/MRPPrintView";
+import { exportMRPToExcel } from "@/components/mrp/MRPExcelExport";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -231,8 +233,23 @@ const MRPPlanning = () => {
                   {isLoading || saveMutation.isPending ? "Расчет..." : "Выполнить расчет"}
                 </Button>
               </div>
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <MRPHistoryDialog />
+                {mrpResult && (purchaseRequirements.length > 0 || productionRequirements.length > 0) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => exportMRPToExcel({
+                      purchaseRequirements,
+                      productionRequirements,
+                      workCenterReports,
+                      planningHorizon,
+                      startDate
+                    })}
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Excel
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
