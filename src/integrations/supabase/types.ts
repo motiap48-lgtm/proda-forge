@@ -608,6 +608,7 @@ export type Database = {
           id: string
           order_number: string
           original_quantity: number | null
+          parent_order_id: string | null
           planned_end_date: string
           planned_start_date: string
           priority: string
@@ -628,6 +629,7 @@ export type Database = {
           id?: string
           order_number: string
           original_quantity?: number | null
+          parent_order_id?: string | null
           planned_end_date: string
           planned_start_date: string
           priority?: string
@@ -648,6 +650,7 @@ export type Database = {
           id?: string
           order_number?: string
           original_quantity?: number | null
+          parent_order_id?: string | null
           planned_end_date?: string
           planned_start_date?: string
           priority?: string
@@ -661,6 +664,13 @@ export type Database = {
           work_center_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "production_orders_parent_order_id_fkey"
+            columns: ["parent_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_orders_product_id_fkey"
             columns: ["product_id"]
