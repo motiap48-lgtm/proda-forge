@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Filter, Download, Loader2, GitBranch, ArrowUp } from "lucide-react";
+import { Plus, Search, Filter, Download, Loader2, GitBranch, ArrowUp, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +19,16 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const statusConfig = {
   planned: { label: "Запланировано", variant: "secondary" as const },
@@ -37,9 +50,12 @@ type HierarchyFilter = "all" | "parent" | "child" | "standalone";
 
 const ProductionOrdersContent = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilter>("all");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { data: orders, isLoading } = useProductionOrders();
 
   // Count orders by hierarchy type
@@ -86,6 +102,41 @@ const ProductionOrdersContent = () => {
     return orders?.some(o => o.parent_order_id === orderId);
   };
 
+  const handleDeleteAll = async () => {
+    if (!orders || orders.length === 0) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete in correct order: first related data, then orders
+      // Delete all operations
+      await supabase.from("production_order_operations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      
+      // Delete all history
+      await supabase.from("production_order_history").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      
+      // Delete all material reservations for production orders
+      await supabase.from("material_reservations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      
+      // Delete all material issues
+      await supabase.from("material_issue_lines").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase.from("material_issues").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      
+      // Delete all production orders
+      const { error } = await supabase.from("production_orders").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      
+      if (error) throw error;
+      
+      await queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      toast.success("Все производственные заказы удалены");
+    } catch (error: any) {
+      console.error("Error deleting orders:", error);
+      toast.error("Ошибка при удалении заказов: " + error.message);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -110,14 +161,27 @@ const ProductionOrdersContent = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Производственные заказы</h1>
             <p className="text-sm sm:text-base text-muted-foreground">Управление и контроль производственных заказов</p>
           </div>
-          <Button
-            size="default"
-            className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl w-full sm:w-auto"
-            onClick={() => navigate("/production-orders/new")}
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Создать заказ
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            {orders && orders.length > 0 && (
+              <Button
+                variant="destructive"
+                size="default"
+                className="w-full sm:w-auto"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="mr-2 h-5 w-5" />
+                Удалить все
+              </Button>
+            )}
+            <Button
+              size="default"
+              className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl w-full sm:w-auto"
+              onClick={() => navigate("/production-orders/new")}
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              Создать заказ
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -295,6 +359,40 @@ const ProductionOrdersContent = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Delete All Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить все заказы?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Вы уверены, что хотите удалить все {orders?.length || 0} производственных заказов? 
+                Это действие необратимо и удалит также все связанные данные: операции, историю изменений, 
+                резервирования материалов и акты выдачи.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteAll}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Удаление...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Удалить все
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );
