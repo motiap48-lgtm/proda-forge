@@ -254,6 +254,15 @@ const ProductionOrderDetailsNew = () => {
               <p className="text-2xl font-bold text-foreground">
                 {order.completed_quantity} / {order.quantity}
               </p>
+              {order.original_quantity && order.original_quantity !== order.quantity && (
+                <div className="mt-1 text-xs">
+                  <span className="text-muted-foreground">Первонач. план: </span>
+                  <span className="font-medium">{order.original_quantity}</span>
+                  <span className={`ml-1 ${order.quantity > order.original_quantity ? 'text-amber-600' : 'text-green-600'}`}>
+                    ({order.quantity > order.original_quantity ? '+' : ''}{order.quantity - order.original_quantity})
+                  </span>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">единиц продукции</p>
             </CardContent>
           </Card>
@@ -388,8 +397,17 @@ const ProductionOrderDetailsNew = () => {
                       <p className="font-medium text-foreground">{order.products?.name}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Количество</p>
+                      <p className="text-sm text-muted-foreground mb-1">План (текущий)</p>
                       <p className="font-medium text-foreground">{order.quantity} шт</p>
+                      {order.original_quantity && order.original_quantity !== order.quantity && (
+                        <div className="mt-1 text-xs">
+                          <span className="text-muted-foreground">Первоначальный: </span>
+                          <span className="font-medium">{order.original_quantity} шт</span>
+                          <span className={`ml-1 ${order.quantity > order.original_quantity ? 'text-amber-600' : 'text-green-600'}`}>
+                            ({order.quantity > order.original_quantity ? '+' : ''}{order.quantity - order.original_quantity})
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-4">

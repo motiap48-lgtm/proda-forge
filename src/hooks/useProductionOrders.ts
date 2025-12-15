@@ -10,6 +10,7 @@ export interface ProductionOrder {
   routing_sheet_id: string | null;
   work_center_id: string | null;
   quantity: number;
+  original_quantity: number;
   completed_quantity: number;
   status: string;
   priority: string;
@@ -20,9 +21,10 @@ export interface ProductionOrder {
   responsible_person: string | null;
   created_at: string;
   updated_at: string;
-  products?: { name: string; code: string };
-  specifications?: { code: string };
-  work_centers?: { name: string };
+  products?: { name: string; code: string; unit?: string };
+  specifications?: { code: string; version?: string };
+  work_centers?: { name: string; code?: string };
+  routing_sheets?: { name: string };
 }
 
 export const useProductionOrders = () => {

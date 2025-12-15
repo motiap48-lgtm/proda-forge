@@ -607,6 +607,7 @@ export type Database = {
           created_at: string
           id: string
           order_number: string
+          original_quantity: number | null
           planned_end_date: string
           planned_start_date: string
           priority: string
@@ -626,6 +627,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_number: string
+          original_quantity?: number | null
           planned_end_date: string
           planned_start_date: string
           priority?: string
@@ -645,6 +647,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_number?: string
+          original_quantity?: number | null
           planned_end_date?: string
           planned_start_date?: string
           priority?: string

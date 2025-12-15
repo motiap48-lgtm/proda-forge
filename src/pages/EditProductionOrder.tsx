@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -20,6 +19,8 @@ import { useProducts } from "@/hooks/useProducts";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { useWorkCenters } from "@/hooks/useWorkCenters";
 import { useRoutingSheets } from "@/hooks/useRoutingSheets";
+import { useAddOrderHistory } from "@/hooks/useProductionOrderDetails";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -35,12 +36,14 @@ const editOrderSchema = z.object({
 const EditProductionOrder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: order, isLoading: orderLoading } = useProductionOrder(id || "");
   const { data: products } = useProducts();
   const { data: specifications } = useSpecifications();
   const { data: workCenters } = useWorkCenters();
   const { data: routingSheets } = useRoutingSheets();
   const updateOrder = useUpdateProductionOrder();
+  const addHistory = useAddOrderHistory();
 
   const [formData, setFormData] = useState({
     product_id: "",
@@ -108,21 +111,24 @@ const EditProductionOrder = () => {
         priority: formData.priority,
       });
 
+      const oldQuantity = Number(order?.quantity || 0);
+      const newQuantity = formData.quantity;
+      const quantityChanged = newQuantity !== oldQuantity;
+
       // Автоматически переводим в работу если увеличили количество у завершенного заказа
       // или если заказ завершен, но выпущено меньше чем требуется
       let newStatus = formData.status;
-      const quantityIncreased = formData.quantity > Number(order?.quantity || 0);
-      const incompleteBecauseOfNewQuantity = formData.quantity > Number(order?.completed_quantity || 0);
+      const incompleteBecauseOfNewQuantity = newQuantity > Number(order?.completed_quantity || 0);
       
-      if (order && order.status === 'completed' && quantityIncreased && incompleteBecauseOfNewQuantity) {
+      if (order && order.status === 'completed' && incompleteBecauseOfNewQuantity) {
         newStatus = 'in_progress';
-        toast.info("Заказ переведён обратно в работу из-за увеличения количества");
+        toast.info("Заказ переведён обратно в работу из-за изменения количества");
       }
 
       const updateData: any = {
         id: order!.id,
         product_id: formData.product_id,
-        quantity: formData.quantity,
+        quantity: newQuantity,
         planned_start_date: formData.planned_start_date,
         planned_end_date: formData.planned_end_date,
         status: newStatus,
@@ -139,6 +145,20 @@ const EditProductionOrder = () => {
       }
 
       await updateOrder.mutateAsync(updateData);
+
+      // Записываем в историю изменение количества
+      if (quantityChanged && user && order) {
+        const diff = newQuantity - oldQuantity;
+        const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+        addHistory.mutate({
+          production_order_id: order.id,
+          user_id: user.id,
+          change_type: 'quantity_changed',
+          old_value: oldQuantity.toString(),
+          new_value: newQuantity.toString(),
+          description: `Изменение плана: ${oldQuantity} → ${newQuantity} (${diffStr})`,
+        });
+      }
 
       toast.success("Заказ успешно обновлен");
       navigate(`/production-orders/${order?.order_number}`);

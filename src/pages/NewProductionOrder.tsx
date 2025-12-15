@@ -104,13 +104,15 @@ const NewProductionOrderContent = () => {
 
     try {
       // Создаем заказ
+      const quantityNum = Number(formData.quantity);
       const order = await createOrder.mutateAsync({
         order_number: orderNumber,
         product_id: formData.product,
         specification_id: formData.specification || null,
         work_center_id: formData.work_center || null,
         routing_sheet_id: formData.routing_sheet || null,
-        quantity: Number(formData.quantity),
+        quantity: quantityNum,
+        original_quantity: quantityNum,
         completed_quantity: 0,
         status: "planned",
         priority: formData.priority,
