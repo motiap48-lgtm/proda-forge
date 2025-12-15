@@ -85,6 +85,8 @@ export interface MRPCalculationResult {
     totalProductionItems: number;
     totalShortages: number;
     totalWorkCenters: number;
+    totalPlanIncrease: number;
+    totalPlanDecrease: number;
   };
 }
 
@@ -621,6 +623,8 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
           totalShortages: purchaseRequirements.filter(r => r.status === 'shortage').length +
                           productionRequirements.filter(r => r.status === 'shortage').length,
           totalWorkCenters: workCenterReports.length,
+          totalPlanIncrease: [...purchaseRequirements, ...productionRequirements].reduce((sum, r) => sum + (r.plan_increase_requirement || 0), 0),
+          totalPlanDecrease: [...purchaseRequirements, ...productionRequirements].reduce((sum, r) => sum + (r.plan_decrease_amount || 0), 0),
         },
       };
     },
