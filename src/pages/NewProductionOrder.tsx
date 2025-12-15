@@ -45,6 +45,7 @@ const NewProductionOrderContent = () => {
   });
   const [createChildOrdersFlag, setCreateChildOrdersFlag] = useState(true);
   const [childOrdersPreview, setChildOrdersPreview] = useState<ChildOrderData[]>([]);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   // Prepare options for searchable selects
   const productOptions = useMemo(() => {
@@ -106,11 +107,20 @@ const NewProductionOrderContent = () => {
       if (formData.specification && formData.quantity && createChildOrdersFlag) {
         const qty = Number(formData.quantity);
         if (qty > 0) {
-          const preview = await previewChildOrders.mutateAsync({
-            specificationId: formData.specification,
-            quantity: qty,
-          });
-          setChildOrdersPreview(preview);
+          setIsLoadingPreview(true);
+          try {
+            const preview = await previewChildOrders.mutateAsync({
+              specificationId: formData.specification,
+              quantity: qty,
+            });
+            console.log("Child orders preview:", preview);
+            setChildOrdersPreview(preview);
+          } catch (error) {
+            console.error("Error previewing child orders:", error);
+            setChildOrdersPreview([]);
+          } finally {
+            setIsLoadingPreview(false);
+          }
         }
       } else {
         setChildOrdersPreview([]);
@@ -177,14 +187,20 @@ const NewProductionOrderContent = () => {
 
       // Создаем дочерние заказы на ПФ/СБ если выбрано
       if (createChildOrdersFlag && formData.specification && order) {
-        await createChildOrders.mutateAsync({
-          parentOrderId: order.id,
-          parentOrderNumber: orderNumber,
-          specificationId: formData.specification,
-          quantity: quantityNum,
-          plannedStartDate: formData.planned_start,
-          plannedEndDate: formData.planned_end,
-        });
+        console.log("Creating child orders for parent:", order.id, "specification:", formData.specification);
+        try {
+          const result = await createChildOrders.mutateAsync({
+            parentOrderId: order.id,
+            parentOrderNumber: orderNumber,
+            specificationId: formData.specification,
+            quantity: quantityNum,
+            plannedStartDate: formData.planned_start,
+            plannedEndDate: formData.planned_end,
+          });
+          console.log("Child orders creation result:", result);
+        } catch (childError) {
+          console.error("Error creating child orders:", childError);
+        }
       }
 
       navigate("/production-orders");
@@ -393,11 +409,18 @@ const NewProductionOrderContent = () => {
                       onCheckedChange={(checked) => setCreateChildOrdersFlag(checked === true)}
                     />
                     <Label htmlFor="createChildOrders" className="text-sm">
-                      Создать заказы на ПФ и СБ
+                      Создать заказы на компоненты (ПФ и СБ)
                     </Label>
                   </div>
 
-                  {createChildOrdersFlag && childOrdersPreview.length > 0 && (
+                  {createChildOrdersFlag && isLoadingPreview && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Анализ спецификации...
+                    </div>
+                  )}
+
+                  {createChildOrdersFlag && !isLoadingPreview && childOrdersPreview.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs text-muted-foreground">
                         Будет создано {childOrdersPreview.length} дочерних заказов:
@@ -422,7 +445,7 @@ const NewProductionOrderContent = () => {
                     </div>
                   )}
 
-                  {createChildOrdersFlag && formData.specification && childOrdersPreview.length === 0 && formData.quantity && (
+                  {createChildOrdersFlag && !isLoadingPreview && formData.specification && childOrdersPreview.length === 0 && formData.quantity && (
                     <p className="text-xs text-muted-foreground">
                       Нет компонентов ПФ/СБ в спецификации
                     </p>

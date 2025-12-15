@@ -75,34 +75,63 @@ async function collectComponentRequirements(
 ): Promise<ChildOrderData[]> {
   const requirements: ChildOrderData[] = [];
 
-  // Get specification materials
+  // Get specification materials with proper join
   const { data: materials, error } = await supabase
     .from("specification_materials")
     .select(`
       material_id,
       quantity,
-      waste_rate,
-      products:material_id(id, name, code, product_type, unit)
+      waste_rate
     `)
     .eq("specification_id", specificationId);
 
-  if (error || !materials) return requirements;
+  if (error) {
+    console.error("Error fetching specification materials:", error);
+    return requirements;
+  }
+
+  if (!materials || materials.length === 0) {
+    console.log("No materials found for specification:", specificationId);
+    return requirements;
+  }
+
+  // Get product details for all materials
+  const materialIds = materials.map(m => m.material_id);
+  const { data: products, error: productsError } = await supabase
+    .from("products")
+    .select("id, name, code, product_type, unit")
+    .in("id", materialIds);
+
+  if (productsError) {
+    console.error("Error fetching products:", productsError);
+    return requirements;
+  }
+
+  const productsMap = new Map(products?.map(p => [p.id, p]) || []);
 
   for (const material of materials) {
-    const product = material.products as any;
-    if (!product) continue;
+    const product = productsMap.get(material.material_id);
+    if (!product) {
+      console.log("Product not found for material_id:", material.material_id);
+      continue;
+    }
 
     // Skip materials - they don't need production orders
-    if (product.product_type === 'material') continue;
+    if (product.product_type === 'material') {
+      continue;
+    }
 
     // Skip if already in ancestor path (circular reference)
-    if (ancestorIds.has(product.id)) continue;
+    if (ancestorIds.has(product.id)) {
+      console.log("Skipping circular reference for product:", product.name);
+      continue;
+    }
 
     // Calculate required quantity with waste rate
-    const wasteMultiplier = 1 + (material.waste_rate || 0) / 100;
-    const requiredQty = material.quantity * quantity * wasteMultiplier;
+    const wasteMultiplier = 1 + (Number(material.waste_rate) || 0) / 100;
+    const requiredQty = Number(material.quantity) * quantity * wasteMultiplier;
 
-  // Find specification and routing sheet for this product
+    // Find specification and routing sheet for this product
     const { data: spec } = await supabase
       .from("specifications")
       .select("id")
