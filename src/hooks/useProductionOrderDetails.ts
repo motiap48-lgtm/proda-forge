@@ -98,6 +98,26 @@ export const useUpdateOperationStatus = () => {
         updates.actual_start_date = new Date().toISOString();
         updates.status = 'in_progress';
         
+        // Обновляем статус заказа на "released" или "in_progress" если он был "planned"
+        if (currentOp?.production_order_id) {
+          const { data: currentOrder } = await supabase
+            .from("production_orders")
+            .select("status, actual_start_date")
+            .eq("id", currentOp.production_order_id)
+            .single();
+          
+          if (currentOrder?.status === 'planned') {
+            const orderUpdates: any = { status: 'released' };
+            if (!currentOrder.actual_start_date) {
+              orderUpdates.actual_start_date = new Date().toISOString().split('T')[0];
+            }
+            await supabase
+              .from("production_orders")
+              .update(orderUpdates)
+              .eq("id", currentOp.production_order_id);
+          }
+        }
+        
         // Записываем в историю начало операции
         if (userId && currentOp?.production_order_id) {
           await supabase.from("production_order_history").insert({
