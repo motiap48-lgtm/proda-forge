@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ const editOrderSchema = z.object({
 const EditProductionOrder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { data: order, isLoading: orderLoading } = useProductionOrder(id || "");
   const { data: products } = useProducts();
@@ -177,6 +179,12 @@ const EditProductionOrder = () => {
           description: `Изменение плана: ${oldQuantity} → ${newQuantity} (${diffStr})`,
         });
       }
+
+      // Инвалидируем кэш для обновления данных на странице деталей
+      await queryClient.invalidateQueries({ queryKey: ["production-order", order?.order_number] });
+      await queryClient.invalidateQueries({ queryKey: ["production-order-operations", order?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["production-order-history", order?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["production-orders"] });
 
       toast.success("Заказ успешно обновлен");
       navigate(`/production-orders/${order?.order_number}`);
