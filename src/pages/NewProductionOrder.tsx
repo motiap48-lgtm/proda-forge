@@ -7,16 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Save, Loader2, GitBranch, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useProducts } from "@/hooks/useProducts";
 import { useActiveSpecifications } from "@/hooks/useSpecifications";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { useCreateProductionOrder } from "@/hooks/useProductionOrders";
 import { useActiveRoutingSheets } from "@/hooks/useRoutingSheets";
+import { useCreateChildOrders, usePreviewChildOrders, ChildOrderData } from "@/hooks/useChildProductionOrders";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { supabase } from "@/integrations/supabase/client";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const NewProductionOrderContent = () => {
   const navigate = useNavigate();
@@ -25,6 +29,8 @@ const NewProductionOrderContent = () => {
   const { data: workCenters, isLoading: workCentersLoading } = useActiveWorkCenters();
   const { data: routingSheets } = useActiveRoutingSheets();
   const createOrder = useCreateProductionOrder();
+  const createChildOrders = useCreateChildOrders();
+  const previewChildOrders = usePreviewChildOrders();
 
   const [formData, setFormData] = useState({
     product: "",
@@ -37,6 +43,8 @@ const NewProductionOrderContent = () => {
     planned_start: "",
     planned_end: "",
   });
+  const [createChildOrdersFlag, setCreateChildOrdersFlag] = useState(true);
+  const [childOrdersPreview, setChildOrdersPreview] = useState<ChildOrderData[]>([]);
 
   // Prepare options for searchable selects
   const productOptions = useMemo(() => {
@@ -92,6 +100,25 @@ const NewProductionOrderContent = () => {
     }
   }, [formData.product, specifications, routingSheets]);
 
+  // Preview child orders when specification and quantity change
+  useEffect(() => {
+    const previewChildren = async () => {
+      if (formData.specification && formData.quantity && createChildOrdersFlag) {
+        const qty = Number(formData.quantity);
+        if (qty > 0) {
+          const preview = await previewChildOrders.mutateAsync({
+            specificationId: formData.specification,
+            quantity: qty,
+          });
+          setChildOrdersPreview(preview);
+        }
+      } else {
+        setChildOrdersPreview([]);
+      }
+    };
+    previewChildren();
+  }, [formData.specification, formData.quantity, createChildOrdersFlag]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -111,6 +138,7 @@ const NewProductionOrderContent = () => {
         specification_id: formData.specification || null,
         work_center_id: formData.work_center || null,
         routing_sheet_id: formData.routing_sheet || null,
+        parent_order_id: null,
         quantity: quantityNum,
         original_quantity: quantityNum,
         completed_quantity: 0,
@@ -145,6 +173,18 @@ const NewProductionOrderContent = () => {
             .from("production_order_operations")
             .insert(orderOperations);
         }
+      }
+
+      // Создаем дочерние заказы на ПФ/СБ если выбрано
+      if (createChildOrdersFlag && formData.specification && order) {
+        await createChildOrders.mutateAsync({
+          parentOrderId: order.id,
+          parentOrderNumber: orderNumber,
+          specificationId: formData.specification,
+          quantity: quantityNum,
+          plannedStartDate: formData.planned_start,
+          plannedEndDate: formData.planned_end,
+        });
       }
 
       navigate("/production-orders");
@@ -334,6 +374,68 @@ const NewProductionOrderContent = () => {
                       После создания заказ получит статус "Запланировано"
                     </p>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Child Orders */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GitBranch className="h-4 w-4" />
+                    Дочерние заказы
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="createChildOrders"
+                      checked={createChildOrdersFlag}
+                      onCheckedChange={(checked) => setCreateChildOrdersFlag(checked === true)}
+                    />
+                    <Label htmlFor="createChildOrders" className="text-sm">
+                      Создать заказы на ПФ и СБ
+                    </Label>
+                  </div>
+
+                  {createChildOrdersFlag && childOrdersPreview.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Будет создано {childOrdersPreview.length} дочерних заказов:
+                      </p>
+                      <div className="max-h-40 overflow-y-auto space-y-1">
+                        {childOrdersPreview.map((child, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className={
+                                child.product_type === 'assembly' 
+                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                  : 'bg-orange-50 text-orange-700 border-orange-200'
+                              }>
+                                {child.product_type === 'assembly' ? 'СБ' : 'ПФ'}
+                              </Badge>
+                              <span className="truncate max-w-[120px]">{child.product_name}</span>
+                            </div>
+                            <span className="font-mono">{Math.ceil(child.quantity)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {createChildOrdersFlag && formData.specification && childOrdersPreview.length === 0 && formData.quantity && (
+                    <p className="text-xs text-muted-foreground">
+                      Нет компонентов ПФ/СБ в спецификации
+                    </p>
+                  )}
+
+                  {!formData.specification && (
+                    <Alert variant="default">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Выберите спецификацию для предпросмотра дочерних заказов
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </CardContent>
               </Card>
 

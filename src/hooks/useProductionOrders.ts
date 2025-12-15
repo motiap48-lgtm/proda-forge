@@ -9,6 +9,7 @@ export interface ProductionOrder {
   specification_id: string | null;
   routing_sheet_id: string | null;
   work_center_id: string | null;
+  parent_order_id: string | null;
   quantity: number;
   original_quantity: number;
   completed_quantity: number;
