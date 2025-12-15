@@ -103,6 +103,8 @@ const generatePrintStyles = () => `
     .badge-shortage { background: #fee2e2; color: #dc2626; }
     .badge-warning { background: #fef3c7; color: #d97706; }
     .badge-ok { background: #dcfce7; color: #16a34a; }
+    .delta-increase { color: #d97706; font-weight: 600; }
+    .delta-decrease { color: #16a34a; font-weight: 600; }
     .work-center-header {
       background: #f0f9ff;
       padding: 10px;
@@ -149,6 +151,17 @@ const generatePrintStyles = () => `
   </style>
 `;
 
+const formatPlanDelta = (increase: number, decrease: number) => {
+  if (increase > 0 && decrease > 0) {
+    return `<span class="delta-increase">+${increase.toFixed(2)}</span> / <span class="delta-decrease">-${decrease.toFixed(2)}</span>`;
+  } else if (increase > 0) {
+    return `<span class="delta-increase">+${increase.toFixed(2)}</span>`;
+  } else if (decrease > 0) {
+    return `<span class="delta-decrease">-${decrease.toFixed(2)}</span>`;
+  }
+  return '—';
+};
+
 const generatePurchaseRequirementsHTML = (
   requirements: PurchaseRequirement[],
   planningHorizon: number,
@@ -156,6 +169,7 @@ const generatePurchaseRequirementsHTML = (
 ) => {
   const shortages = requirements.filter(r => r.status === "shortage").length;
   const warnings = requirements.filter(r => r.status === "warning").length;
+  const hasChanges = requirements.some(r => r.plan_increase_requirement > 0 || r.plan_decrease_amount > 0);
   
   return `
     <!DOCTYPE html>
@@ -188,20 +202,27 @@ const generatePurchaseRequirementsHTML = (
           <span>Позиций с предупреждением:</span>
           <strong style="color: #d97706">${warnings}</strong>
         </div>
+        ${hasChanges ? `
+        <div class="summary-row">
+          <span>Позиций с изменением плана:</span>
+          <strong>${requirements.filter(r => r.plan_increase_requirement > 0 || r.plan_decrease_amount > 0).length}</strong>
+        </div>
+        ` : ''}
       </div>
 
       <table>
         <thead>
           <tr>
-            <th style="width: 8%">Тип</th>
-            <th style="width: 10%">Код</th>
-            <th style="width: 22%">Наименование</th>
-            <th class="text-right" style="width: 10%">Валовая потр.</th>
-            <th class="text-right" style="width: 10%">На складе</th>
-            <th class="text-right" style="width: 10%">Резерв</th>
-            <th class="text-right" style="width: 10%">Доступно</th>
-            <th class="text-right" style="width: 10%">Чистая потр.</th>
-            <th class="text-center" style="width: 10%">Статус</th>
+            <th style="width: 6%">Тип</th>
+            <th style="width: 8%">Код</th>
+            <th style="width: 18%">Наименование</th>
+            <th class="text-right" style="width: 9%">Валовая потр.</th>
+            <th class="text-right" style="width: 9%">Δ плана</th>
+            <th class="text-right" style="width: 9%">На складе</th>
+            <th class="text-right" style="width: 9%">Резерв</th>
+            <th class="text-right" style="width: 9%">Доступно</th>
+            <th class="text-right" style="width: 9%">Чистая потр.</th>
+            <th class="text-center" style="width: 8%">Статус</th>
           </tr>
         </thead>
         <tbody>
@@ -211,6 +232,7 @@ const generatePurchaseRequirementsHTML = (
               <td>${item.product_code}</td>
               <td>${item.product_name}</td>
               <td class="text-right">${item.gross_requirement.toFixed(2)} ${item.unit}</td>
+              <td class="text-right">${formatPlanDelta(item.plan_increase_requirement, item.plan_decrease_amount)}</td>
               <td class="text-right">${item.on_hand.toFixed(2)}</td>
               <td class="text-right">${item.reserved.toFixed(2)}</td>
               <td class="text-right">${item.available.toFixed(2)}</td>
@@ -238,6 +260,7 @@ const generateProductionRequirementsHTML = (
   startDate: string
 ) => {
   const shortages = requirements.filter(r => r.status === "shortage").length;
+  const hasChanges = requirements.some(r => r.plan_increase_requirement > 0 || r.plan_decrease_amount > 0);
   
   return `
     <!DOCTYPE html>
@@ -266,21 +289,28 @@ const generateProductionRequirementsHTML = (
           <span>Позиций с дефицитом:</span>
           <strong style="color: #dc2626">${shortages}</strong>
         </div>
+        ${hasChanges ? `
+        <div class="summary-row">
+          <span>Позиций с изменением плана:</span>
+          <strong>${requirements.filter(r => r.plan_increase_requirement > 0 || r.plan_decrease_amount > 0).length}</strong>
+        </div>
+        ` : ''}
       </div>
 
       <table>
         <thead>
           <tr>
-            <th style="width: 6%">Тип</th>
-            <th style="width: 8%">Код</th>
-            <th style="width: 18%">Наименование</th>
-            <th style="width: 12%">Участок</th>
-            <th class="text-right" style="width: 9%">Валовая</th>
-            <th class="text-right" style="width: 9%">На складе</th>
-            <th class="text-right" style="width: 9%">Резерв</th>
-            <th class="text-right" style="width: 9%">Доступно</th>
-            <th class="text-right" style="width: 10%">Чистая потр.</th>
-            <th class="text-center" style="width: 10%">Статус</th>
+            <th style="width: 5%">Тип</th>
+            <th style="width: 7%">Код</th>
+            <th style="width: 16%">Наименование</th>
+            <th style="width: 10%">Участок</th>
+            <th class="text-right" style="width: 8%">Валовая</th>
+            <th class="text-right" style="width: 8%">Δ плана</th>
+            <th class="text-right" style="width: 8%">На складе</th>
+            <th class="text-right" style="width: 8%">Резерв</th>
+            <th class="text-right" style="width: 8%">Доступно</th>
+            <th class="text-right" style="width: 9%">Чистая потр.</th>
+            <th class="text-center" style="width: 7%">Статус</th>
           </tr>
         </thead>
         <tbody>
@@ -291,6 +321,7 @@ const generateProductionRequirementsHTML = (
               <td>${item.product_name}</td>
               <td>${item.work_center_name || '—'}</td>
               <td class="text-right">${item.gross_requirement.toFixed(2)} ${item.unit}</td>
+              <td class="text-right">${formatPlanDelta(item.plan_increase_requirement, item.plan_decrease_amount)}</td>
               <td class="text-right">${item.on_hand.toFixed(2)}</td>
               <td class="text-right">${item.reserved.toFixed(2)}</td>
               <td class="text-right">${item.available.toFixed(2)}</td>
