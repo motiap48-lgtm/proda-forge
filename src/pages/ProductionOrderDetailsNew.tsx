@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle, Package, Lock, Layers, GitBranch } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, CheckCircle, Play, Clock, AlertTriangle, Pause, PlayCircle, Package, Lock, Layers, GitBranch, History } from "lucide-react";
 import { OrderHierarchyCard } from "@/components/production/OrderHierarchyCard";
+import { OutputHistoryCard } from "@/components/production/OutputHistoryCard";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
@@ -490,6 +491,9 @@ const ProductionOrderDetailsNew = () => {
                 </Card>
               );
             })}
+
+            {/* История выработки */}
+            <OutputHistoryCard orderId={order.id} operations={operations} />
           </TabsContent>
 
           <TabsContent value="info">

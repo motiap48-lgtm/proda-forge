@@ -51,6 +51,7 @@ import { WorkCenterReportPrintView } from "@/components/reports/WorkCenterReport
 import { ProductOperationsReport } from "@/components/reports/ProductOperationsReport";
 import { TimelineAnalytics } from "@/components/reports/TimelineAnalytics";
 import { ProductionOutputReport } from "@/components/reports/ProductionOutputReport";
+import { OperationsDetailedReport } from "@/components/reports/OperationsDetailedReport";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -223,6 +224,10 @@ const ProductionReportsContent = () => {
             <TabsTrigger value="output" className="gap-2">
               <Package className="h-4 w-4" />
               <span className="hidden sm:inline">Выпуск</span>
+            </TabsTrigger>
+            <TabsTrigger value="operations" className="gap-2">
+              <Clock className="h-4 w-4" />
+              <span className="hidden sm:inline">По операциям</span>
             </TabsTrigger>
             <TabsTrigger value="work-centers" className="gap-2">
               <Building2 className="h-4 w-4" />
@@ -468,6 +473,13 @@ const ProductionReportsContent = () => {
 
           <TabsContent value="output" className="space-y-6">
             <ProductionOutputReport
+              startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+              endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+            />
+          </TabsContent>
+
+          <TabsContent value="operations" className="space-y-6">
+            <OperationsDetailedReport
               startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
               endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
             />
