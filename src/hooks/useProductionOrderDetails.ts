@@ -163,13 +163,21 @@ export const useUpdateOperationStatus = () => {
             historyDescription += ` (брак: ${reportData.defectQuantity} шт.)`;
           }
           
+          // Store detailed JSON for better reporting
+          const historyNewValue = JSON.stringify({
+            completed_quantity: newCompleted,
+            good_quantity: goodQuantity,
+            defect_quantity: reportData.defectQuantity,
+            operation_name: currentOp.routing_operations?.name,
+          });
+          
           await supabase.from("production_order_history").insert({
             production_order_id: currentOp.production_order_id,
             user_id: userId,
             change_type: "output_registered",
             description: historyDescription,
             old_value: currentCompleted.toString(),
-            new_value: newCompleted.toString(),
+            new_value: historyNewValue,
           });
         }
       } else if (status !== 'in_progress' && status !== 'completed') {
