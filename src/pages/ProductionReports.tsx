@@ -28,7 +28,9 @@ import {
   ArrowUp,
   ArrowDown,
   Search,
-  X
+  X,
+  Minimize2,
+  Maximize2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
@@ -52,6 +54,8 @@ import { ProductOperationsReport } from "@/components/reports/ProductOperationsR
 import { TimelineAnalytics } from "@/components/reports/TimelineAnalytics";
 import { ProductionOutputReport } from "@/components/reports/ProductionOutputReport";
 import { OperationsDetailedReport } from "@/components/reports/OperationsDetailedReport";
+import { exportPlanFactToExcel } from "@/components/reports/PlanFactExcelExport";
+import { PlanFactPrintView } from "@/components/reports/PlanFactPrintView";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,6 +97,7 @@ const ProductionReportsContent = () => {
   const [printWorkCenterId, setPrintWorkCenterId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedProductTypes, setExpandedProductTypes] = useState<Set<string>>(new Set(['finished', 'assembly', 'semi-finished']));
+  const [planFactPrintType, setPlanFactPrintType] = useState<'all' | 'finished' | 'assembly' | 'semi-finished'>('all');
 
   const toggleProductType = (type: string) => {
     setExpandedProductTypes(prev => {
@@ -105,8 +110,17 @@ const ProductionReportsContent = () => {
       return next;
     });
   };
+
+  const expandAllProductTypes = () => {
+    setExpandedProductTypes(new Set(['finished', 'assembly', 'semi-finished']));
+  };
+
+  const collapseAllProductTypes = () => {
+    setExpandedProductTypes(new Set());
+  };
   
   const printRef = useRef<HTMLDivElement>(null);
+  const planFactPrintRef = useRef<HTMLDivElement>(null);
 
   const { data: reports, isLoading } = useProductionReports(
     startDate ? format(startDate, "yyyy-MM-dd") : undefined,
@@ -133,10 +147,30 @@ const ProductionReportsContent = () => {
     documentTitle: `Отчет_по_цехам_${format(new Date(), 'yyyy-MM-dd')}`,
   });
 
+  const handlePlanFactPrint = useReactToPrint({
+    contentRef: planFactPrintRef,
+    documentTitle: `План-факт_${planFactPrintType}_${format(new Date(), 'yyyy-MM-dd')}`,
+  });
+
+  const printPlanFact = (type: 'all' | 'finished' | 'assembly' | 'semi-finished') => {
+    setPlanFactPrintType(type);
+    setTimeout(() => handlePlanFactPrint(), 100);
+  };
+
   const handleExportExcel = () => {
     if (workCenterReports) {
       exportWorkCenterReportsToExcel(
         workCenterReports,
+        startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+        endDate ? format(endDate, "yyyy-MM-dd") : undefined
+      );
+    }
+  };
+
+  const handlePlanFactExportExcel = () => {
+    if (reports) {
+      exportPlanFactToExcel(
+        reports,
         startDate ? format(startDate, "yyyy-MM-dd") : undefined,
         endDate ? format(endDate, "yyyy-MM-dd") : undefined
       );
@@ -419,6 +453,68 @@ const ProductionReportsContent = () => {
           </Card>
         </div>
 
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={expandAllProductTypes}
+              disabled={expandedProductTypes.size === 3}
+            >
+              <Maximize2 className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Развернуть все</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={collapseAllProductTypes}
+              disabled={expandedProductTypes.size === 0}
+            >
+              <Minimize2 className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Свернуть все</span>
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePlanFactExportExcel}
+              disabled={!reports || reports.length === 0}
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Excel</span>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={!reports || reports.length === 0}>
+                  <Printer className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Печать</span>
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => printPlanFact('all')}>
+                  Все типы продукции
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => printPlanFact('finished')}>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mr-2">ГП</Badge>
+                  Готовая продукция
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => printPlanFact('assembly')}>
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 mr-2">СБ</Badge>
+                  Сборочные узлы
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => printPlanFact('semi-finished')}>
+                  <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 mr-2">ПФ</Badge>
+                  Полуфабрикаты
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
         {/* Grouped Tables by Product Type */}
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
@@ -641,6 +737,17 @@ const ProductionReportsContent = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Hidden print view for plan-fact */}
+        <div className="hidden">
+          <PlanFactPrintView
+            ref={planFactPrintRef}
+            reports={reports || []}
+            startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+            endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+            printType={planFactPrintType}
+          />
+        </div>
           </TabsContent>
 
           <TabsContent value="output" className="space-y-6">
