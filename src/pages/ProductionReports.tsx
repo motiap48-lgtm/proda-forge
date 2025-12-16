@@ -1001,7 +1001,6 @@ const ProductionReportsContent = () => {
                     expandAllProductTypes();
                     expandAllProducts();
                   }}
-                  disabled={expandedProducts.size === aggregatedByProduct.length && expandedProductTypes.size === 3}
                 >
                   <Maximize2 className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">Развернуть все</span>
