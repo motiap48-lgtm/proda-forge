@@ -143,6 +143,12 @@ const ProductionReportsContent = () => {
     const saved = localStorage.getItem('planFactSortDirection');
     return (saved as 'asc' | 'desc') || 'asc';
   });
+  
+  // Print orientation
+  const [printOrientation, setPrintOrientation] = useState<'portrait' | 'landscape'>(() => {
+    const saved = localStorage.getItem('printOrientation');
+    return (saved as 'portrait' | 'landscape') || 'landscape';
+  });
 
   // Fetch customers
   const { data: customers } = useActiveCustomers();
@@ -172,6 +178,10 @@ const ProductionReportsContent = () => {
   useEffect(() => {
     localStorage.setItem('planFactCompletionFilter', completionFilter);
   }, [completionFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('printOrientation', printOrientation);
+  }, [printOrientation]);
 
   const toggleProductType = (type: string) => {
     setExpandedProductTypes(prev => {
@@ -896,6 +906,39 @@ const ProductionReportsContent = () => {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Orientation selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  {printOrientation === 'portrait' ? (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="6" y="3" width="12" height="18" rx="1" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="6" width="18" height="12" rx="1" />
+                    </svg>
+                  )}
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setPrintOrientation('portrait')}>
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="6" y="3" width="12" height="18" rx="1" />
+                  </svg>
+                  Портрет
+                  {printOrientation === 'portrait' && <span className="ml-auto">✓</span>}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setPrintOrientation('landscape')}>
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="6" width="18" height="12" rx="1" />
+                  </svg>
+                  Альбом
+                  {printOrientation === 'landscape' && <span className="ml-auto">✓</span>}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="outline"
               size="sm"
@@ -1387,12 +1430,14 @@ const ProductionReportsContent = () => {
             startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
             endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
             printType={planFactPrintType}
+            orientation={printOrientation}
           />
           <PlanFactByOrderPrintView
             ref={planFactByOrderPrintRef}
             reports={planFactFilteredReports}
             startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
             endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+            orientation={printOrientation}
           />
           <PlanFactAggregatedPrintView
             ref={planFactAggregatedPrintRef}
@@ -1402,6 +1447,7 @@ const ProductionReportsContent = () => {
             endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
             showDetails={expandedProducts.size > 0}
             completionFilter={completionFilter}
+            orientation={printOrientation}
           />
         </div>
           </TabsContent>
@@ -1429,6 +1475,7 @@ const ProductionReportsContent = () => {
                 singleWorkCenterId={printWorkCenterId}
                 startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
                 endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+                orientation={printOrientation}
               />
             </div>
 

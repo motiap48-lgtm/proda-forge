@@ -8,7 +8,26 @@ interface PlanFactPrintViewProps {
   startDate?: string;
   endDate?: string;
   printType: 'all' | 'finished' | 'assembly' | 'semi-finished';
+  orientation?: 'portrait' | 'landscape';
 }
+
+const getPrintStyles = (orientation: 'portrait' | 'landscape') => `
+  @media print {
+    @page { 
+      margin: 8mm; 
+      size: A4 ${orientation};
+      @bottom-center {
+        content: "Стр. " counter(page) " из " counter(pages);
+        font-size: 9px;
+        color: #6b7280;
+      }
+    }
+    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { page-break-inside: avoid; }
+  }
+`;
 
 const statusLabels: Record<string, string> = {
   planned: 'Запланирован',
@@ -156,7 +175,7 @@ const ProductTypeTable = ({ reports, type, config, showHeader = true }: ProductT
 };
 
 export const PlanFactPrintView = forwardRef<HTMLDivElement, PlanFactPrintViewProps>(
-  ({ reports, startDate, endDate, printType }, ref) => {
+  ({ reports, startDate, endDate, printType, orientation = 'landscape' }, ref) => {
     const typesToPrint = printType === 'all' 
       ? ['finished', 'assembly', 'semi-finished'] 
       : [printType];
@@ -183,14 +202,7 @@ export const PlanFactPrintView = forwardRef<HTMLDivElement, PlanFactPrintViewPro
     if (!hasDataToPrint) {
       return (
         <div ref={ref} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-          <style>
-            {`
-              @media print {
-                @page { margin: 10mm; size: A4 landscape; }
-                body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-              }
-            `}
-          </style>
+          <style>{getPrintStyles(orientation)}</style>
           
           <div style={{ marginBottom: '12px', borderBottom: '2px solid #1f2937', paddingBottom: '8px' }}>
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
@@ -211,17 +223,7 @@ export const PlanFactPrintView = forwardRef<HTMLDivElement, PlanFactPrintViewPro
 
     return (
       <div ref={ref} style={{ padding: '10px', fontFamily: 'Arial, sans-serif' }}>
-        <style>
-          {`
-            @media print {
-              @page { margin: 10mm; size: A4 landscape; }
-              body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-              thead { display: table-header-group; }
-              tfoot { display: table-footer-group; }
-              tr { page-break-inside: avoid; }
-            }
-          `}
-        </style>
+        <style>{getPrintStyles(orientation)}</style>
         
         <div style={{ marginBottom: '8px', borderBottom: '2px solid #1f2937', paddingBottom: '6px' }}>
           <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
