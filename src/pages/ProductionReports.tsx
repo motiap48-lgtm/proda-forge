@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
@@ -100,9 +100,33 @@ const ProductionReportsContent = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedProductTypes, setExpandedProductTypes] = useState<Set<string>>(new Set(['finished', 'assembly', 'semi-finished']));
   const [planFactPrintType, setPlanFactPrintType] = useState<'all' | 'finished' | 'assembly' | 'semi-finished'>('all');
-  const [planFactStatusFilter, setPlanFactStatusFilter] = useState<'all' | 'planned' | 'in_progress' | 'completed'>('all');
-  const [planFactSortField, setPlanFactSortField] = useState<'order_number' | 'product_name' | 'planned' | 'completed' | 'deviation'>('order_number');
-  const [planFactSortDirection, setPlanFactSortDirection] = useState<'asc' | 'desc'>('asc');
+  
+  // План-факт фильтры с загрузкой из localStorage
+  const [planFactStatusFilter, setPlanFactStatusFilter] = useState<'all' | 'planned' | 'in_progress' | 'completed'>(() => {
+    const saved = localStorage.getItem('planFactStatusFilter');
+    return (saved as 'all' | 'planned' | 'in_progress' | 'completed') || 'all';
+  });
+  const [planFactSortField, setPlanFactSortField] = useState<'order_number' | 'product_name' | 'planned' | 'completed' | 'deviation'>(() => {
+    const saved = localStorage.getItem('planFactSortField');
+    return (saved as 'order_number' | 'product_name' | 'planned' | 'completed' | 'deviation') || 'order_number';
+  });
+  const [planFactSortDirection, setPlanFactSortDirection] = useState<'asc' | 'desc'>(() => {
+    const saved = localStorage.getItem('planFactSortDirection');
+    return (saved as 'asc' | 'desc') || 'asc';
+  });
+
+  // Сохранение фильтров план-факт в localStorage
+  useEffect(() => {
+    localStorage.setItem('planFactStatusFilter', planFactStatusFilter);
+  }, [planFactStatusFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('planFactSortField', planFactSortField);
+  }, [planFactSortField]);
+
+  useEffect(() => {
+    localStorage.setItem('planFactSortDirection', planFactSortDirection);
+  }, [planFactSortDirection]);
 
   const toggleProductType = (type: string) => {
     setExpandedProductTypes(prev => {
@@ -173,11 +197,12 @@ const ProductionReportsContent = () => {
   };
 
   const handlePlanFactExportExcel = () => {
-    if (reports) {
+    if (planFactFilteredReports.length > 0) {
       exportPlanFactToExcel(
-        reports,
+        planFactFilteredReports,
         startDate ? format(startDate, "yyyy-MM-dd") : undefined,
-        endDate ? format(endDate, "yyyy-MM-dd") : undefined
+        endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+        planFactStatusFilter
       );
     }
   };
@@ -548,7 +573,7 @@ const ProductionReportsContent = () => {
               variant="outline"
               size="sm"
               onClick={handlePlanFactExportExcel}
-              disabled={!reports || reports.length === 0}
+              disabled={planFactFilteredReports.length === 0}
             >
               <FileSpreadsheet className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Excel</span>

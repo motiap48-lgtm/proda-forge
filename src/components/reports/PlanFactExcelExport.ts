@@ -18,10 +18,18 @@ const productTypeLabels: Record<string, string> = {
   material: 'Материалы',
 };
 
+const statusFilterLabels: Record<string, string> = {
+  all: 'Все статусы',
+  planned: 'Запланирован',
+  in_progress: 'В работе',
+  completed: 'Завершен',
+};
+
 export const exportPlanFactToExcel = (
   reports: ProductionReportData[],
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  statusFilter: 'all' | 'planned' | 'in_progress' | 'completed' = 'all'
 ) => {
   const wb = XLSX.utils.book_new();
 
@@ -32,6 +40,7 @@ export const exportPlanFactToExcel = (
     ['Период:', startDate && endDate 
       ? `${format(new Date(startDate), 'dd.MM.yyyy', { locale: ru })} - ${format(new Date(endDate), 'dd.MM.yyyy', { locale: ru })}`
       : 'Все время'],
+    ['Фильтр по статусу:', statusFilterLabels[statusFilter]],
     ['Дата формирования:', format(new Date(), 'dd.MM.yyyy HH:mm', { locale: ru })],
     [''],
     ['Сводка по типам продукции'],
