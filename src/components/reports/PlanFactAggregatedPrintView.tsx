@@ -22,7 +22,7 @@ interface PlanFactAggregatedPrintViewProps {
   showDetails?: boolean;
   completionFilter?: 'all' | 'not_completed' | 'partially' | 'completed';
   orientation?: 'portrait' | 'landscape';
-  productTypeFilter?: 'all' | 'finished' | 'assembly' | 'semi-finished';
+  productTypeFilter?: ('finished' | 'assembly' | 'semi-finished')[];
 }
 
 const getPrintStyles = (orientation: 'portrait' | 'landscape') => `
@@ -205,14 +205,14 @@ const ProductTypeTable = ({ products, allReports, type, config, showDetails }: P
 };
 
 export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAggregatedPrintViewProps>(
-  ({ aggregatedProducts, allReports, startDate, endDate, showDetails, completionFilter, orientation = 'landscape', productTypeFilter = 'all' }, ref) => {
+  ({ aggregatedProducts, allReports, startDate, endDate, showDetails, completionFilter, orientation = 'landscape', productTypeFilter }, ref) => {
     const allTypes = ['finished', 'assembly', 'semi-finished'] as const;
-    const types = productTypeFilter === 'all' ? allTypes : [productTypeFilter];
+    const types = productTypeFilter && productTypeFilter.length > 0 ? productTypeFilter : allTypes;
     
-    // Filter products by type if filter is specified
-    const filteredProducts = productTypeFilter === 'all' 
-      ? aggregatedProducts 
-      : aggregatedProducts.filter(p => p.product_type === productTypeFilter);
+    // Filter products by selected types
+    const filteredProducts = productTypeFilter && productTypeFilter.length > 0 && productTypeFilter.length < 3
+      ? aggregatedProducts.filter(p => productTypeFilter.includes(p.product_type as typeof productTypeFilter[number]))
+      : aggregatedProducts;
 
     const hasDataToPrint = filteredProducts.length > 0;
 
@@ -224,9 +224,9 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
       ? completionFilterLabels[completionFilter] 
       : '';
 
-    const productTypeLabel = productTypeFilter !== 'all' 
-      ? productTypeConfig[productTypeFilter]?.label 
-      : null;
+    // Generate type labels for title
+    const typeLabels = types.map(t => productTypeConfig[t]?.badge).join(' + ');
+    const isAllTypes = !productTypeFilter || productTypeFilter.length === 0 || productTypeFilter.length === 3;
 
     if (!hasDataToPrint) {
       return (
@@ -235,7 +235,7 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
           
           <div style={{ marginBottom: '12px', borderBottom: '2px solid #1f2937', paddingBottom: '8px' }}>
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-              Отчет план-факт{productTypeLabel ? `: ${productTypeLabel}` : ' (суммарно по изделиям)'}
+              Отчет план-факт{!isAllTypes ? `: ${typeLabels}` : ' (суммарно по изделиям)'}
             </h1>
             <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: '#4b5563' }}>
               <span>Период: {dateRange}</span>
@@ -260,21 +260,21 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
         
         <div style={{ marginBottom: '8px', borderBottom: '2px solid #1f2937', paddingBottom: '6px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 4px 0' }}>
-            {productTypeFilter !== 'all' && (
-              <span style={{
+            {!isAllTypes && types.map(type => (
+              <span key={type} style={{
                 display: 'inline-block',
                 padding: '2px 8px',
-                backgroundColor: productTypeConfig[productTypeFilter]?.color || '#6b7280',
+                backgroundColor: productTypeConfig[type]?.color || '#6b7280',
                 color: 'white',
                 borderRadius: '4px',
                 fontSize: '12px',
                 fontWeight: 'bold'
               }}>
-                {productTypeConfig[productTypeFilter]?.badge}
+                {productTypeConfig[type]?.badge}
               </span>
-            )}
+            ))}
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
-              Отчет план-факт{productTypeLabel ? `: ${productTypeLabel}` : ' (суммарно по изделиям)'}
+              Отчет план-факт{!isAllTypes ? '' : ' (суммарно по изделиям)'}
               {showDetails && ' с детализацией'}
             </h1>
           </div>

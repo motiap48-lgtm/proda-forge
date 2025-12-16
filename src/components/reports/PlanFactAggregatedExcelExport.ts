@@ -32,17 +32,29 @@ export const exportPlanFactAggregatedToExcel = (
   allReports: ProductionReportData[],
   startDate?: string,
   endDate?: string,
-  completionFilter?: 'all' | 'not_completed' | 'partially' | 'completed'
+  completionFilter?: 'all' | 'not_completed' | 'partially' | 'completed',
+  productTypeFilter?: ('finished' | 'assembly' | 'semi-finished')[]
 ) => {
+  const allTypes = ['finished', 'assembly', 'semi-finished'] as const;
+  const typesToExport = productTypeFilter && productTypeFilter.length > 0 ? productTypeFilter : allTypes;
+  
+  // Filter products by selected types
+  const filteredProducts = aggregatedProducts.filter(p => 
+    typesToExport.includes(p.product_type as typeof typesToExport[number])
+  );
   const wb = XLSX.utils.book_new();
 
   const filterLabel = completionFilter && completionFilter !== 'all' 
     ? completionFilterLabels[completionFilter] 
     : '';
 
+  // Title based on types
+  const typeNames = typesToExport.map(t => t === 'finished' ? 'ГП' : t === 'assembly' ? 'СБ' : 'ПФ');
+  const titleSuffix = typesToExport.length === 3 ? '' : ` (${typeNames.join(', ')})`;
+
   // Summary sheet
   const summaryData: (string | number)[][] = [
-    ['Отчет план-факт (суммарно по изделиям)'],
+    [`Отчет план-факт${titleSuffix}`],
     [''],
     ['Период:', startDate && endDate 
       ? `${format(new Date(startDate), 'dd.MM.yyyy', { locale: ru })} - ${format(new Date(endDate), 'dd.MM.yyyy', { locale: ru })}`
@@ -54,9 +66,8 @@ export const exportPlanFactAggregatedToExcel = (
     ['Тип', 'Кол-во изделий', 'Кол-во заказов', 'План (исх.)', 'План (тек.)', 'Факт', 'Отклонение'],
   ];
 
-  const types = ['finished', 'assembly', 'semi-finished'] as const;
-  types.forEach(type => {
-    const typeProducts = aggregatedProducts.filter(p => p.product_type === type);
+  typesToExport.forEach(type => {
+    const typeProducts = filteredProducts.filter(p => p.product_type === type);
     if (typeProducts.length > 0) {
       const totals = typeProducts.reduce((acc, p) => ({
         original: acc.original + p.original_planned_quantity,
@@ -84,8 +95,8 @@ export const exportPlanFactAggregatedToExcel = (
   XLSX.utils.book_append_sheet(wb, summarySheet, 'Сводка');
 
   // Create sheet for each product type with aggregated data
-  types.forEach(type => {
-    const typeProducts = aggregatedProducts.filter(p => p.product_type === type);
+  typesToExport.forEach(type => {
+    const typeProducts = filteredProducts.filter(p => p.product_type === type);
     if (typeProducts.length === 0) return;
 
     const sheetData = [
@@ -147,8 +158,8 @@ export const exportPlanFactAggregatedToExcel = (
     [''],
   ];
 
-  types.forEach(type => {
-    const typeProducts = aggregatedProducts.filter(p => p.product_type === type);
+  typesToExport.forEach(type => {
+    const typeProducts = filteredProducts.filter(p => p.product_type === type);
     if (typeProducts.length === 0) return;
 
     detailData.push([productTypeLabels[type]]);
@@ -194,6 +205,6 @@ export const exportPlanFactAggregatedToExcel = (
   ];
   XLSX.utils.book_append_sheet(wb, detailSheet, 'Детализация');
 
-  const filename = `План-факт_суммарно_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+  const filename = `План-факт${titleSuffix.replace(/[()]/g, '').replace(/, /g, '_').replace(' ', '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
   XLSX.writeFile(wb, filename);
 };

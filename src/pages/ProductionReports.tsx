@@ -156,7 +156,7 @@ const ProductionReportsContent = () => {
   const [previewType, setPreviewType] = useState<'work-centers' | 'plan-fact' | 'by-order' | 'aggregated'>('work-centers');
   
   // Aggregated print options
-  const [aggregatedProductTypeFilter, setAggregatedProductTypeFilter] = useState<'all' | 'finished' | 'assembly' | 'semi-finished'>('all');
+  const [aggregatedProductTypeFilter, setAggregatedProductTypeFilter] = useState<('finished' | 'assembly' | 'semi-finished')[]>([]);
   const [aggregatedShowDetails, setAggregatedShowDetails] = useState(false);
 
   // Fetch customers
@@ -317,12 +317,13 @@ const ProductionReportsContent = () => {
         return 'Предпросмотр: План-факт по заказам';
       case 'aggregated': {
         const typeLabels: Record<string, string> = {
-          all: 'Все типы',
           finished: 'ГП',
           assembly: 'СБ',
           'semi-finished': 'ПФ'
         };
-        const typeLabel = typeLabels[aggregatedProductTypeFilter];
+        const typeLabel = aggregatedProductTypeFilter.length === 0 || aggregatedProductTypeFilter.length === 3
+          ? 'Все типы'
+          : aggregatedProductTypeFilter.map(t => typeLabels[t]).join(' + ');
         const detailsLabel = aggregatedShowDetails ? ' с детализацией' : '';
         return `Предпросмотр: ${typeLabel}${detailsLabel}`;
       }
@@ -359,7 +360,7 @@ const ProductionReportsContent = () => {
     }
   };
 
-  const handlePlanFactExportExcel = () => {
+  const handlePlanFactExportExcel = (productTypes?: ('finished' | 'assembly' | 'semi-finished')[]) => {
     if (planFactFilteredReports.length > 0) {
       if (planFactViewMode === 'by_order') {
         exportPlanFactByOrderToExcel(
@@ -374,7 +375,8 @@ const ProductionReportsContent = () => {
           planFactFilteredReports,
           startDate ? format(startDate, "yyyy-MM-dd") : undefined,
           endDate ? format(endDate, "yyyy-MM-dd") : undefined,
-          completionFilter
+          completionFilter,
+          productTypes
         );
       }
     }
@@ -1067,15 +1069,68 @@ const ProductionReportsContent = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePlanFactExportExcel}
-              disabled={planFactFilteredReports.length === 0}
-            >
-              <FileSpreadsheet className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Excel</span>
-            </Button>
+            {planFactViewMode === 'aggregated' ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={aggregatedByProduct.length === 0}>
+                    <FileSpreadsheet className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Excel</span>
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => handlePlanFactExportExcel()}>
+                    <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded mr-2">Все</span>
+                    Все типы продукции
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handlePlanFactExportExcel(['finished'])}>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mr-2">ГП</Badge>
+                    Готовая продукция
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePlanFactExportExcel(['assembly'])}>
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 mr-2">СБ</Badge>
+                    Сборочные узлы
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePlanFactExportExcel(['semi-finished'])}>
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 mr-2">ПФ</Badge>
+                    Полуфабрикаты
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handlePlanFactExportExcel(['finished', 'assembly'])}>
+                    <div className="flex items-center gap-1 mr-2">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">ГП</Badge>
+                      <span>+</span>
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">СБ</Badge>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePlanFactExportExcel(['finished', 'semi-finished'])}>
+                    <div className="flex items-center gap-1 mr-2">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">ГП</Badge>
+                      <span>+</span>
+                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">ПФ</Badge>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePlanFactExportExcel(['assembly', 'semi-finished'])}>
+                    <div className="flex items-center gap-1 mr-2">
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">СБ</Badge>
+                      <span>+</span>
+                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">ПФ</Badge>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePlanFactExportExcel()}
+                disabled={planFactFilteredReports.length === 0}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Excel</span>
+              </Button>
+            )}
             {planFactViewMode === 'aggregated' ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1085,27 +1140,29 @@ const ProductionReportsContent = () => {
                     <ChevronDown className="h-3 w-3 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuContent align="end" className="w-72 max-h-96 overflow-y-auto">
                   {/* All types */}
                   <DropdownMenuItem onClick={() => {
-                    setAggregatedProductTypeFilter('all');
+                    setAggregatedProductTypeFilter([]);
                     setAggregatedShowDetails(false);
                     openPrintPreview('aggregated');
                   }}>
+                    <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded mr-2">Все</span>
                     Суммарно (без детализации)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
-                    setAggregatedProductTypeFilter('all');
+                    setAggregatedProductTypeFilter([]);
                     setAggregatedShowDetails(true);
                     openPrintPreview('aggregated');
                   }}>
+                    <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded mr-2">Все</span>
                     Суммарно с детализацией
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   
                   {/* ГП - Finished goods */}
                   <DropdownMenuItem onClick={() => {
-                    setAggregatedProductTypeFilter('finished');
+                    setAggregatedProductTypeFilter(['finished']);
                     setAggregatedShowDetails(false);
                     openPrintPreview('aggregated');
                   }}>
@@ -1113,7 +1170,7 @@ const ProductionReportsContent = () => {
                     Суммарно
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
-                    setAggregatedProductTypeFilter('finished');
+                    setAggregatedProductTypeFilter(['finished']);
                     setAggregatedShowDetails(true);
                     openPrintPreview('aggregated');
                   }}>
@@ -1124,7 +1181,7 @@ const ProductionReportsContent = () => {
                   
                   {/* СБ - Assemblies */}
                   <DropdownMenuItem onClick={() => {
-                    setAggregatedProductTypeFilter('assembly');
+                    setAggregatedProductTypeFilter(['assembly']);
                     setAggregatedShowDetails(false);
                     openPrintPreview('aggregated');
                   }}>
@@ -1132,7 +1189,7 @@ const ProductionReportsContent = () => {
                     Суммарно
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
-                    setAggregatedProductTypeFilter('assembly');
+                    setAggregatedProductTypeFilter(['assembly']);
                     setAggregatedShowDetails(true);
                     openPrintPreview('aggregated');
                   }}>
@@ -1143,7 +1200,7 @@ const ProductionReportsContent = () => {
                   
                   {/* ПФ - Semi-finished */}
                   <DropdownMenuItem onClick={() => {
-                    setAggregatedProductTypeFilter('semi-finished');
+                    setAggregatedProductTypeFilter(['semi-finished']);
                     setAggregatedShowDetails(false);
                     openPrintPreview('aggregated');
                   }}>
@@ -1151,12 +1208,51 @@ const ProductionReportsContent = () => {
                     Суммарно
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
-                    setAggregatedProductTypeFilter('semi-finished');
+                    setAggregatedProductTypeFilter(['semi-finished']);
                     setAggregatedShowDetails(true);
                     openPrintPreview('aggregated');
                   }}>
                     <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 mr-2">ПФ</Badge>
                     С детализацией
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  
+                  {/* Combinations */}
+                  <DropdownMenuItem onClick={() => {
+                    setAggregatedProductTypeFilter(['finished', 'assembly']);
+                    setAggregatedShowDetails(false);
+                    openPrintPreview('aggregated');
+                  }}>
+                    <div className="flex items-center gap-1 mr-2">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">ГП</Badge>
+                      <span>+</span>
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">СБ</Badge>
+                    </div>
+                    Суммарно
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    setAggregatedProductTypeFilter(['finished', 'semi-finished']);
+                    setAggregatedShowDetails(false);
+                    openPrintPreview('aggregated');
+                  }}>
+                    <div className="flex items-center gap-1 mr-2">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">ГП</Badge>
+                      <span>+</span>
+                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">ПФ</Badge>
+                    </div>
+                    Суммарно
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    setAggregatedProductTypeFilter(['assembly', 'semi-finished']);
+                    setAggregatedShowDetails(false);
+                    openPrintPreview('aggregated');
+                  }}>
+                    <div className="flex items-center gap-1 mr-2">
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">СБ</Badge>
+                      <span>+</span>
+                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">ПФ</Badge>
+                    </div>
+                    Суммарно
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
