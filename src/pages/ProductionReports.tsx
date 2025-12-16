@@ -64,7 +64,9 @@ import { OperationsDetailedReport } from "@/components/reports/OperationsDetaile
 import { CustomerReport } from "@/components/reports/CustomerReport";
 import { OverdueOrdersReport } from "@/components/reports/OverdueOrdersReport";
 import { exportPlanFactToExcel } from "@/components/reports/PlanFactExcelExport";
+import { exportPlanFactByOrderToExcel } from "@/components/reports/PlanFactByOrderExcelExport";
 import { PlanFactPrintView } from "@/components/reports/PlanFactPrintView";
+import { PlanFactByOrderPrintView } from "@/components/reports/PlanFactByOrderPrintView";
 import { PlanFactByOrderView } from "@/components/reports/PlanFactByOrderView";
 import {
   DropdownMenu,
@@ -203,6 +205,7 @@ const ProductionReportsContent = () => {
   };
   const printRef = useRef<HTMLDivElement>(null);
   const planFactPrintRef = useRef<HTMLDivElement>(null);
+  const planFactByOrderPrintRef = useRef<HTMLDivElement>(null);
 
   const { data: reports, isLoading } = useProductionReports(
     startDate ? format(startDate, "yyyy-MM-dd") : undefined,
@@ -234,6 +237,11 @@ const ProductionReportsContent = () => {
     documentTitle: `План-факт_${planFactPrintType}_${format(new Date(), 'yyyy-MM-dd')}`,
   });
 
+  const handlePlanFactByOrderPrint = useReactToPrint({
+    contentRef: planFactByOrderPrintRef,
+    documentTitle: `План-факт_по_заказам_${format(new Date(), 'yyyy-MM-dd')}`,
+  });
+
   const printPlanFact = (type: 'all' | 'finished' | 'assembly' | 'semi-finished') => {
     setPlanFactPrintType(type);
     setTimeout(() => handlePlanFactPrint(), 100);
@@ -251,12 +259,20 @@ const ProductionReportsContent = () => {
 
   const handlePlanFactExportExcel = () => {
     if (planFactFilteredReports.length > 0) {
-      exportPlanFactToExcel(
-        planFactFilteredReports,
-        startDate ? format(startDate, "yyyy-MM-dd") : undefined,
-        endDate ? format(endDate, "yyyy-MM-dd") : undefined,
-        planFactStatusFilter
-      );
+      if (planFactViewMode === 'by_order') {
+        exportPlanFactByOrderToExcel(
+          planFactFilteredReports,
+          startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+          endDate ? format(endDate, "yyyy-MM-dd") : undefined
+        );
+      } else {
+        exportPlanFactToExcel(
+          planFactFilteredReports,
+          startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+          endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+          planFactStatusFilter
+        );
+      }
     }
   };
 
@@ -742,33 +758,45 @@ const ProductionReportsContent = () => {
               <FileSpreadsheet className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Excel</span>
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={!reports || reports.length === 0}>
-                  <Printer className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Печать</span>
-                  <ChevronDown className="h-3 w-3 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => printPlanFact('all')}>
-                  Все типы продукции
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => printPlanFact('finished')}>
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mr-2">ГП</Badge>
-                  Готовая продукция
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => printPlanFact('assembly')}>
-                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 mr-2">СБ</Badge>
-                  Сборочные узлы
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => printPlanFact('semi-finished')}>
-                  <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 mr-2">ПФ</Badge>
-                  Полуфабрикаты
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {planFactViewMode === 'aggregated' ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={!reports || reports.length === 0}>
+                    <Printer className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Печать</span>
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => printPlanFact('all')}>
+                    Все типы продукции
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => printPlanFact('finished')}>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mr-2">ГП</Badge>
+                    Готовая продукция
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => printPlanFact('assembly')}>
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 mr-2">СБ</Badge>
+                    Сборочные узлы
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => printPlanFact('semi-finished')}>
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 mr-2">ПФ</Badge>
+                    Полуфабрикаты
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePlanFactByOrderPrint()}
+                disabled={planFactFilteredReports.length === 0}
+              >
+                <Printer className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Печать</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1047,6 +1075,12 @@ const ProductionReportsContent = () => {
             startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
             endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
             printType={planFactPrintType}
+          />
+          <PlanFactByOrderPrintView
+            ref={planFactByOrderPrintRef}
+            reports={planFactFilteredReports}
+            startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+            endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
           />
         </div>
           </TabsContent>
