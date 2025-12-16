@@ -22,6 +22,7 @@ interface PlanFactAggregatedPrintViewProps {
   showDetails?: boolean;
   completionFilter?: 'all' | 'not_completed' | 'partially' | 'completed';
   orientation?: 'portrait' | 'landscape';
+  productTypeFilter?: 'all' | 'finished' | 'assembly' | 'semi-finished';
 }
 
 const getPrintStyles = (orientation: 'portrait' | 'landscape') => `
@@ -204,10 +205,16 @@ const ProductTypeTable = ({ products, allReports, type, config, showDetails }: P
 };
 
 export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAggregatedPrintViewProps>(
-  ({ aggregatedProducts, allReports, startDate, endDate, showDetails, completionFilter, orientation = 'landscape' }, ref) => {
-    const types = ['finished', 'assembly', 'semi-finished'] as const;
+  ({ aggregatedProducts, allReports, startDate, endDate, showDetails, completionFilter, orientation = 'landscape', productTypeFilter = 'all' }, ref) => {
+    const allTypes = ['finished', 'assembly', 'semi-finished'] as const;
+    const types = productTypeFilter === 'all' ? allTypes : [productTypeFilter];
+    
+    // Filter products by type if filter is specified
+    const filteredProducts = productTypeFilter === 'all' 
+      ? aggregatedProducts 
+      : aggregatedProducts.filter(p => p.product_type === productTypeFilter);
 
-    const hasDataToPrint = aggregatedProducts.length > 0;
+    const hasDataToPrint = filteredProducts.length > 0;
 
     const dateRange = startDate && endDate
       ? `${format(new Date(startDate), 'dd.MM.yyyy', { locale: ru })} - ${format(new Date(endDate), 'dd.MM.yyyy', { locale: ru })}`
@@ -217,6 +224,10 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
       ? completionFilterLabels[completionFilter] 
       : '';
 
+    const productTypeLabel = productTypeFilter !== 'all' 
+      ? productTypeConfig[productTypeFilter]?.label 
+      : null;
+
     if (!hasDataToPrint) {
       return (
         <div ref={ref} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
@@ -224,7 +235,7 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
           
           <div style={{ marginBottom: '12px', borderBottom: '2px solid #1f2937', paddingBottom: '8px' }}>
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-              Отчет план-факт (суммарно по изделиям)
+              Отчет план-факт{productTypeLabel ? `: ${productTypeLabel}` : ' (суммарно по изделиям)'}
             </h1>
             <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: '#4b5563' }}>
               <span>Период: {dateRange}</span>
@@ -240,18 +251,33 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
       );
     }
 
-    const totalProducts = aggregatedProducts.length;
-    const totalOrders = aggregatedProducts.reduce((sum, p) => sum + p.order_count, 0);
+    const totalProducts = filteredProducts.length;
+    const totalOrders = filteredProducts.reduce((sum, p) => sum + p.order_count, 0);
 
     return (
       <div ref={ref} style={{ padding: '10px', fontFamily: 'Arial, sans-serif' }}>
         <style>{getPrintStyles(orientation)}</style>
         
         <div style={{ marginBottom: '8px', borderBottom: '2px solid #1f2937', paddingBottom: '6px' }}>
-          <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-            Отчет план-факт (суммарно по изделиям)
-            {showDetails && ' с детализацией'}
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 4px 0' }}>
+            {productTypeFilter !== 'all' && (
+              <span style={{
+                display: 'inline-block',
+                padding: '2px 8px',
+                backgroundColor: productTypeConfig[productTypeFilter]?.color || '#6b7280',
+                color: 'white',
+                borderRadius: '4px',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}>
+                {productTypeConfig[productTypeFilter]?.badge}
+              </span>
+            )}
+            <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
+              Отчет план-факт{productTypeLabel ? `: ${productTypeLabel}` : ' (суммарно по изделиям)'}
+              {showDetails && ' с детализацией'}
+            </h1>
+          </div>
           <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: '#4b5563', flexWrap: 'wrap' }}>
             <span>Период: {dateRange}</span>
             {filterLabel && (
@@ -272,7 +298,7 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
         {types.map(type => (
           <ProductTypeTable
             key={type}
-            products={aggregatedProducts}
+            products={filteredProducts}
             allReports={allReports}
             type={type}
             config={productTypeConfig[type]}
@@ -294,13 +320,13 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
             <div>
               <div style={{ color: '#6b7280' }}>План (исх.)</div>
               <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                {aggregatedProducts.reduce((sum, p) => sum + p.original_planned_quantity, 0)}
+                {filteredProducts.reduce((sum, p) => sum + p.original_planned_quantity, 0)}
               </div>
             </div>
             <div>
               <div style={{ color: '#6b7280' }}>Факт</div>
               <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                {aggregatedProducts.reduce((sum, p) => sum + p.completed_quantity, 0)}
+                {filteredProducts.reduce((sum, p) => sum + p.completed_quantity, 0)}
               </div>
             </div>
             <div>
@@ -308,9 +334,9 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
               <div style={{ 
                 fontSize: '14px', 
                 fontWeight: 'bold',
-                color: aggregatedProducts.reduce((sum, p) => sum + p.deviation, 0) >= 0 ? '#059669' : '#dc2626'
+                color: filteredProducts.reduce((sum, p) => sum + p.deviation, 0) >= 0 ? '#059669' : '#dc2626'
               }}>
-                {aggregatedProducts.reduce((sum, p) => sum + p.deviation, 0)}
+                {filteredProducts.reduce((sum, p) => sum + p.deviation, 0)}
               </div>
             </div>
           </div>
