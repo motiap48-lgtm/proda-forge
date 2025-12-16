@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon } from "lucide-react";
+import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -72,22 +72,50 @@ const sortConfig = {
 };
 
 const ITEMS_PER_PAGE = 20;
+const STORAGE_KEY = "production-orders-settings";
+
+// Load settings from localStorage
+const loadSettings = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error("Error loading settings:", e);
+  }
+  return {
+    statusFilter: "all",
+    hierarchyFilter: "all",
+    sortField: "date",
+    sortDirection: "desc",
+  };
+};
 
 const ProductionOrdersContent = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const savedSettings = loadSettings();
+  
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(savedSettings.statusFilter);
+  const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilter>(savedSettings.hierarchyFilter);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteSelectedDialog, setShowDeleteSelectedDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState<SortField>("date");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [sortField, setSortField] = useState<SortField>(savedSettings.sortField);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(savedSettings.sortDirection);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const { data: orders, isLoading } = useProductionOrders();
+
+  // Save settings to localStorage
+  useEffect(() => {
+    const settings = { statusFilter, hierarchyFilter, sortField, sortDirection };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  }, [statusFilter, hierarchyFilter, sortField, sortDirection]);
 
   // Count orders by hierarchy type
   const hierarchyCounts = useMemo(() => {
@@ -166,6 +194,28 @@ const ProductionOrdersContent = () => {
 
   const toggleSortDirection = () => {
     setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+  };
+
+  // Quick action to update order status
+  const updateOrderStatus = async (orderId: string, newStatus: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setUpdatingOrderId(orderId);
+    try {
+      const { error } = await supabase
+        .from("production_orders")
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq("id", orderId);
+      
+      if (error) throw error;
+      
+      await queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      toast.success(`Статус изменён на "${statusConfig[newStatus as keyof typeof statusConfig]?.label || newStatus}"`);
+    } catch (error: any) {
+      console.error("Error updating order status:", error);
+      toast.error("Ошибка при изменении статуса: " + error.message);
+    } finally {
+      setUpdatingOrderId(null);
+    }
   };
 
   // Helper to check if an order is a parent
@@ -615,6 +665,63 @@ const ProductionOrdersContent = () => {
                         </p>
                       </div>
                     </div>
+                    
+                    {/* Quick Actions */}
+                    {!selectionMode && order.status !== "completed" && order.status !== "cancelled" && (
+                      <div className="flex items-start">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={updatingOrderId === order.id}>
+                              {updatingOrderId === order.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MoreHorizontal className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            {order.status === "planned" && (
+                              <DropdownMenuItem onClick={(e) => updateOrderStatus(order.id, "released", e as any)}>
+                                <Play className="mr-2 h-4 w-4 text-green-600" />
+                                Запустить
+                              </DropdownMenuItem>
+                            )}
+                            {order.status === "released" && (
+                              <DropdownMenuItem onClick={(e) => updateOrderStatus(order.id, "in_progress", e as any)}>
+                                <Play className="mr-2 h-4 w-4 text-green-600" />
+                                Начать производство
+                              </DropdownMenuItem>
+                            )}
+                            {order.status === "in_progress" && (
+                              <>
+                                <DropdownMenuItem onClick={(e) => updateOrderStatus(order.id, "completed", e as any)}>
+                                  <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                                  Завершить
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => updateOrderStatus(order.id, "on_hold", e as any)}>
+                                  <Pause className="mr-2 h-4 w-4 text-amber-600" />
+                                  Приостановить
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {order.status === "on_hold" && (
+                              <DropdownMenuItem onClick={(e) => updateOrderStatus(order.id, "in_progress", e as any)}>
+                                <Play className="mr-2 h-4 w-4 text-green-600" />
+                                Возобновить
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={(e) => updateOrderStatus(order.id, "cancelled", e as any)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Отменить
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
