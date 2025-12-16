@@ -358,6 +358,47 @@ const ProductionReportsContent = () => {
     }) || [];
   }, [reports, planFactStatusFilter, customerFilter, planFactViewMode, selectedOrderNumber]);
 
+  // Агрегированные данные по продуктам для режима "Суммарно"
+  interface AggregatedProduct {
+    product_code: string;
+    product_name: string;
+    product_type: string;
+    original_planned_quantity: number;
+    planned_quantity: number;
+    completed_quantity: number;
+    deviation: number;
+    order_count: number;
+  }
+
+  const aggregatedByProduct = useMemo(() => {
+    const grouped = new Map<string, AggregatedProduct>();
+    
+    planFactFilteredReports.forEach(r => {
+      const key = r.product_code;
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.original_planned_quantity += r.original_planned_quantity;
+        existing.planned_quantity += r.planned_quantity;
+        existing.completed_quantity += r.completed_quantity;
+        existing.deviation += r.deviation;
+        existing.order_count += 1;
+      } else {
+        grouped.set(key, {
+          product_code: r.product_code,
+          product_name: r.product_name,
+          product_type: r.product_type,
+          original_planned_quantity: r.original_planned_quantity,
+          planned_quantity: r.planned_quantity,
+          completed_quantity: r.completed_quantity,
+          deviation: r.deviation,
+          order_count: 1,
+        });
+      }
+    });
+    
+    return Array.from(grouped.values());
+  }, [planFactFilteredReports]);
+
   // Get unique order numbers for selector (only finished goods parent orders)
   const uniqueOrderNumbers = useMemo(() => {
     if (!reports) return [];
@@ -389,6 +430,30 @@ const ProductionReportsContent = () => {
         case 'deviation':
           comparison = a.deviation - b.deviation;
           break;
+      }
+      return planFactSortDirection === 'asc' ? comparison : -comparison;
+    });
+  };
+
+  // Сортировка агрегированных данных
+  const sortAggregatedProducts = (data: AggregatedProduct[]) => {
+    return [...data].sort((a, b) => {
+      let comparison = 0;
+      switch (planFactSortField) {
+        case 'product_name':
+          comparison = a.product_name.localeCompare(b.product_name);
+          break;
+        case 'planned':
+          comparison = a.planned_quantity - b.planned_quantity;
+          break;
+        case 'completed':
+          comparison = a.completed_quantity - b.completed_quantity;
+          break;
+        case 'deviation':
+          comparison = a.deviation - b.deviation;
+          break;
+        default:
+          comparison = a.product_name.localeCompare(b.product_name);
       }
       return planFactSortDirection === 'asc' ? comparison : -comparison;
     });
@@ -808,11 +873,11 @@ const ProductionReportsContent = () => {
           <div className="space-y-4">
             {/* Готовая продукция */}
             {(() => {
-              const finishedReports = sortPlanFactReports(planFactFilteredReports.filter(r => r.product_type === 'finished'));
-              if (finishedReports.length === 0) return null;
-              const totals = finishedReports.reduce((acc, r) => ({
-                planned: acc.planned + r.planned_quantity,
-                completed: acc.completed + r.completed_quantity,
+              const finishedProducts = sortAggregatedProducts(aggregatedByProduct.filter(p => p.product_type === 'finished'));
+              if (finishedProducts.length === 0) return null;
+              const totals = finishedProducts.reduce((acc, p) => ({
+                planned: acc.planned + p.planned_quantity,
+                completed: acc.completed + p.completed_quantity,
               }), { planned: 0, completed: 0 });
               return (
                 <Collapsible open={expandedProductTypes.has('finished')} onOpenChange={() => toggleProductType('finished')}>
@@ -824,7 +889,7 @@ const ProductionReportsContent = () => {
                             <ChevronDown className={`h-4 w-4 transition-transform ${expandedProductTypes.has('finished') ? '' : '-rotate-90'}`} />
                             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">ГП</Badge>
                             Готовая продукция
-                            <span className="text-muted-foreground font-normal">({finishedReports.length})</span>
+                            <span className="text-muted-foreground font-normal">({finishedProducts.length} изд.)</span>
                           </CardTitle>
                           <div className="text-sm text-muted-foreground">
                             План: {totals.planned} | Факт: {totals.completed}
@@ -837,13 +902,10 @@ const ProductionReportsContent = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('order_number')}>
-                                <div className="flex items-center">Номер заказа {getPlanFactSortIcon('order_number')}</div>
-                              </TableHead>
                               <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('product_name')}>
                                 <div className="flex items-center">Изделие {getPlanFactSortIcon('product_name')}</div>
                               </TableHead>
-                              <TableHead>Клиент</TableHead>
+                              <TableHead className="text-right">Заказов</TableHead>
                               <TableHead className="text-right">План (исх.)</TableHead>
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('planned')}>
                                 <div className="flex items-center justify-end">План (тек.) {getPlanFactSortIcon('planned')}</div>
@@ -854,28 +916,21 @@ const ProductionReportsContent = () => {
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('deviation')}>
                                 <div className="flex items-center justify-end">Откл. {getPlanFactSortIcon('deviation')}</div>
                               </TableHead>
-                              <TableHead>Статус</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {finishedReports.map((report) => (
-                              <TableRow key={report.order_number}>
-                                <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
+                            {finishedProducts.map((product) => (
+                              <TableRow key={product.product_code}>
                                 <TableCell>
-                                  <div className="font-medium">{report.product_name}</div>
-                                  <div className="text-xs text-muted-foreground">{report.product_code}</div>
+                                  <div className="font-medium">{product.product_name}</div>
+                                  <div className="text-xs text-muted-foreground">{product.product_code}</div>
                                 </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">{report.customer_name || "—"}</TableCell>
-                                <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
-                                <TableCell className="text-right">{report.planned_quantity}</TableCell>
-                                <TableCell className="text-right">{report.completed_quantity}</TableCell>
-                                <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {report.deviation > 0 ? '+' : ''}{report.deviation}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
-                                    {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
-                                  </Badge>
+                                <TableCell className="text-right text-muted-foreground">{product.order_count}</TableCell>
+                                <TableCell className="text-right">{product.original_planned_quantity}</TableCell>
+                                <TableCell className="text-right">{product.planned_quantity}</TableCell>
+                                <TableCell className="text-right">{product.completed_quantity}</TableCell>
+                                <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {product.deviation > 0 ? '+' : ''}{product.deviation}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -890,11 +945,11 @@ const ProductionReportsContent = () => {
 
             {/* Сборочные узлы */}
             {(() => {
-              const assemblyReports = sortPlanFactReports(planFactFilteredReports.filter(r => r.product_type === 'assembly'));
-              if (assemblyReports.length === 0) return null;
-              const totals = assemblyReports.reduce((acc, r) => ({
-                planned: acc.planned + r.planned_quantity,
-                completed: acc.completed + r.completed_quantity,
+              const assemblyProducts = sortAggregatedProducts(aggregatedByProduct.filter(p => p.product_type === 'assembly'));
+              if (assemblyProducts.length === 0) return null;
+              const totals = assemblyProducts.reduce((acc, p) => ({
+                planned: acc.planned + p.planned_quantity,
+                completed: acc.completed + p.completed_quantity,
               }), { planned: 0, completed: 0 });
               return (
                 <Collapsible open={expandedProductTypes.has('assembly')} onOpenChange={() => toggleProductType('assembly')}>
@@ -906,7 +961,7 @@ const ProductionReportsContent = () => {
                             <ChevronDown className={`h-4 w-4 transition-transform ${expandedProductTypes.has('assembly') ? '' : '-rotate-90'}`} />
                             <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">СБ</Badge>
                             Сборочные узлы
-                            <span className="text-muted-foreground font-normal">({assemblyReports.length})</span>
+                            <span className="text-muted-foreground font-normal">({assemblyProducts.length} изд.)</span>
                           </CardTitle>
                           <div className="text-sm text-muted-foreground">
                             План: {totals.planned} | Факт: {totals.completed}
@@ -919,13 +974,10 @@ const ProductionReportsContent = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('order_number')}>
-                                <div className="flex items-center">Номер заказа {getPlanFactSortIcon('order_number')}</div>
-                              </TableHead>
                               <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('product_name')}>
                                 <div className="flex items-center">Изделие {getPlanFactSortIcon('product_name')}</div>
                               </TableHead>
-                              <TableHead>Клиент</TableHead>
+                              <TableHead className="text-right">Заказов</TableHead>
                               <TableHead className="text-right">План (исх.)</TableHead>
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('planned')}>
                                 <div className="flex items-center justify-end">План (тек.) {getPlanFactSortIcon('planned')}</div>
@@ -936,28 +988,21 @@ const ProductionReportsContent = () => {
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('deviation')}>
                                 <div className="flex items-center justify-end">Откл. {getPlanFactSortIcon('deviation')}</div>
                               </TableHead>
-                              <TableHead>Статус</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {assemblyReports.map((report) => (
-                              <TableRow key={report.order_number}>
-                                <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
+                            {assemblyProducts.map((product) => (
+                              <TableRow key={product.product_code}>
                                 <TableCell>
-                                  <div className="font-medium">{report.product_name}</div>
-                                  <div className="text-xs text-muted-foreground">{report.product_code}</div>
+                                  <div className="font-medium">{product.product_name}</div>
+                                  <div className="text-xs text-muted-foreground">{product.product_code}</div>
                                 </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">{report.customer_name || "—"}</TableCell>
-                                <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
-                                <TableCell className="text-right">{report.planned_quantity}</TableCell>
-                                <TableCell className="text-right">{report.completed_quantity}</TableCell>
-                                <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {report.deviation > 0 ? '+' : ''}{report.deviation}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
-                                    {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
-                                  </Badge>
+                                <TableCell className="text-right text-muted-foreground">{product.order_count}</TableCell>
+                                <TableCell className="text-right">{product.original_planned_quantity}</TableCell>
+                                <TableCell className="text-right">{product.planned_quantity}</TableCell>
+                                <TableCell className="text-right">{product.completed_quantity}</TableCell>
+                                <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {product.deviation > 0 ? '+' : ''}{product.deviation}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -972,11 +1017,11 @@ const ProductionReportsContent = () => {
 
             {/* Полуфабрикаты */}
             {(() => {
-              const semiFinishedReports = sortPlanFactReports(planFactFilteredReports.filter(r => r.product_type === 'semi-finished'));
-              if (semiFinishedReports.length === 0) return null;
-              const totals = semiFinishedReports.reduce((acc, r) => ({
-                planned: acc.planned + r.planned_quantity,
-                completed: acc.completed + r.completed_quantity,
+              const semiFinishedProducts = sortAggregatedProducts(aggregatedByProduct.filter(p => p.product_type === 'semi-finished'));
+              if (semiFinishedProducts.length === 0) return null;
+              const totals = semiFinishedProducts.reduce((acc, p) => ({
+                planned: acc.planned + p.planned_quantity,
+                completed: acc.completed + p.completed_quantity,
               }), { planned: 0, completed: 0 });
               return (
                 <Collapsible open={expandedProductTypes.has('semi-finished')} onOpenChange={() => toggleProductType('semi-finished')}>
@@ -988,7 +1033,7 @@ const ProductionReportsContent = () => {
                             <ChevronDown className={`h-4 w-4 transition-transform ${expandedProductTypes.has('semi-finished') ? '' : '-rotate-90'}`} />
                             <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">ПФ</Badge>
                             Полуфабрикаты
-                            <span className="text-muted-foreground font-normal">({semiFinishedReports.length})</span>
+                            <span className="text-muted-foreground font-normal">({semiFinishedProducts.length} изд.)</span>
                           </CardTitle>
                           <div className="text-sm text-muted-foreground">
                             План: {totals.planned} | Факт: {totals.completed}
@@ -1001,13 +1046,10 @@ const ProductionReportsContent = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('order_number')}>
-                                <div className="flex items-center">Номер заказа {getPlanFactSortIcon('order_number')}</div>
-                              </TableHead>
                               <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('product_name')}>
                                 <div className="flex items-center">Изделие {getPlanFactSortIcon('product_name')}</div>
                               </TableHead>
-                              <TableHead>Клиент</TableHead>
+                              <TableHead className="text-right">Заказов</TableHead>
                               <TableHead className="text-right">План (исх.)</TableHead>
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('planned')}>
                                 <div className="flex items-center justify-end">План (тек.) {getPlanFactSortIcon('planned')}</div>
@@ -1018,28 +1060,21 @@ const ProductionReportsContent = () => {
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('deviation')}>
                                 <div className="flex items-center justify-end">Откл. {getPlanFactSortIcon('deviation')}</div>
                               </TableHead>
-                              <TableHead>Статус</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {semiFinishedReports.map((report) => (
-                              <TableRow key={report.order_number}>
-                                <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
+                            {semiFinishedProducts.map((product) => (
+                              <TableRow key={product.product_code}>
                                 <TableCell>
-                                  <div className="font-medium">{report.product_name}</div>
-                                  <div className="text-xs text-muted-foreground">{report.product_code}</div>
+                                  <div className="font-medium">{product.product_name}</div>
+                                  <div className="text-xs text-muted-foreground">{product.product_code}</div>
                                 </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">{report.customer_name || "—"}</TableCell>
-                                <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
-                                <TableCell className="text-right">{report.planned_quantity}</TableCell>
-                                <TableCell className="text-right">{report.completed_quantity}</TableCell>
-                                <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {report.deviation > 0 ? '+' : ''}{report.deviation}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
-                                    {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
-                                  </Badge>
+                                <TableCell className="text-right text-muted-foreground">{product.order_count}</TableCell>
+                                <TableCell className="text-right">{product.original_planned_quantity}</TableCell>
+                                <TableCell className="text-right">{product.planned_quantity}</TableCell>
+                                <TableCell className="text-right">{product.completed_quantity}</TableCell>
+                                <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {product.deviation > 0 ? '+' : ''}{product.deviation}
                                 </TableCell>
                               </TableRow>
                             ))}
