@@ -306,13 +306,14 @@ export const PlanFactByOrderPrintView = forwardRef<HTMLDivElement, PlanFactByOrd
             @media print {
               @page { margin: 10mm; size: A4; }
               body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+              .print-header { page-break-after: avoid; }
               .order-card { page-break-inside: avoid; }
             }
           `}
         </style>
         
         {/* Header */}
-        <div style={{ marginBottom: '16px', borderBottom: '2px solid #1f2937', paddingBottom: '8px' }}>
+        <div className="print-header" style={{ marginBottom: '12px', borderBottom: '2px solid #1f2937', paddingBottom: '6px' }}>
           <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
             Отчет план-факт (по заказам)
           </h1>
@@ -324,8 +325,10 @@ export const PlanFactByOrderPrintView = forwardRef<HTMLDivElement, PlanFactByOrd
         </div>
 
         {/* Orders */}
-        {groupedOrders.map(order => (
-          <OrderCard key={order.parent.order_id} order={order} />
+        {groupedOrders.map((order, index) => (
+          <div key={order.parent.order_id} className="order-card" style={index === 0 ? { pageBreakBefore: 'avoid' } : undefined}>
+            <OrderCard order={order} />
+          </div>
         ))}
 
         {/* Overall summary */}
