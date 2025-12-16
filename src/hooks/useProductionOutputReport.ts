@@ -14,6 +14,7 @@ export interface DailyOutputItem {
   department: string | null;
   completed_quantity: number;
   order_numbers: string[];
+  operation_name?: string;
 }
 
 export interface DailyOutput {
@@ -33,9 +34,15 @@ export interface ProductionOutputSummary {
   };
 }
 
-export const useProductionOutputReport = (startDate?: string, endDate?: string) => {
+export type OutputReportMode = 'finished_products' | 'all_operations';
+
+export const useProductionOutputReport = (
+  startDate?: string, 
+  endDate?: string,
+  mode: OutputReportMode = 'finished_products'
+) => {
   return useQuery({
-    queryKey: ["production-output-report", startDate, endDate],
+    queryKey: ["production-output-report", startDate, endDate, mode],
     queryFn: async () => {
       // Fetch completed operations with history entries for output registration
       const historyQuery = supabase
@@ -72,33 +79,7 @@ export const useProductionOutputReport = (startDate?: string, endDate?: string) 
 
       if (error) throw error;
 
-      // Get all unique routing sheet IDs to fetch their operations
-      const routingSheetIds = new Set<string>();
-      historyData?.forEach((entry) => {
-        const order = entry.production_orders as any;
-        if (order?.routing_sheet_id) {
-          routingSheetIds.add(order.routing_sheet_id);
-        }
-      });
-
-      // Fetch routing operations to determine the last operation for each routing sheet
-      const { data: routingOperations } = await supabase
-        .from("routing_operations")
-        .select("id, routing_sheet_id, sequence, operation_type")
-        .in("routing_sheet_id", Array.from(routingSheetIds))
-        .order("sequence", { ascending: false });
-
-      // Build a map of routing_sheet_id -> last operation name (from history description)
-      // We need to identify which operations are "last" (highest sequence) for each routing sheet
-      const lastOperationSequenceByRouting = new Map<string, number>();
-      routingOperations?.forEach((op) => {
-        const current = lastOperationSequenceByRouting.get(op.routing_sheet_id);
-        if (!current || op.sequence > current) {
-          lastOperationSequenceByRouting.set(op.routing_sheet_id, op.sequence);
-        }
-      });
-
-      // Fetch production order operations to get operation sequence info
+      // Get all unique order IDs to fetch their operations
       const orderIds = new Set<string>();
       historyData?.forEach((entry) => {
         if (entry.production_order_id) {
@@ -106,6 +87,7 @@ export const useProductionOutputReport = (startDate?: string, endDate?: string) 
         }
       });
 
+      // Fetch production order operations to get max sequence for each order
       const { data: orderOperations } = await supabase
         .from("production_order_operations")
         .select(`
@@ -116,24 +98,25 @@ export const useProductionOutputReport = (startDate?: string, endDate?: string) 
         `)
         .in("production_order_id", Array.from(orderIds));
 
-      // Build map: production_order_id -> { maxSequence, operationNameToSequence }
-      const orderOperationInfo = new Map<string, { maxSequence: number; nameToSequence: Map<string, number> }>();
+      // Build map: production_order_id -> { maxSequence, lastOperationName }
+      const orderMaxSequence = new Map<string, { maxSequence: number; lastOperationName: string }>();
       orderOperations?.forEach((op) => {
-        if (!orderOperationInfo.has(op.production_order_id)) {
-          orderOperationInfo.set(op.production_order_id, { maxSequence: 0, nameToSequence: new Map() });
-        }
-        const info = orderOperationInfo.get(op.production_order_id)!;
-        if (op.sequence > info.maxSequence) {
-          info.maxSequence = op.sequence;
-        }
-        const opName = (op.routing_operations as any)?.name;
-        if (opName) {
-          info.nameToSequence.set(opName, op.sequence);
+        const info = orderMaxSequence.get(op.production_order_id);
+        const opName = (op.routing_operations as any)?.name || '';
+        if (!info || op.sequence > info.maxSequence) {
+          orderMaxSequence.set(op.production_order_id, { 
+            maxSequence: op.sequence, 
+            lastOperationName: opName 
+          });
         }
       });
 
-      // Group by date - only count output from the LAST operation of each order
+      // Group by date
       const outputByDate = new Map<string, Map<string, DailyOutputItem>>();
+      
+      // Track which orders we've already counted (for finished_products mode)
+      // Key: `${orderId}-${date}` to avoid double counting per day
+      const countedOrdersPerDay = new Set<string>();
 
       historyData?.forEach((entry) => {
         const order = entry.production_orders as any;
@@ -141,38 +124,12 @@ export const useProductionOutputReport = (startDate?: string, endDate?: string) 
 
         // Extract operation name from history entry
         let operationName = "";
+        let completedQty = 0;
+        
         try {
           const parsed = JSON.parse(entry.new_value || "{}");
           if (typeof parsed === 'object' && parsed !== null) {
             operationName = parsed.operation_name || "";
-          }
-        } catch {
-          // Try to extract from description
-          const match = entry.description?.match(/выработка: (.+?) —/);
-          if (match) {
-            operationName = match[1];
-          }
-        }
-
-        // Check if this is the last operation for this order
-        const opInfo = orderOperationInfo.get(entry.production_order_id);
-        if (opInfo && operationName) {
-          const opSequence = opInfo.nameToSequence.get(operationName);
-          if (opSequence !== opInfo.maxSequence) {
-            // Not the last operation, skip
-            return;
-          }
-        }
-
-        const dateKey = format(parseISO(entry.created_at), "yyyy-MM-dd");
-        
-        // Calculate completed quantity - supports both old format (plain numbers) 
-        // and new format (JSON with good_quantity)
-        let completedQty = 0;
-        try {
-          const parsed = JSON.parse(entry.new_value || "0");
-          if (typeof parsed === 'object' && parsed !== null) {
-            // New format: JSON with detailed info
             completedQty = parsed.good_quantity || 0;
           } else {
             // Old format: plain number string - calculate delta
@@ -189,12 +146,38 @@ export const useProductionOutputReport = (startDate?: string, endDate?: string) 
 
         if (completedQty === 0) return; // Skip if no actual output
 
+        const dateKey = format(parseISO(entry.created_at), "yyyy-MM-dd");
+
+        // In finished_products mode, only count the LAST operation
+        if (mode === 'finished_products') {
+          const orderInfo = orderMaxSequence.get(entry.production_order_id);
+          
+          // Check if this operation is THE last operation by comparing names
+          // Also ensure we haven't already counted this order for this date
+          const orderDateKey = `${entry.production_order_id}-${dateKey}`;
+          
+          if (orderInfo && operationName === orderInfo.lastOperationName) {
+            // This is the last operation - count it only once per order per day
+            if (countedOrdersPerDay.has(orderDateKey)) {
+              return; // Already counted this order for this date
+            }
+            countedOrdersPerDay.add(orderDateKey);
+          } else {
+            // Not the last operation, skip in finished_products mode
+            return;
+          }
+        }
+
         if (!outputByDate.has(dateKey)) {
           outputByDate.set(dateKey, new Map());
         }
 
         const dateItems = outputByDate.get(dateKey)!;
-        const itemKey = `${order.product_id}-${order.work_center_id || 'none'}`;
+        
+        // In all_operations mode, include operation name in the key
+        const itemKey = mode === 'all_operations' 
+          ? `${order.product_id}-${order.work_center_id || 'none'}-${operationName}`
+          : `${order.product_id}-${order.work_center_id || 'none'}`;
 
         if (dateItems.has(itemKey)) {
           const existing = dateItems.get(itemKey)!;
@@ -215,6 +198,7 @@ export const useProductionOutputReport = (startDate?: string, endDate?: string) 
             department: order.work_centers?.department || null,
             completed_quantity: completedQty,
             order_numbers: [order.order_number],
+            operation_name: mode === 'all_operations' ? operationName : undefined,
           });
         }
       });
