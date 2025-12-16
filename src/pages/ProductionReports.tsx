@@ -309,7 +309,8 @@ const ProductionReportsContent = () => {
           aggregatedByProduct,
           planFactFilteredReports,
           startDate ? format(startDate, "yyyy-MM-dd") : undefined,
-          endDate ? format(endDate, "yyyy-MM-dd") : undefined
+          endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+          completionFilter
         );
       }
     }
