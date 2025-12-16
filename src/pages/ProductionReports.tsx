@@ -917,12 +917,27 @@ const ProductionReportsContent = () => {
                   <DropdownMenuItem onClick={() => handlePlanFactAggregatedPrint()}>
                     Суммарно (без детализации)
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => {
                     expandAllProducts();
                     setTimeout(() => handlePlanFactAggregatedPrint(), 100);
                   }}>
                     Суммарно с детализацией
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => printPlanFact('all')}>
+                    <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded mr-2">Все типы продукции</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => printPlanFact('finished')}>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mr-2">ГП</Badge>
+                    Готовая продукция
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => printPlanFact('assembly')}>
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 mr-2">СБ</Badge>
+                    Сборочные узлы
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => printPlanFact('semi-finished')}>
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 mr-2">ПФ</Badge>
+                    Полуфабрикаты
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
