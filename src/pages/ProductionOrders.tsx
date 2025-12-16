@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle, Calendar, AlertTriangle, Wrench } from "lucide-react";
+import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle, Calendar, AlertTriangle, Wrench, Users, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useProductionOrders } from "@/hooks/useProductionOrders";
+import { useProductionOrdersWithCustomers } from "@/hooks/useProductionOrdersWithCustomers";
+import { BulkCustomerAssignDialog } from "@/components/production/BulkCustomerAssignDialog";
 import { useFixOrdersWithoutWorkCenter } from "@/hooks/useChildProductionOrders";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -126,7 +127,8 @@ const ProductionOrdersContent = () => {
   const [sortField, setSortField] = useState<SortField>(savedSettings.sortField);
   const [sortDirection, setSortDirection] = useState<SortDirection>(savedSettings.sortDirection);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
-  const { data: orders, isLoading } = useProductionOrders();
+  const [showBulkCustomerDialog, setShowBulkCustomerDialog] = useState(false);
+  const { data: orders, isLoading } = useProductionOrdersWithCustomers();
   const fixOrdersMutation = useFixOrdersWithoutWorkCenter();
 
   // Save settings to localStorage
@@ -417,6 +419,7 @@ const ProductionOrdersContent = () => {
       "Номер заказа": order.order_number,
       "Продукт": order.products?.name || "N/A",
       "Код продукта": order.products?.code || "N/A",
+      "Клиент": order.customers?.name || "Не назначен",
       "Спецификация": order.specifications?.code || "N/A",
       "Количество план": order.quantity,
       "Количество факт": order.completed_quantity,
@@ -482,14 +485,24 @@ const ProductionOrdersContent = () => {
                   {selectionMode ? "Отмена" : "Выбор"}
                 </Button>
                 {selectionMode && selectedOrders.size > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="default"
-                    onClick={() => setShowDeleteSelectedDialog(true)}
-                  >
-                    <Trash2 className="mr-2 h-5 w-5" />
-                    Удалить ({selectedOrders.size})
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="default"
+                      onClick={() => setShowBulkCustomerDialog(true)}
+                    >
+                      <Users className="mr-2 h-5 w-5" />
+                      Назначить клиента ({selectedOrders.size})
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="default"
+                      onClick={() => setShowDeleteSelectedDialog(true)}
+                    >
+                      <Trash2 className="mr-2 h-5 w-5" />
+                      Удалить ({selectedOrders.size})
+                    </Button>
+                  </>
                 )}
                 {!selectionMode && (
                   <Button
@@ -767,6 +780,12 @@ const ProductionOrdersContent = () => {
                         <p className="text-xs text-muted-foreground truncate">
                           Спецификация: {order.specifications?.code || "N/A"}
                         </p>
+                        {order.customers && (
+                          <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-1">
+                            <Building2 className="h-3 w-3" />
+                            {order.customers.name}
+                          </p>
+                        )}
                       </div>
 
                       {/* Production Info */}
@@ -1046,6 +1065,17 @@ const ProductionOrdersContent = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Bulk Customer Assign Dialog */}
+        <BulkCustomerAssignDialog
+          open={showBulkCustomerDialog}
+          onOpenChange={setShowBulkCustomerDialog}
+          selectedOrderIds={Array.from(selectedOrders)}
+          onComplete={() => {
+            setSelectedOrders(new Set());
+            setSelectionMode(false);
+          }}
+        />
       </main>
     </div>
   );
