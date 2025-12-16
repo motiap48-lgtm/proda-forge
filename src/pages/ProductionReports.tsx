@@ -70,6 +70,7 @@ import { PlanFactPrintView } from "@/components/reports/PlanFactPrintView";
 import { PlanFactByOrderPrintView } from "@/components/reports/PlanFactByOrderPrintView";
 import { PlanFactAggregatedPrintView } from "@/components/reports/PlanFactAggregatedPrintView";
 import { PlanFactByOrderView } from "@/components/reports/PlanFactByOrderView";
+import { PrintPreviewDialog } from "@/components/reports/PrintPreviewDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -149,6 +150,10 @@ const ProductionReportsContent = () => {
     const saved = localStorage.getItem('printOrientation');
     return (saved as 'portrait' | 'landscape') || 'landscape';
   });
+
+  // Print preview state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewType, setPreviewType] = useState<'work-centers' | 'plan-fact' | 'by-order' | 'aggregated'>('work-centers');
 
   // Fetch customers
   const { data: customers } = useActiveCustomers();
@@ -272,7 +277,43 @@ const ProductionReportsContent = () => {
 
   const printPlanFact = (type: 'all' | 'finished' | 'assembly' | 'semi-finished') => {
     setPlanFactPrintType(type);
-    setTimeout(() => handlePlanFactPrint(), 100);
+    setPreviewType('plan-fact');
+    setPreviewOpen(true);
+  };
+
+  const openPrintPreview = (type: 'work-centers' | 'plan-fact' | 'by-order' | 'aggregated') => {
+    setPreviewType(type);
+    setPreviewOpen(true);
+  };
+
+  const handlePreviewPrint = () => {
+    switch (previewType) {
+      case 'work-centers':
+        handlePrint();
+        break;
+      case 'plan-fact':
+        handlePlanFactPrint();
+        break;
+      case 'by-order':
+        handlePlanFactByOrderPrint();
+        break;
+      case 'aggregated':
+        handlePlanFactAggregatedPrint();
+        break;
+    }
+  };
+
+  const getPreviewTitle = () => {
+    switch (previewType) {
+      case 'work-centers':
+        return 'Предпросмотр: Отчет по цехам';
+      case 'plan-fact':
+        return 'Предпросмотр: План-факт';
+      case 'by-order':
+        return 'Предпросмотр: План-факт по заказам';
+      case 'aggregated':
+        return 'Предпросмотр: План-факт суммарно';
+    }
   };
 
   const toggleExpandedProduct = (productCode: string) => {
@@ -958,12 +999,12 @@ const ProductionReportsContent = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handlePlanFactAggregatedPrint()}>
+                  <DropdownMenuItem onClick={() => openPrintPreview('aggregated')}>
                     Суммарно (без детализации)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
                     expandAllProducts();
-                    setTimeout(() => handlePlanFactAggregatedPrint(), 100);
+                    setTimeout(() => openPrintPreview('aggregated'), 100);
                   }}>
                     Суммарно с детализацией
                   </DropdownMenuItem>
@@ -989,7 +1030,7 @@ const ProductionReportsContent = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handlePlanFactByOrderPrint()}
+                onClick={() => openPrintPreview('by-order')}
                 disabled={planFactFilteredReports.length === 0}
               >
                 <Printer className="h-4 w-4 mr-1" />
@@ -1422,7 +1463,7 @@ const ProductionReportsContent = () => {
           </Card>
         )}
 
-        {/* Hidden print view for plan-fact */}
+        {/* Hidden print views */}
         <div className="hidden">
           <PlanFactPrintView
             ref={planFactPrintRef}
@@ -1450,6 +1491,52 @@ const ProductionReportsContent = () => {
             orientation={printOrientation}
           />
         </div>
+
+        {/* Print Preview Dialog */}
+        <PrintPreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          title={getPreviewTitle()}
+          onPrint={handlePreviewPrint}
+        >
+          {previewType === 'plan-fact' && (
+            <PlanFactPrintView
+              reports={planFactFilteredReports}
+              startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+              endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+              printType={planFactPrintType}
+              orientation={printOrientation}
+            />
+          )}
+          {previewType === 'by-order' && (
+            <PlanFactByOrderPrintView
+              reports={planFactFilteredReports}
+              startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+              endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+              orientation={printOrientation}
+            />
+          )}
+          {previewType === 'aggregated' && (
+            <PlanFactAggregatedPrintView
+              aggregatedProducts={aggregatedByProduct}
+              allReports={planFactFilteredReports}
+              startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+              endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+              showDetails={expandedProducts.size > 0}
+              completionFilter={completionFilter}
+              orientation={printOrientation}
+            />
+          )}
+          {previewType === 'work-centers' && (
+            <WorkCenterReportPrintView 
+              reports={workCenterReports || []}
+              singleWorkCenterId={printWorkCenterId}
+              startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+              endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+              orientation={printOrientation}
+            />
+          )}
+        </PrintPreviewDialog>
           </TabsContent>
 
           <TabsContent value="output" className="space-y-6">
@@ -1516,7 +1603,7 @@ const ProductionReportsContent = () => {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => {
                               setPrintWorkCenterId(undefined);
-                              setTimeout(() => handlePrint(), 100);
+                              openPrintPreview('work-centers');
                             }}>
                               Все участки
                             </DropdownMenuItem>
@@ -1526,7 +1613,7 @@ const ProductionReportsContent = () => {
                                 key={report.work_center_id}
                                 onClick={() => {
                                   setPrintWorkCenterId(report.work_center_id);
-                                  setTimeout(() => handlePrint(), 100);
+                                  openPrintPreview('work-centers');
                                 }}
                               >
                                 {report.work_center_name}
