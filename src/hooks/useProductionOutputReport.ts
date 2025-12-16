@@ -161,26 +161,53 @@ export const useProductionOutputReport = (
         }
       });
 
-      // Fetch production order operations to get max sequence for each order
+      // Fetch production order operations to get max sequence for each order AND work center info per operation
       const { data: orderOperations } = await supabase
         .from("production_order_operations")
         .select(`
           id,
           production_order_id,
           sequence,
-          routing_operations:routing_operation_id(name)
+          routing_operations:routing_operation_id(
+            name,
+            work_center_id,
+            work_centers:work_center_id(id, name, code, department)
+          )
         `)
         .in("production_order_id", Array.from(orderIds));
 
       // Build map: production_order_id -> { maxSequence, lastOperationName }
+      // Also build map: `${production_order_id}-${operation_name}` -> work_center_info
       const orderMaxSequence = new Map<string, { maxSequence: number; lastOperationName: string }>();
+      const operationWorkCenterMap = new Map<string, { 
+        work_center_id: string | null; 
+        work_center_name: string; 
+        work_center_code: string;
+        department: string | null;
+      }>();
+
       orderOperations?.forEach((op) => {
+        const routingOp = op.routing_operations as any;
+        const opName = routingOp?.name || '';
+        const wcInfo = routingOp?.work_centers;
+        
+        // Track max sequence per order
         const info = orderMaxSequence.get(op.production_order_id);
-        const opName = (op.routing_operations as any)?.name || '';
         if (!info || op.sequence > info.maxSequence) {
           orderMaxSequence.set(op.production_order_id, { 
             maxSequence: op.sequence, 
             lastOperationName: opName 
+          });
+        }
+
+        // Store work center info for each operation
+        const opKey = `${op.production_order_id}-${opName}`;
+        if (!operationWorkCenterMap.has(opKey)) {
+          operationWorkCenterMap.set(opKey, {
+            work_center_id: routingOp?.work_center_id || null,
+            work_center_name: wcInfo?.name || 'Не указан',
+            work_center_code: wcInfo?.code || '',
+            department: wcInfo?.department || null,
           });
         }
       });
@@ -240,9 +267,17 @@ export const useProductionOutputReport = (
 
         const dateItems = outputByDate.get(dateKey)!;
         
+        // Get work center info from operation, not from order
+        const opKey = `${entry.production_order_id}-${operationName}`;
+        const opWcInfo = operationWorkCenterMap.get(opKey);
+        const wcId = opWcInfo?.work_center_id || order.work_center_id;
+        const wcName = opWcInfo?.work_center_name || order.work_centers?.name || 'Не указан';
+        const wcCode = opWcInfo?.work_center_code || order.work_centers?.code || '';
+        const wcDept = opWcInfo?.department || order.work_centers?.department || null;
+        
         const itemKey = mode === 'all_operations' 
-          ? `${order.product_id}-${order.work_center_id || 'none'}-${operationName}`
-          : `${order.product_id}-${order.work_center_id || 'none'}`;
+          ? `${order.product_id}-${wcId || 'none'}-${operationName}`
+          : `${order.product_id}-${wcId || 'none'}`;
 
         if (dateItems.has(itemKey)) {
           const existing = dateItems.get(itemKey)!;
@@ -257,10 +292,10 @@ export const useProductionOutputReport = (
             product_code: order.products.code,
             product_type: order.products.product_type,
             unit: order.products.unit || 'шт',
-            work_center_id: order.work_center_id,
-            work_center_name: order.work_centers?.name || 'Не указан',
-            work_center_code: order.work_centers?.code || '',
-            department: order.work_centers?.department || null,
+            work_center_id: wcId,
+            work_center_name: wcName,
+            work_center_code: wcCode,
+            department: wcDept,
             completed_quantity: completedQty,
             order_numbers: [order.order_number],
             operation_name: mode === 'all_operations' ? operationName : undefined,
