@@ -658,8 +658,17 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
                                 </TableCell>
                                 <TableCell>{item.product_name}</TableCell>
                                 {reportMode === 'all_operations' && (
-                                  <TableCell className="text-sm text-muted-foreground">
-                                    {item.operation_name || '-'}
+                                  <TableCell className="text-sm">
+                                    <div className="flex items-center gap-2">
+                                      {item.operation_sequence !== undefined && (
+                                        <Badge variant="outline" className="text-xs font-mono">
+                                          {item.operation_sequence}
+                                        </Badge>
+                                      )}
+                                      <span className="text-muted-foreground">
+                                        {item.operation_name || '-'}
+                                      </span>
+                                    </div>
                                   </TableCell>
                                 )}
                                 <TableCell>{getProductTypeBadge(item.product_type)}</TableCell>
