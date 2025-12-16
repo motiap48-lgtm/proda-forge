@@ -1400,6 +1400,7 @@ const ProductionReportsContent = () => {
             startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
             endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
             showDetails={expandedProducts.size > 0}
+            completionFilter={completionFilter}
           />
         </div>
           </TabsContent>
