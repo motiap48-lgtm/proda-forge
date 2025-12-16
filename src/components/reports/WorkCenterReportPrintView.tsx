@@ -8,7 +8,27 @@ interface WorkCenterReportPrintViewProps {
   singleWorkCenterId?: string;
   startDate?: string;
   endDate?: string;
+  orientation?: 'portrait' | 'landscape';
 }
+
+const getPrintStyles = (orientation: 'portrait' | 'landscape') => `
+  @media print {
+    @page { 
+      margin: 8mm; 
+      size: A4 ${orientation};
+      @bottom-center {
+        content: "Стр. " counter(page) " из " counter(pages);
+        font-size: 9px;
+        color: #6b7280;
+      }
+    }
+    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { page-break-inside: avoid; }
+    .department-section { page-break-inside: avoid; }
+  }
+`;
 
 const getProductTypeLabel = (type: string): string => {
   switch (type) {
@@ -47,7 +67,7 @@ const groupProductsByType = (products: WorkCenterProductItem[]): GroupedProducts
 };
 
 export const WorkCenterReportPrintView = forwardRef<HTMLDivElement, WorkCenterReportPrintViewProps>(
-  ({ reports, singleWorkCenterId, startDate, endDate }, ref) => {
+  ({ reports, singleWorkCenterId, startDate, endDate, orientation = 'landscape' }, ref) => {
     const filteredReports = singleWorkCenterId 
       ? reports.filter(r => r.work_center_id === singleWorkCenterId)
       : reports;
@@ -64,6 +84,7 @@ export const WorkCenterReportPrintView = forwardRef<HTMLDivElement, WorkCenterRe
 
     return (
       <div ref={ref} className="p-8 bg-white text-black print:p-4" style={{ fontFamily: 'Arial, sans-serif' }}>
+        <style>{getPrintStyles(orientation)}</style>
         {/* Заголовок отчета */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <h1 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>

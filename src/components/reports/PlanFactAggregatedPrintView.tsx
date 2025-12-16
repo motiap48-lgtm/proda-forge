@@ -21,7 +21,27 @@ interface PlanFactAggregatedPrintViewProps {
   endDate?: string;
   showDetails?: boolean;
   completionFilter?: 'all' | 'not_completed' | 'partially' | 'completed';
+  orientation?: 'portrait' | 'landscape';
 }
+
+const getPrintStyles = (orientation: 'portrait' | 'landscape') => `
+  @media print {
+    @page { 
+      margin: 8mm; 
+      size: A4 ${orientation};
+      @bottom-center {
+        content: "Стр. " counter(page) " из " counter(pages);
+        font-size: 9px;
+        color: #6b7280;
+      }
+    }
+    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { page-break-inside: avoid; }
+    .page-break-avoid { page-break-inside: avoid; }
+  }
+`;
 
 const completionFilterLabels: Record<string, string> = {
   all: '',
@@ -184,7 +204,7 @@ const ProductTypeTable = ({ products, allReports, type, config, showDetails }: P
 };
 
 export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAggregatedPrintViewProps>(
-  ({ aggregatedProducts, allReports, startDate, endDate, showDetails, completionFilter }, ref) => {
+  ({ aggregatedProducts, allReports, startDate, endDate, showDetails, completionFilter, orientation = 'landscape' }, ref) => {
     const types = ['finished', 'assembly', 'semi-finished'] as const;
 
     const hasDataToPrint = aggregatedProducts.length > 0;
@@ -200,14 +220,7 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
     if (!hasDataToPrint) {
       return (
         <div ref={ref} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-          <style>
-            {`
-              @media print {
-                @page { margin: 10mm; size: A4 landscape; }
-                body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-              }
-            `}
-          </style>
+          <style>{getPrintStyles(orientation)}</style>
           
           <div style={{ marginBottom: '12px', borderBottom: '2px solid #1f2937', paddingBottom: '8px' }}>
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
@@ -232,17 +245,7 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
 
     return (
       <div ref={ref} style={{ padding: '10px', fontFamily: 'Arial, sans-serif' }}>
-        <style>
-          {`
-            @media print {
-              @page { margin: 10mm; size: A4 landscape; }
-              body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-              thead { display: table-header-group; }
-              tfoot { display: table-footer-group; }
-              tr { page-break-inside: avoid; }
-            }
-          `}
-        </style>
+        <style>{getPrintStyles(orientation)}</style>
         
         <div style={{ marginBottom: '8px', borderBottom: '2px solid #1f2937', paddingBottom: '6px' }}>
           <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>

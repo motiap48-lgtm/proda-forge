@@ -7,7 +7,28 @@ interface PlanFactByOrderPrintViewProps {
   reports: ProductionReportData[];
   startDate?: string;
   endDate?: string;
+  orientation?: 'portrait' | 'landscape';
 }
+
+const getPrintStyles = (orientation: 'portrait' | 'landscape') => `
+  @media print {
+    @page { 
+      margin: 8mm; 
+      size: A4 ${orientation};
+      @bottom-center {
+        content: "Стр. " counter(page) " из " counter(pages);
+        font-size: 9px;
+        color: #6b7280;
+      }
+    }
+    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .print-header { page-break-after: avoid; }
+    .order-card-small { page-break-inside: avoid; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { page-break-inside: avoid; }
+  }
+`;
 
 const statusLabels: Record<string, string> = {
   planned: 'Запланирован',
@@ -200,7 +221,7 @@ const OrderCard = ({ order, isCompact }: { order: GroupedOrder; isCompact?: bool
 };
 
 export const PlanFactByOrderPrintView = forwardRef<HTMLDivElement, PlanFactByOrderPrintViewProps>(
-  ({ reports, startDate, endDate }, ref) => {
+  ({ reports, startDate, endDate, orientation = 'portrait' }, ref) => {
     const groupedOrders = useMemo(() => {
       const parentOrders = reports.filter(r => r.product_type === 'finished' && !r.parent_order_id);
       
@@ -237,14 +258,7 @@ export const PlanFactByOrderPrintView = forwardRef<HTMLDivElement, PlanFactByOrd
     if (groupedOrders.length === 0) {
       return (
         <div ref={ref} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-          <style>
-            {`
-              @media print {
-                @page { margin: 10mm; size: A4; }
-                body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-              }
-            `}
-          </style>
+          <style>{getPrintStyles(orientation)}</style>
           
           <div style={{ marginBottom: '12px', borderBottom: '2px solid #1f2937', paddingBottom: '8px' }}>
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
@@ -265,19 +279,7 @@ export const PlanFactByOrderPrintView = forwardRef<HTMLDivElement, PlanFactByOrd
 
     return (
       <div ref={ref} style={{ padding: '10px', fontFamily: 'Arial, sans-serif' }}>
-        <style>
-          {`
-            @media print {
-              @page { margin: 8mm; size: A4; }
-              body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-              .print-header { page-break-after: avoid; }
-              .order-card-small { page-break-inside: avoid; }
-              thead { display: table-header-group; }
-              tfoot { display: table-footer-group; }
-              tr { page-break-inside: avoid; }
-            }
-          `}
-        </style>
+        <style>{getPrintStyles(orientation)}</style>
         
         {/* Header */}
         <div className="print-header" style={{ marginBottom: '12px', borderBottom: '2px solid #1f2937', paddingBottom: '6px' }}>
