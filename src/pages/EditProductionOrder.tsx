@@ -21,6 +21,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { useWorkCenters } from "@/hooks/useWorkCenters";
 import { useRoutingSheets } from "@/hooks/useRoutingSheets";
+import { useActiveCustomers } from "@/hooks/useCustomers";
 import { useAddOrderHistory } from "@/hooks/useProductionOrderDetails";
 import { useChildProductionOrders, useUpdateChildOrdersQuantity } from "@/hooks/useChildProductionOrders";
 import { useAuth } from "@/contexts/AuthContext";
@@ -47,6 +48,7 @@ const EditProductionOrder = () => {
   const { data: specifications } = useSpecifications();
   const { data: workCenters } = useWorkCenters();
   const { data: routingSheets } = useRoutingSheets();
+  const { data: customers } = useActiveCustomers();
   const updateOrder = useUpdateProductionOrder();
   const addHistory = useAddOrderHistory();
   const updateChildOrdersQuantity = useUpdateChildOrdersQuantity();
@@ -59,6 +61,7 @@ const EditProductionOrder = () => {
     specification_id: "",
     routing_sheet_id: "",
     work_center_id: "",
+    customer_id: "",
     quantity: 0,
     planned_start_date: "",
     planned_end_date: "",
@@ -106,6 +109,7 @@ const EditProductionOrder = () => {
         specification_id: specId,
         routing_sheet_id: routingId,
         work_center_id: order.work_center_id || "",
+        customer_id: order.customer_id || "",
         quantity: Number(order.quantity),
         planned_start_date: order.planned_start_date,
         planned_end_date: order.planned_end_date,
@@ -175,6 +179,7 @@ const EditProductionOrder = () => {
         specification_id: formData.specification_id || null,
         routing_sheet_id: formData.routing_sheet_id || null,
         work_center_id: formData.work_center_id || null,
+        customer_id: formData.customer_id || null,
         responsible_person: formData.responsible_person || null,
       };
 
@@ -437,6 +442,27 @@ const EditProductionOrder = () => {
                         {workCenters?.map((wc) => (
                           <SelectItem key={wc.id} value={wc.id}>
                             {wc.code} - {wc.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="customer_id">Клиент</Label>
+                    <Select
+                      value={formData.customer_id}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, customer_id: value })
+                      }
+                    >
+                      <SelectTrigger id="customer_id">
+                        <SelectValue placeholder="Выберите клиента" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers?.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

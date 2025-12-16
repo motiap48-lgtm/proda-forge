@@ -59,6 +59,54 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          address: string | null
+          code: string
+          contact_person: string | null
+          created_at: string
+          email: string | null
+          id: string
+          inn: string | null
+          is_active: boolean
+          kpp: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          code: string
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inn?: string | null
+          is_active?: boolean
+          kpp?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          code?: string
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inn?: string | null
+          is_active?: boolean
+          kpp?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       distribution_history: {
         Row: {
           components_distributed: number
@@ -605,6 +653,7 @@ export type Database = {
           actual_start_date: string | null
           completed_quantity: number
           created_at: string
+          customer_id: string | null
           id: string
           order_number: string
           original_quantity: number | null
@@ -626,6 +675,7 @@ export type Database = {
           actual_start_date?: string | null
           completed_quantity?: number
           created_at?: string
+          customer_id?: string | null
           id?: string
           order_number: string
           original_quantity?: number | null
@@ -647,6 +697,7 @@ export type Database = {
           actual_start_date?: string | null
           completed_quantity?: number
           created_at?: string
+          customer_id?: string | null
           id?: string
           order_number?: string
           original_quantity?: number | null
@@ -664,6 +715,13 @@ export type Database = {
           work_center_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "production_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_orders_parent_order_id_fkey"
             columns: ["parent_order_id"]
@@ -1267,6 +1325,7 @@ export type Database = {
     }
     Functions: {
       generate_contractor_code: { Args: never; Returns: string }
+      generate_customer_code: { Args: never; Returns: string }
       generate_equipment_code: { Args: never; Returns: string }
       generate_product_code: {
         Args: { p_product_type: string }
