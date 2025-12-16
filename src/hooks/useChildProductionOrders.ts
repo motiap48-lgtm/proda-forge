@@ -305,7 +305,29 @@ export const useCreateChildOrders = () => {
       for (const req of aggregated.values()) {
         const orderNumber = `${parentOrderNumber}-${String(orderIndex).padStart(2, '0')}`;
 
-        // Create the child order
+        // Determine work_center_id from routing sheet (last production operation)
+        let workCenterId: string | null = null;
+        let routingOperations: any[] = [];
+        
+        if (req.routing_sheet_id) {
+          const { data: operations } = await supabase
+            .from("routing_operations")
+            .select("*")
+            .eq("routing_sheet_id", req.routing_sheet_id)
+            .order("sequence");
+
+          routingOperations = operations || [];
+          
+          // Find last production operation with a work center
+          const productionOps = routingOperations.filter(
+            op => op.operation_type === 'production' && op.work_center_id
+          );
+          if (productionOps.length > 0) {
+            workCenterId = productionOps[productionOps.length - 1].work_center_id;
+          }
+        }
+
+        // Create the child order with work center
         const { data: order, error: orderError } = await supabase
           .from("production_orders")
           .insert({
@@ -313,6 +335,7 @@ export const useCreateChildOrders = () => {
             product_id: req.product_id,
             specification_id: req.specification_id,
             routing_sheet_id: req.routing_sheet_id,
+            work_center_id: workCenterId,
             quantity: Math.ceil(req.quantity),
             original_quantity: Math.ceil(req.quantity),
             completed_quantity: 0,
@@ -331,27 +354,19 @@ export const useCreateChildOrders = () => {
         }
 
         // Create operations if routing sheet exists
-        if (req.routing_sheet_id && order) {
-          const { data: operations } = await supabase
-            .from("routing_operations")
-            .select("*")
-            .eq("routing_sheet_id", req.routing_sheet_id)
-            .order("sequence");
+        if (routingOperations.length > 0 && order) {
+          const orderOperations = routingOperations.map(op => ({
+            production_order_id: order.id,
+            routing_operation_id: op.id,
+            sequence: op.sequence,
+            status: "pending",
+            planned_start_date: plannedStartDate,
+            planned_end_date: plannedEndDate,
+          }));
 
-          if (operations && operations.length > 0) {
-            const orderOperations = operations.map(op => ({
-              production_order_id: order.id,
-              routing_operation_id: op.id,
-              sequence: op.sequence,
-              status: "pending",
-              planned_start_date: plannedStartDate,
-              planned_end_date: plannedEndDate,
-            }));
-
-            await supabase
-              .from("production_order_operations")
-              .insert(orderOperations);
-          }
+          await supabase
+            .from("production_order_operations")
+            .insert(orderOperations);
         }
 
         createdOrders.push(order);
