@@ -15,6 +15,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   ChevronDown,
   ChevronsDown,
   ChevronsUp,
@@ -65,10 +72,24 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+const getStatusLabel = (status: string): string => {
+  switch (status) {
+    case "pending":
+      return "Ожидание";
+    case "in_progress":
+      return "В работе";
+    case "completed":
+      return "Завершено";
+    default:
+      return status;
+  }
+};
+
 export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetailedReportProps) => {
   const { data: reports, isLoading } = useOperationsDetailedReport(startDate, endDate);
   const [expandedWorkCenters, setExpandedWorkCenters] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [printWorkCenterId, setPrintWorkCenterId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -76,14 +97,32 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
     documentTitle: `Отчет_по_операциям_${format(new Date(), 'yyyy-MM-dd')}`,
   });
 
-  const handleExportExcel = () => {
+  const handlePrintAll = () => {
+    setPrintWorkCenterId(null);
+    setTimeout(() => handlePrint(), 100);
+  };
+
+  const handlePrintWorkCenter = (wcId: string) => {
+    setPrintWorkCenterId(wcId);
+    setTimeout(() => handlePrint(), 100);
+  };
+
+  const handleExportExcel = (workCenterId?: string) => {
     if (!reports) return;
+
+    const dataToExport = workCenterId 
+      ? reports.filter(wc => wc.work_center_id === workCenterId)
+      : reports;
+
+    const workCenterName = workCenterId 
+      ? reports.find(wc => wc.work_center_id === workCenterId)?.work_center_name || ''
+      : '';
 
     const wb = XLSX.utils.book_new();
 
     // Operations sheet
     const operationsData: any[] = [];
-    reports.forEach(wc => {
+    dataToExport.forEach(wc => {
       wc.operations.forEach(op => {
         operationsData.push({
           "Цех": wc.department,
@@ -101,8 +140,7 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
           "Факт": op.completed_quantity,
           "Откл.": op.deviation,
           "Откл. %": op.deviation_percent.toFixed(1),
-          "Статус": op.status === 'pending' ? 'Ожидание' : 
-                   op.status === 'in_progress' ? 'В работе' : 'Завершено',
+          "Статус": getStatusLabel(op.status),
           "Наладка план (мин)": op.setup_time_planned,
           "Наладка факт (мин)": op.setup_time_actual || '',
           "Цикл план (мин)": op.cycle_time_planned,
@@ -115,7 +153,7 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
     XLSX.utils.book_append_sheet(wb, wsOps, "Операции");
 
     // Summary sheet
-    const summaryData = reports.map(wc => ({
+    const summaryData = dataToExport.map(wc => ({
       "Цех": wc.department,
       "Участок": wc.work_center_name,
       "Код участка": wc.work_center_code,
@@ -129,7 +167,11 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
     const wsSummary = XLSX.utils.json_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, wsSummary, "По участкам");
 
-    XLSX.writeFile(wb, `Отчет_по_операциям_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    const fileName = workCenterId 
+      ? `Отчет_по_операциям_${workCenterName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`
+      : `Отчет_по_операциям_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
   };
 
   const toggleWorkCenter = (wcId: string) => {
@@ -182,6 +224,11 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
     planned: acc.planned + wc.total_planned,
     completed: acc.completed + wc.total_completed,
   }), { operations: 0, planned: 0, completed: 0 });
+
+  // Get data to print
+  const printData = printWorkCenterId 
+    ? filteredReports.filter(wc => wc.work_center_id === printWorkCenterId)
+    : filteredReports;
 
   if (isLoading) {
     return <div className="text-center py-8 text-muted-foreground">Загрузка...</div>;
@@ -258,14 +305,50 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
           <ChevronsUp className="h-4 w-4 mr-1" />
           Свернуть
         </Button>
-        <Button variant="outline" size="sm" onClick={handleExportExcel}>
-          <FileSpreadsheet className="h-4 w-4 mr-1" />
-          Excel
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => handlePrint()}>
-          <Printer className="h-4 w-4 mr-1" />
-          Печать
-        </Button>
+        
+        {/* Excel dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <FileSpreadsheet className="h-4 w-4 mr-1" />
+              Excel
+              <ChevronDown className="h-3 w-3 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
+            <DropdownMenuItem onClick={() => handleExportExcel()}>
+              Все участки
+            </DropdownMenuItem>
+            {filteredReports.length > 0 && <DropdownMenuSeparator />}
+            {filteredReports.map((wc) => (
+              <DropdownMenuItem key={wc.work_center_id} onClick={() => handleExportExcel(wc.work_center_id)}>
+                {wc.work_center_name} ({wc.work_center_code})
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Print dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Printer className="h-4 w-4 mr-1" />
+              Печать
+              <ChevronDown className="h-3 w-3 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
+            <DropdownMenuItem onClick={handlePrintAll}>
+              Все участки
+            </DropdownMenuItem>
+            {filteredReports.length > 0 && <DropdownMenuSeparator />}
+            {filteredReports.map((wc) => (
+              <DropdownMenuItem key={wc.work_center_id} onClick={() => handlePrintWorkCenter(wc.work_center_id)}>
+                {wc.work_center_name} ({wc.work_center_code})
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Work center sections */}
@@ -364,12 +447,19 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
       {/* Print view */}
       <div className="hidden">
         <div ref={printRef} className="p-8">
-          <h1 className="text-2xl font-bold mb-2">Отчёт по операциям</h1>
+          <h1 className="text-2xl font-bold mb-2">
+            Отчёт по операциям
+            {printWorkCenterId && printData.length > 0 && (
+              <span className="font-normal text-lg ml-2">
+                — {printData[0].work_center_name}
+              </span>
+            )}
+          </h1>
           <p className="text-sm text-gray-600 mb-6">
             Период: {startDate || 'не указано'} — {endDate || 'не указано'}
           </p>
           
-          {filteredReports.map((wc) => (
+          {printData.map((wc) => (
             <div key={wc.work_center_id} className="mb-8 break-inside-avoid">
               <h2 className="text-lg font-semibold mb-2">
                 {wc.department} / {wc.work_center_name} ({wc.work_center_code})
@@ -400,7 +490,7 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
                       <td className="py-1 px-2 text-right">{op.planned_quantity}</td>
                       <td className="py-1 px-2 text-right">{op.completed_quantity}</td>
                       <td className="py-1 px-2 text-right">{op.deviation}</td>
-                      <td className="py-1 px-2">{op.status}</td>
+                      <td className="py-1 px-2">{getStatusLabel(op.status)}</td>
                     </tr>
                   ))}
                 </tbody>
