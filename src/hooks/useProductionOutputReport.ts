@@ -171,6 +171,7 @@ export const useProductionOutputReport = (
           sequence,
           routing_operations:routing_operation_id(
             name,
+            operation_type,
             work_center_id,
             work_centers:work_center_id(id, name, code, department)
           )
@@ -183,6 +184,7 @@ export const useProductionOutputReport = (
       const operationBySequence = new Map<string, { 
         name: string;
         sequence: number;
+        operation_type: string;
         work_center_id: string | null; 
         work_center_name: string; 
         work_center_code: string;
@@ -194,6 +196,7 @@ export const useProductionOutputReport = (
       orderOperations?.forEach((op) => {
         const routingOp = op.routing_operations as any;
         const opName = routingOp?.name || '';
+        const opType = routingOp?.operation_type || 'production';
         const wcInfo = routingOp?.work_centers;
         
         // Track max sequence per order
@@ -210,6 +213,7 @@ export const useProductionOutputReport = (
         operationBySequence.set(seqKey, {
           name: opName,
           sequence: op.sequence,
+          operation_type: opType,
           work_center_id: routingOp?.work_center_id || null,
           work_center_name: wcInfo?.name || 'Не указан',
           work_center_code: wcInfo?.code || '',
@@ -282,10 +286,24 @@ export const useProductionOutputReport = (
         const seqKey = opSequence !== undefined ? `${entry.production_order_id}-${opSequence}` : null;
         const opInfo = seqKey ? operationBySequence.get(seqKey) : null;
         
-        const wcId = opInfo?.work_center_id || order.work_center_id;
-        const wcName = opInfo?.work_center_name || order.work_centers?.name || 'Не указан';
-        const wcCode = opInfo?.work_center_code || order.work_centers?.code || '';
-        const wcDept = opInfo?.department || order.work_centers?.department || null;
+        // For transport operations, show the DESTINATION work center (next operation's work center)
+        let wcId = opInfo?.work_center_id || order.work_center_id;
+        let wcName = opInfo?.work_center_name || order.work_centers?.name || 'Не указан';
+        let wcCode = opInfo?.work_center_code || order.work_centers?.code || '';
+        let wcDept = opInfo?.department || order.work_centers?.department || null;
+        
+        if (opInfo?.operation_type === 'transport' && opSequence !== undefined) {
+          // Look up next operation's work center
+          const nextSeqKey = `${entry.production_order_id}-${opSequence + 1}`;
+          const nextOpInfo = operationBySequence.get(nextSeqKey);
+          if (nextOpInfo) {
+            wcId = nextOpInfo.work_center_id;
+            wcName = nextOpInfo.work_center_name;
+            wcCode = nextOpInfo.work_center_code;
+            wcDept = nextOpInfo.department;
+          }
+        }
+        
         const seq = opInfo?.sequence;
         
         // In all_operations mode, each history entry is a separate row (no aggregation)
