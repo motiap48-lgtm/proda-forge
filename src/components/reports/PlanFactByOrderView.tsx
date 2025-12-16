@@ -17,6 +17,7 @@ interface PlanFactByOrderViewProps {
   reports: ProductionReportData[];
   expandedOrders: Set<string>;
   onToggleOrder: (orderId: string) => void;
+  selectedOrderNumber?: string;
 }
 
 const statusConfig = {
@@ -45,6 +46,7 @@ export const PlanFactByOrderView = ({
   reports,
   expandedOrders,
   onToggleOrder,
+  selectedOrderNumber,
 }: PlanFactByOrderViewProps) => {
   // Group orders: parent orders with their children
   const groupedOrders = useMemo(() => {
@@ -86,6 +88,10 @@ export const PlanFactByOrderView = ({
     );
   }
 
+  const isOrderSelected = (orderNumber: string) => {
+    return selectedOrderNumber && selectedOrderNumber !== 'all' && selectedOrderNumber === orderNumber;
+  };
+
   return (
     <div className="space-y-4">
       {groupedOrders.map(({ parent, assemblies, semiFinished, totals, childCount }) => (
@@ -94,7 +100,7 @@ export const PlanFactByOrderView = ({
           open={expandedOrders.has(parent.order_id)}
           onOpenChange={() => onToggleOrder(parent.order_id)}
         >
-          <Card>
+          <Card className={isOrderSelected(parent.order_number) ? "ring-2 ring-primary shadow-lg" : ""}>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-3 cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="flex items-center justify-between">
