@@ -28,9 +28,10 @@ interface ProductTypeTableProps {
   reports: ProductionReportData[];
   type: string;
   config: { label: string; badge: string; color: string };
+  showHeader?: boolean;
 }
 
-const ProductTypeTable = ({ reports, type, config }: ProductTypeTableProps) => {
+const ProductTypeTable = ({ reports, type, config, showHeader = true }: ProductTypeTableProps) => {
   const typeReports = reports.filter(r => r.product_type === type);
   if (typeReports.length === 0) return null;
 
@@ -43,29 +44,31 @@ const ProductTypeTable = ({ reports, type, config }: ProductTypeTableProps) => {
   }), { original: 0, current: 0, planChange: 0, completed: 0, deviation: 0 });
 
   return (
-    <div style={{ marginBottom: '24px', pageBreakInside: 'avoid' }}>
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '8px', 
-        marginBottom: '12px',
-        borderBottom: '2px solid #e5e7eb',
-        paddingBottom: '8px'
-      }}>
-        <span style={{
-          display: 'inline-block',
-          padding: '2px 8px',
-          backgroundColor: config.color,
-          color: 'white',
-          borderRadius: '4px',
-          fontSize: '12px',
-          fontWeight: 'bold'
+    <div style={{ marginBottom: '24px' }}>
+      {showHeader && (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px', 
+          marginBottom: '12px',
+          borderBottom: '2px solid #e5e7eb',
+          paddingBottom: '8px'
         }}>
-          {config.badge}
-        </span>
-        <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{config.label}</span>
-        <span style={{ color: '#6b7280', fontSize: '14px' }}>({typeReports.length} заказов)</span>
-      </div>
+          <span style={{
+            display: 'inline-block',
+            padding: '2px 8px',
+            backgroundColor: config.color,
+            color: 'white',
+            borderRadius: '4px',
+            fontSize: '12px',
+            fontWeight: 'bold'
+          }}>
+            {config.badge}
+          </span>
+          <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{config.label}</span>
+          <span style={{ color: '#6b7280', fontSize: '14px' }}>({typeReports.length} заказов)</span>
+        </div>
+      )}
       
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
         <thead>
@@ -124,7 +127,7 @@ const ProductTypeTable = ({ reports, type, config }: ProductTypeTableProps) => {
         </tbody>
         <tfoot>
           <tr style={{ backgroundColor: '#e5e7eb', fontWeight: 'bold' }}>
-            <td style={{ border: '1px solid #d1d5db', padding: '6px' }} colSpan={2}>ИТОГО</td>
+            <td style={{ border: '1px solid #d1d5db', padding: '6px' }} colSpan={2}>ИТОГО ({typeReports.length} заказов)</td>
             <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'right' }}>{totals.original}</td>
             <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'right' }}>{totals.current}</td>
             <td style={{ 
@@ -171,6 +174,11 @@ export const PlanFactPrintView = forwardRef<HTMLDivElement, PlanFactPrintViewPro
       ? 'Отчет план-факт производства'
       : `Отчет план-факт: ${productTypeConfig[printType]?.label || printType}`;
 
+    // Количество заказов для одного типа
+    const singleTypeCount = printType !== 'all' 
+      ? reports.filter(r => r.product_type === printType).length 
+      : 0;
+
     // Если нет данных для печати, показываем сообщение
     if (!hasDataToPrint) {
       return (
@@ -178,17 +186,17 @@ export const PlanFactPrintView = forwardRef<HTMLDivElement, PlanFactPrintViewPro
           <style>
             {`
               @media print {
-                @page { margin: 15mm; size: A4 landscape; }
+                @page { margin: 10mm; size: A4 landscape; }
                 body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
               }
             `}
           </style>
           
-          <div style={{ marginBottom: '20px', borderBottom: '2px solid #1f2937', paddingBottom: '12px' }}>
-            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+          <div style={{ marginBottom: '12px', borderBottom: '2px solid #1f2937', paddingBottom: '8px' }}>
+            <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
               {title}
             </h1>
-            <div style={{ display: 'flex', gap: '24px', fontSize: '12px', color: '#4b5563' }}>
+            <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: '#4b5563' }}>
               <span>Период: {dateRange}</span>
               <span>Дата печати: {format(new Date(), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
             </div>
@@ -202,21 +210,24 @@ export const PlanFactPrintView = forwardRef<HTMLDivElement, PlanFactPrintViewPro
     }
 
     return (
-      <div ref={ref} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <div ref={ref} style={{ padding: '10px', fontFamily: 'Arial, sans-serif' }}>
         <style>
           {`
             @media print {
-              @page { margin: 15mm; size: A4 landscape; }
+              @page { margin: 10mm; size: A4 landscape; }
               body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+              thead { display: table-header-group; }
+              tfoot { display: table-footer-group; }
+              tr { page-break-inside: avoid; }
             }
           `}
         </style>
         
-        <div style={{ marginBottom: '20px', borderBottom: '2px solid #1f2937', paddingBottom: '12px' }}>
-          <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
-            {title}
+        <div style={{ marginBottom: '8px', borderBottom: '2px solid #1f2937', paddingBottom: '6px' }}>
+          <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+            {title} {singleTypeCount > 0 && `(${singleTypeCount} заказов)`}
           </h1>
-          <div style={{ display: 'flex', gap: '24px', fontSize: '12px', color: '#4b5563' }}>
+          <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: '#4b5563' }}>
             <span>Период: {dateRange}</span>
             <span>Дата печати: {format(new Date(), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
           </div>
@@ -228,33 +239,34 @@ export const PlanFactPrintView = forwardRef<HTMLDivElement, PlanFactPrintViewPro
             reports={reports}
             type={type}
             config={productTypeConfig[type]}
+            showHeader={printType === 'all'}
           />
         ))}
 
         {printType === 'all' && (
-          <div style={{ marginTop: '24px', padding: '12px', backgroundColor: '#f3f4f6', borderRadius: '4px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>Общая сводка</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', fontSize: '12px' }}>
+          <div style={{ marginTop: '16px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '4px' }}>
+            <h3 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>Общая сводка</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', fontSize: '11px' }}>
               <div>
                 <div style={{ color: '#6b7280' }}>Всего заказов</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{reports.length}</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{reports.length}</div>
               </div>
               <div>
                 <div style={{ color: '#6b7280' }}>План (исх.)</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
                   {reports.reduce((sum, r) => sum + r.original_planned_quantity, 0)}
                 </div>
               </div>
               <div>
                 <div style={{ color: '#6b7280' }}>Факт</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
                   {reports.reduce((sum, r) => sum + r.completed_quantity, 0)}
                 </div>
               </div>
               <div>
                 <div style={{ color: '#6b7280' }}>Отклонение</div>
                 <div style={{ 
-                  fontSize: '16px', 
+                  fontSize: '14px', 
                   fontWeight: 'bold',
                   color: reports.reduce((sum, r) => sum + r.deviation, 0) >= 0 ? '#059669' : '#dc2626'
                 }}>
