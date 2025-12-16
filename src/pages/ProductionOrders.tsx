@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle } from "lucide-react";
+import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle, Calendar, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,6 +41,7 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
+import { OrderHistoryPopover } from "@/components/production/OrderHistoryPopover";
 
 const statusConfig = {
   planned: { label: "Запланировано", variant: "secondary" as const },
@@ -59,17 +60,26 @@ const priorityConfig = {
 };
 
 type HierarchyFilter = "all" | "parent" | "child" | "standalone";
-type SortField = "date" | "status" | "priority" | "order_number";
+type DateFilter = "all" | "today" | "week" | "month";
+type SortField = "date" | "status" | "priority" | "order_number" | "updated";
 type SortDirection = "asc" | "desc";
+
+const dateFilterConfig = {
+  all: { label: "Все даты" },
+  today: { label: "Сегодня" },
+  week: { label: "За неделю" },
+  month: { label: "За месяц" },
+};
 
 const statusOrder = { planned: 0, released: 1, in_progress: 2, on_hold: 3, completed: 4, cancelled: 5 };
 const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
 
-const sortConfig = {
+const sortConfig: Record<SortField, { label: string }> = {
   date: { label: "По дате" },
   status: { label: "По статусу" },
   priority: { label: "По приоритету" },
   order_number: { label: "По номеру" },
+  updated: { label: "По изменению" },
 };
 
 const ITEMS_PER_PAGE = 20;
@@ -88,6 +98,7 @@ const loadSettings = () => {
   return {
     statusFilter: "all",
     hierarchyFilter: "all",
+    dateFilter: "all",
     sortField: "date",
     sortDirection: "desc",
   };
@@ -102,6 +113,7 @@ const ProductionOrdersContent = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(savedSettings.statusFilter);
   const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilter>(savedSettings.hierarchyFilter);
+  const [dateFilter, setDateFilter] = useState<DateFilter>(savedSettings.dateFilter || "all");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteSelectedDialog, setShowDeleteSelectedDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -117,9 +129,9 @@ const ProductionOrdersContent = () => {
 
   // Save settings to localStorage
   useEffect(() => {
-    const settings = { statusFilter, hierarchyFilter, sortField, sortDirection };
+    const settings = { statusFilter, hierarchyFilter, dateFilter, sortField, sortDirection };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [statusFilter, hierarchyFilter, sortField, sortDirection]);
+  }, [statusFilter, hierarchyFilter, dateFilter, sortField, sortDirection]);
 
   // Count orders by hierarchy type
   const hierarchyCounts = useMemo(() => {
@@ -138,6 +150,10 @@ const ProductionOrdersContent = () => {
     if (!orders) return [];
     
     const parentIds = new Set(orders.filter(o => o.parent_order_id).map(o => o.parent_order_id));
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(todayStart.getTime() - 30 * 24 * 60 * 60 * 1000);
     
     const filtered = orders.filter((order) => {
       const productName = order.products?.name || "";
@@ -145,6 +161,19 @@ const ProductionOrdersContent = () => {
         order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
         productName.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+      
+      // Date filter (by updated_at)
+      let matchesDate = true;
+      if (dateFilter !== "all") {
+        const updatedAt = new Date(order.updated_at);
+        if (dateFilter === "today") {
+          matchesDate = updatedAt >= todayStart;
+        } else if (dateFilter === "week") {
+          matchesDate = updatedAt >= weekAgo;
+        } else if (dateFilter === "month") {
+          matchesDate = updatedAt >= monthAgo;
+        }
+      }
       
       // Hierarchy filter
       let matchesHierarchy = true;
@@ -156,7 +185,7 @@ const ProductionOrdersContent = () => {
         matchesHierarchy = !order.parent_order_id && !parentIds.has(order.id);
       }
       
-      return matchesSearch && matchesStatus && matchesHierarchy;
+      return matchesSearch && matchesStatus && matchesHierarchy && matchesDate;
     });
 
     // Sort
@@ -166,6 +195,9 @@ const ProductionOrdersContent = () => {
       switch (sortField) {
         case "date":
           comparison = new Date(a.planned_end_date).getTime() - new Date(b.planned_end_date).getTime();
+          break;
+        case "updated":
+          comparison = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
           break;
         case "status":
           comparison = (statusOrder[a.status as keyof typeof statusOrder] || 0) - (statusOrder[b.status as keyof typeof statusOrder] || 0);
@@ -182,7 +214,7 @@ const ProductionOrdersContent = () => {
     });
 
     return sorted;
-  }, [orders, searchQuery, statusFilter, hierarchyFilter, sortField, sortDirection]);
+  }, [orders, searchQuery, statusFilter, hierarchyFilter, dateFilter, sortField, sortDirection]);
 
   // Pagination
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
@@ -194,7 +226,7 @@ const ProductionOrdersContent = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, hierarchyFilter, sortField, sortDirection]);
+  }, [searchQuery, statusFilter, hierarchyFilter, dateFilter, sortField, sortDirection]);
 
   const toggleSortDirection = () => {
     setSortDirection(prev => prev === "asc" ? "desc" : "asc");
@@ -564,6 +596,29 @@ const ProductionOrdersContent = () => {
                 </DropdownMenu>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
+                    <Button variant={dateFilter !== "all" ? "default" : "outline"} size="sm">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {dateFilterConfig[dateFilter].label}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setDateFilter("all")}>
+                      Все даты
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setDateFilter("today")}>
+                      Изменены сегодня
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDateFilter("week")}>
+                      Изменены за неделю
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDateFilter("month")}>
+                      Изменены за месяц
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
                       <ArrowUpDown className="mr-2 h-4 w-4" />
                       {sortConfig[sortField].label}
@@ -577,6 +632,9 @@ const ProductionOrdersContent = () => {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => setSortField("date")}>
                       По дате окончания
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortField("updated")}>
+                      По дате изменения
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setSortField("status")}>
                       По статусу
@@ -705,9 +763,13 @@ const ProductionOrdersContent = () => {
                       </div>
                     </div>
                     
-                    {/* Quick Actions */}
-                    {!selectionMode && order.status !== "completed" && order.status !== "cancelled" && (
-                      <div className="flex items-start">
+                    {/* Actions */}
+                    <div className="flex items-start gap-1">
+                      {/* History Popover */}
+                      <OrderHistoryPopover orderId={order.id} />
+                      
+                      {/* Quick Actions */}
+                      {!selectionMode && order.status !== "completed" && order.status !== "cancelled" && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" size="icon" className="h-8 w-8" disabled={updatingOrderId === order.id}>
@@ -759,8 +821,8 @@ const ProductionOrdersContent = () => {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
