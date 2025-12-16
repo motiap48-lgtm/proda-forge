@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, Fragment } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
@@ -65,8 +65,10 @@ import { CustomerReport } from "@/components/reports/CustomerReport";
 import { OverdueOrdersReport } from "@/components/reports/OverdueOrdersReport";
 import { exportPlanFactToExcel } from "@/components/reports/PlanFactExcelExport";
 import { exportPlanFactByOrderToExcel } from "@/components/reports/PlanFactByOrderExcelExport";
+import { exportPlanFactAggregatedToExcel } from "@/components/reports/PlanFactAggregatedExcelExport";
 import { PlanFactPrintView } from "@/components/reports/PlanFactPrintView";
 import { PlanFactByOrderPrintView } from "@/components/reports/PlanFactByOrderPrintView";
+import { PlanFactAggregatedPrintView } from "@/components/reports/PlanFactAggregatedPrintView";
 import { PlanFactByOrderView } from "@/components/reports/PlanFactByOrderView";
 import {
   DropdownMenu,
@@ -117,6 +119,7 @@ const ProductionReportsContent = () => {
   });
   const [selectedOrderNumber, setSelectedOrderNumber] = useState<string>('all');
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set()); // For click-to-expand in aggregated mode
   // Customer filter
   const [customerFilter, setCustomerFilter] = useState<string>(() => {
     return localStorage.getItem('reportsCustomerFilter') || 'all';
@@ -206,6 +209,7 @@ const ProductionReportsContent = () => {
   const printRef = useRef<HTMLDivElement>(null);
   const planFactPrintRef = useRef<HTMLDivElement>(null);
   const planFactByOrderPrintRef = useRef<HTMLDivElement>(null);
+  const planFactAggregatedPrintRef = useRef<HTMLDivElement>(null);
 
   const { data: reports, isLoading } = useProductionReports(
     startDate ? format(startDate, "yyyy-MM-dd") : undefined,
@@ -242,9 +246,34 @@ const ProductionReportsContent = () => {
     documentTitle: `План-факт_по_заказам_${format(new Date(), 'yyyy-MM-dd')}`,
   });
 
+  const handlePlanFactAggregatedPrint = useReactToPrint({
+    contentRef: planFactAggregatedPrintRef,
+    documentTitle: `План-факт_суммарно_${format(new Date(), 'yyyy-MM-dd')}`,
+  });
+
   const printPlanFact = (type: 'all' | 'finished' | 'assembly' | 'semi-finished') => {
     setPlanFactPrintType(type);
     setTimeout(() => handlePlanFactPrint(), 100);
+  };
+
+  const toggleExpandedProduct = (productCode: string) => {
+    setExpandedProducts(prev => {
+      const next = new Set(prev);
+      if (next.has(productCode)) {
+        next.delete(productCode);
+      } else {
+        next.add(productCode);
+      }
+      return next;
+    });
+  };
+
+  const expandAllProducts = () => {
+    setExpandedProducts(new Set(aggregatedByProduct.map(p => p.product_code)));
+  };
+
+  const collapseAllProducts = () => {
+    setExpandedProducts(new Set());
   };
 
   const handleExportExcel = () => {
@@ -266,11 +295,12 @@ const ProductionReportsContent = () => {
           endDate ? format(endDate, "yyyy-MM-dd") : undefined
         );
       } else {
-        exportPlanFactToExcel(
+        // Aggregated mode - use aggregated export
+        exportPlanFactAggregatedToExcel(
+          aggregatedByProduct,
           planFactFilteredReports,
           startDate ? format(startDate, "yyyy-MM-dd") : undefined,
-          endDate ? format(endDate, "yyyy-MM-dd") : undefined,
-          planFactStatusFilter
+          endDate ? format(endDate, "yyyy-MM-dd") : undefined
         );
       }
     }
@@ -826,28 +856,22 @@ const ProductionReportsContent = () => {
             {planFactViewMode === 'aggregated' ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={!reports || reports.length === 0}>
+                  <Button variant="outline" size="sm" disabled={aggregatedByProduct.length === 0}>
                     <Printer className="h-4 w-4 mr-1" />
                     <span className="hidden sm:inline">Печать</span>
                     <ChevronDown className="h-3 w-3 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => printPlanFact('all')}>
-                    Все типы продукции
+                  <DropdownMenuItem onClick={() => handlePlanFactAggregatedPrint()}>
+                    Суммарно (без детализации)
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => printPlanFact('finished')}>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mr-2">ГП</Badge>
-                    Готовая продукция
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => printPlanFact('assembly')}>
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 mr-2">СБ</Badge>
-                    Сборочные узлы
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => printPlanFact('semi-finished')}>
-                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 mr-2">ПФ</Badge>
-                    Полуфабрикаты
+                  <DropdownMenuItem onClick={() => {
+                    expandAllProducts();
+                    setTimeout(() => handlePlanFactAggregatedPrint(), 100);
+                  }}>
+                    Суммарно с детализацией
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -919,21 +943,55 @@ const ProductionReportsContent = () => {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {finishedProducts.map((product) => (
-                              <TableRow key={product.product_code}>
-                                <TableCell>
-                                  <div className="font-medium">{product.product_name}</div>
-                                  <div className="text-xs text-muted-foreground">{product.product_code}</div>
-                                </TableCell>
-                                <TableCell className="text-right text-muted-foreground">{product.order_count}</TableCell>
-                                <TableCell className="text-right">{product.original_planned_quantity}</TableCell>
-                                <TableCell className="text-right">{product.planned_quantity}</TableCell>
-                                <TableCell className="text-right">{product.completed_quantity}</TableCell>
-                                <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {product.deviation > 0 ? '+' : ''}{product.deviation}
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                            {finishedProducts.map((product) => {
+                              const productOrders = planFactFilteredReports.filter(r => r.product_code === product.product_code);
+                              const isExpanded = expandedProducts.has(product.product_code);
+                              return (
+                                <Fragment key={product.product_code}>
+                                  <TableRow 
+                                    key={product.product_code} 
+                                    className="cursor-pointer hover:bg-muted/50"
+                                    onClick={() => toggleExpandedProduct(product.product_code)}
+                                  >
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${isExpanded ? '' : '-rotate-90'}`} />
+                                        <div>
+                                          <div className="font-medium">{product.product_name}</div>
+                                          <div className="text-xs text-muted-foreground">{product.product_code}</div>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right text-muted-foreground">{product.order_count}</TableCell>
+                                    <TableCell className="text-right">{product.original_planned_quantity}</TableCell>
+                                    <TableCell className="text-right">{product.planned_quantity}</TableCell>
+                                    <TableCell className="text-right">{product.completed_quantity}</TableCell>
+                                    <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      {product.deviation > 0 ? '+' : ''}{product.deviation}
+                                    </TableCell>
+                                  </TableRow>
+                                  {isExpanded && productOrders.map((order) => (
+                                    <TableRow key={order.order_number} className="bg-muted/30">
+                                      <TableCell className="pl-10">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-mono text-sm">{order.order_number}</span>
+                                          <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                            {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
+                                          </Badge>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-right text-muted-foreground">1</TableCell>
+                                      <TableCell className="text-right">{order.original_planned_quantity}</TableCell>
+                                      <TableCell className="text-right">{order.planned_quantity}</TableCell>
+                                      <TableCell className="text-right">{order.completed_quantity}</TableCell>
+                                      <TableCell className={`text-right ${order.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {order.deviation > 0 ? '+' : ''}{order.deviation}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </Fragment>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </CardContent>
@@ -991,21 +1049,55 @@ const ProductionReportsContent = () => {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {assemblyProducts.map((product) => (
-                              <TableRow key={product.product_code}>
-                                <TableCell>
-                                  <div className="font-medium">{product.product_name}</div>
-                                  <div className="text-xs text-muted-foreground">{product.product_code}</div>
-                                </TableCell>
-                                <TableCell className="text-right text-muted-foreground">{product.order_count}</TableCell>
-                                <TableCell className="text-right">{product.original_planned_quantity}</TableCell>
-                                <TableCell className="text-right">{product.planned_quantity}</TableCell>
-                                <TableCell className="text-right">{product.completed_quantity}</TableCell>
-                                <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {product.deviation > 0 ? '+' : ''}{product.deviation}
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                            {assemblyProducts.map((product) => {
+                              const productOrders = planFactFilteredReports.filter(r => r.product_code === product.product_code);
+                              const isExpanded = expandedProducts.has(product.product_code);
+                              return (
+                                <Fragment key={product.product_code}>
+                                  <TableRow 
+                                    key={product.product_code} 
+                                    className="cursor-pointer hover:bg-muted/50"
+                                    onClick={() => toggleExpandedProduct(product.product_code)}
+                                  >
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${isExpanded ? '' : '-rotate-90'}`} />
+                                        <div>
+                                          <div className="font-medium">{product.product_name}</div>
+                                          <div className="text-xs text-muted-foreground">{product.product_code}</div>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right text-muted-foreground">{product.order_count}</TableCell>
+                                    <TableCell className="text-right">{product.original_planned_quantity}</TableCell>
+                                    <TableCell className="text-right">{product.planned_quantity}</TableCell>
+                                    <TableCell className="text-right">{product.completed_quantity}</TableCell>
+                                    <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      {product.deviation > 0 ? '+' : ''}{product.deviation}
+                                    </TableCell>
+                                  </TableRow>
+                                  {isExpanded && productOrders.map((order) => (
+                                    <TableRow key={order.order_number} className="bg-muted/30">
+                                      <TableCell className="pl-10">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-mono text-sm">{order.order_number}</span>
+                                          <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                            {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
+                                          </Badge>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-right text-muted-foreground">1</TableCell>
+                                      <TableCell className="text-right">{order.original_planned_quantity}</TableCell>
+                                      <TableCell className="text-right">{order.planned_quantity}</TableCell>
+                                      <TableCell className="text-right">{order.completed_quantity}</TableCell>
+                                      <TableCell className={`text-right ${order.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {order.deviation > 0 ? '+' : ''}{order.deviation}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </Fragment>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </CardContent>
@@ -1063,21 +1155,55 @@ const ProductionReportsContent = () => {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {semiFinishedProducts.map((product) => (
-                              <TableRow key={product.product_code}>
-                                <TableCell>
-                                  <div className="font-medium">{product.product_name}</div>
-                                  <div className="text-xs text-muted-foreground">{product.product_code}</div>
-                                </TableCell>
-                                <TableCell className="text-right text-muted-foreground">{product.order_count}</TableCell>
-                                <TableCell className="text-right">{product.original_planned_quantity}</TableCell>
-                                <TableCell className="text-right">{product.planned_quantity}</TableCell>
-                                <TableCell className="text-right">{product.completed_quantity}</TableCell>
-                                <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {product.deviation > 0 ? '+' : ''}{product.deviation}
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                            {semiFinishedProducts.map((product) => {
+                              const productOrders = planFactFilteredReports.filter(r => r.product_code === product.product_code);
+                              const isExpanded = expandedProducts.has(product.product_code);
+                              return (
+                                <Fragment key={product.product_code}>
+                                  <TableRow 
+                                    key={product.product_code} 
+                                    className="cursor-pointer hover:bg-muted/50"
+                                    onClick={() => toggleExpandedProduct(product.product_code)}
+                                  >
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${isExpanded ? '' : '-rotate-90'}`} />
+                                        <div>
+                                          <div className="font-medium">{product.product_name}</div>
+                                          <div className="text-xs text-muted-foreground">{product.product_code}</div>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right text-muted-foreground">{product.order_count}</TableCell>
+                                    <TableCell className="text-right">{product.original_planned_quantity}</TableCell>
+                                    <TableCell className="text-right">{product.planned_quantity}</TableCell>
+                                    <TableCell className="text-right">{product.completed_quantity}</TableCell>
+                                    <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      {product.deviation > 0 ? '+' : ''}{product.deviation}
+                                    </TableCell>
+                                  </TableRow>
+                                  {isExpanded && productOrders.map((order) => (
+                                    <TableRow key={order.order_number} className="bg-muted/30">
+                                      <TableCell className="pl-10">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-mono text-sm">{order.order_number}</span>
+                                          <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                            {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
+                                          </Badge>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-right text-muted-foreground">1</TableCell>
+                                      <TableCell className="text-right">{order.original_planned_quantity}</TableCell>
+                                      <TableCell className="text-right">{order.planned_quantity}</TableCell>
+                                      <TableCell className="text-right">{order.completed_quantity}</TableCell>
+                                      <TableCell className={`text-right ${order.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {order.deviation > 0 ? '+' : ''}{order.deviation}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </Fragment>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </CardContent>
@@ -1116,6 +1242,14 @@ const ProductionReportsContent = () => {
             reports={planFactFilteredReports}
             startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
             endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+          />
+          <PlanFactAggregatedPrintView
+            ref={planFactAggregatedPrintRef}
+            aggregatedProducts={aggregatedByProduct}
+            allReports={planFactFilteredReports}
+            startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
+            endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
+            showDetails={expandedProducts.size > 0}
           />
         </div>
           </TabsContent>
