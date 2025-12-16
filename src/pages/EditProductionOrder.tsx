@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Save, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Sparkles, Plus } from "lucide-react";
+import { QuickCustomerDialog } from "@/components/settings/QuickCustomerDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useProductionOrder, useUpdateProductionOrder } from "@/hooks/useProductionOrders";
 import { useProducts } from "@/hooks/useProducts";
@@ -72,6 +73,7 @@ const EditProductionOrder = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [autoLoaded, setAutoLoaded] = useState({ specification: false, routing: false });
+  const [showQuickCustomerDialog, setShowQuickCustomerDialog] = useState(false);
 
   useEffect(() => {
     if (order && specifications && routingSheets) {
@@ -449,7 +451,19 @@ const EditProductionOrder = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="customer_id">Клиент</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="customer_id">Клиент</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setShowQuickCustomerDialog(true)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Создать
+                      </Button>
+                    </div>
                     <Select
                       value={formData.customer_id}
                       onValueChange={(value) =>
@@ -583,6 +597,13 @@ const EditProductionOrder = () => {
             </div>
           </div>
         </form>
+
+        {/* Quick Customer Dialog */}
+        <QuickCustomerDialog
+          open={showQuickCustomerDialog}
+          onOpenChange={setShowQuickCustomerDialog}
+          onCustomerCreated={(customerId) => setFormData({ ...formData, customer_id: customerId })}
+        />
       </main>
     </div>
   );

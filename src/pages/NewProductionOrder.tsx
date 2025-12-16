@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Loader2, GitBranch, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, Loader2, GitBranch, AlertCircle, Plus } from "lucide-react";
+import { QuickCustomerDialog } from "@/components/settings/QuickCustomerDialog";
 import { toast } from "sonner";
 import { useProducts } from "@/hooks/useProducts";
 import { useActiveSpecifications } from "@/hooks/useSpecifications";
@@ -50,6 +51,7 @@ const NewProductionOrderContent = () => {
   const [childOrdersPreview, setChildOrdersPreview] = useState<ChildOrderData[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
+  const [showQuickCustomerDialog, setShowQuickCustomerDialog] = useState(false);
 
   // Prepare options for searchable selects
   const productOptions = useMemo(() => {
@@ -319,7 +321,19 @@ const NewProductionOrderContent = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="customer">Клиент</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="customer">Клиент</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setShowQuickCustomerDialog(true)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Создать
+                      </Button>
+                    </div>
                     <SearchableSelect
                       options={customerOptions}
                       value={formData.customer}
@@ -539,6 +553,13 @@ const NewProductionOrderContent = () => {
             </div>
           </div>
         </form>
+
+        {/* Quick Customer Dialog */}
+        <QuickCustomerDialog
+          open={showQuickCustomerDialog}
+          onOpenChange={setShowQuickCustomerDialog}
+          onCustomerCreated={(customerId) => handleChange("customer", customerId)}
+        />
       </main>
     </div>
   );
