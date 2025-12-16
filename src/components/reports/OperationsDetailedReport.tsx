@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useOperationsDetailedReport, WorkCenterOperationsData, OperationDetailedItem } from "@/hooks/useOperationsDetailedReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,9 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import * as XLSX from "xlsx";
@@ -43,6 +46,9 @@ interface OperationsDetailedReportProps {
   startDate?: string;
   endDate?: string;
 }
+
+type SortField = 'order_number' | 'sequence' | 'operation_name' | 'product_name' | 'planned_quantity' | 'completed_quantity' | 'deviation' | 'status';
+type SortDirection = 'asc' | 'desc';
 
 const getProductTypeBadge = (type: string) => {
   switch (type) {
@@ -85,12 +91,42 @@ const getStatusLabel = (status: string): string => {
   }
 };
 
+const getStatusSortOrder = (status: string): number => {
+  switch (status) {
+    case "pending": return 0;
+    case "in_progress": return 1;
+    case "completed": return 2;
+    default: return 3;
+  }
+};
+
 export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetailedReportProps) => {
   const { data: reports, isLoading } = useOperationsDetailedReport(startDate, endDate);
   const [expandedWorkCenters, setExpandedWorkCenters] = useState<Set<string>>(new Set());
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => {
+    return localStorage.getItem('operationsReport_searchQuery') || "";
+  });
+  const [sortField, setSortField] = useState<SortField>(() => {
+    return (localStorage.getItem('operationsReport_sortField') as SortField) || 'sequence';
+  });
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
+    return (localStorage.getItem('operationsReport_sortDirection') as SortDirection) || 'asc';
+  });
   const [printWorkCenterId, setPrintWorkCenterId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Save filters to localStorage
+  useEffect(() => {
+    localStorage.setItem('operationsReport_searchQuery', searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    localStorage.setItem('operationsReport_sortField', sortField);
+  }, [sortField]);
+
+  useEffect(() => {
+    localStorage.setItem('operationsReport_sortDirection', sortDirection);
+  }, [sortDirection]);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -194,6 +230,62 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
 
   const collapseAll = () => {
     setExpandedWorkCenters(new Set());
+  };
+
+  // Handle sort toggle
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Get sort icon
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3 w-3 ml-1" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  // Sort operations
+  const sortOperations = (operations: OperationDetailedItem[]) => {
+    return [...operations].sort((a, b) => {
+      let compareResult = 0;
+      
+      switch (sortField) {
+        case 'order_number':
+          compareResult = a.order_number.localeCompare(b.order_number);
+          break;
+        case 'sequence':
+          compareResult = a.sequence - b.sequence;
+          break;
+        case 'operation_name':
+          compareResult = a.operation_name.localeCompare(b.operation_name, 'ru');
+          break;
+        case 'product_name':
+          compareResult = a.product_name.localeCompare(b.product_name, 'ru');
+          break;
+        case 'planned_quantity':
+          compareResult = a.planned_quantity - b.planned_quantity;
+          break;
+        case 'completed_quantity':
+          compareResult = a.completed_quantity - b.completed_quantity;
+          break;
+        case 'deviation':
+          compareResult = a.deviation - b.deviation;
+          break;
+        case 'status':
+          compareResult = getStatusSortOrder(a.status) - getStatusSortOrder(b.status);
+          break;
+      }
+      
+      return sortDirection === 'asc' ? compareResult : -compareResult;
+    });
   };
 
   // Filter reports
@@ -397,18 +489,82 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[120px]">Заказ</TableHead>
-                        <TableHead className="w-[50px]">№</TableHead>
-                        <TableHead>Операция</TableHead>
-                        <TableHead>Изделие</TableHead>
-                        <TableHead className="text-right w-[80px]">План</TableHead>
-                        <TableHead className="text-right w-[80px]">Факт</TableHead>
-                        <TableHead className="text-right w-[80px]">Откл.</TableHead>
-                        <TableHead className="w-[100px]">Статус</TableHead>
+                        <TableHead 
+                          className="w-[120px] cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort('order_number')}
+                        >
+                          <div className="flex items-center">
+                            Заказ
+                            {getSortIcon('order_number')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="w-[50px] cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort('sequence')}
+                        >
+                          <div className="flex items-center">
+                            №
+                            {getSortIcon('sequence')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort('operation_name')}
+                        >
+                          <div className="flex items-center">
+                            Операция
+                            {getSortIcon('operation_name')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort('product_name')}
+                        >
+                          <div className="flex items-center">
+                            Изделие
+                            {getSortIcon('product_name')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-right w-[80px] cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort('planned_quantity')}
+                        >
+                          <div className="flex items-center justify-end">
+                            План
+                            {getSortIcon('planned_quantity')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-right w-[80px] cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort('completed_quantity')}
+                        >
+                          <div className="flex items-center justify-end">
+                            Факт
+                            {getSortIcon('completed_quantity')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-right w-[80px] cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort('deviation')}
+                        >
+                          <div className="flex items-center justify-end">
+                            Откл.
+                            {getSortIcon('deviation')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="w-[100px] cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort('status')}
+                        >
+                          <div className="flex items-center">
+                            Статус
+                            {getSortIcon('status')}
+                          </div>
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {wc.operations.map((op) => (
+                      {sortOperations(wc.operations).map((op) => (
                         <TableRow key={op.operation_id}>
                           <TableCell className="font-mono text-xs">{op.order_number}</TableCell>
                           <TableCell className="text-center">{op.sequence}</TableCell>
@@ -481,7 +637,7 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
                   </tr>
                 </thead>
                 <tbody>
-                  {wc.operations.map((op) => (
+                  {sortOperations(wc.operations).map((op) => (
                     <tr key={op.operation_id} className="border-b border-gray-200">
                       <td className="py-1 px-2 font-mono text-xs">{op.order_number}</td>
                       <td className="py-1 px-2">{op.sequence}</td>
