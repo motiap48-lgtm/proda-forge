@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle, Calendar } from "lucide-react";
+import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle, Calendar, AlertTriangle, Wrench } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
+import { useFixOrdersWithoutWorkCenter } from "@/hooks/useChildProductionOrders";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { supabase } from "@/integrations/supabase/client";
@@ -126,6 +127,7 @@ const ProductionOrdersContent = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>(savedSettings.sortDirection);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const { data: orders, isLoading } = useProductionOrders();
+  const fixOrdersMutation = useFixOrdersWithoutWorkCenter();
 
   // Save settings to localStorage
   useEffect(() => {
@@ -144,6 +146,12 @@ const ProductionOrdersContent = () => {
       child: orders.filter(o => o.parent_order_id).length,
       standalone: orders.filter(o => !o.parent_order_id && !parentIds.has(o.id)).length,
     };
+  }, [orders]);
+
+  // Count orders without work center
+  const ordersWithoutWorkCenterCount = useMemo(() => {
+    if (!orders) return 0;
+    return orders.filter(o => !o.work_center_id && o.routing_sheet_id).length;
   }, [orders]);
 
   const filteredOrders = useMemo(() => {
@@ -660,6 +668,34 @@ const ProductionOrdersContent = () => {
           </CardContent>
         </Card>
 
+        {/* Warning about orders without work center */}
+        {ordersWithoutWorkCenterCount > 0 && (
+          <Card className="mb-4 border-amber-200 bg-amber-50">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-amber-700">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="text-sm font-medium">
+                  {ordersWithoutWorkCenterCount} заказов без назначенного участка
+                </span>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => fixOrdersMutation.mutate()}
+                disabled={fixOrdersMutation.isPending}
+                className="border-amber-300 text-amber-700 hover:bg-amber-100"
+              >
+                {fixOrdersMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Wrench className="mr-2 h-4 w-4" />
+                )}
+                Исправить автоматически
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Orders List */}
         <div className="space-y-3 sm:space-y-4">
           {paginatedOrders.map((order) => {
@@ -718,6 +754,12 @@ const ProductionOrdersContent = () => {
                             <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
                               <ArrowUp className="h-3 w-3 mr-1" />
                               Родительский
+                            </Badge>
+                          )}
+                          {!order.work_center_id && order.routing_sheet_id && (
+                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Без участка
                             </Badge>
                           )}
                         </div>
