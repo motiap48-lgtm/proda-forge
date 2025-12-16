@@ -523,3 +523,88 @@ export const clearSpecAnalysisCache = (specificationId?: string) => {
     specAnalysisCache.clear();
   }
 };
+
+// Fix orders without work_center_id by determining work center from routing sheet
+export const useFixOrdersWithoutWorkCenter = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      // Get all orders without work_center_id but with routing_sheet_id
+      const { data: ordersToFix, error: fetchError } = await supabase
+        .from("production_orders")
+        .select("id, routing_sheet_id")
+        .is("work_center_id", null)
+        .not("routing_sheet_id", "is", null);
+
+      if (fetchError) throw fetchError;
+      if (!ordersToFix || ordersToFix.length === 0) {
+        return { fixed: 0 };
+      }
+
+      // Get unique routing sheet IDs
+      const routingSheetIds = [...new Set(ordersToFix.map(o => o.routing_sheet_id))];
+
+      // Fetch routing operations for all routing sheets
+      const { data: allOperations } = await supabase
+        .from("routing_operations")
+        .select("routing_sheet_id, work_center_id, operation_type, sequence")
+        .in("routing_sheet_id", routingSheetIds)
+        .order("sequence", { ascending: true });
+
+      // Build a map: routing_sheet_id -> last production operation's work_center_id
+      const workCenterMap = new Map<string, string>();
+      if (allOperations) {
+        // Group by routing_sheet_id
+        const grouped = new Map<string, typeof allOperations>();
+        allOperations.forEach(op => {
+          if (!grouped.has(op.routing_sheet_id)) {
+            grouped.set(op.routing_sheet_id, []);
+          }
+          grouped.get(op.routing_sheet_id)!.push(op);
+        });
+
+        // For each routing sheet, find the last production operation with a work center
+        grouped.forEach((ops, routingSheetId) => {
+          const productionOps = ops.filter(
+            op => op.operation_type === 'production' && op.work_center_id
+          );
+          if (productionOps.length > 0) {
+            // Sort by sequence and get last
+            productionOps.sort((a, b) => b.sequence - a.sequence);
+            workCenterMap.set(routingSheetId, productionOps[0].work_center_id!);
+          }
+        });
+      }
+
+      // Update orders
+      let fixedCount = 0;
+      for (const order of ordersToFix) {
+        const workCenterId = workCenterMap.get(order.routing_sheet_id!);
+        if (workCenterId) {
+          const { error: updateError } = await supabase
+            .from("production_orders")
+            .update({ work_center_id: workCenterId })
+            .eq("id", order.id);
+
+          if (!updateError) {
+            fixedCount++;
+          }
+        }
+      }
+
+      return { fixed: fixedCount, total: ordersToFix.length };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      if (result.fixed > 0) {
+        toast.success(`Исправлено ${result.fixed} заказов`);
+      } else {
+        toast.info("Нет заказов для исправления");
+      }
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка при исправлении заказов: " + error.message);
+    },
+  });
+};
