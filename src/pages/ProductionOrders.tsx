@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle, Calendar, AlertTriangle, Wrench, Users, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrdersWithCustomers } from "@/hooks/useProductionOrdersWithCustomers";
+import { useActiveCustomers } from "@/hooks/useCustomers";
 import { BulkCustomerAssignDialog } from "@/components/production/BulkCustomerAssignDialog";
 import { useFixOrdersWithoutWorkCenter } from "@/hooks/useChildProductionOrders";
 import { useAuth } from "@/contexts/AuthContext";
@@ -101,6 +102,7 @@ const loadSettings = () => {
     statusFilter: "all",
     hierarchyFilter: "all",
     dateFilter: "all",
+    customerFilter: "all",
     sortField: "date",
     sortDirection: "desc",
   };
@@ -116,6 +118,7 @@ const ProductionOrdersContent = () => {
   const [statusFilter, setStatusFilter] = useState<string>(savedSettings.statusFilter);
   const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilter>(savedSettings.hierarchyFilter);
   const [dateFilter, setDateFilter] = useState<DateFilter>(savedSettings.dateFilter || "all");
+  const [customerFilter, setCustomerFilter] = useState<string>(savedSettings.customerFilter || "all");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteSelectedDialog, setShowDeleteSelectedDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -129,13 +132,14 @@ const ProductionOrdersContent = () => {
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [showBulkCustomerDialog, setShowBulkCustomerDialog] = useState(false);
   const { data: orders, isLoading } = useProductionOrdersWithCustomers();
+  const { data: customers } = useActiveCustomers();
   const fixOrdersMutation = useFixOrdersWithoutWorkCenter();
 
   // Save settings to localStorage
   useEffect(() => {
-    const settings = { statusFilter, hierarchyFilter, dateFilter, sortField, sortDirection };
+    const settings = { statusFilter, hierarchyFilter, dateFilter, customerFilter, sortField, sortDirection };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [statusFilter, hierarchyFilter, dateFilter, sortField, sortDirection]);
+  }, [statusFilter, hierarchyFilter, dateFilter, customerFilter, sortField, sortDirection]);
 
   // Count orders by hierarchy type
   const hierarchyCounts = useMemo(() => {
@@ -194,8 +198,16 @@ const ProductionOrdersContent = () => {
       } else if (hierarchyFilter === "standalone") {
         matchesHierarchy = !order.parent_order_id && !parentIds.has(order.id);
       }
+
+      // Customer filter
+      let matchesCustomer = true;
+      if (customerFilter === "no-customer") {
+        matchesCustomer = !order.customer_id;
+      } else if (customerFilter !== "all") {
+        matchesCustomer = order.customer_id === customerFilter;
+      }
       
-      return matchesSearch && matchesStatus && matchesHierarchy && matchesDate;
+      return matchesSearch && matchesStatus && matchesHierarchy && matchesDate && matchesCustomer;
     });
 
     // Sort
@@ -224,7 +236,7 @@ const ProductionOrdersContent = () => {
     });
 
     return sorted;
-  }, [orders, searchQuery, statusFilter, hierarchyFilter, dateFilter, sortField, sortDirection]);
+  }, [orders, searchQuery, statusFilter, hierarchyFilter, dateFilter, customerFilter, sortField, sortDirection]);
 
   // Pagination
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
@@ -236,7 +248,7 @@ const ProductionOrdersContent = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, hierarchyFilter, dateFilter, sortField, sortDirection]);
+  }, [searchQuery, statusFilter, hierarchyFilter, dateFilter, customerFilter, sortField, sortDirection]);
 
   const toggleSortDirection = () => {
     setSortDirection(prev => prev === "asc" ? "desc" : "asc");
@@ -636,6 +648,39 @@ const ProductionOrdersContent = () => {
                     <DropdownMenuItem onClick={() => setDateFilter("month")}>
                       Изменены за месяц
                     </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant={customerFilter !== "all" ? "default" : "outline"} size="sm">
+                      <Building2 className="mr-2 h-4 w-4" />
+                      {customerFilter === "all" 
+                        ? "Клиент" 
+                        : customerFilter === "no-customer"
+                          ? "Без клиента"
+                          : customers?.find(c => c.id === customerFilter)?.name || "Клиент"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
+                    <DropdownMenuItem onClick={() => setCustomerFilter("all")}>
+                      Все клиенты
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setCustomerFilter("no-customer")}>
+                      Без клиента
+                    </DropdownMenuItem>
+                    {customers && customers.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        {customers.map(customer => (
+                          <DropdownMenuItem 
+                            key={customer.id} 
+                            onClick={() => setCustomerFilter(customer.id)}
+                          >
+                            {customer.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenu>
