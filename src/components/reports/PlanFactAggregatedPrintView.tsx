@@ -20,7 +20,15 @@ interface PlanFactAggregatedPrintViewProps {
   startDate?: string;
   endDate?: string;
   showDetails?: boolean;
+  completionFilter?: 'all' | 'not_completed' | 'partially' | 'completed';
 }
+
+const completionFilterLabels: Record<string, string> = {
+  all: '',
+  not_completed: 'Невыполненные (0%)',
+  partially: 'Частично выполненные (1-99%)',
+  completed: 'Выполненные (100%)',
+};
 
 const productTypeConfig: Record<string, { label: string; badge: string; color: string }> = {
   finished: { label: 'Готовая продукция', badge: 'ГП', color: '#3b82f6' },
@@ -176,7 +184,7 @@ const ProductTypeTable = ({ products, allReports, type, config, showDetails }: P
 };
 
 export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAggregatedPrintViewProps>(
-  ({ aggregatedProducts, allReports, startDate, endDate, showDetails }, ref) => {
+  ({ aggregatedProducts, allReports, startDate, endDate, showDetails, completionFilter }, ref) => {
     const types = ['finished', 'assembly', 'semi-finished'] as const;
 
     const hasDataToPrint = aggregatedProducts.length > 0;
@@ -184,6 +192,10 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
     const dateRange = startDate && endDate
       ? `${format(new Date(startDate), 'dd.MM.yyyy', { locale: ru })} - ${format(new Date(endDate), 'dd.MM.yyyy', { locale: ru })}`
       : 'Все время';
+
+    const filterLabel = completionFilter && completionFilter !== 'all' 
+      ? completionFilterLabels[completionFilter] 
+      : '';
 
     if (!hasDataToPrint) {
       return (
@@ -203,6 +215,7 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
             </h1>
             <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: '#4b5563' }}>
               <span>Период: {dateRange}</span>
+              {filterLabel && <span>Фильтр: {filterLabel}</span>}
               <span>Дата печати: {format(new Date(), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
             </div>
           </div>
@@ -236,8 +249,18 @@ export const PlanFactAggregatedPrintView = forwardRef<HTMLDivElement, PlanFactAg
             Отчет план-факт (суммарно по изделиям)
             {showDetails && ' с детализацией'}
           </h1>
-          <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: '#4b5563' }}>
+          <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: '#4b5563', flexWrap: 'wrap' }}>
             <span>Период: {dateRange}</span>
+            {filterLabel && (
+              <span style={{ 
+                backgroundColor: '#fef3c7', 
+                padding: '1px 6px', 
+                borderRadius: '4px',
+                color: '#92400e'
+              }}>
+                Фильтр: {filterLabel}
+              </span>
+            )}
             <span>{totalProducts} изделий, {totalOrders} заказов</span>
             <span>Дата печати: {format(new Date(), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
           </div>
