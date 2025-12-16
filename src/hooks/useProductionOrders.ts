@@ -6,6 +6,7 @@ export interface ProductionOrder {
   id: string;
   order_number: string;
   product_id: string;
+  customer_id: string | null;
   specification_id: string | null;
   routing_sheet_id: string | null;
   work_center_id: string | null;
@@ -23,6 +24,7 @@ export interface ProductionOrder {
   created_at: string;
   updated_at: string;
   products?: { name: string; code: string; unit?: string };
+  customers?: { id: string; name: string; code: string } | null;
   specifications?: { code: string; version?: string };
   work_centers?: { name: string; code?: string };
   routing_sheets?: { name: string };
@@ -37,6 +39,7 @@ export const useProductionOrders = () => {
         .select(`
           *,
           products:product_id(name, code),
+          customers:customer_id(id, name, code),
           specifications:specification_id(code),
           work_centers:work_center_id(name)
         `)

@@ -17,6 +17,7 @@ import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { useCreateProductionOrder } from "@/hooks/useProductionOrders";
 import { useActiveRoutingSheets } from "@/hooks/useRoutingSheets";
 import { useCreateChildOrders, usePreviewChildOrders, ChildOrderData, AnalysisProgress } from "@/hooks/useChildProductionOrders";
+import { useActiveCustomers } from "@/hooks/useCustomers";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { supabase } from "@/integrations/supabase/client";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -28,6 +29,7 @@ const NewProductionOrderContent = () => {
   const { data: specifications, isLoading: specificationsLoading } = useActiveSpecifications();
   const { data: workCenters, isLoading: workCentersLoading } = useActiveWorkCenters();
   const { data: routingSheets } = useActiveRoutingSheets();
+  const { data: customers } = useActiveCustomers();
   const createOrder = useCreateProductionOrder();
   const createChildOrders = useCreateChildOrders();
   const previewChildOrders = usePreviewChildOrders();
@@ -42,6 +44,7 @@ const NewProductionOrderContent = () => {
     responsible: "",
     planned_start: "",
     planned_end: "",
+    customer: "",
   });
   const [createChildOrdersFlag, setCreateChildOrdersFlag] = useState(true);
   const [childOrdersPreview, setChildOrdersPreview] = useState<ChildOrderData[]>([]);
@@ -80,6 +83,14 @@ const NewProductionOrderContent = () => {
       searchText: `${center.code} ${center.name}`,
     }));
   }, [workCenters]);
+
+  const customerOptions = useMemo(() => {
+    return (customers || []).map((c) => ({
+      value: c.id,
+      label: c.name,
+      searchText: `${c.code} ${c.name} ${c.inn || ""}`,
+    }));
+  }, [customers]);
 
   // Auto-link specification and routing sheet when product changes
   useEffect(() => {
@@ -151,6 +162,7 @@ const NewProductionOrderContent = () => {
         specification_id: formData.specification || null,
         work_center_id: formData.work_center || null,
         routing_sheet_id: formData.routing_sheet || null,
+        customer_id: formData.customer || null,
         parent_order_id: null,
         quantity: quantityNum,
         original_quantity: quantityNum,
@@ -303,6 +315,18 @@ const NewProductionOrderContent = () => {
                       value={formData.quantity}
                       onChange={(e) => handleChange("quantity", e.target.value)}
                       required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="customer">Клиент</Label>
+                    <SearchableSelect
+                      options={customerOptions}
+                      value={formData.customer}
+                      onValueChange={(value) => handleChange("customer", value)}
+                      placeholder="Выберите клиента (опционально)"
+                      searchPlaceholder="Поиск по названию или ИНН..."
+                      emptyText="Клиент не найден"
                     />
                   </div>
                 </CardContent>

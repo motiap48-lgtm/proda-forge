@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users } from "lucide-react";
 import { MaterialCategoriesManagement } from "@/components/settings/MaterialCategoriesManagement";
 import { ContractorsManagement } from "@/components/settings/ContractorsManagement";
+import { CustomersManagement } from "@/components/settings/CustomersManagement";
 import { DistributionStrategySettings } from "@/components/settings/DistributionStrategySettings";
 import {
   Select,
@@ -150,6 +151,22 @@ const Settings = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Customers */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Клиенты
+              </CardTitle>
+              <CardDescription>
+                Справочник клиентов для привязки к производственным заказам
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CustomersManagement />
             </CardContent>
           </Card>
 
