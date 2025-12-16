@@ -406,69 +406,207 @@ const ProductionReportsContent = () => {
           </Card>
         </div>
 
-        {/* Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Детальный отчет</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
-            ) : reports && reports.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Номер заказа</TableHead>
-                    <TableHead>Изделие</TableHead>
-                    <TableHead className="text-right">План (исх.)</TableHead>
-                    <TableHead className="text-right">План (тек.)</TableHead>
-                    <TableHead className="text-right">Δ плана</TableHead>
-                    <TableHead className="text-right">Факт</TableHead>
-                    <TableHead className="text-right">Отклонение</TableHead>
-                    <TableHead className="text-right">%</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead>Участок</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reports.map((report) => (
-                    <TableRow key={report.order_number}>
-                      <TableCell className="font-medium">{report.order_number}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{report.product_name}</div>
-                          <div className="text-sm text-muted-foreground">{report.product_code}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
-                      <TableCell className="text-right">{report.planned_quantity}</TableCell>
-                      <TableCell className={`text-right ${report.plan_change > 0 ? 'text-amber-600' : report.plan_change < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {report.plan_change > 0 ? '+' : ''}{report.plan_change}
-                      </TableCell>
-                      <TableCell className="text-right">{report.completed_quantity}</TableCell>
-                      <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {report.deviation > 0 ? '+' : ''}{report.deviation}
-                      </TableCell>
-                      <TableCell className={`text-right ${report.deviation_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {report.deviation_percent > 0 ? '+' : ''}{report.deviation_percent.toFixed(1)}%
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"}>
-                          {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{report.work_center_name || "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Нет данных для отображения
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Grouped Tables by Product Type */}
+        {isLoading ? (
+          <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
+        ) : reports && reports.length > 0 ? (
+          <div className="space-y-4">
+            {/* Готовая продукция */}
+            {(() => {
+              const finishedReports = reports.filter(r => r.product_type === 'finished');
+              if (finishedReports.length === 0) return null;
+              const totals = finishedReports.reduce((acc, r) => ({
+                planned: acc.planned + r.planned_quantity,
+                completed: acc.completed + r.completed_quantity,
+              }), { planned: 0, completed: 0 });
+              return (
+                <Card>
+                  <CardHeader className="py-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">ГП</Badge>
+                        Готовая продукция
+                        <span className="text-muted-foreground font-normal">({finishedReports.length})</span>
+                      </CardTitle>
+                      <div className="text-sm text-muted-foreground">
+                        План: {totals.planned} | Факт: {totals.completed}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Номер заказа</TableHead>
+                          <TableHead>Изделие</TableHead>
+                          <TableHead className="text-right">План (исх.)</TableHead>
+                          <TableHead className="text-right">План (тек.)</TableHead>
+                          <TableHead className="text-right">Факт</TableHead>
+                          <TableHead className="text-right">Откл.</TableHead>
+                          <TableHead>Статус</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {finishedReports.map((report) => (
+                          <TableRow key={report.order_number}>
+                            <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
+                            <TableCell>
+                              <div className="font-medium">{report.product_name}</div>
+                              <div className="text-xs text-muted-foreground">{report.product_code}</div>
+                            </TableCell>
+                            <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
+                            <TableCell className="text-right">{report.planned_quantity}</TableCell>
+                            <TableCell className="text-right">{report.completed_quantity}</TableCell>
+                            <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {report.deviation > 0 ? '+' : ''}{report.deviation}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
+            {/* Сборочные узлы */}
+            {(() => {
+              const assemblyReports = reports.filter(r => r.product_type === 'assembly');
+              if (assemblyReports.length === 0) return null;
+              const totals = assemblyReports.reduce((acc, r) => ({
+                planned: acc.planned + r.planned_quantity,
+                completed: acc.completed + r.completed_quantity,
+              }), { planned: 0, completed: 0 });
+              return (
+                <Card>
+                  <CardHeader className="py-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">СБ</Badge>
+                        Сборочные узлы
+                        <span className="text-muted-foreground font-normal">({assemblyReports.length})</span>
+                      </CardTitle>
+                      <div className="text-sm text-muted-foreground">
+                        План: {totals.planned} | Факт: {totals.completed}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Номер заказа</TableHead>
+                          <TableHead>Изделие</TableHead>
+                          <TableHead className="text-right">План (исх.)</TableHead>
+                          <TableHead className="text-right">План (тек.)</TableHead>
+                          <TableHead className="text-right">Факт</TableHead>
+                          <TableHead className="text-right">Откл.</TableHead>
+                          <TableHead>Статус</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assemblyReports.map((report) => (
+                          <TableRow key={report.order_number}>
+                            <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
+                            <TableCell>
+                              <div className="font-medium">{report.product_name}</div>
+                              <div className="text-xs text-muted-foreground">{report.product_code}</div>
+                            </TableCell>
+                            <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
+                            <TableCell className="text-right">{report.planned_quantity}</TableCell>
+                            <TableCell className="text-right">{report.completed_quantity}</TableCell>
+                            <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {report.deviation > 0 ? '+' : ''}{report.deviation}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
+            {/* Полуфабрикаты */}
+            {(() => {
+              const semiFinishedReports = reports.filter(r => r.product_type === 'semi-finished');
+              if (semiFinishedReports.length === 0) return null;
+              const totals = semiFinishedReports.reduce((acc, r) => ({
+                planned: acc.planned + r.planned_quantity,
+                completed: acc.completed + r.completed_quantity,
+              }), { planned: 0, completed: 0 });
+              return (
+                <Card>
+                  <CardHeader className="py-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">ПФ</Badge>
+                        Полуфабрикаты
+                        <span className="text-muted-foreground font-normal">({semiFinishedReports.length})</span>
+                      </CardTitle>
+                      <div className="text-sm text-muted-foreground">
+                        План: {totals.planned} | Факт: {totals.completed}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Номер заказа</TableHead>
+                          <TableHead>Изделие</TableHead>
+                          <TableHead className="text-right">План (исх.)</TableHead>
+                          <TableHead className="text-right">План (тек.)</TableHead>
+                          <TableHead className="text-right">Факт</TableHead>
+                          <TableHead className="text-right">Откл.</TableHead>
+                          <TableHead>Статус</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {semiFinishedReports.map((report) => (
+                          <TableRow key={report.order_number}>
+                            <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
+                            <TableCell>
+                              <div className="font-medium">{report.product_name}</div>
+                              <div className="text-xs text-muted-foreground">{report.product_code}</div>
+                            </TableCell>
+                            <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
+                            <TableCell className="text-right">{report.planned_quantity}</TableCell>
+                            <TableCell className="text-right">{report.completed_quantity}</TableCell>
+                            <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {report.deviation > 0 ? '+' : ''}{report.deviation}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              Нет данных для отображения
+            </CardContent>
+          </Card>
+        )}
           </TabsContent>
 
           <TabsContent value="output" className="space-y-6">

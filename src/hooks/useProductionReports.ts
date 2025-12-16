@@ -5,6 +5,7 @@ export interface ProductionReportData {
   order_number: string;
   product_name: string;
   product_code: string;
+  product_type: string;
   original_planned_quantity: number;
   planned_quantity: number; // текущий план
   plan_change: number;
@@ -35,7 +36,7 @@ export const useProductionReports = (startDate?: string, endDate?: string) => {
           actual_start_date,
           actual_end_date,
           status,
-          products:product_id(name, code),
+          products:product_id(name, code, product_type),
           work_centers:work_center_id(name)
         `)
         .order("planned_start_date", { ascending: false });
@@ -62,6 +63,7 @@ export const useProductionReports = (startDate?: string, endDate?: string) => {
           order_number: order.order_number,
           product_name: order.products?.name || "N/A",
           product_code: order.products?.code || "N/A",
+          product_type: order.products?.product_type || "finished",
           original_planned_quantity: originalPlanned,
           planned_quantity: currentPlanned,
           plan_change: planChange,
