@@ -92,6 +92,19 @@ const ProductionReportsContent = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [printWorkCenterId, setPrintWorkCenterId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedProductTypes, setExpandedProductTypes] = useState<Set<string>>(new Set(['finished', 'assembly', 'semi-finished']));
+
+  const toggleProductType = (type: string) => {
+    setExpandedProductTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+  };
   
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -420,57 +433,64 @@ const ProductionReportsContent = () => {
                 completed: acc.completed + r.completed_quantity,
               }), { planned: 0, completed: 0 });
               return (
-                <Card>
-                  <CardHeader className="py-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">ГП</Badge>
-                        Готовая продукция
-                        <span className="text-muted-foreground font-normal">({finishedReports.length})</span>
-                      </CardTitle>
-                      <div className="text-sm text-muted-foreground">
-                        План: {totals.planned} | Факт: {totals.completed}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Номер заказа</TableHead>
-                          <TableHead>Изделие</TableHead>
-                          <TableHead className="text-right">План (исх.)</TableHead>
-                          <TableHead className="text-right">План (тек.)</TableHead>
-                          <TableHead className="text-right">Факт</TableHead>
-                          <TableHead className="text-right">Откл.</TableHead>
-                          <TableHead>Статус</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {finishedReports.map((report) => (
-                          <TableRow key={report.order_number}>
-                            <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
-                            <TableCell>
-                              <div className="font-medium">{report.product_name}</div>
-                              <div className="text-xs text-muted-foreground">{report.product_code}</div>
-                            </TableCell>
-                            <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
-                            <TableCell className="text-right">{report.planned_quantity}</TableCell>
-                            <TableCell className="text-right">{report.completed_quantity}</TableCell>
-                            <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {report.deviation > 0 ? '+' : ''}{report.deviation}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
-                                {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+                <Collapsible open={expandedProductTypes.has('finished')} onOpenChange={() => toggleProductType('finished')}>
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="py-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <ChevronDown className={`h-4 w-4 transition-transform ${expandedProductTypes.has('finished') ? '' : '-rotate-90'}`} />
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">ГП</Badge>
+                            Готовая продукция
+                            <span className="text-muted-foreground font-normal">({finishedReports.length})</span>
+                          </CardTitle>
+                          <div className="text-sm text-muted-foreground">
+                            План: {totals.planned} | Факт: {totals.completed}
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Номер заказа</TableHead>
+                              <TableHead>Изделие</TableHead>
+                              <TableHead className="text-right">План (исх.)</TableHead>
+                              <TableHead className="text-right">План (тек.)</TableHead>
+                              <TableHead className="text-right">Факт</TableHead>
+                              <TableHead className="text-right">Откл.</TableHead>
+                              <TableHead>Статус</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {finishedReports.map((report) => (
+                              <TableRow key={report.order_number}>
+                                <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{report.product_name}</div>
+                                  <div className="text-xs text-muted-foreground">{report.product_code}</div>
+                                </TableCell>
+                                <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
+                                <TableCell className="text-right">{report.planned_quantity}</TableCell>
+                                <TableCell className="text-right">{report.completed_quantity}</TableCell>
+                                <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {report.deviation > 0 ? '+' : ''}{report.deviation}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                    {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
               );
             })()}
 
@@ -483,57 +503,64 @@ const ProductionReportsContent = () => {
                 completed: acc.completed + r.completed_quantity,
               }), { planned: 0, completed: 0 });
               return (
-                <Card>
-                  <CardHeader className="py-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">СБ</Badge>
-                        Сборочные узлы
-                        <span className="text-muted-foreground font-normal">({assemblyReports.length})</span>
-                      </CardTitle>
-                      <div className="text-sm text-muted-foreground">
-                        План: {totals.planned} | Факт: {totals.completed}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Номер заказа</TableHead>
-                          <TableHead>Изделие</TableHead>
-                          <TableHead className="text-right">План (исх.)</TableHead>
-                          <TableHead className="text-right">План (тек.)</TableHead>
-                          <TableHead className="text-right">Факт</TableHead>
-                          <TableHead className="text-right">Откл.</TableHead>
-                          <TableHead>Статус</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {assemblyReports.map((report) => (
-                          <TableRow key={report.order_number}>
-                            <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
-                            <TableCell>
-                              <div className="font-medium">{report.product_name}</div>
-                              <div className="text-xs text-muted-foreground">{report.product_code}</div>
-                            </TableCell>
-                            <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
-                            <TableCell className="text-right">{report.planned_quantity}</TableCell>
-                            <TableCell className="text-right">{report.completed_quantity}</TableCell>
-                            <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {report.deviation > 0 ? '+' : ''}{report.deviation}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
-                                {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+                <Collapsible open={expandedProductTypes.has('assembly')} onOpenChange={() => toggleProductType('assembly')}>
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="py-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <ChevronDown className={`h-4 w-4 transition-transform ${expandedProductTypes.has('assembly') ? '' : '-rotate-90'}`} />
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">СБ</Badge>
+                            Сборочные узлы
+                            <span className="text-muted-foreground font-normal">({assemblyReports.length})</span>
+                          </CardTitle>
+                          <div className="text-sm text-muted-foreground">
+                            План: {totals.planned} | Факт: {totals.completed}
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Номер заказа</TableHead>
+                              <TableHead>Изделие</TableHead>
+                              <TableHead className="text-right">План (исх.)</TableHead>
+                              <TableHead className="text-right">План (тек.)</TableHead>
+                              <TableHead className="text-right">Факт</TableHead>
+                              <TableHead className="text-right">Откл.</TableHead>
+                              <TableHead>Статус</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {assemblyReports.map((report) => (
+                              <TableRow key={report.order_number}>
+                                <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{report.product_name}</div>
+                                  <div className="text-xs text-muted-foreground">{report.product_code}</div>
+                                </TableCell>
+                                <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
+                                <TableCell className="text-right">{report.planned_quantity}</TableCell>
+                                <TableCell className="text-right">{report.completed_quantity}</TableCell>
+                                <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {report.deviation > 0 ? '+' : ''}{report.deviation}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                    {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
               );
             })()}
 
@@ -546,57 +573,64 @@ const ProductionReportsContent = () => {
                 completed: acc.completed + r.completed_quantity,
               }), { planned: 0, completed: 0 });
               return (
-                <Card>
-                  <CardHeader className="py-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">ПФ</Badge>
-                        Полуфабрикаты
-                        <span className="text-muted-foreground font-normal">({semiFinishedReports.length})</span>
-                      </CardTitle>
-                      <div className="text-sm text-muted-foreground">
-                        План: {totals.planned} | Факт: {totals.completed}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Номер заказа</TableHead>
-                          <TableHead>Изделие</TableHead>
-                          <TableHead className="text-right">План (исх.)</TableHead>
-                          <TableHead className="text-right">План (тек.)</TableHead>
-                          <TableHead className="text-right">Факт</TableHead>
-                          <TableHead className="text-right">Откл.</TableHead>
-                          <TableHead>Статус</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {semiFinishedReports.map((report) => (
-                          <TableRow key={report.order_number}>
-                            <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
-                            <TableCell>
-                              <div className="font-medium">{report.product_name}</div>
-                              <div className="text-xs text-muted-foreground">{report.product_code}</div>
-                            </TableCell>
-                            <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
-                            <TableCell className="text-right">{report.planned_quantity}</TableCell>
-                            <TableCell className="text-right">{report.completed_quantity}</TableCell>
-                            <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {report.deviation > 0 ? '+' : ''}{report.deviation}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
-                                {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+                <Collapsible open={expandedProductTypes.has('semi-finished')} onOpenChange={() => toggleProductType('semi-finished')}>
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="py-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <ChevronDown className={`h-4 w-4 transition-transform ${expandedProductTypes.has('semi-finished') ? '' : '-rotate-90'}`} />
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">ПФ</Badge>
+                            Полуфабрикаты
+                            <span className="text-muted-foreground font-normal">({semiFinishedReports.length})</span>
+                          </CardTitle>
+                          <div className="text-sm text-muted-foreground">
+                            План: {totals.planned} | Факт: {totals.completed}
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Номер заказа</TableHead>
+                              <TableHead>Изделие</TableHead>
+                              <TableHead className="text-right">План (исх.)</TableHead>
+                              <TableHead className="text-right">План (тек.)</TableHead>
+                              <TableHead className="text-right">Факт</TableHead>
+                              <TableHead className="text-right">Откл.</TableHead>
+                              <TableHead>Статус</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {semiFinishedReports.map((report) => (
+                              <TableRow key={report.order_number}>
+                                <TableCell className="font-mono text-sm">{report.order_number}</TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{report.product_name}</div>
+                                  <div className="text-xs text-muted-foreground">{report.product_code}</div>
+                                </TableCell>
+                                <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
+                                <TableCell className="text-right">{report.planned_quantity}</TableCell>
+                                <TableCell className="text-right">{report.completed_quantity}</TableCell>
+                                <TableCell className={`text-right ${report.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {report.deviation > 0 ? '+' : ''}{report.deviation}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={statusConfig[report.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                    {statusConfig[report.status as keyof typeof statusConfig]?.label || report.status}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
               );
             })()}
           </div>
