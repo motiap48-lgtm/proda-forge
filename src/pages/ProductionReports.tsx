@@ -154,6 +154,10 @@ const ProductionReportsContent = () => {
   // Print preview state
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewType, setPreviewType] = useState<'work-centers' | 'plan-fact' | 'by-order' | 'aggregated'>('work-centers');
+  
+  // Aggregated print options
+  const [aggregatedProductTypeFilter, setAggregatedProductTypeFilter] = useState<'all' | 'finished' | 'assembly' | 'semi-finished'>('all');
+  const [aggregatedShowDetails, setAggregatedShowDetails] = useState(false);
 
   // Fetch customers
   const { data: customers } = useActiveCustomers();
@@ -311,8 +315,17 @@ const ProductionReportsContent = () => {
         return 'Предпросмотр: План-факт';
       case 'by-order':
         return 'Предпросмотр: План-факт по заказам';
-      case 'aggregated':
-        return 'Предпросмотр: План-факт суммарно';
+      case 'aggregated': {
+        const typeLabels: Record<string, string> = {
+          all: 'Все типы',
+          finished: 'ГП',
+          assembly: 'СБ',
+          'semi-finished': 'ПФ'
+        };
+        const typeLabel = typeLabels[aggregatedProductTypeFilter];
+        const detailsLabel = aggregatedShowDetails ? ' с детализацией' : '';
+        return `Предпросмотр: ${typeLabel}${detailsLabel}`;
+      }
     }
   };
 
@@ -1072,31 +1085,78 @@ const ProductionReportsContent = () => {
                     <ChevronDown className="h-3 w-3 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => openPrintPreview('aggregated')}>
+                <DropdownMenuContent align="end" className="w-64">
+                  {/* All types */}
+                  <DropdownMenuItem onClick={() => {
+                    setAggregatedProductTypeFilter('all');
+                    setAggregatedShowDetails(false);
+                    openPrintPreview('aggregated');
+                  }}>
                     Суммарно (без детализации)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
-                    expandAllProducts();
-                    setTimeout(() => openPrintPreview('aggregated'), 100);
+                    setAggregatedProductTypeFilter('all');
+                    setAggregatedShowDetails(true);
+                    openPrintPreview('aggregated');
                   }}>
                     Суммарно с детализацией
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => printPlanFact('all')}>
-                    <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded mr-2">Все типы продукции</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => printPlanFact('finished')}>
+                  
+                  {/* ГП - Finished goods */}
+                  <DropdownMenuItem onClick={() => {
+                    setAggregatedProductTypeFilter('finished');
+                    setAggregatedShowDetails(false);
+                    openPrintPreview('aggregated');
+                  }}>
                     <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mr-2">ГП</Badge>
-                    Готовая продукция
+                    Суммарно
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => printPlanFact('assembly')}>
+                  <DropdownMenuItem onClick={() => {
+                    setAggregatedProductTypeFilter('finished');
+                    setAggregatedShowDetails(true);
+                    openPrintPreview('aggregated');
+                  }}>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mr-2">ГП</Badge>
+                    С детализацией
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  
+                  {/* СБ - Assemblies */}
+                  <DropdownMenuItem onClick={() => {
+                    setAggregatedProductTypeFilter('assembly');
+                    setAggregatedShowDetails(false);
+                    openPrintPreview('aggregated');
+                  }}>
                     <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 mr-2">СБ</Badge>
-                    Сборочные узлы
+                    Суммарно
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => printPlanFact('semi-finished')}>
+                  <DropdownMenuItem onClick={() => {
+                    setAggregatedProductTypeFilter('assembly');
+                    setAggregatedShowDetails(true);
+                    openPrintPreview('aggregated');
+                  }}>
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 mr-2">СБ</Badge>
+                    С детализацией
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  
+                  {/* ПФ - Semi-finished */}
+                  <DropdownMenuItem onClick={() => {
+                    setAggregatedProductTypeFilter('semi-finished');
+                    setAggregatedShowDetails(false);
+                    openPrintPreview('aggregated');
+                  }}>
                     <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 mr-2">ПФ</Badge>
-                    Полуфабрикаты
+                    Суммарно
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    setAggregatedProductTypeFilter('semi-finished');
+                    setAggregatedShowDetails(true);
+                    openPrintPreview('aggregated');
+                  }}>
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 mr-2">ПФ</Badge>
+                    С детализацией
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1561,9 +1621,10 @@ const ProductionReportsContent = () => {
             allReports={planFactFilteredReports}
             startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
             endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
-            showDetails={expandedProducts.size > 0}
+            showDetails={aggregatedShowDetails}
             completionFilter={completionFilter}
             orientation={printOrientation}
+            productTypeFilter={aggregatedProductTypeFilter}
           />
         </div>
 
@@ -1597,9 +1658,10 @@ const ProductionReportsContent = () => {
               allReports={planFactFilteredReports}
               startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
               endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
-              showDetails={expandedProducts.size > 0}
+              showDetails={aggregatedShowDetails}
               completionFilter={completionFilter}
               orientation={printOrientation}
+              productTypeFilter={aggregatedProductTypeFilter}
             />
           )}
           {previewType === 'work-centers' && (
