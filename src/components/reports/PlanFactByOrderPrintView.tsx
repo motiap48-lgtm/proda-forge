@@ -25,80 +25,152 @@ interface GroupedOrder {
   childCount: number;
 }
 
-const OrderCard = ({ order }: { order: GroupedOrder }) => {
+const ComponentTable = ({ 
+  items, 
+  badge, 
+  badgeColor, 
+  title 
+}: { 
+  items: ProductionReportData[]; 
+  badge: string; 
+  badgeColor: string; 
+  title: string;
+}) => {
+  if (items.length === 0) return null;
+
+  return (
+    <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '6px', 
+        marginBottom: '6px',
+        fontSize: '11px',
+        fontWeight: '500'
+      }}>
+        <span style={{
+          display: 'inline-block',
+          padding: '1px 5px',
+          backgroundColor: badgeColor,
+          color: 'white',
+          borderRadius: '3px',
+          fontSize: '9px',
+          fontWeight: 'bold'
+        }}>{badge}</span>
+        {title} ({items.length})
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+        <thead>
+          <tr style={{ backgroundColor: '#f9fafb' }}>
+            <th style={{ border: '1px solid #e5e7eb', padding: '3px', textAlign: 'left', width: '18%' }}>№ заказа</th>
+            <th style={{ border: '1px solid #e5e7eb', padding: '3px', textAlign: 'left' }}>Изделие</th>
+            <th style={{ border: '1px solid #e5e7eb', padding: '3px', textAlign: 'right', width: '10%' }}>План</th>
+            <th style={{ border: '1px solid #e5e7eb', padding: '3px', textAlign: 'right', width: '10%' }}>Факт</th>
+            <th style={{ border: '1px solid #e5e7eb', padding: '3px', textAlign: 'right', width: '8%' }}>Откл.</th>
+            <th style={{ border: '1px solid #e5e7eb', padding: '3px', textAlign: 'center', width: '12%' }}>Статус</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, idx) => (
+            <tr key={item.order_number} style={{ backgroundColor: idx % 2 === 0 ? 'white' : '#fafafa' }}>
+              <td style={{ border: '1px solid #e5e7eb', padding: '3px', fontFamily: 'monospace', fontSize: '8px' }}>{item.order_number}</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '3px' }}>
+                {item.product_name}
+                <span style={{ fontSize: '8px', color: '#6b7280', marginLeft: '4px' }}>({item.product_code})</span>
+              </td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '3px', textAlign: 'right' }}>{item.planned_quantity}</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '3px', textAlign: 'right' }}>{item.completed_quantity}</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '3px', textAlign: 'right', color: item.deviation >= 0 ? '#059669' : '#dc2626' }}>
+                {item.deviation > 0 ? '+' : ''}{item.deviation}
+              </td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '3px', textAlign: 'center', fontSize: '8px' }}>
+                {statusLabels[item.status] || item.status}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const OrderCard = ({ order, isCompact }: { order: GroupedOrder; isCompact?: boolean }) => {
   const { parent, assemblies, semiFinished, totals, childCount } = order;
   const deviation = totals.completed - totals.planned;
 
   return (
     <div style={{ 
-      marginBottom: '20px', 
+      marginBottom: '12px', 
       border: '1px solid #d1d5db', 
-      borderRadius: '8px',
-      pageBreakInside: 'avoid'
+      borderRadius: '6px',
     }}>
       {/* Header */}
       <div style={{ 
         backgroundColor: '#f3f4f6', 
-        padding: '10px 12px',
+        padding: '6px 10px',
         borderBottom: '1px solid #d1d5db',
-        borderRadius: '8px 8px 0 0'
+        borderRadius: '6px 6px 0 0'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <span style={{
               display: 'inline-block',
-              padding: '2px 8px',
+              padding: '1px 6px',
               backgroundColor: '#3b82f6',
               color: 'white',
-              borderRadius: '4px',
-              fontSize: '11px',
+              borderRadius: '3px',
+              fontSize: '9px',
               fontWeight: 'bold'
             }}>ГП</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '13px' }}>
+            <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '11px' }}>
               {parent.order_number}
             </span>
             <span style={{ color: '#6b7280' }}>—</span>
-            <span style={{ fontWeight: '500' }}>{parent.product_name}</span>
+            <span style={{ fontWeight: '500', fontSize: '11px' }}>{parent.product_name}</span>
             {childCount > 0 && (
-              <span style={{ color: '#6b7280', fontSize: '12px' }}>
-                (+{childCount} компонентов)
+              <span style={{ color: '#6b7280', fontSize: '10px' }}>
+                (+{childCount} комп.)
               </span>
             )}
           </div>
           <div style={{ 
-            padding: '2px 8px',
+            padding: '1px 6px',
             backgroundColor: parent.status === 'completed' ? '#dcfce7' : parent.status === 'in_progress' ? '#dbeafe' : '#f3f4f6',
             color: parent.status === 'completed' ? '#166534' : parent.status === 'in_progress' ? '#1e40af' : '#374151',
-            borderRadius: '4px',
-            fontSize: '11px'
+            borderRadius: '3px',
+            fontSize: '9px'
           }}>
             {statusLabels[parent.status] || parent.status}
           </div>
         </div>
         {parent.customer_name && (
-          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+          <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '2px' }}>
             Клиент: {parent.customer_name}
           </div>
         )}
       </div>
 
-      {/* Parent order info */}
-      <div style={{ padding: '10px 12px', backgroundColor: '#fafafa', borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', fontSize: '11px' }}>
+      {/* Parent order info - compact */}
+      <div style={{ padding: '6px 10px', backgroundColor: '#fafafa', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', fontSize: '10px' }}>
           <div>
-            <div style={{ color: '#6b7280' }}>Изделие</div>
+            <div style={{ color: '#6b7280', fontSize: '9px' }}>Код</div>
             <div style={{ fontWeight: '500' }}>{parent.product_code}</div>
           </div>
           <div>
-            <div style={{ color: '#6b7280' }}>План</div>
+            <div style={{ color: '#6b7280', fontSize: '9px' }}>План (исх.)</div>
+            <div style={{ fontWeight: '500' }}>{parent.original_planned_quantity}</div>
+          </div>
+          <div>
+            <div style={{ color: '#6b7280', fontSize: '9px' }}>План (тек.)</div>
             <div style={{ fontWeight: '500' }}>{parent.planned_quantity}</div>
           </div>
           <div>
-            <div style={{ color: '#6b7280' }}>Факт</div>
+            <div style={{ color: '#6b7280', fontSize: '9px' }}>Факт</div>
             <div style={{ fontWeight: '500' }}>{parent.completed_quantity}</div>
           </div>
           <div>
-            <div style={{ color: '#6b7280' }}>Отклонение</div>
+            <div style={{ color: '#6b7280', fontSize: '9px' }}>Откл.</div>
             <div style={{ fontWeight: '500', color: parent.deviation >= 0 ? '#059669' : '#dc2626' }}>
               {parent.deviation > 0 ? '+' : ''}{parent.deviation}
             </div>
@@ -106,123 +178,15 @@ const OrderCard = ({ order }: { order: GroupedOrder }) => {
         </div>
       </div>
 
-      {/* Assemblies */}
-      {assemblies.length > 0 && (
-        <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px', 
-            marginBottom: '8px',
-            fontSize: '12px',
-            fontWeight: '500'
-          }}>
-            <span style={{
-              display: 'inline-block',
-              padding: '1px 6px',
-              backgroundColor: '#8b5cf6',
-              color: 'white',
-              borderRadius: '3px',
-              fontSize: '10px',
-              fontWeight: 'bold'
-            }}>СБ</span>
-            Сборочные узлы ({assemblies.length})
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f9fafb' }}>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'left' }}>№ заказа</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'left' }}>Изделие</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right' }}>План</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right' }}>Факт</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right' }}>Откл.</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'center' }}>Статус</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assemblies.map((a, idx) => (
-                <tr key={a.order_number} style={{ backgroundColor: idx % 2 === 0 ? 'white' : '#fafafa' }}>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px', fontFamily: 'monospace' }}>{a.order_number}</td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px' }}>
-                    {a.product_name}
-                    <div style={{ fontSize: '9px', color: '#6b7280' }}>{a.product_code}</div>
-                  </td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right' }}>{a.planned_quantity}</td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right' }}>{a.completed_quantity}</td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right', color: a.deviation >= 0 ? '#059669' : '#dc2626' }}>
-                    {a.deviation > 0 ? '+' : ''}{a.deviation}
-                  </td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'center' }}>
-                    {statusLabels[a.status] || a.status}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Semi-finished */}
-      {semiFinished.length > 0 && (
-        <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px', 
-            marginBottom: '8px',
-            fontSize: '12px',
-            fontWeight: '500'
-          }}>
-            <span style={{
-              display: 'inline-block',
-              padding: '1px 6px',
-              backgroundColor: '#f97316',
-              color: 'white',
-              borderRadius: '3px',
-              fontSize: '10px',
-              fontWeight: 'bold'
-            }}>ПФ</span>
-            Полуфабрикаты ({semiFinished.length})
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f9fafb' }}>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'left' }}>№ заказа</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'left' }}>Изделие</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right' }}>План</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right' }}>Факт</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right' }}>Откл.</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'center' }}>Статус</th>
-              </tr>
-            </thead>
-            <tbody>
-              {semiFinished.map((sf, idx) => (
-                <tr key={sf.order_number} style={{ backgroundColor: idx % 2 === 0 ? 'white' : '#fafafa' }}>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px', fontFamily: 'monospace' }}>{sf.order_number}</td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px' }}>
-                    {sf.product_name}
-                    <div style={{ fontSize: '9px', color: '#6b7280' }}>{sf.product_code}</div>
-                  </td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right' }}>{sf.planned_quantity}</td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right' }}>{sf.completed_quantity}</td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'right', color: sf.deviation >= 0 ? '#059669' : '#dc2626' }}>
-                    {sf.deviation > 0 ? '+' : ''}{sf.deviation}
-                  </td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '4px', textAlign: 'center' }}>
-                    {statusLabels[sf.status] || sf.status}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Components */}
+      <ComponentTable items={assemblies} badge="СБ" badgeColor="#8b5cf6" title="Сборочные узлы" />
+      <ComponentTable items={semiFinished} badge="ПФ" badgeColor="#f97316" title="Полуфабрикаты" />
 
       {/* Order totals */}
       {childCount > 0 && (
-        <div style={{ padding: '8px 12px', backgroundColor: '#f3f4f6', borderRadius: '0 0 8px 8px' }}>
-          <div style={{ fontSize: '11px', display: 'flex', gap: '16px' }}>
-            <span><strong>Итого по заказу:</strong></span>
+        <div style={{ padding: '6px 10px', backgroundColor: '#f3f4f6', borderRadius: '0 0 6px 6px' }}>
+          <div style={{ fontSize: '9px', display: 'flex', gap: '12px' }}>
+            <span><strong>Итого:</strong></span>
             <span>План: {totals.planned}</span>
             <span>Факт: {totals.completed}</span>
             <span style={{ color: deviation >= 0 ? '#059669' : '#dc2626' }}>
@@ -304,10 +268,13 @@ export const PlanFactByOrderPrintView = forwardRef<HTMLDivElement, PlanFactByOrd
         <style>
           {`
             @media print {
-              @page { margin: 10mm; size: A4; }
+              @page { margin: 8mm; size: A4; }
               body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
               .print-header { page-break-after: avoid; }
-              .order-card { page-break-inside: avoid; }
+              .order-card-small { page-break-inside: avoid; }
+              thead { display: table-header-group; }
+              tfoot { display: table-footer-group; }
+              tr { page-break-inside: avoid; }
             }
           `}
         </style>
@@ -325,38 +292,46 @@ export const PlanFactByOrderPrintView = forwardRef<HTMLDivElement, PlanFactByOrd
         </div>
 
         {/* Orders */}
-        {groupedOrders.map((order, index) => (
-          <div key={order.parent.order_id} className="order-card" style={index === 0 ? { pageBreakBefore: 'avoid' } : undefined}>
-            <OrderCard order={order} />
-          </div>
-        ))}
+        {groupedOrders.map((order, index) => {
+          const isSmallOrder = order.childCount <= 5;
+          return (
+            <div 
+              key={order.parent.order_id} 
+              className={isSmallOrder ? 'order-card-small' : ''} 
+              style={index === 0 ? { pageBreakBefore: 'avoid' } : undefined}
+            >
+              <OrderCard order={order} />
+            </div>
+          );
+        })}
 
         {/* Overall summary */}
         <div style={{ 
-          marginTop: '20px', 
-          padding: '12px', 
+          marginTop: '16px', 
+          padding: '10px', 
           backgroundColor: '#1f2937', 
           color: 'white',
-          borderRadius: '8px'
+          borderRadius: '6px',
+          pageBreakInside: 'avoid'
         }}>
-          <h3 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px' }}>Общая сводка</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', fontSize: '11px' }}>
+          <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px' }}>Общая сводка</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', fontSize: '10px' }}>
             <div>
-              <div style={{ color: '#9ca3af' }}>Всего заказов</div>
-              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{groupedOrders.length}</div>
+              <div style={{ color: '#9ca3af', fontSize: '9px' }}>Всего заказов</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{groupedOrders.length}</div>
             </div>
             <div>
-              <div style={{ color: '#9ca3af' }}>План (общ.)</div>
-              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{overallTotals.planned}</div>
+              <div style={{ color: '#9ca3af', fontSize: '9px' }}>План (общ.)</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{overallTotals.planned}</div>
             </div>
             <div>
-              <div style={{ color: '#9ca3af' }}>Факт (общ.)</div>
-              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{overallTotals.completed}</div>
+              <div style={{ color: '#9ca3af', fontSize: '9px' }}>Факт (общ.)</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{overallTotals.completed}</div>
             </div>
             <div>
-              <div style={{ color: '#9ca3af' }}>Отклонение</div>
+              <div style={{ color: '#9ca3af', fontSize: '9px' }}>Отклонение</div>
               <div style={{ 
-                fontSize: '16px', 
+                fontSize: '14px', 
                 fontWeight: 'bold',
                 color: overallTotals.completed - overallTotals.planned >= 0 ? '#4ade80' : '#f87171'
               }}>
