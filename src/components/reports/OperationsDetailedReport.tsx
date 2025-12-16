@@ -15,6 +15,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -36,6 +43,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  RotateCcw,
 } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import * as XLSX from "xlsx";
@@ -49,6 +57,7 @@ interface OperationsDetailedReportProps {
 
 type SortField = 'order_number' | 'sequence' | 'operation_name' | 'product_name' | 'planned_quantity' | 'completed_quantity' | 'deviation' | 'status';
 type SortDirection = 'asc' | 'desc';
+type StatusFilter = 'all' | 'pending' | 'in_progress' | 'completed';
 
 const getProductTypeBadge = (type: string) => {
   switch (type) {
@@ -112,8 +121,20 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
   const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
     return (localStorage.getItem('operationsReport_sortDirection') as SortDirection) || 'asc';
   });
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
+    return (localStorage.getItem('operationsReport_statusFilter') as StatusFilter) || 'all';
+  });
   const [printWorkCenterId, setPrintWorkCenterId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+
+  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || sortField !== 'sequence' || sortDirection !== 'asc';
+
+  const resetAllFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setSortField('sequence');
+    setSortDirection('asc');
+  };
 
   // Save filters to localStorage
   useEffect(() => {
@@ -127,6 +148,10 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
   useEffect(() => {
     localStorage.setItem('operationsReport_sortDirection', sortDirection);
   }, [sortDirection]);
+
+  useEffect(() => {
+    localStorage.setItem('operationsReport_statusFilter', statusFilter);
+  }, [statusFilter]);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -290,24 +315,44 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
 
   // Filter reports
   const filteredReports = reports?.map(wc => {
-    if (!searchQuery.trim()) return wc;
+    // First filter by status
+    let filteredOps = statusFilter === 'all' 
+      ? wc.operations 
+      : wc.operations.filter(op => op.status === statusFilter);
     
-    const query = searchQuery.toLowerCase();
-    const matchesWc = wc.work_center_name.toLowerCase().includes(query) ||
-                      wc.work_center_code.toLowerCase().includes(query) ||
-                      (wc.department && wc.department.toLowerCase().includes(query));
-    
-    if (matchesWc) return wc;
-    
-    const filteredOps = wc.operations.filter(op =>
-      op.operation_name.toLowerCase().includes(query) ||
-      op.product_name.toLowerCase().includes(query) ||
-      op.product_code.toLowerCase().includes(query) ||
-      op.order_number.toLowerCase().includes(query)
-    );
+    // Then filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const matchesWc = wc.work_center_name.toLowerCase().includes(query) ||
+                        wc.work_center_code.toLowerCase().includes(query) ||
+                        (wc.department && wc.department.toLowerCase().includes(query));
+      
+      if (!matchesWc) {
+        filteredOps = filteredOps.filter(op =>
+          op.operation_name.toLowerCase().includes(query) ||
+          op.product_name.toLowerCase().includes(query) ||
+          op.product_code.toLowerCase().includes(query) ||
+          op.order_number.toLowerCase().includes(query)
+        );
+      }
+    }
     
     if (filteredOps.length === 0) return null;
-    return { ...wc, operations: filteredOps };
+    
+    // Recalculate totals for filtered operations
+    const total_planned = filteredOps.reduce((sum, op) => sum + op.planned_quantity, 0);
+    const total_completed = filteredOps.reduce((sum, op) => sum + op.completed_quantity, 0);
+    const total_deviation = total_completed - total_planned;
+    const completion_percent = total_planned > 0 ? (total_completed / total_planned) * 100 : 0;
+    
+    return { 
+      ...wc, 
+      operations: filteredOps,
+      total_planned,
+      total_completed,
+      total_deviation,
+      completion_percent
+    };
   }).filter((wc): wc is WorkCenterOperationsData => wc !== null) || [];
 
   // Calculate totals
@@ -389,6 +434,28 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
             </Button>
           )}
         </div>
+        
+        {/* Status filter */}
+        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
+          <SelectTrigger className="w-[140px] h-9">
+            <SelectValue placeholder="Статус" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все статусы</SelectItem>
+            <SelectItem value="pending">Ожидание</SelectItem>
+            <SelectItem value="in_progress">В работе</SelectItem>
+            <SelectItem value="completed">Завершено</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Reset filters button */}
+        {hasActiveFilters && (
+          <Button variant="outline" size="sm" onClick={resetAllFilters}>
+            <RotateCcw className="h-4 w-4 mr-1" />
+            Сбросить
+          </Button>
+        )}
+
         <Button variant="outline" size="sm" onClick={expandAll}>
           <ChevronsDown className="h-4 w-4 mr-1" />
           Развернуть
