@@ -430,7 +430,8 @@ const ProductionReportsContent = () => {
 
   // План-факт: фильтрация по статусу и клиенту
   const planFactFilteredReports = useMemo(() => {
-    return reports?.filter(r => {
+    // First pass: get filtered reports without order number filter
+    const baseFiltered = reports?.filter(r => {
       // Filter by status
       if (planFactStatusFilter !== 'all' && r.status !== planFactStatusFilter) return false;
       // Filter by customer
@@ -441,13 +442,56 @@ const ProductionReportsContent = () => {
           if (r.customer_id !== customerFilter) return false;
         }
       }
-      // Filter by selected order in by_order mode
-      if (planFactViewMode === 'by_order' && selectedOrderNumber !== 'all') {
-        if (r.order_number !== selectedOrderNumber) return false;
-      }
       return true;
     }) || [];
+
+    // If in by_order mode with specific order selected, include the order and all its related orders
+    if (planFactViewMode === 'by_order' && selectedOrderNumber !== 'all') {
+      const selectedOrder = baseFiltered.find(r => r.order_number === selectedOrderNumber);
+      if (!selectedOrder) return [];
+
+      // If selected order is a parent (finished, no parent_order_id), include it and its children
+      if (selectedOrder.product_type === 'finished' && !selectedOrder.parent_order_id) {
+        return baseFiltered.filter(r => 
+          r.order_number === selectedOrderNumber || 
+          r.parent_order_id === selectedOrder.order_id
+        );
+      }
+      
+      // If selected order is a child, include its parent and all siblings
+      if (selectedOrder.parent_order_id) {
+        const parentOrder = baseFiltered.find(r => r.order_id === selectedOrder.parent_order_id);
+        if (parentOrder) {
+          return baseFiltered.filter(r =>
+            r.order_id === parentOrder.order_id ||
+            r.parent_order_id === parentOrder.order_id
+          );
+        }
+      }
+      
+      // Just return the selected order if no relations found
+      return [selectedOrder];
+    }
+
+    return baseFiltered;
   }, [reports, planFactStatusFilter, customerFilter, planFactViewMode, selectedOrderNumber]);
+
+  // Auto-expand selected order
+  useEffect(() => {
+    if (planFactViewMode === 'by_order' && selectedOrderNumber !== 'all') {
+      const selectedOrder = planFactFilteredReports.find(r => r.order_number === selectedOrderNumber);
+      if (selectedOrder) {
+        // Find the parent order to expand
+        const parentToExpand = selectedOrder.parent_order_id 
+          ? planFactFilteredReports.find(r => r.order_id === selectedOrder.parent_order_id)
+          : selectedOrder;
+        
+        if (parentToExpand && parentToExpand.product_type === 'finished' && !parentToExpand.parent_order_id) {
+          setExpandedOrders(new Set([parentToExpand.order_id]));
+        }
+      }
+    }
+  }, [selectedOrderNumber, planFactViewMode, planFactFilteredReports]);
 
   // Агрегированные данные по продуктам для режима "Суммарно"
   interface AggregatedProduct {

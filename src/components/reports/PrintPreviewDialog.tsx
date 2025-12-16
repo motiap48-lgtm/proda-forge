@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Printer, X, ZoomIn, ZoomOut } from "lucide-react";
@@ -46,7 +47,12 @@ export const PrintPreviewDialog = ({
       <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
-            <DialogTitle>{title}</DialogTitle>
+            <div>
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription className="sr-only">
+                Предпросмотр печатного документа
+              </DialogDescription>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
