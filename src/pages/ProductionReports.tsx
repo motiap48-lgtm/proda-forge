@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProductionReports, useProductionSummary } from "@/hooks/useProductionReports";
 import { useWorkCenterReports, WorkCenterReportData, WorkCenterProductItem } from "@/hooks/useWorkCenterReports";
 import { useProductOperationsReport, ProductReportItem } from "@/hooks/useProductOperationsReport";
+import { useActiveCustomers } from "@/hooks/useCustomers";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -32,7 +33,8 @@ import {
   Minimize2,
   Maximize2,
   Filter,
-  Users
+  Users,
+  AlertTriangle
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -58,6 +60,7 @@ import { TimelineAnalytics } from "@/components/reports/TimelineAnalytics";
 import { ProductionOutputReport } from "@/components/reports/ProductionOutputReport";
 import { OperationsDetailedReport } from "@/components/reports/OperationsDetailedReport";
 import { CustomerReport } from "@/components/reports/CustomerReport";
+import { OverdueOrdersReport } from "@/components/reports/OverdueOrdersReport";
 import { exportPlanFactToExcel } from "@/components/reports/PlanFactExcelExport";
 import { PlanFactPrintView } from "@/components/reports/PlanFactPrintView";
 import {
@@ -103,6 +106,11 @@ const ProductionReportsContent = () => {
   const [expandedProductTypes, setExpandedProductTypes] = useState<Set<string>>(new Set(['finished', 'assembly', 'semi-finished']));
   const [planFactPrintType, setPlanFactPrintType] = useState<'all' | 'finished' | 'assembly' | 'semi-finished'>('all');
   
+  // Customer filter
+  const [customerFilter, setCustomerFilter] = useState<string>(() => {
+    return localStorage.getItem('reportsCustomerFilter') || 'all';
+  });
+  
   // План-факт фильтры с загрузкой из localStorage
   const [planFactStatusFilter, setPlanFactStatusFilter] = useState<'all' | 'planned' | 'in_progress' | 'completed'>(() => {
     const saved = localStorage.getItem('planFactStatusFilter');
@@ -116,6 +124,14 @@ const ProductionReportsContent = () => {
     const saved = localStorage.getItem('planFactSortDirection');
     return (saved as 'asc' | 'desc') || 'asc';
   });
+
+  // Fetch customers
+  const { data: customers } = useActiveCustomers();
+
+  // Save customer filter to localStorage
+  useEffect(() => {
+    localStorage.setItem('reportsCustomerFilter', customerFilter);
+  }, [customerFilter]);
 
   // Сохранение фильтров план-факт в localStorage
   useEffect(() => {
@@ -270,11 +286,22 @@ const ProductionReportsContent = () => {
 
   const filteredWorkCenterReports = workCenterReports ? filterReportsBySearch(workCenterReports) : [];
 
-  // План-факт: фильтрация по статусу
-  const planFactFilteredReports = reports?.filter(r => {
-    if (planFactStatusFilter === 'all') return true;
-    return r.status === planFactStatusFilter;
-  }) || [];
+  // План-факт: фильтрация по статусу и клиенту
+  const planFactFilteredReports = useMemo(() => {
+    return reports?.filter(r => {
+      // Filter by status
+      if (planFactStatusFilter !== 'all' && r.status !== planFactStatusFilter) return false;
+      // Filter by customer
+      if (customerFilter !== 'all') {
+        if (customerFilter === 'no_customer') {
+          if (r.customer_id) return false;
+        } else {
+          if (r.customer_id !== customerFilter) return false;
+        }
+      }
+      return true;
+    }) || [];
+  }, [reports, planFactStatusFilter, customerFilter]);
 
   // План-факт: сортировка
   const sortPlanFactReports = (data: typeof planFactFilteredReports) => {
@@ -367,6 +394,10 @@ const ProductionReportsContent = () => {
               <Clock className="h-4 w-4" />
               <span className="hidden sm:inline">Временная</span>
             </TabsTrigger>
+            <TabsTrigger value="overdue" className="gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="hidden sm:inline">Просроченные</span>
+            </TabsTrigger>
             <TabsTrigger value="customers" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">По клиентам</span>
@@ -428,9 +459,24 @@ const ProductionReportsContent = () => {
               </SelectContent>
             </Select>
 
+            <Select value={customerFilter} onValueChange={setCustomerFilter}>
+              <SelectTrigger className="w-[200px]">
+                <Building2 className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Клиент" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все клиенты</SelectItem>
+                <SelectItem value="no_customer">Без клиента</SelectItem>
+                {customers?.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Button variant="outline" onClick={() => {
               handleReset();
               setPlanFactStatusFilter('all');
+              setCustomerFilter('all');
             }}>
               Сбросить
             </Button>
@@ -656,6 +702,7 @@ const ProductionReportsContent = () => {
                               <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('product_name')}>
                                 <div className="flex items-center">Изделие {getPlanFactSortIcon('product_name')}</div>
                               </TableHead>
+                              <TableHead>Клиент</TableHead>
                               <TableHead className="text-right">План (исх.)</TableHead>
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('planned')}>
                                 <div className="flex items-center justify-end">План (тек.) {getPlanFactSortIcon('planned')}</div>
@@ -677,6 +724,7 @@ const ProductionReportsContent = () => {
                                   <div className="font-medium">{report.product_name}</div>
                                   <div className="text-xs text-muted-foreground">{report.product_code}</div>
                                 </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">{report.customer_name || "—"}</TableCell>
                                 <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
                                 <TableCell className="text-right">{report.planned_quantity}</TableCell>
                                 <TableCell className="text-right">{report.completed_quantity}</TableCell>
@@ -736,6 +784,7 @@ const ProductionReportsContent = () => {
                               <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('product_name')}>
                                 <div className="flex items-center">Изделие {getPlanFactSortIcon('product_name')}</div>
                               </TableHead>
+                              <TableHead>Клиент</TableHead>
                               <TableHead className="text-right">План (исх.)</TableHead>
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('planned')}>
                                 <div className="flex items-center justify-end">План (тек.) {getPlanFactSortIcon('planned')}</div>
@@ -757,6 +806,7 @@ const ProductionReportsContent = () => {
                                   <div className="font-medium">{report.product_name}</div>
                                   <div className="text-xs text-muted-foreground">{report.product_code}</div>
                                 </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">{report.customer_name || "—"}</TableCell>
                                 <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
                                 <TableCell className="text-right">{report.planned_quantity}</TableCell>
                                 <TableCell className="text-right">{report.completed_quantity}</TableCell>
@@ -816,6 +866,7 @@ const ProductionReportsContent = () => {
                               <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('product_name')}>
                                 <div className="flex items-center">Изделие {getPlanFactSortIcon('product_name')}</div>
                               </TableHead>
+                              <TableHead>Клиент</TableHead>
                               <TableHead className="text-right">План (исх.)</TableHead>
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('planned')}>
                                 <div className="flex items-center justify-end">План (тек.) {getPlanFactSortIcon('planned')}</div>
@@ -837,6 +888,7 @@ const ProductionReportsContent = () => {
                                   <div className="font-medium">{report.product_name}</div>
                                   <div className="text-xs text-muted-foreground">{report.product_code}</div>
                                 </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">{report.customer_name || "—"}</TableCell>
                                 <TableCell className="text-right">{report.original_planned_quantity}</TableCell>
                                 <TableCell className="text-right">{report.planned_quantity}</TableCell>
                                 <TableCell className="text-right">{report.completed_quantity}</TableCell>
@@ -1372,6 +1424,10 @@ const ProductionReportsContent = () => {
               startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
               endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
             />
+          </TabsContent>
+
+          <TabsContent value="overdue" className="space-y-6">
+            <OverdueOrdersReport />
           </TabsContent>
 
           <TabsContent value="customers" className="space-y-6">

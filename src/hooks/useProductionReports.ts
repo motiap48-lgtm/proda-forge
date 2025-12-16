@@ -7,17 +7,19 @@ export interface ProductionReportData {
   product_code: string;
   product_type: string;
   original_planned_quantity: number;
-  planned_quantity: number; // текущий план
+  planned_quantity: number;
   plan_change: number;
   completed_quantity: number;
-  deviation: number; // отклонение от текущего плана
-  deviation_percent: number; // от текущего плана
+  deviation: number;
+  deviation_percent: number;
   planned_start_date: string;
   planned_end_date: string;
   actual_start_date: string | null;
   actual_end_date: string | null;
   status: string;
   work_center_name: string | null;
+  customer_id: string | null;
+  customer_name: string | null;
 }
 
 export const useProductionReports = (startDate?: string, endDate?: string) => {
@@ -36,8 +38,10 @@ export const useProductionReports = (startDate?: string, endDate?: string) => {
           actual_start_date,
           actual_end_date,
           status,
+          customer_id,
           products:product_id(name, code, product_type),
-          work_centers:work_center_id(name)
+          work_centers:work_center_id(name),
+          customers:customer_id(id, name)
         `)
         .order("planned_start_date", { ascending: false });
 
@@ -76,6 +80,8 @@ export const useProductionReports = (startDate?: string, endDate?: string) => {
           actual_end_date: order.actual_end_date,
           status: order.status,
           work_center_name: order.work_centers?.name || null,
+          customer_id: order.customer_id,
+          customer_name: order.customers?.name || null,
         };
       }) as ProductionReportData[];
     },
