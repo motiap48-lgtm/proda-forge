@@ -493,6 +493,7 @@ const ProductionReportsContent = () => {
     }
   }, [selectedOrderNumber, planFactViewMode, planFactFilteredReports]);
 
+
   // Агрегированные данные по продуктам для режима "Суммарно"
   interface AggregatedProduct {
     product_code: string;
@@ -569,6 +570,31 @@ const ProductionReportsContent = () => {
       product_code: r.product_code
     }));
   }, [reports]);
+
+  // Arrow key navigation for orders
+  useEffect(() => {
+    if (planFactViewMode !== 'by_order') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't interfere with input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const orderNumbers = ['all', ...uniqueOrderNumbers.map(o => o.order_number)];
+        const currentIndex = orderNumbers.indexOf(selectedOrderNumber);
+        
+        if (e.key === 'ArrowUp' && currentIndex > 0) {
+          setSelectedOrderNumber(orderNumbers[currentIndex - 1]);
+        } else if (e.key === 'ArrowDown' && currentIndex < orderNumbers.length - 1) {
+          setSelectedOrderNumber(orderNumbers[currentIndex + 1]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [planFactViewMode, selectedOrderNumber, uniqueOrderNumbers]);
 
   // План-факт: сортировка
   const sortPlanFactReports = (data: typeof planFactFilteredReports) => {
