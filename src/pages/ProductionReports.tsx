@@ -34,7 +34,9 @@ import {
   Maximize2,
   Filter,
   Users,
-  AlertTriangle
+  AlertTriangle,
+  Layers,
+  ListOrdered
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -63,6 +65,7 @@ import { CustomerReport } from "@/components/reports/CustomerReport";
 import { OverdueOrdersReport } from "@/components/reports/OverdueOrdersReport";
 import { exportPlanFactToExcel } from "@/components/reports/PlanFactExcelExport";
 import { PlanFactPrintView } from "@/components/reports/PlanFactPrintView";
+import { PlanFactByOrderView } from "@/components/reports/PlanFactByOrderView";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -106,6 +109,12 @@ const ProductionReportsContent = () => {
   const [expandedProductTypes, setExpandedProductTypes] = useState<Set<string>>(new Set(['finished', 'assembly', 'semi-finished']));
   const [planFactPrintType, setPlanFactPrintType] = useState<'all' | 'finished' | 'assembly' | 'semi-finished'>('all');
   
+  // Plan-Fact view mode: aggregated (summary) or by_order (per order)
+  const [planFactViewMode, setPlanFactViewMode] = useState<'aggregated' | 'by_order'>(() => {
+    return (localStorage.getItem('planFactViewMode') as 'aggregated' | 'by_order') || 'aggregated';
+  });
+  const [selectedOrderNumber, setSelectedOrderNumber] = useState<string>('all');
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   // Customer filter
   const [customerFilter, setCustomerFilter] = useState<string>(() => {
     return localStorage.getItem('reportsCustomerFilter') || 'all';
@@ -146,6 +155,10 @@ const ProductionReportsContent = () => {
     localStorage.setItem('planFactSortDirection', planFactSortDirection);
   }, [planFactSortDirection]);
 
+  useEffect(() => {
+    localStorage.setItem('planFactViewMode', planFactViewMode);
+  }, [planFactViewMode]);
+
   const toggleProductType = (type: string) => {
     setExpandedProductTypes(prev => {
       const next = new Set(prev);
@@ -165,7 +178,29 @@ const ProductionReportsContent = () => {
   const collapseAllProductTypes = () => {
     setExpandedProductTypes(new Set());
   };
-  
+
+  const toggleOrder = (orderId: string) => {
+    setExpandedOrders(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      return next;
+    });
+  };
+
+  const expandAllOrders = () => {
+    const allOrderIds = planFactFilteredReports
+      .filter(r => r.product_type === 'finished' && !r.parent_order_id)
+      .map(r => r.order_id);
+    setExpandedOrders(new Set(allOrderIds));
+  };
+
+  const collapseAllOrders = () => {
+    setExpandedOrders(new Set());
+  };
   const printRef = useRef<HTMLDivElement>(null);
   const planFactPrintRef = useRef<HTMLDivElement>(null);
 
@@ -299,9 +334,24 @@ const ProductionReportsContent = () => {
           if (r.customer_id !== customerFilter) return false;
         }
       }
+      // Filter by selected order in by_order mode
+      if (planFactViewMode === 'by_order' && selectedOrderNumber !== 'all') {
+        if (r.order_number !== selectedOrderNumber) return false;
+      }
       return true;
     }) || [];
-  }, [reports, planFactStatusFilter, customerFilter]);
+  }, [reports, planFactStatusFilter, customerFilter, planFactViewMode, selectedOrderNumber]);
+
+  // Get unique order numbers for selector (only finished goods parent orders)
+  const uniqueOrderNumbers = useMemo(() => {
+    if (!reports) return [];
+    const finishedOrders = reports.filter(r => r.product_type === 'finished');
+    return finishedOrders.map(r => ({
+      order_number: r.order_number,
+      product_name: r.product_name,
+      product_code: r.product_code
+    }));
+  }, [reports]);
 
   // План-факт: сортировка
   const sortPlanFactReports = (data: typeof planFactFilteredReports) => {
@@ -473,10 +523,48 @@ const ProductionReportsContent = () => {
               </SelectContent>
             </Select>
 
+            {/* View Mode Toggle */}
+            <Select value={planFactViewMode} onValueChange={(v) => {
+              setPlanFactViewMode(v as 'aggregated' | 'by_order');
+              if (v === 'aggregated') setSelectedOrderNumber('all');
+            }}>
+              <SelectTrigger className="w-[180px]">
+                {planFactViewMode === 'aggregated' ? (
+                  <Layers className="h-4 w-4 mr-2" />
+                ) : (
+                  <ListOrdered className="h-4 w-4 mr-2" />
+                )}
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="aggregated">Суммарно</SelectItem>
+                <SelectItem value="by_order">По заказам</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Order Selector - visible in by_order mode */}
+            {planFactViewMode === 'by_order' && (
+              <Select value={selectedOrderNumber} onValueChange={setSelectedOrderNumber}>
+                <SelectTrigger className="w-[250px]">
+                  <SelectValue placeholder="Выберите заказ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все заказы (по отдельности)</SelectItem>
+                  {uniqueOrderNumbers.map(o => (
+                    <SelectItem key={o.order_number} value={o.order_number}>
+                      {o.order_number} - {o.product_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
             <Button variant="outline" onClick={() => {
               handleReset();
               setPlanFactStatusFilter('all');
               setCustomerFilter('all');
+              setPlanFactViewMode('aggregated');
+              setSelectedOrderNumber('all');
             }}>
               Сбросить
             </Button>
@@ -601,24 +689,48 @@ const ProductionReportsContent = () => {
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={expandAllProductTypes}
-              disabled={expandedProductTypes.size === 3}
-            >
-              <Maximize2 className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Развернуть все</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={collapseAllProductTypes}
-              disabled={expandedProductTypes.size === 0}
-            >
-              <Minimize2 className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Свернуть все</span>
-            </Button>
+            {planFactViewMode === 'aggregated' ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={expandAllProductTypes}
+                  disabled={expandedProductTypes.size === 3}
+                >
+                  <Maximize2 className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Развернуть все</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={collapseAllProductTypes}
+                  disabled={expandedProductTypes.size === 0}
+                >
+                  <Minimize2 className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Свернуть все</span>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={expandAllOrders}
+                >
+                  <Maximize2 className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Развернуть все</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={collapseAllOrders}
+                  disabled={expandedOrders.size === 0}
+                >
+                  <Minimize2 className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Свернуть все</span>
+                </Button>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -660,10 +772,11 @@ const ProductionReportsContent = () => {
           </div>
         </div>
 
-        {/* Grouped Tables by Product Type */}
+        {/* Tables Section */}
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
         ) : planFactFilteredReports.length > 0 ? (
+          planFactViewMode === 'aggregated' ? (
           <div className="space-y-4">
             {/* Готовая продукция */}
             {(() => {
@@ -911,6 +1024,13 @@ const ProductionReportsContent = () => {
               );
             })()}
           </div>
+          ) : (
+            <PlanFactByOrderView
+              reports={planFactFilteredReports}
+              expandedOrders={expandedOrders}
+              onToggleOrder={toggleOrder}
+            />
+          )
         ) : (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">

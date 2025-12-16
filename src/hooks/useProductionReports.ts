@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ProductionReportData {
+  order_id: string;
   order_number: string;
+  parent_order_id: string | null;
   product_name: string;
   product_code: string;
   product_type: string;
@@ -29,7 +31,9 @@ export const useProductionReports = (startDate?: string, endDate?: string) => {
       let query = supabase
         .from("production_orders")
         .select(`
+          id,
           order_number,
+          parent_order_id,
           quantity,
           original_quantity,
           completed_quantity,
@@ -64,7 +68,9 @@ export const useProductionReports = (startDate?: string, endDate?: string) => {
         const deviation = completed - currentPlanned;
 
         return {
+          order_id: order.id,
           order_number: order.order_number,
+          parent_order_id: order.parent_order_id,
           product_name: order.products?.name || "N/A",
           product_code: order.products?.code || "N/A",
           product_type: order.products?.product_type || "finished",
