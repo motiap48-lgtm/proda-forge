@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle, Calendar, History } from "lucide-react";
+import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { useAuth } from "@/contexts/AuthContext";
@@ -665,13 +665,19 @@ const ProductionOrdersContent = () => {
           {paginatedOrders.map((order) => {
             const progress = (order.completed_quantity / order.quantity) * 100;
             const isSelected = selectedOrders.has(order.id);
+            const isRecentlyUpdated = Date.now() - new Date(order.updated_at).getTime() < 24 * 60 * 60 * 1000;
+
+            const cardStateClass = [
+              isRecentlyUpdated ? "border-primary/40 bg-primary/5" : "",
+              isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
             
             return (
               <Card
                 key={order.id}
-                className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${
-                  isSelected ? "border-primary bg-primary/5" : ""
-                }`}
+                className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${cardStateClass}`}
                 onClick={() => {
                   if (selectionMode) {
                     toggleOrderSelection(order.id);
@@ -766,7 +772,7 @@ const ProductionOrdersContent = () => {
                     {/* Actions */}
                     <div className="flex items-start gap-1">
                       {/* History Popover */}
-                      <OrderHistoryPopover orderId={order.id} />
+                      <OrderHistoryPopover orderId={order.id} orderNumber={order.order_number} />
                       
                       {/* Quick Actions */}
                       {!selectionMode && order.status !== "completed" && order.status !== "cancelled" && (
