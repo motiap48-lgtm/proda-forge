@@ -124,6 +124,11 @@ const ProductionReportsContent = () => {
   const [customerFilter, setCustomerFilter] = useState<string>(() => {
     return localStorage.getItem('reportsCustomerFilter') || 'all';
   });
+  // Completion filter for aggregated mode
+  const [completionFilter, setCompletionFilter] = useState<'all' | 'not_completed' | 'partially' | 'completed'>(() => {
+    const saved = localStorage.getItem('planFactCompletionFilter');
+    return (saved as 'all' | 'not_completed' | 'partially' | 'completed') || 'all';
+  });
   
   // План-факт фильтры с загрузкой из localStorage
   const [planFactStatusFilter, setPlanFactStatusFilter] = useState<'all' | 'planned' | 'in_progress' | 'completed'>(() => {
@@ -163,6 +168,10 @@ const ProductionReportsContent = () => {
   useEffect(() => {
     localStorage.setItem('planFactViewMode', planFactViewMode);
   }, [planFactViewMode]);
+
+  useEffect(() => {
+    localStorage.setItem('planFactCompletionFilter', completionFilter);
+  }, [completionFilter]);
 
   const toggleProductType = (type: string) => {
     setExpandedProductTypes(prev => {
@@ -398,6 +407,7 @@ const ProductionReportsContent = () => {
     completed_quantity: number;
     deviation: number;
     order_count: number;
+    completion_percent: number;
   }
 
   const aggregatedByProduct = useMemo(() => {
@@ -412,22 +422,46 @@ const ProductionReportsContent = () => {
         existing.completed_quantity += r.completed_quantity;
         existing.deviation += r.deviation;
         existing.order_count += 1;
+        existing.completion_percent = existing.planned_quantity > 0 
+          ? Math.round((existing.completed_quantity / existing.planned_quantity) * 100) 
+          : 0;
       } else {
+        const planned = r.planned_quantity || 0;
+        const completed = r.completed_quantity || 0;
         grouped.set(key, {
           product_code: r.product_code,
           product_name: r.product_name,
           product_type: r.product_type,
           original_planned_quantity: r.original_planned_quantity,
-          planned_quantity: r.planned_quantity,
-          completed_quantity: r.completed_quantity,
+          planned_quantity: planned,
+          completed_quantity: completed,
           deviation: r.deviation,
           order_count: 1,
+          completion_percent: planned > 0 ? Math.round((completed / planned) * 100) : 0,
         });
       }
     });
     
-    return Array.from(grouped.values());
-  }, [planFactFilteredReports]);
+    // Apply completion filter
+    let result = Array.from(grouped.values());
+    if (completionFilter !== 'all') {
+      result = result.filter(p => {
+        const percent = p.completion_percent;
+        switch (completionFilter) {
+          case 'not_completed':
+            return percent === 0;
+          case 'partially':
+            return percent > 0 && percent < 100;
+          case 'completed':
+            return percent >= 100;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    return result;
+  }, [planFactFilteredReports, completionFilter]);
 
   // Get unique order numbers for selector (only finished goods parent orders)
   const uniqueOrderNumbers = useMemo(() => {
@@ -653,6 +687,22 @@ const ProductionReportsContent = () => {
               </SelectContent>
             </Select>
 
+            {/* Completion Filter - visible in aggregated mode */}
+            {planFactViewMode === 'aggregated' && (
+              <Select value={completionFilter} onValueChange={(v) => setCompletionFilter(v as typeof completionFilter)}>
+                <SelectTrigger className="w-[180px]">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Выполнение" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все</SelectItem>
+                  <SelectItem value="not_completed">Невыполненные (0%)</SelectItem>
+                  <SelectItem value="partially">Частично (1-99%)</SelectItem>
+                  <SelectItem value="completed">Выполненные (100%)</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
             {/* Order Selector - visible in by_order mode */}
             {planFactViewMode === 'by_order' && (
               <Select value={selectedOrderNumber} onValueChange={setSelectedOrderNumber}>
@@ -676,6 +726,7 @@ const ProductionReportsContent = () => {
               setCustomerFilter('all');
               setPlanFactViewMode('aggregated');
               setSelectedOrderNumber('all');
+              setCompletionFilter('all');
             }}>
               Сбросить
             </Button>
@@ -940,6 +991,7 @@ const ProductionReportsContent = () => {
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('deviation')}>
                                 <div className="flex items-center justify-end">Откл. {getPlanFactSortIcon('deviation')}</div>
                               </TableHead>
+                              <TableHead className="w-[140px]">Выполнение</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -969,26 +1021,53 @@ const ProductionReportsContent = () => {
                                     <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                       {product.deviation > 0 ? '+' : ''}{product.deviation}
                                     </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <Progress 
+                                          value={Math.min(product.completion_percent, 100)} 
+                                          className={`h-2 w-20 ${product.completion_percent >= 100 ? '[&>div]:bg-green-500' : product.completion_percent > 0 ? '[&>div]:bg-amber-500' : '[&>div]:bg-muted'}`}
+                                        />
+                                        <span className={`text-xs font-medium ${product.completion_percent >= 100 ? 'text-green-600' : product.completion_percent > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                                          {product.completion_percent}%
+                                        </span>
+                                      </div>
+                                    </TableCell>
                                   </TableRow>
-                                  {isExpanded && productOrders.map((order) => (
-                                    <TableRow key={order.order_number} className="bg-muted/30">
-                                      <TableCell className="pl-10">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-mono text-sm">{order.order_number}</span>
-                                          <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
-                                            {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
-                                          </Badge>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-right text-muted-foreground">1</TableCell>
-                                      <TableCell className="text-right">{order.original_planned_quantity}</TableCell>
-                                      <TableCell className="text-right">{order.planned_quantity}</TableCell>
-                                      <TableCell className="text-right">{order.completed_quantity}</TableCell>
-                                      <TableCell className={`text-right ${order.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                        {order.deviation > 0 ? '+' : ''}{order.deviation}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
+                                  {isExpanded && productOrders.map((order) => {
+                                    const orderPercent = order.planned_quantity > 0 
+                                      ? Math.round((order.completed_quantity / order.planned_quantity) * 100) 
+                                      : 0;
+                                    return (
+                                      <TableRow key={order.order_number} className="bg-muted/30">
+                                        <TableCell className="pl-10">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-mono text-sm">{order.order_number}</span>
+                                            <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                              {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
+                                            </Badge>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-right text-muted-foreground">1</TableCell>
+                                        <TableCell className="text-right">{order.original_planned_quantity}</TableCell>
+                                        <TableCell className="text-right">{order.planned_quantity}</TableCell>
+                                        <TableCell className="text-right">{order.completed_quantity}</TableCell>
+                                        <TableCell className={`text-right ${order.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                          {order.deviation > 0 ? '+' : ''}{order.deviation}
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-2">
+                                            <Progress 
+                                              value={Math.min(orderPercent, 100)} 
+                                              className={`h-2 w-20 ${orderPercent >= 100 ? '[&>div]:bg-green-500' : orderPercent > 0 ? '[&>div]:bg-amber-500' : '[&>div]:bg-muted'}`}
+                                            />
+                                            <span className={`text-xs font-medium ${orderPercent >= 100 ? 'text-green-600' : orderPercent > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                                              {orderPercent}%
+                                            </span>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
                                 </Fragment>
                               );
                             })}
@@ -1046,6 +1125,7 @@ const ProductionReportsContent = () => {
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('deviation')}>
                                 <div className="flex items-center justify-end">Откл. {getPlanFactSortIcon('deviation')}</div>
                               </TableHead>
+                              <TableHead className="w-[140px]">Выполнение</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -1075,26 +1155,53 @@ const ProductionReportsContent = () => {
                                     <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                       {product.deviation > 0 ? '+' : ''}{product.deviation}
                                     </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <Progress 
+                                          value={Math.min(product.completion_percent, 100)} 
+                                          className={`h-2 w-20 ${product.completion_percent >= 100 ? '[&>div]:bg-green-500' : product.completion_percent > 0 ? '[&>div]:bg-amber-500' : '[&>div]:bg-muted'}`}
+                                        />
+                                        <span className={`text-xs font-medium ${product.completion_percent >= 100 ? 'text-green-600' : product.completion_percent > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                                          {product.completion_percent}%
+                                        </span>
+                                      </div>
+                                    </TableCell>
                                   </TableRow>
-                                  {isExpanded && productOrders.map((order) => (
-                                    <TableRow key={order.order_number} className="bg-muted/30">
-                                      <TableCell className="pl-10">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-mono text-sm">{order.order_number}</span>
-                                          <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
-                                            {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
-                                          </Badge>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-right text-muted-foreground">1</TableCell>
-                                      <TableCell className="text-right">{order.original_planned_quantity}</TableCell>
-                                      <TableCell className="text-right">{order.planned_quantity}</TableCell>
-                                      <TableCell className="text-right">{order.completed_quantity}</TableCell>
-                                      <TableCell className={`text-right ${order.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                        {order.deviation > 0 ? '+' : ''}{order.deviation}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
+                                  {isExpanded && productOrders.map((order) => {
+                                    const orderPercent = order.planned_quantity > 0 
+                                      ? Math.round((order.completed_quantity / order.planned_quantity) * 100) 
+                                      : 0;
+                                    return (
+                                      <TableRow key={order.order_number} className="bg-muted/30">
+                                        <TableCell className="pl-10">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-mono text-sm">{order.order_number}</span>
+                                            <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                              {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
+                                            </Badge>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-right text-muted-foreground">1</TableCell>
+                                        <TableCell className="text-right">{order.original_planned_quantity}</TableCell>
+                                        <TableCell className="text-right">{order.planned_quantity}</TableCell>
+                                        <TableCell className="text-right">{order.completed_quantity}</TableCell>
+                                        <TableCell className={`text-right ${order.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                          {order.deviation > 0 ? '+' : ''}{order.deviation}
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-2">
+                                            <Progress 
+                                              value={Math.min(orderPercent, 100)} 
+                                              className={`h-2 w-20 ${orderPercent >= 100 ? '[&>div]:bg-green-500' : orderPercent > 0 ? '[&>div]:bg-amber-500' : '[&>div]:bg-muted'}`}
+                                            />
+                                            <span className={`text-xs font-medium ${orderPercent >= 100 ? 'text-green-600' : orderPercent > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                                              {orderPercent}%
+                                            </span>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
                                 </Fragment>
                               );
                             })}
@@ -1152,6 +1259,7 @@ const ProductionReportsContent = () => {
                               <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('deviation')}>
                                 <div className="flex items-center justify-end">Откл. {getPlanFactSortIcon('deviation')}</div>
                               </TableHead>
+                              <TableHead className="w-[140px]">Выполнение</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -1181,26 +1289,53 @@ const ProductionReportsContent = () => {
                                     <TableCell className={`text-right ${product.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                       {product.deviation > 0 ? '+' : ''}{product.deviation}
                                     </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <Progress 
+                                          value={Math.min(product.completion_percent, 100)} 
+                                          className={`h-2 w-20 ${product.completion_percent >= 100 ? '[&>div]:bg-green-500' : product.completion_percent > 0 ? '[&>div]:bg-amber-500' : '[&>div]:bg-muted'}`}
+                                        />
+                                        <span className={`text-xs font-medium ${product.completion_percent >= 100 ? 'text-green-600' : product.completion_percent > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                                          {product.completion_percent}%
+                                        </span>
+                                      </div>
+                                    </TableCell>
                                   </TableRow>
-                                  {isExpanded && productOrders.map((order) => (
-                                    <TableRow key={order.order_number} className="bg-muted/30">
-                                      <TableCell className="pl-10">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-mono text-sm">{order.order_number}</span>
-                                          <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
-                                            {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
-                                          </Badge>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-right text-muted-foreground">1</TableCell>
-                                      <TableCell className="text-right">{order.original_planned_quantity}</TableCell>
-                                      <TableCell className="text-right">{order.planned_quantity}</TableCell>
-                                      <TableCell className="text-right">{order.completed_quantity}</TableCell>
-                                      <TableCell className={`text-right ${order.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                        {order.deviation > 0 ? '+' : ''}{order.deviation}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
+                                  {isExpanded && productOrders.map((order) => {
+                                    const orderPercent = order.planned_quantity > 0 
+                                      ? Math.round((order.completed_quantity / order.planned_quantity) * 100) 
+                                      : 0;
+                                    return (
+                                      <TableRow key={order.order_number} className="bg-muted/30">
+                                        <TableCell className="pl-10">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-mono text-sm">{order.order_number}</span>
+                                            <Badge variant={statusConfig[order.status as keyof typeof statusConfig]?.variant || "secondary"} className="text-xs">
+                                              {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
+                                            </Badge>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-right text-muted-foreground">1</TableCell>
+                                        <TableCell className="text-right">{order.original_planned_quantity}</TableCell>
+                                        <TableCell className="text-right">{order.planned_quantity}</TableCell>
+                                        <TableCell className="text-right">{order.completed_quantity}</TableCell>
+                                        <TableCell className={`text-right ${order.deviation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                          {order.deviation > 0 ? '+' : ''}{order.deviation}
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-2">
+                                            <Progress 
+                                              value={Math.min(orderPercent, 100)} 
+                                              className={`h-2 w-20 ${orderPercent >= 100 ? '[&>div]:bg-green-500' : orderPercent > 0 ? '[&>div]:bg-amber-500' : '[&>div]:bg-muted'}`}
+                                            />
+                                            <span className={`text-xs font-medium ${orderPercent >= 100 ? 'text-green-600' : orderPercent > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                                              {orderPercent}%
+                                            </span>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
                                 </Fragment>
                               );
                             })}
