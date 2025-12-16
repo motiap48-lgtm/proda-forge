@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet } from "lucide-react";
+import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -31,6 +31,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 
 const statusConfig = {
   planned: { label: "Запланировано", variant: "secondary" as const },
@@ -50,6 +59,8 @@ const priorityConfig = {
 
 type HierarchyFilter = "all" | "parent" | "child" | "standalone";
 
+const ITEMS_PER_PAGE = 20;
+
 const ProductionOrdersContent = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -61,6 +72,7 @@ const ProductionOrdersContent = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
   const { data: orders, isLoading } = useProductionOrders();
 
   // Count orders by hierarchy type
@@ -101,6 +113,18 @@ const ProductionOrdersContent = () => {
       return matchesSearch && matchesStatus && matchesHierarchy;
     });
   }, [orders, searchQuery, statusFilter, hierarchyFilter]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredOrders.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredOrders, currentPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, hierarchyFilter]);
 
   // Helper to check if an order is a parent
   const isParentOrder = (orderId: string) => {
@@ -418,7 +442,7 @@ const ProductionOrdersContent = () => {
 
         {/* Orders List */}
         <div className="space-y-3 sm:space-y-4">
-          {filteredOrders.map((order) => {
+          {paginatedOrders.map((order) => {
             const progress = (order.completed_quantity / order.quantity) * 100;
             const isSelected = selectedOrders.has(order.id);
             
@@ -524,6 +548,77 @@ const ProductionOrdersContent = () => {
             );
           })}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Card className="mt-4">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-sm text-muted-foreground">
+                  Показано {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredOrders.length)} из {filteredOrders.length}
+                </p>
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    
+                    {/* First page */}
+                    {currentPage > 2 && (
+                      <>
+                        <PaginationItem>
+                          <PaginationLink onClick={() => setCurrentPage(1)} className="cursor-pointer">
+                            1
+                          </PaginationLink>
+                        </PaginationItem>
+                        {currentPage > 3 && <PaginationEllipsis />}
+                      </>
+                    )}
+
+                    {/* Pages around current */}
+                    {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                      const page = Math.max(1, Math.min(currentPage - 1, totalPages - 2)) + i;
+                      if (page > totalPages) return null;
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink 
+                            isActive={page === currentPage}
+                            onClick={() => setCurrentPage(page)}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+
+                    {/* Last page */}
+                    {currentPage < totalPages - 1 && (
+                      <>
+                        {currentPage < totalPages - 2 && <PaginationEllipsis />}
+                        <PaginationItem>
+                          <PaginationLink onClick={() => setCurrentPage(totalPages)} className="cursor-pointer">
+                            {totalPages}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </>
+                    )}
+
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {filteredOrders.length === 0 && (
           <Card>
