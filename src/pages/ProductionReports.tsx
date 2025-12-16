@@ -31,7 +31,8 @@ import {
   X,
   Minimize2,
   Maximize2,
-  Filter
+  Filter,
+  Users
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ import { ProductOperationsReport } from "@/components/reports/ProductOperationsR
 import { TimelineAnalytics } from "@/components/reports/TimelineAnalytics";
 import { ProductionOutputReport } from "@/components/reports/ProductionOutputReport";
 import { OperationsDetailedReport } from "@/components/reports/OperationsDetailedReport";
+import { CustomerReport } from "@/components/reports/CustomerReport";
 import { exportPlanFactToExcel } from "@/components/reports/PlanFactExcelExport";
 import { PlanFactPrintView } from "@/components/reports/PlanFactPrintView";
 import {
@@ -364,6 +366,10 @@ const ProductionReportsContent = () => {
             <TabsTrigger value="timeline" className="gap-2">
               <Clock className="h-4 w-4" />
               <span className="hidden sm:inline">Временная</span>
+            </TabsTrigger>
+            <TabsTrigger value="customers" className="gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">По клиентам</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1366,6 +1372,10 @@ const ProductionReportsContent = () => {
               startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
               endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
             />
+          </TabsContent>
+
+          <TabsContent value="customers" className="space-y-6">
+            <CustomerReport />
           </TabsContent>
         </Tabs>
       </main>
