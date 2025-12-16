@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
+import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -95,6 +96,7 @@ const loadSettings = () => {
 const ProductionOrdersContent = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const savedSettings = loadSettings();
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,6 +104,8 @@ const ProductionOrdersContent = () => {
   const [hierarchyFilter, setHierarchyFilter] = useState<HierarchyFilter>(savedSettings.hierarchyFilter);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteSelectedDialog, setShowDeleteSelectedDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<{ id: string; orderNumber: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -196,9 +200,15 @@ const ProductionOrdersContent = () => {
     setSortDirection(prev => prev === "asc" ? "desc" : "asc");
   };
 
-  // Quick action to update order status
+  // Quick action to update order status with history recording
   const updateOrderStatus = async (orderId: string, newStatus: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    const order = orders?.find(o => o.id === orderId);
+    if (!order) return;
+    
+    const oldStatus = order.status;
+    
     setUpdatingOrderId(orderId);
     try {
       const { error } = await supabase
@@ -208,6 +218,18 @@ const ProductionOrdersContent = () => {
       
       if (error) throw error;
       
+      // Record history entry
+      if (user) {
+        await supabase.from("production_order_history").insert({
+          production_order_id: orderId,
+          user_id: user.id,
+          change_type: "status_changed",
+          old_value: oldStatus,
+          new_value: newStatus,
+          description: `Статус изменён с "${statusConfig[oldStatus as keyof typeof statusConfig]?.label || oldStatus}" на "${statusConfig[newStatus as keyof typeof statusConfig]?.label || newStatus}"`,
+        });
+      }
+      
       await queryClient.invalidateQueries({ queryKey: ["production-orders"] });
       toast.success(`Статус изменён на "${statusConfig[newStatus as keyof typeof statusConfig]?.label || newStatus}"`);
     } catch (error: any) {
@@ -216,6 +238,23 @@ const ProductionOrdersContent = () => {
     } finally {
       setUpdatingOrderId(null);
     }
+  };
+
+  // Open cancel confirmation dialog
+  const handleCancelClick = (orderId: string, orderNumber: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOrderToCancel({ id: orderId, orderNumber });
+    setShowCancelDialog(true);
+  };
+
+  // Confirm and execute cancellation
+  const handleConfirmCancel = async () => {
+    if (!orderToCancel) return;
+    
+    const fakeEvent = { stopPropagation: () => {} } as React.MouseEvent;
+    await updateOrderStatus(orderToCancel.id, "cancelled", fakeEvent);
+    setShowCancelDialog(false);
+    setOrderToCancel(null);
   };
 
   // Helper to check if an order is a parent
@@ -712,7 +751,7 @@ const ProductionOrdersContent = () => {
                             )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
-                              onClick={(e) => updateOrderStatus(order.id, "cancelled", e as any)}
+                              onClick={(e) => handleCancelClick(order.id, order.order_number, e as any)}
                               className="text-destructive focus:text-destructive"
                             >
                               <XCircle className="mr-2 h-4 w-4" />
@@ -870,6 +909,29 @@ const ProductionOrdersContent = () => {
                     Удалить ({selectedOrders.size})
                   </>
                 )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Cancel Order Confirmation Dialog */}
+        <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Отменить заказ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Вы уверены, что хотите отменить заказ {orderToCancel?.orderNumber}? 
+                Это действие изменит статус заказа на "Отменено".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setOrderToCancel(null)}>Нет</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmCancel}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Отменить заказ
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
