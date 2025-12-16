@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, eachDayOfInterval, startOfDay, endOfDay } from "date-fns";
 
 export interface DailyOutputItem {
   product_id: string;
@@ -34,6 +34,49 @@ export interface ProductionOutputSummary {
   };
 }
 
+export interface DepartmentSummary {
+  department: string;
+  workCenters: {
+    id: string;
+    name: string;
+    code: string;
+    totalQuantity: number;
+    byProductType: {
+      finished: number;
+      assembly: number;
+      'semi-finished': number;
+    };
+  }[];
+  totalQuantity: number;
+  byProductType: {
+    finished: number;
+    assembly: number;
+    'semi-finished': number;
+  };
+}
+
+export interface PlanFactData {
+  date: string;
+  planned: number;
+  actual: number;
+  deviation: number;
+  deviationPercent: number;
+}
+
+export interface PlanFactSummary {
+  totalPlanned: number;
+  totalActual: number;
+  totalDeviation: number;
+  deviationPercent: number;
+  byDepartment: {
+    department: string;
+    planned: number;
+    actual: number;
+    deviation: number;
+    deviationPercent: number;
+  }[];
+}
+
 export type OutputReportMode = 'finished_products' | 'all_operations';
 
 export const useProductionOutputReport = (
@@ -61,6 +104,10 @@ export const useProductionOutputReport = (
             product_id,
             work_center_id,
             routing_sheet_id,
+            quantity,
+            completed_quantity,
+            planned_start_date,
+            planned_end_date,
             products:product_id(id, name, code, product_type, unit),
             work_centers:work_center_id(id, name, code, department)
           )
@@ -78,6 +125,33 @@ export const useProductionOutputReport = (
       const { data: historyData, error } = await historyQuery;
 
       if (error) throw error;
+
+      // Fetch production orders for plan data
+      const ordersQuery = supabase
+        .from("production_orders")
+        .select(`
+          id,
+          order_number,
+          product_id,
+          work_center_id,
+          quantity,
+          completed_quantity,
+          planned_start_date,
+          planned_end_date,
+          status,
+          products:product_id(id, name, code, product_type, unit),
+          work_centers:work_center_id(id, name, code, department)
+        `)
+        .in("status", ["in_progress", "completed", "released"]);
+
+      if (startDate) {
+        ordersQuery.gte("planned_end_date", startDate);
+      }
+      if (endDate) {
+        ordersQuery.lte("planned_end_date", endDate);
+      }
+
+      const { data: ordersData } = await ordersQuery;
 
       // Get all unique order IDs to fetch their operations
       const orderIds = new Set<string>();
@@ -115,7 +189,6 @@ export const useProductionOutputReport = (
       const outputByDate = new Map<string, Map<string, DailyOutputItem>>();
       
       // Track which orders we've already counted (for finished_products mode)
-      // Key: `${orderId}-${date}` to avoid double counting per day
       const countedOrdersPerDay = new Set<string>();
 
       historyData?.forEach((entry) => {
@@ -132,38 +205,31 @@ export const useProductionOutputReport = (
             operationName = parsed.operation_name || "";
             completedQty = parsed.good_quantity || 0;
           } else {
-            // Old format: plain number string - calculate delta
             const newValue = Number(entry.new_value) || 0;
             const oldValue = Number(entry.old_value) || 0;
             completedQty = Math.max(0, newValue - oldValue);
           }
         } catch {
-          // Fallback for plain number strings that fail JSON parse
           const newValue = Number(entry.new_value) || 0;
           const oldValue = Number(entry.old_value) || 0;
           completedQty = Math.max(0, newValue - oldValue);
         }
 
-        if (completedQty === 0) return; // Skip if no actual output
+        if (completedQty === 0) return;
 
         const dateKey = format(parseISO(entry.created_at), "yyyy-MM-dd");
 
         // In finished_products mode, only count the LAST operation
         if (mode === 'finished_products') {
           const orderInfo = orderMaxSequence.get(entry.production_order_id);
-          
-          // Check if this operation is THE last operation by comparing names
-          // Also ensure we haven't already counted this order for this date
           const orderDateKey = `${entry.production_order_id}-${dateKey}`;
           
           if (orderInfo && operationName === orderInfo.lastOperationName) {
-            // This is the last operation - count it only once per order per day
             if (countedOrdersPerDay.has(orderDateKey)) {
-              return; // Already counted this order for this date
+              return;
             }
             countedOrdersPerDay.add(orderDateKey);
           } else {
-            // Not the last operation, skip in finished_products mode
             return;
           }
         }
@@ -174,7 +240,6 @@ export const useProductionOutputReport = (
 
         const dateItems = outputByDate.get(dateKey)!;
         
-        // In all_operations mode, include operation name in the key
         const itemKey = mode === 'all_operations' 
           ? `${order.product_id}-${order.work_center_id || 'none'}-${operationName}`
           : `${order.product_id}-${order.work_center_id || 'none'}`;
@@ -214,7 +279,6 @@ export const useProductionOutputReport = (
         });
       });
 
-      // Sort by date descending
       dailyOutputs.sort((a, b) => b.date.localeCompare(a.date));
 
       // Calculate summary
@@ -230,7 +294,115 @@ export const useProductionOutputReport = (
         },
       };
 
-      return { dailyOutputs, summary };
+      // Calculate department summary for management export
+      const departmentMap = new Map<string, DepartmentSummary>();
+      allItems.forEach(item => {
+        const dept = item.department || 'Без цеха';
+        if (!departmentMap.has(dept)) {
+          departmentMap.set(dept, {
+            department: dept,
+            workCenters: [],
+            totalQuantity: 0,
+            byProductType: { finished: 0, assembly: 0, 'semi-finished': 0 },
+          });
+        }
+        const deptData = departmentMap.get(dept)!;
+        deptData.totalQuantity += item.completed_quantity;
+        
+        if (item.product_type === 'finished') deptData.byProductType.finished += item.completed_quantity;
+        if (item.product_type === 'assembly') deptData.byProductType.assembly += item.completed_quantity;
+        if (item.product_type === 'semi-finished') deptData.byProductType['semi-finished'] += item.completed_quantity;
+
+        // Add to work center
+        let wc = deptData.workCenters.find(w => w.id === item.work_center_id);
+        if (!wc) {
+          wc = {
+            id: item.work_center_id || 'none',
+            name: item.work_center_name,
+            code: item.work_center_code,
+            totalQuantity: 0,
+            byProductType: { finished: 0, assembly: 0, 'semi-finished': 0 },
+          };
+          deptData.workCenters.push(wc);
+        }
+        wc.totalQuantity += item.completed_quantity;
+        if (item.product_type === 'finished') wc.byProductType.finished += item.completed_quantity;
+        if (item.product_type === 'assembly') wc.byProductType.assembly += item.completed_quantity;
+        if (item.product_type === 'semi-finished') wc.byProductType['semi-finished'] += item.completed_quantity;
+      });
+
+      const departmentSummaries = Array.from(departmentMap.values())
+        .sort((a, b) => a.department.localeCompare(b.department, 'ru'));
+
+      // Calculate Plan/Fact data
+      const planFactByDate = new Map<string, { planned: number; actual: number }>();
+      const planFactByDept = new Map<string, { planned: number; actual: number }>();
+
+      // Add planned from orders (by planned_end_date)
+      ordersData?.forEach(order => {
+        if (!order.planned_end_date) return;
+        const dateKey = order.planned_end_date;
+        if (!planFactByDate.has(dateKey)) {
+          planFactByDate.set(dateKey, { planned: 0, actual: 0 });
+        }
+        planFactByDate.get(dateKey)!.planned += Number(order.quantity) || 0;
+
+        // By department
+        const dept = (order.work_centers as any)?.department || 'Без цеха';
+        if (!planFactByDept.has(dept)) {
+          planFactByDept.set(dept, { planned: 0, actual: 0 });
+        }
+        planFactByDept.get(dept)!.planned += Number(order.quantity) || 0;
+      });
+
+      // Add actual from daily outputs
+      dailyOutputs.forEach(day => {
+        if (!planFactByDate.has(day.date)) {
+          planFactByDate.set(day.date, { planned: 0, actual: 0 });
+        }
+        planFactByDate.get(day.date)!.actual += day.totalQuantity;
+
+        // By department
+        day.items.forEach(item => {
+          const dept = item.department || 'Без цеха';
+          if (!planFactByDept.has(dept)) {
+            planFactByDept.set(dept, { planned: 0, actual: 0 });
+          }
+          planFactByDept.get(dept)!.actual += item.completed_quantity;
+        });
+      });
+
+      // Convert to arrays
+      const planFactData: PlanFactData[] = Array.from(planFactByDate.entries())
+        .map(([date, data]) => ({
+          date,
+          planned: data.planned,
+          actual: data.actual,
+          deviation: data.actual - data.planned,
+          deviationPercent: data.planned > 0 ? ((data.actual - data.planned) / data.planned) * 100 : 0,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      const totalPlanned = planFactData.reduce((sum, d) => sum + d.planned, 0);
+      const totalActual = planFactData.reduce((sum, d) => sum + d.actual, 0);
+
+      const planFactSummary: PlanFactSummary = {
+        totalPlanned,
+        totalActual,
+        totalDeviation: totalActual - totalPlanned,
+        deviationPercent: totalPlanned > 0 ? ((totalActual - totalPlanned) / totalPlanned) * 100 : 0,
+        byDepartment: Array.from(planFactByDept.entries())
+          .map(([dept, data]) => ({
+            department: dept,
+            planned: data.planned,
+            actual: data.actual,
+            deviation: data.actual - data.planned,
+            deviationPercent: data.planned > 0 ? ((data.actual - data.planned) / data.planned) * 100 : 0,
+          }))
+          .sort((a, b) => a.department.localeCompare(b.department, 'ru')),
+      };
+
+      return { dailyOutputs, summary, departmentSummaries, planFactData, planFactSummary };
     },
   });
 };
