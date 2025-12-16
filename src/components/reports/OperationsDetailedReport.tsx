@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useOperationsDetailedReport, WorkCenterOperationsData, OperationDetailedItem } from "@/hooks/useOperationsDetailedReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -124,14 +124,49 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
     return (localStorage.getItem('operationsReport_statusFilter') as StatusFilter) || 'all';
   });
+  const [departmentFilter, setDepartmentFilter] = useState(() => {
+    return localStorage.getItem('operationsReport_departmentFilter') || 'all';
+  });
+  const [workCenterFilter, setWorkCenterFilter] = useState(() => {
+    return localStorage.getItem('operationsReport_workCenterFilter') || 'all';
+  });
   const [printWorkCenterId, setPrintWorkCenterId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
-  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || sortField !== 'sequence' || sortDirection !== 'asc';
+  // Get unique departments and work centers
+  const { departments, workCenters } = useMemo(() => {
+    const depts = new Set<string>();
+    const wcs: { id: string; name: string; code: string; department: string | null }[] = [];
+    
+    reports?.forEach(wc => {
+      if (wc.department) depts.add(wc.department);
+      wcs.push({
+        id: wc.work_center_id,
+        name: wc.work_center_name,
+        code: wc.work_center_code,
+        department: wc.department
+      });
+    });
+    
+    return {
+      departments: Array.from(depts).sort((a, b) => a.localeCompare(b, 'ru')),
+      workCenters: wcs.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+    };
+  }, [reports]);
+
+  // Filter work centers by selected department
+  const filteredWorkCentersOptions = useMemo(() => {
+    if (departmentFilter === 'all') return workCenters;
+    return workCenters.filter(wc => wc.department === departmentFilter);
+  }, [workCenters, departmentFilter]);
+
+  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || departmentFilter !== 'all' || workCenterFilter !== 'all' || sortField !== 'sequence' || sortDirection !== 'asc';
 
   const resetAllFilters = () => {
     setSearchQuery('');
     setStatusFilter('all');
+    setDepartmentFilter('all');
+    setWorkCenterFilter('all');
     setSortField('sequence');
     setSortDirection('asc');
   };
@@ -152,6 +187,24 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
   useEffect(() => {
     localStorage.setItem('operationsReport_statusFilter', statusFilter);
   }, [statusFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('operationsReport_departmentFilter', departmentFilter);
+  }, [departmentFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('operationsReport_workCenterFilter', workCenterFilter);
+  }, [workCenterFilter]);
+
+  // Reset work center filter when department changes
+  useEffect(() => {
+    if (departmentFilter !== 'all' && workCenterFilter !== 'all') {
+      const wc = workCenters.find(w => w.id === workCenterFilter);
+      if (wc && wc.department !== departmentFilter) {
+        setWorkCenterFilter('all');
+      }
+    }
+  }, [departmentFilter, workCenterFilter, workCenters]);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -315,7 +368,17 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
 
   // Filter reports
   const filteredReports = reports?.map(wc => {
-    // First filter by status
+    // First filter by department
+    if (departmentFilter !== 'all' && wc.department !== departmentFilter) {
+      return null;
+    }
+    
+    // Filter by work center
+    if (workCenterFilter !== 'all' && wc.work_center_id !== workCenterFilter) {
+      return null;
+    }
+    
+    // Filter by status
     let filteredOps = statusFilter === 'all' 
       ? wc.operations 
       : wc.operations.filter(op => op.status === statusFilter);
@@ -435,6 +498,38 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
           )}
         </div>
         
+        {/* Department filter */}
+        {departments.length > 0 && (
+          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+            <SelectTrigger className="w-[160px] h-9">
+              <SelectValue placeholder="Цех" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все цеха</SelectItem>
+              {departments.map((dept) => (
+                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Work center filter */}
+        {filteredWorkCentersOptions.length > 0 && (
+          <Select value={workCenterFilter} onValueChange={setWorkCenterFilter}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Участок" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все участки</SelectItem>
+              {filteredWorkCentersOptions.map((wc) => (
+                <SelectItem key={wc.id} value={wc.id}>
+                  {wc.name} ({wc.code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         {/* Status filter */}
         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
           <SelectTrigger className="w-[140px] h-9">
