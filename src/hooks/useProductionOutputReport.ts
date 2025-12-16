@@ -45,6 +45,7 @@ export const useProductionOutputReport = (startDate?: string, endDate?: string) 
           production_order_id,
           change_type,
           description,
+          old_value,
           new_value,
           created_at,
           production_orders!production_order_history_production_order_id_fkey(
@@ -79,14 +80,28 @@ export const useProductionOutputReport = (startDate?: string, endDate?: string) 
 
         const dateKey = format(parseISO(entry.created_at), "yyyy-MM-dd");
         
-        // Parse the new_value to get completed quantity
+        // Calculate completed quantity - supports both old format (plain numbers) 
+        // and new format (JSON with good_quantity)
         let completedQty = 0;
         try {
-          const parsed = JSON.parse(entry.new_value || "{}");
-          completedQty = parsed.completed_quantity || parsed.goodQuantity || 0;
+          const parsed = JSON.parse(entry.new_value || "0");
+          if (typeof parsed === 'object' && parsed !== null) {
+            // New format: JSON with detailed info
+            completedQty = parsed.good_quantity || 0;
+          } else {
+            // Old format: plain number string - calculate delta
+            const newValue = Number(entry.new_value) || 0;
+            const oldValue = Number(entry.old_value) || 0;
+            completedQty = Math.max(0, newValue - oldValue);
+          }
         } catch {
-          completedQty = 0;
+          // Fallback for plain number strings that fail JSON parse
+          const newValue = Number(entry.new_value) || 0;
+          const oldValue = Number(entry.old_value) || 0;
+          completedQty = Math.max(0, newValue - oldValue);
         }
+
+        if (completedQty === 0) return; // Skip if no actual output
 
         if (!outputByDate.has(dateKey)) {
           outputByDate.set(dateKey, new Map());
