@@ -188,27 +188,31 @@ const NewProductionOrderContent = () => {
         }
       }
 
-      // Создаем дочерние заказы на ПФ/СБ если выбрано
+      // Переходим к списку сразу после создания (чтобы редирект не блокировался долгими операциями)
+      navigate("/production-orders");
+
+      // Создаем дочерние заказы на ПФ/СБ если выбрано (в фоне)
       if (createChildOrdersFlag && formData.specification && order) {
         console.log("Creating child orders for parent:", order.id, "specification:", formData.specification);
-        try {
-          const result = await createChildOrders.mutateAsync({
+        void createChildOrders
+          .mutateAsync({
             parentOrderId: order.id,
             parentOrderNumber: orderNumber,
             specificationId: formData.specification,
             quantity: quantityNum,
             plannedStartDate: formData.planned_start,
             plannedEndDate: formData.planned_end,
+          })
+          .then((result) => {
+            console.log("Child orders creation result:", result);
+          })
+          .catch((childError) => {
+            console.error("Error creating child orders:", childError);
           });
-          console.log("Child orders creation result:", result);
-        } catch (childError) {
-          console.error("Error creating child orders:", childError);
-        }
       }
-
-      navigate("/production-orders");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating order:", error);
+      toast.error("Ошибка при создании заказа: " + (error?.message || "Неизвестная ошибка"));
     }
   };
 
