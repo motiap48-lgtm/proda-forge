@@ -1,4 +1,4 @@
-import { forwardRef, ReactNode, useRef } from "react";
+import { ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Printer, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useState } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PrintPreviewDialogProps {
   open: boolean;
@@ -27,10 +26,10 @@ export const PrintPreviewDialog = ({
   onPrint,
   children,
 }: PrintPreviewDialogProps) => {
-  const [zoom, setZoom] = useState(50);
+  const [zoom, setZoom] = useState(70);
 
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 10, 100));
+    setZoom(prev => Math.min(prev + 10, 150));
   };
 
   const handleZoomOut = () => {
@@ -44,8 +43,8 @@ export const PrintPreviewDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+      <DialogContent className="max-w-none w-screen h-screen m-0 rounded-none flex flex-col p-0">
+        <DialogHeader className="px-6 py-3 border-b flex-shrink-0 bg-background">
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle>{title}</DialogTitle>
@@ -62,38 +61,43 @@ export const PrintPreviewDialog = ({
               >
                 <ZoomOut className="h-4 w-4" />
               </Button>
-              <span className="text-sm text-muted-foreground w-12 text-center">
+              <span className="text-sm text-muted-foreground w-14 text-center">
                 {zoom}%
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleZoomIn}
-                disabled={zoom >= 100}
+                disabled={zoom >= 150}
               >
                 <ZoomIn className="h-4 w-4" />
+              </Button>
+              <div className="w-px h-6 bg-border mx-2" />
+              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+                <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </DialogHeader>
         
-        <div className="flex-1 overflow-auto bg-muted/30 p-4">
+        <div className="flex-1 overflow-auto bg-muted/50 p-6">
           <div 
-            className="mx-auto bg-white shadow-lg origin-top transition-transform"
+            className="mx-auto bg-white shadow-xl origin-top transition-transform border"
             style={{ 
               transform: `scale(${zoom / 100})`,
-              width: `${100 / (zoom / 100)}%`,
-              maxWidth: '210mm',
+              transformOrigin: 'top center',
+              width: '210mm',
+              minHeight: '297mm',
             }}
           >
             {children}
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
+        <DialogFooter className="px-6 py-3 border-t flex-shrink-0 bg-background">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4 mr-2" />
-            Отмена
+            Закрыть
           </Button>
           <Button onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />

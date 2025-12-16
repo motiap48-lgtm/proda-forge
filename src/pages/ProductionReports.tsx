@@ -808,7 +808,11 @@ const ProductionReportsContent = () => {
                 <SelectContent>
                   <SelectItem value="all">Все заказы (по отдельности)</SelectItem>
                   {uniqueOrderNumbers.map(o => (
-                    <SelectItem key={o.order_number} value={o.order_number}>
+                    <SelectItem 
+                      key={o.order_number} 
+                      value={o.order_number}
+                      className={selectedOrderNumber === o.order_number ? "bg-primary/10 font-medium" : ""}
+                    >
                       {o.order_number} - {o.product_name}
                     </SelectItem>
                   ))}
@@ -1497,6 +1501,7 @@ const ProductionReportsContent = () => {
               reports={planFactFilteredReports}
               expandedOrders={expandedOrders}
               onToggleOrder={toggleOrder}
+              selectedOrderNumber={selectedOrderNumber}
             />
           )
         ) : (
