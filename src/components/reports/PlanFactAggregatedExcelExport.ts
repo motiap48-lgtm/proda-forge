@@ -20,21 +20,34 @@ const productTypeLabels: Record<string, string> = {
   'semi-finished': 'Полуфабрикаты',
 };
 
+const completionFilterLabels: Record<string, string> = {
+  all: '',
+  not_completed: 'Невыполненные (0%)',
+  partially: 'Частично выполненные (1-99%)',
+  completed: 'Выполненные (100%)',
+};
+
 export const exportPlanFactAggregatedToExcel = (
   aggregatedProducts: AggregatedProduct[],
   allReports: ProductionReportData[],
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  completionFilter?: 'all' | 'not_completed' | 'partially' | 'completed'
 ) => {
   const wb = XLSX.utils.book_new();
 
+  const filterLabel = completionFilter && completionFilter !== 'all' 
+    ? completionFilterLabels[completionFilter] 
+    : '';
+
   // Summary sheet
-  const summaryData = [
+  const summaryData: (string | number)[][] = [
     ['Отчет план-факт (суммарно по изделиям)'],
     [''],
     ['Период:', startDate && endDate 
       ? `${format(new Date(startDate), 'dd.MM.yyyy', { locale: ru })} - ${format(new Date(endDate), 'dd.MM.yyyy', { locale: ru })}`
       : 'Все время'],
+    ...(filterLabel ? [['Фильтр:', filterLabel]] : []),
     ['Дата формирования:', format(new Date(), 'dd.MM.yyyy HH:mm', { locale: ru })],
     [''],
     ['Сводка по типам продукции'],
