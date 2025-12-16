@@ -997,8 +997,11 @@ const ProductionReportsContent = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={expandAllProductTypes}
-                  disabled={expandedProductTypes.size === 3}
+                  onClick={() => {
+                    expandAllProductTypes();
+                    expandAllProducts();
+                  }}
+                  disabled={expandedProducts.size === aggregatedByProduct.length && expandedProductTypes.size === 3}
                 >
                   <Maximize2 className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">Развернуть все</span>
@@ -1006,8 +1009,8 @@ const ProductionReportsContent = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={collapseAllProductTypes}
-                  disabled={expandedProductTypes.size === 0}
+                  onClick={collapseAllProducts}
+                  disabled={expandedProducts.size === 0}
                 >
                   <Minimize2 className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">Свернуть все</span>
