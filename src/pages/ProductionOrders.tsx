@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -58,6 +58,18 @@ const priorityConfig = {
 };
 
 type HierarchyFilter = "all" | "parent" | "child" | "standalone";
+type SortField = "date" | "status" | "priority" | "order_number";
+type SortDirection = "asc" | "desc";
+
+const statusOrder = { planned: 0, released: 1, in_progress: 2, on_hold: 3, completed: 4, cancelled: 5 };
+const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
+
+const sortConfig = {
+  date: { label: "По дате" },
+  status: { label: "По статусу" },
+  priority: { label: "По приоритету" },
+  order_number: { label: "По номеру" },
+};
 
 const ITEMS_PER_PAGE = 20;
 
@@ -73,6 +85,8 @@ const ProductionOrdersContent = () => {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const { data: orders, isLoading } = useProductionOrders();
 
   // Count orders by hierarchy type
@@ -93,7 +107,7 @@ const ProductionOrdersContent = () => {
     
     const parentIds = new Set(orders.filter(o => o.parent_order_id).map(o => o.parent_order_id));
     
-    return orders.filter((order) => {
+    const filtered = orders.filter((order) => {
       const productName = order.products?.name || "";
       const matchesSearch =
         order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -112,7 +126,31 @@ const ProductionOrdersContent = () => {
       
       return matchesSearch && matchesStatus && matchesHierarchy;
     });
-  }, [orders, searchQuery, statusFilter, hierarchyFilter]);
+
+    // Sort
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.planned_end_date).getTime() - new Date(b.planned_end_date).getTime();
+          break;
+        case "status":
+          comparison = (statusOrder[a.status as keyof typeof statusOrder] || 0) - (statusOrder[b.status as keyof typeof statusOrder] || 0);
+          break;
+        case "priority":
+          comparison = (priorityOrder[a.priority as keyof typeof priorityOrder] || 0) - (priorityOrder[b.priority as keyof typeof priorityOrder] || 0);
+          break;
+        case "order_number":
+          comparison = a.order_number.localeCompare(b.order_number);
+          break;
+      }
+      
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [orders, searchQuery, statusFilter, hierarchyFilter, sortField, sortDirection]);
 
   // Pagination
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
@@ -124,7 +162,11 @@ const ProductionOrdersContent = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, hierarchyFilter]);
+  }, [searchQuery, statusFilter, hierarchyFilter, sortField, sortDirection]);
+
+  const toggleSortDirection = () => {
+    setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+  };
 
   // Helper to check if an order is a parent
   const isParentOrder = (orderId: string) => {
@@ -428,6 +470,37 @@ const ProductionOrdersContent = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setHierarchyFilter("standalone")}>
                       Одиночные ({hierarchyCounts.standalone})
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <ArrowUpDown className="mr-2 h-4 w-4" />
+                      {sortConfig[sortField].label}
+                      {sortDirection === "asc" ? (
+                        <ArrowUpIcon className="ml-1 h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="ml-1 h-3 w-3" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setSortField("date")}>
+                      По дате окончания
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortField("status")}>
+                      По статусу
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortField("priority")}>
+                      По приоритету
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortField("order_number")}>
+                      По номеру заказа
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={toggleSortDirection}>
+                      {sortDirection === "asc" ? "По убыванию ↓" : "По возрастанию ↑"}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
