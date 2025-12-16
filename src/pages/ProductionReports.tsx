@@ -30,8 +30,10 @@ import {
   Search,
   X,
   Minimize2,
-  Maximize2
+  Maximize2,
+  Filter
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -98,6 +100,9 @@ const ProductionReportsContent = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedProductTypes, setExpandedProductTypes] = useState<Set<string>>(new Set(['finished', 'assembly', 'semi-finished']));
   const [planFactPrintType, setPlanFactPrintType] = useState<'all' | 'finished' | 'assembly' | 'semi-finished'>('all');
+  const [planFactStatusFilter, setPlanFactStatusFilter] = useState<'all' | 'planned' | 'in_progress' | 'completed'>('all');
+  const [planFactSortField, setPlanFactSortField] = useState<'order_number' | 'product_name' | 'planned' | 'completed' | 'deviation'>('order_number');
+  const [planFactSortDirection, setPlanFactSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const toggleProductType = (type: string) => {
     setExpandedProductTypes(prev => {
@@ -238,7 +243,54 @@ const ProductionReportsContent = () => {
 
   const filteredWorkCenterReports = workCenterReports ? filterReportsBySearch(workCenterReports) : [];
 
-  const chartData = reports?.slice(0, 10).map((report) => ({
+  // План-факт: фильтрация по статусу
+  const planFactFilteredReports = reports?.filter(r => {
+    if (planFactStatusFilter === 'all') return true;
+    return r.status === planFactStatusFilter;
+  }) || [];
+
+  // План-факт: сортировка
+  const sortPlanFactReports = (data: typeof planFactFilteredReports) => {
+    return [...data].sort((a, b) => {
+      let comparison = 0;
+      switch (planFactSortField) {
+        case 'order_number':
+          comparison = a.order_number.localeCompare(b.order_number);
+          break;
+        case 'product_name':
+          comparison = a.product_name.localeCompare(b.product_name);
+          break;
+        case 'planned':
+          comparison = a.planned_quantity - b.planned_quantity;
+          break;
+        case 'completed':
+          comparison = a.completed_quantity - b.completed_quantity;
+          break;
+        case 'deviation':
+          comparison = a.deviation - b.deviation;
+          break;
+      }
+      return planFactSortDirection === 'asc' ? comparison : -comparison;
+    });
+  };
+
+  const handlePlanFactSort = (field: typeof planFactSortField) => {
+    if (planFactSortField === field) {
+      setPlanFactSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setPlanFactSortField(field);
+      setPlanFactSortDirection('asc');
+    }
+  };
+
+  const getPlanFactSortIcon = (field: typeof planFactSortField) => {
+    if (planFactSortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1" />;
+    return planFactSortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" /> 
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const chartData = planFactFilteredReports.slice(0, 10).map((report) => ({
     name: report.order_number,
     "план (исх.)": report.original_planned_quantity,
     "план (тек.)": report.planned_quantity,
@@ -332,7 +384,23 @@ const ProductionReportsContent = () => {
               </PopoverContent>
             </Popover>
 
-            <Button variant="outline" onClick={handleReset}>
+            <Select value={planFactStatusFilter} onValueChange={(v) => setPlanFactStatusFilter(v as typeof planFactStatusFilter)}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Статус" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                <SelectItem value="planned">Запланирован</SelectItem>
+                <SelectItem value="in_progress">В работе</SelectItem>
+                <SelectItem value="completed">Завершен</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button variant="outline" onClick={() => {
+              handleReset();
+              setPlanFactStatusFilter('all');
+            }}>
               Сбросить
             </Button>
           </CardContent>
@@ -518,11 +586,11 @@ const ProductionReportsContent = () => {
         {/* Grouped Tables by Product Type */}
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
-        ) : reports && reports.length > 0 ? (
+        ) : planFactFilteredReports.length > 0 ? (
           <div className="space-y-4">
             {/* Готовая продукция */}
             {(() => {
-              const finishedReports = reports.filter(r => r.product_type === 'finished');
+              const finishedReports = sortPlanFactReports(planFactFilteredReports.filter(r => r.product_type === 'finished'));
               if (finishedReports.length === 0) return null;
               const totals = finishedReports.reduce((acc, r) => ({
                 planned: acc.planned + r.planned_quantity,
@@ -551,12 +619,22 @@ const ProductionReportsContent = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Номер заказа</TableHead>
-                              <TableHead>Изделие</TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('order_number')}>
+                                <div className="flex items-center">Номер заказа {getPlanFactSortIcon('order_number')}</div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('product_name')}>
+                                <div className="flex items-center">Изделие {getPlanFactSortIcon('product_name')}</div>
+                              </TableHead>
                               <TableHead className="text-right">План (исх.)</TableHead>
-                              <TableHead className="text-right">План (тек.)</TableHead>
-                              <TableHead className="text-right">Факт</TableHead>
-                              <TableHead className="text-right">Откл.</TableHead>
+                              <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('planned')}>
+                                <div className="flex items-center justify-end">План (тек.) {getPlanFactSortIcon('planned')}</div>
+                              </TableHead>
+                              <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('completed')}>
+                                <div className="flex items-center justify-end">Факт {getPlanFactSortIcon('completed')}</div>
+                              </TableHead>
+                              <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('deviation')}>
+                                <div className="flex items-center justify-end">Откл. {getPlanFactSortIcon('deviation')}</div>
+                              </TableHead>
                               <TableHead>Статус</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -592,7 +670,7 @@ const ProductionReportsContent = () => {
 
             {/* Сборочные узлы */}
             {(() => {
-              const assemblyReports = reports.filter(r => r.product_type === 'assembly');
+              const assemblyReports = sortPlanFactReports(planFactFilteredReports.filter(r => r.product_type === 'assembly'));
               if (assemblyReports.length === 0) return null;
               const totals = assemblyReports.reduce((acc, r) => ({
                 planned: acc.planned + r.planned_quantity,
@@ -621,12 +699,22 @@ const ProductionReportsContent = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Номер заказа</TableHead>
-                              <TableHead>Изделие</TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('order_number')}>
+                                <div className="flex items-center">Номер заказа {getPlanFactSortIcon('order_number')}</div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('product_name')}>
+                                <div className="flex items-center">Изделие {getPlanFactSortIcon('product_name')}</div>
+                              </TableHead>
                               <TableHead className="text-right">План (исх.)</TableHead>
-                              <TableHead className="text-right">План (тек.)</TableHead>
-                              <TableHead className="text-right">Факт</TableHead>
-                              <TableHead className="text-right">Откл.</TableHead>
+                              <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('planned')}>
+                                <div className="flex items-center justify-end">План (тек.) {getPlanFactSortIcon('planned')}</div>
+                              </TableHead>
+                              <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('completed')}>
+                                <div className="flex items-center justify-end">Факт {getPlanFactSortIcon('completed')}</div>
+                              </TableHead>
+                              <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('deviation')}>
+                                <div className="flex items-center justify-end">Откл. {getPlanFactSortIcon('deviation')}</div>
+                              </TableHead>
                               <TableHead>Статус</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -662,7 +750,7 @@ const ProductionReportsContent = () => {
 
             {/* Полуфабрикаты */}
             {(() => {
-              const semiFinishedReports = reports.filter(r => r.product_type === 'semi-finished');
+              const semiFinishedReports = sortPlanFactReports(planFactFilteredReports.filter(r => r.product_type === 'semi-finished'));
               if (semiFinishedReports.length === 0) return null;
               const totals = semiFinishedReports.reduce((acc, r) => ({
                 planned: acc.planned + r.planned_quantity,
@@ -691,12 +779,22 @@ const ProductionReportsContent = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Номер заказа</TableHead>
-                              <TableHead>Изделие</TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('order_number')}>
+                                <div className="flex items-center">Номер заказа {getPlanFactSortIcon('order_number')}</div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('product_name')}>
+                                <div className="flex items-center">Изделие {getPlanFactSortIcon('product_name')}</div>
+                              </TableHead>
                               <TableHead className="text-right">План (исх.)</TableHead>
-                              <TableHead className="text-right">План (тек.)</TableHead>
-                              <TableHead className="text-right">Факт</TableHead>
-                              <TableHead className="text-right">Откл.</TableHead>
+                              <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('planned')}>
+                                <div className="flex items-center justify-end">План (тек.) {getPlanFactSortIcon('planned')}</div>
+                              </TableHead>
+                              <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('completed')}>
+                                <div className="flex items-center justify-end">Факт {getPlanFactSortIcon('completed')}</div>
+                              </TableHead>
+                              <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handlePlanFactSort('deviation')}>
+                                <div className="flex items-center justify-end">Откл. {getPlanFactSortIcon('deviation')}</div>
+                              </TableHead>
                               <TableHead>Статус</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -742,7 +840,7 @@ const ProductionReportsContent = () => {
         <div className="hidden">
           <PlanFactPrintView
             ref={planFactPrintRef}
-            reports={reports || []}
+            reports={planFactFilteredReports}
             startDate={startDate ? format(startDate, "yyyy-MM-dd") : undefined}
             endDate={endDate ? format(endDate, "yyyy-MM-dd") : undefined}
             printType={planFactPrintType}

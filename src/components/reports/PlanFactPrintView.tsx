@@ -158,6 +158,11 @@ export const PlanFactPrintView = forwardRef<HTMLDivElement, PlanFactPrintViewPro
       ? ['finished', 'assembly', 'semi-finished'] 
       : [printType];
 
+    // Проверяем, есть ли данные для печати
+    const hasDataToPrint = typesToPrint.some(type => 
+      reports.some(r => r.product_type === type)
+    );
+
     const dateRange = startDate && endDate
       ? `${format(new Date(startDate), 'dd.MM.yyyy', { locale: ru })} - ${format(new Date(endDate), 'dd.MM.yyyy', { locale: ru })}`
       : 'Все время';
@@ -165,6 +170,36 @@ export const PlanFactPrintView = forwardRef<HTMLDivElement, PlanFactPrintViewPro
     const title = printType === 'all'
       ? 'Отчет план-факт производства'
       : `Отчет план-факт: ${productTypeConfig[printType]?.label || printType}`;
+
+    // Если нет данных для печати, показываем сообщение
+    if (!hasDataToPrint) {
+      return (
+        <div ref={ref} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+          <style>
+            {`
+              @media print {
+                @page { margin: 15mm; size: A4 landscape; }
+                body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+              }
+            `}
+          </style>
+          
+          <div style={{ marginBottom: '20px', borderBottom: '2px solid #1f2937', paddingBottom: '12px' }}>
+            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+              {title}
+            </h1>
+            <div style={{ display: 'flex', gap: '24px', fontSize: '12px', color: '#4b5563' }}>
+              <span>Период: {dateRange}</span>
+              <span>Дата печати: {format(new Date(), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
+            </div>
+          </div>
+          
+          <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+            Нет данных для отображения
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div ref={ref} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
