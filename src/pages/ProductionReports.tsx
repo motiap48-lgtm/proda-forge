@@ -1001,6 +1001,7 @@ const ProductionReportsContent = () => {
                     expandAllProductTypes();
                     expandAllProducts();
                   }}
+                  disabled={expandedProducts.size === aggregatedByProduct.length && aggregatedByProduct.length > 0}
                 >
                   <Maximize2 className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">Развернуть все</span>
@@ -1021,6 +1022,10 @@ const ProductionReportsContent = () => {
                   variant="outline"
                   size="sm"
                   onClick={expandAllOrders}
+                  disabled={(() => {
+                    const parentOrderCount = planFactFilteredReports.filter(r => r.product_type === 'finished' && !r.parent_order_id).length;
+                    return expandedOrders.size === parentOrderCount && parentOrderCount > 0;
+                  })()}
                 >
                   <Maximize2 className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">Развернуть все</span>
