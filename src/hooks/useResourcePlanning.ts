@@ -463,6 +463,30 @@ export const useCreateWorkScheduleShift = () => {
   });
 };
 
+export const useUpdateWorkScheduleShift = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const { data, error } = await supabase
+        .from("work_schedule_shifts")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["work-schedules"] });
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};
+
 export const useDeleteWorkScheduleShift = () => {
   const queryClient = useQueryClient();
 
@@ -503,6 +527,30 @@ export const useCreateWorkScheduleBreak = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["work-schedules"] });
       toast.success("Перерыв добавлен");
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};
+
+export const useUpdateWorkScheduleBreak = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const { data, error } = await supabase
+        .from("work_schedule_breaks")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["work-schedules"] });
     },
     onError: (error: any) => {
       toast.error("Ошибка: " + error.message);
