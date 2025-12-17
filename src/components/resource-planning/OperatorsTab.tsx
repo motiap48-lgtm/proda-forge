@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw } from "lucide-react";
 import { useOperators, useDeleteOperator } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
 import { BulkOperatorDialog } from "./BulkOperatorDialog";
 import { exportOperatorsToExcel, printOperators } from "./OperatorsPrintExport";
+import { differenceInWeeks } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -71,7 +72,48 @@ export const OperatorsTab = () => {
     }
   };
 
+  // Helper to calculate current shift based on rotation
+  const getCurrentShiftForOperator = (operator: any) => {
+    const shifts = operator.work_schedules?.work_schedule_shifts;
+    if (!shifts || shifts.length === 0) return null;
+    
+    const totalShifts = shifts.length;
+    
+    // If operator has rotation enabled
+    if (operator.shift_rotation_enabled && operator.shift_rotation_start_date && totalShifts >= 2) {
+      const startDate = new Date(operator.shift_rotation_start_date);
+      const today = new Date();
+      const weeksDiff = differenceInWeeks(today, startDate);
+      const startingShift = operator.assigned_shift_number || 1;
+      const currentShiftNumber = ((startingShift - 1 + weeksDiff) % totalShifts) + 1;
+      return shifts.find((s: any) => s.shift_number === currentShiftNumber);
+    }
+    
+    // If operator has fixed shift assigned
+    if (operator.assigned_shift_number) {
+      return shifts.find((s: any) => s.shift_number === operator.assigned_shift_number);
+    }
+    
+    // No shift assigned - return null (ambiguous)
+    return null;
+  };
+
   const getAvailableTime = (operator: any) => {
+    const currentShift = getCurrentShiftForOperator(operator);
+    
+    if (currentShift) {
+      // Return time for the specific shift
+      const netMinutes = currentShift.net_work_minutes ?? (currentShift.gross_work_minutes - currentShift.break_minutes);
+      const hours = Math.floor(netMinutes / 60);
+      const minutes = netMinutes % 60;
+      return { 
+        time: minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`,
+        shiftName: currentShift.shift_name,
+        isRotating: operator.shift_rotation_enabled
+      };
+    }
+    
+    // Fallback: show total for all shifts if no specific shift assigned
     const shifts = operator.work_schedules?.work_schedule_shifts;
     if (!shifts || shifts.length === 0) return null;
     
@@ -83,7 +125,12 @@ export const OperatorsTab = () => {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     
-    return minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`;
+    return { 
+      time: minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`,
+      shiftName: null,
+      isRotating: false,
+      isTotal: true
+    };
   };
 
   const handleEdit = (operator: any) => {
@@ -246,8 +293,27 @@ export const OperatorsTab = () => {
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
                       <span>{operator.work_schedules.name}</span>
-                      {getAvailableTime(operator) && (
-                        <span className="text-primary font-medium">({getAvailableTime(operator)})</span>
+                    </div>
+                  )}
+                  {getAvailableTime(operator) && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      {getAvailableTime(operator)?.shiftName ? (
+                        <span>
+                          {getAvailableTime(operator)?.shiftName}
+                          {getAvailableTime(operator)?.isRotating && (
+                            <RefreshCw className="h-3 w-3 inline ml-1" />
+                          )}
+                          : <span className="text-primary font-medium">{getAvailableTime(operator)?.time}</span>
+                        </span>
+                      ) : (
+                        <span className="text-amber-600">
+                          {getAvailableTime(operator)?.isTotal ? "Всего: " : ""}
+                          {getAvailableTime(operator)?.time}
+                          {!getAvailableTime(operator)?.shiftName && operator.work_schedules?.work_schedule_shifts?.length > 1 && (
+                            <span className="text-xs ml-1">(смена не указана)</span>
+                          )}
+                        </span>
                       )}
                     </div>
                   )}
