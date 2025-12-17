@@ -102,6 +102,16 @@ export const OperatorsTab = () => {
 
   const getAvailableTime = (operator: any) => {
     const currentShift = getCurrentShiftForOperator(operator);
+    const shifts = operator.work_schedules?.work_schedule_shifts;
+    
+    // Calculate total schedule time
+    const totalScheduleMinutes = shifts?.reduce((sum: number, shift: any) => {
+      const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+      return sum + netMinutes;
+    }, 0) || 0;
+    const totalHours = Math.floor(totalScheduleMinutes / 60);
+    const totalMins = totalScheduleMinutes % 60;
+    const totalTime = totalMins > 0 ? `${totalHours} ч ${totalMins} мин` : `${totalHours} ч`;
     
     if (currentShift) {
       // Return time for the specific shift
@@ -111,27 +121,20 @@ export const OperatorsTab = () => {
       return { 
         time: minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`,
         shiftName: currentShift.shift_name,
-        isRotating: operator.shift_rotation_enabled
+        isRotating: operator.shift_rotation_enabled,
+        totalTime: shifts?.length > 1 ? totalTime : null
       };
     }
     
     // Fallback: show total for all shifts if no specific shift assigned
-    const shifts = operator.work_schedules?.work_schedule_shifts;
     if (!shifts || shifts.length === 0) return null;
     
-    const totalMinutes = shifts.reduce((sum: number, shift: any) => {
-      const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
-      return sum + netMinutes;
-    }, 0);
-    
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    
     return { 
-      time: minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`,
+      time: totalTime,
       shiftName: null,
       isRotating: false,
-      isTotal: true
+      isTotal: true,
+      totalTime: null
     };
   };
 
@@ -307,6 +310,11 @@ export const OperatorsTab = () => {
                             <RefreshCw className="h-3 w-3 inline ml-1" />
                           )}
                           : <span className="text-primary font-medium">{getAvailableTime(operator)?.time}</span>
+                          {getAvailableTime(operator)?.totalTime && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              (всего {getAvailableTime(operator)?.totalTime})
+                            </span>
+                          )}
                         </span>
                       ) : (
                         <span className="text-amber-600">
