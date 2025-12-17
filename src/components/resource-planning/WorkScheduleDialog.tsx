@@ -25,8 +25,10 @@ import {
   useCreateWorkSchedule, 
   useUpdateWorkSchedule,
   useCreateWorkScheduleShift,
+  useUpdateWorkScheduleShift,
   useDeleteWorkScheduleShift,
   useCreateWorkScheduleBreak,
+  useUpdateWorkScheduleBreak,
   useDeleteWorkScheduleBreak
 } from "@/hooks/useResourcePlanning";
 
@@ -62,8 +64,10 @@ export const WorkScheduleDialog = ({
   const createSchedule = useCreateWorkSchedule();
   const updateSchedule = useUpdateWorkSchedule();
   const createShift = useCreateWorkScheduleShift();
+  const updateShiftMutation = useUpdateWorkScheduleShift();
   const deleteShift = useDeleteWorkScheduleShift();
   const createBreak = useCreateWorkScheduleBreak();
+  const updateBreakMutation = useUpdateWorkScheduleBreak();
   const deleteBreak = useDeleteWorkScheduleBreak();
   
   const isEditing = !!schedule;
@@ -79,6 +83,7 @@ export const WorkScheduleDialog = ({
 
   const [shifts, setShifts] = useState<ShiftData[]>([]);
   const [pendingShifts, setPendingShifts] = useState<ShiftData[]>([]);
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
 
   useEffect(() => {
     if (schedule) {
@@ -204,6 +209,67 @@ export const WorkScheduleDialog = ({
     }));
   };
 
+  const updateExistingShift = (shiftId: string, field: keyof ShiftData, value: any) => {
+    setShifts(shifts.map(s => {
+      if (s.id === shiftId) {
+        const updated = { ...s, [field]: value };
+        if (field === "breaks") {
+          updated.break_minutes = value.reduce((sum: number, b: BreakData) => sum + b.duration_minutes, 0);
+        }
+        return updated;
+      }
+      return s;
+    }));
+  };
+
+  const updateExistingBreak = (shiftId: string, breakIndex: number, field: keyof BreakData, value: any) => {
+    setShifts(shifts.map(s => {
+      if (s.id === shiftId) {
+        const newBreaks = [...s.breaks];
+        newBreaks[breakIndex] = { ...newBreaks[breakIndex], [field]: value };
+        return {
+          ...s,
+          breaks: newBreaks,
+          break_minutes: newBreaks.reduce((sum, b) => sum + b.duration_minutes, 0),
+        };
+      }
+      return s;
+    }));
+  };
+
+  const addBreakToExistingShift = (shiftId: string) => {
+    setShifts(shifts.map(s => {
+      if (s.id === shiftId) {
+        const newBreaks = [...s.breaks, {
+          break_name: `Перерыв ${s.breaks.length + 1}`,
+          start_time: "14:00",
+          duration_minutes: 10,
+          is_paid: true,
+        }];
+        return {
+          ...s,
+          breaks: newBreaks,
+          break_minutes: newBreaks.reduce((sum, b) => sum + b.duration_minutes, 0),
+        };
+      }
+      return s;
+    }));
+  };
+
+  const removeExistingBreakLocal = (shiftId: string, breakIndex: number) => {
+    setShifts(shifts.map(s => {
+      if (s.id === shiftId) {
+        const newBreaks = s.breaks.filter((_, i) => i !== breakIndex);
+        return {
+          ...s,
+          breaks: newBreaks,
+          break_minutes: newBreaks.reduce((sum, b) => sum + b.duration_minutes, 0),
+        };
+      }
+      return s;
+    }));
+  };
+
   const calculateGrossMinutes = (start: string, end: string): number => {
     const [startH, startM] = start.split(":").map(Number);
     const [endH, endM] = end.split(":").map(Number);
@@ -218,6 +284,41 @@ export const WorkScheduleDialog = ({
 
     if (isEditing) {
       await updateSchedule.mutateAsync({ id: schedule.id, ...formData });
+      
+      // Update existing shifts
+      for (const shift of shifts) {
+        const grossMinutes = calculateGrossMinutes(shift.start_time, shift.end_time);
+        await updateShiftMutation.mutateAsync({
+          id: shift.id,
+          shift_name: shift.shift_name,
+          shift_number: shift.shift_number,
+          start_time: shift.start_time,
+          end_time: shift.end_time,
+          gross_work_minutes: grossMinutes,
+          break_minutes: shift.break_minutes,
+        });
+        
+        // Update existing breaks and create new ones
+        for (const breakItem of shift.breaks) {
+          if (breakItem.id) {
+            await updateBreakMutation.mutateAsync({
+              id: breakItem.id,
+              break_name: breakItem.break_name,
+              start_time: breakItem.start_time,
+              duration_minutes: breakItem.duration_minutes,
+              is_paid: breakItem.is_paid,
+            });
+          } else {
+            await createBreak.mutateAsync({
+              shift_id: shift.id,
+              break_name: breakItem.break_name,
+              start_time: breakItem.start_time,
+              duration_minutes: breakItem.duration_minutes,
+              is_paid: breakItem.is_paid,
+            });
+          }
+        }
+      }
       
       // Create pending shifts
       for (const shift of pendingShifts) {
@@ -278,8 +379,8 @@ export const WorkScheduleDialog = ({
   };
 
   const isPending = createSchedule.isPending || updateSchedule.isPending || 
-                    createShift.isPending || deleteShift.isPending ||
-                    createBreak.isPending || deleteBreak.isPending;
+                    createShift.isPending || updateShiftMutation.isPending || deleteShift.isPending ||
+                    createBreak.isPending || updateBreakMutation.isPending || deleteBreak.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -376,15 +477,12 @@ export const WorkScheduleDialog = ({
               </Button>
             </div>
             
-            {/* Existing shifts (read-only with delete) */}
+            {/* Existing shifts (editable) */}
             {shifts.map((shift) => (
               <Card key={shift.id} className="bg-muted/30">
                 <CardHeader className="py-2 px-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      {shift.shift_name}
-                      <Badge variant="secondary">{shift.start_time} - {shift.end_time}</Badge>
-                    </CardTitle>
+                    <CardTitle className="text-sm font-medium">Смена</CardTitle>
                     <Button
                       type="button"
                       variant="ghost"
@@ -395,26 +493,91 @@ export const WorkScheduleDialog = ({
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="py-2 px-3">
-                  <div className="flex flex-wrap gap-2">
-                    {shift.breaks.map((breakItem) => (
-                      <Badge 
-                        key={breakItem.id} 
-                        variant="outline" 
-                        className="flex items-center gap-1"
-                      >
+                <CardContent className="py-2 px-3 space-y-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Название</Label>
+                      <Input
+                        value={shift.shift_name}
+                        onChange={(e) => updateExistingShift(shift.id!, "shift_name", e.target.value)}
+                        placeholder="Смена 1"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Начало</Label>
+                      <Input
+                        type="time"
+                        value={shift.start_time}
+                        onChange={(e) => updateExistingShift(shift.id!, "start_time", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Окончание</Label>
+                      <Input
+                        type="time"
+                        value={shift.end_time}
+                        onChange={(e) => updateExistingShift(shift.id!, "end_time", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Breaks */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs flex items-center gap-1">
                         <Coffee className="h-3 w-3" />
-                        {breakItem.break_name} ({breakItem.start_time}, {breakItem.duration_minutes} мин)
+                        Перерывы ({shift.break_minutes} мин)
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => addBreakToExistingShift(shift.id!)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Перерыв
+                      </Button>
+                    </div>
+                    
+                    {shift.breaks.map((breakItem, breakIndex) => (
+                      <div key={breakItem.id || breakIndex} className="flex items-center gap-2 pl-2 border-l-2 border-muted">
+                        <Input
+                          className="w-28 h-8 text-xs"
+                          value={breakItem.break_name}
+                          onChange={(e) => updateExistingBreak(shift.id!, breakIndex, "break_name", e.target.value)}
+                          placeholder="Название"
+                        />
+                        <Input
+                          type="time"
+                          className="w-24 h-8 text-xs"
+                          value={breakItem.start_time}
+                          onChange={(e) => updateExistingBreak(shift.id!, breakIndex, "start_time", e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          className="w-16 h-8 text-xs"
+                          value={breakItem.duration_minutes}
+                          onChange={(e) => updateExistingBreak(shift.id!, breakIndex, "duration_minutes", parseInt(e.target.value) || 0)}
+                          min={1}
+                        />
+                        <span className="text-xs text-muted-foreground">мин</span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-4 w-4 p-0 ml-1"
-                          onClick={() => removeExistingBreak(breakItem.id!, shift.id!)}
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            if (breakItem.id) {
+                              removeExistingBreak(breakItem.id, shift.id!);
+                            } else {
+                              removeExistingBreakLocal(shift.id!, breakIndex);
+                            }
+                          }}
                         >
                           <Trash2 className="h-3 w-3 text-destructive" />
                         </Button>
-                      </Badge>
+                      </div>
                     ))}
                   </div>
                 </CardContent>
