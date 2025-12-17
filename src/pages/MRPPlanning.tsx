@@ -47,7 +47,9 @@ const MRPPlanning = () => {
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [purchaseAlphaFilter, setPurchaseAlphaFilter] = useState<string | null>(null);
   const [purchaseSearch, setPurchaseSearch] = useState("");
+  const [purchaseStatusFilter, setPurchaseStatusFilter] = useState<string | null>(null);
   const [productionSearch, setProductionSearch] = useState("");
+  const [productionStatusFilter, setProductionStatusFilter] = useState<string | null>(null);
   const [workCenterSearch, setWorkCenterSearch] = useState("");
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [useSelectedOrders, setUseSelectedOrders] = useState(false);
@@ -499,30 +501,72 @@ const MRPPlanning = () => {
                         className="pl-10"
                       />
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Фильтр по алфавиту:</p>
-                      <div className="flex flex-wrap gap-1">
-                        <Button
-                          variant={purchaseAlphaFilter === null ? "default" : "outline"}
-                          size="sm"
-                          className="h-8 px-3"
-                          onClick={() => setPurchaseAlphaFilter(null)}
-                        >
-                          Все
-                        </Button>
-                        {Array.from(new Set(purchaseRequirements.map(item => item.product_name.charAt(0).toUpperCase())))
-                          .sort((a, b) => a.localeCompare(b, 'ru'))
-                          .map(letter => (
-                            <Button
-                              key={letter}
-                              variant={purchaseAlphaFilter === letter ? "default" : "outline"}
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => setPurchaseAlphaFilter(letter)}
-                            >
-                              {letter}
-                            </Button>
-                          ))}
+                    <div className="flex flex-wrap gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Фильтр по статусу:</p>
+                        <div className="flex flex-wrap gap-1">
+                          <Button
+                            variant={purchaseStatusFilter === null ? "default" : "outline"}
+                            size="sm"
+                            className="h-8 px-3"
+                            onClick={() => setPurchaseStatusFilter(null)}
+                          >
+                            Все ({purchaseRequirements.length})
+                          </Button>
+                          <Button
+                            variant={purchaseStatusFilter === 'shortage' ? "default" : "outline"}
+                            size="sm"
+                            className="h-8 px-3 text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => setPurchaseStatusFilter('shortage')}
+                          >
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Дефицит ({purchaseRequirements.filter(i => i.status === 'shortage').length})
+                          </Button>
+                          <Button
+                            variant={purchaseStatusFilter === 'warning' ? "default" : "outline"}
+                            size="sm"
+                            className="h-8 px-3 text-amber-600 border-amber-200 hover:bg-amber-50"
+                            onClick={() => setPurchaseStatusFilter('warning')}
+                          >
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Внимание ({purchaseRequirements.filter(i => i.status === 'warning').length})
+                          </Button>
+                          <Button
+                            variant={purchaseStatusFilter === 'ok' ? "default" : "outline"}
+                            size="sm"
+                            className="h-8 px-3 text-green-600 border-green-200 hover:bg-green-50"
+                            onClick={() => setPurchaseStatusFilter('ok')}
+                          >
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            В норме ({purchaseRequirements.filter(i => i.status === 'ok').length})
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Фильтр по алфавиту:</p>
+                        <div className="flex flex-wrap gap-1">
+                          <Button
+                            variant={purchaseAlphaFilter === null ? "default" : "outline"}
+                            size="sm"
+                            className="h-8 px-3"
+                            onClick={() => setPurchaseAlphaFilter(null)}
+                          >
+                            Все
+                          </Button>
+                          {Array.from(new Set(purchaseRequirements.map(item => item.product_name.charAt(0).toUpperCase())))
+                            .sort((a, b) => a.localeCompare(b, 'ru'))
+                            .map(letter => (
+                              <Button
+                                key={letter}
+                                variant={purchaseAlphaFilter === letter ? "default" : "outline"}
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => setPurchaseAlphaFilter(letter)}
+                              >
+                                {letter}
+                              </Button>
+                            ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -537,7 +581,8 @@ const MRPPlanning = () => {
                         const matchesSearch = !purchaseSearch || 
                           item.product_name.toLowerCase().includes(purchaseSearch.toLowerCase()) ||
                           item.product_code.toLowerCase().includes(purchaseSearch.toLowerCase());
-                        return matchesAlpha && matchesSearch;
+                        const matchesStatus = !purchaseStatusFilter || item.status === purchaseStatusFilter;
+                        return matchesAlpha && matchesSearch && matchesStatus;
                       })
                       .sort((a, b) => a.product_name.localeCompare(b.product_name, 'ru'))
                       .map((item) => (
@@ -672,7 +717,7 @@ const MRPPlanning = () => {
               <CardContent>
                 {/* Search for production requirements */}
                 {productionRequirements.length > 0 && (
-                  <div className="mb-4">
+                  <div className="mb-4 space-y-3">
                     <div className="relative max-w-md">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -682,6 +727,46 @@ const MRPPlanning = () => {
                         className="pl-10"
                       />
                     </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Фильтр по статусу:</p>
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          variant={productionStatusFilter === null ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 px-3"
+                          onClick={() => setProductionStatusFilter(null)}
+                        >
+                          Все ({productionRequirements.length})
+                        </Button>
+                        <Button
+                          variant={productionStatusFilter === 'shortage' ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 px-3 text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => setProductionStatusFilter('shortage')}
+                        >
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Дефицит ({productionRequirements.filter(i => i.status === 'shortage').length})
+                        </Button>
+                        <Button
+                          variant={productionStatusFilter === 'warning' ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 px-3 text-amber-600 border-amber-200 hover:bg-amber-50"
+                          onClick={() => setProductionStatusFilter('warning')}
+                        >
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Внимание ({productionRequirements.filter(i => i.status === 'warning').length})
+                        </Button>
+                        <Button
+                          variant={productionStatusFilter === 'ok' ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 px-3 text-green-600 border-green-200 hover:bg-green-50"
+                          onClick={() => setProductionStatusFilter('ok')}
+                        >
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          В норме ({productionRequirements.filter(i => i.status === 'ok').length})
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
                 {isLoading ? (
@@ -690,11 +775,12 @@ const MRPPlanning = () => {
                   <div className="space-y-3">
                     {productionRequirements
                       .filter(item => {
-                        if (!productionSearch) return true;
-                        const search = productionSearch.toLowerCase();
-                        return item.product_name.toLowerCase().includes(search) ||
-                          item.product_code.toLowerCase().includes(search) ||
-                          (item.work_center_name && item.work_center_name.toLowerCase().includes(search));
+                        const matchesSearch = !productionSearch || 
+                          item.product_name.toLowerCase().includes(productionSearch.toLowerCase()) ||
+                          item.product_code.toLowerCase().includes(productionSearch.toLowerCase()) ||
+                          (item.work_center_name && item.work_center_name.toLowerCase().includes(productionSearch.toLowerCase()));
+                        const matchesStatus = !productionStatusFilter || item.status === productionStatusFilter;
+                        return matchesSearch && matchesStatus;
                       })
                       .map((item) => (
                       <Card key={item.product_id} className="border-l-4 border-l-blue-500">
