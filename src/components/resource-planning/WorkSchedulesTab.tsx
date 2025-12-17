@@ -141,20 +141,32 @@ export const WorkSchedulesTab = () => {
                   <div className="border-t pt-3 mt-3">
                     <p className="text-sm font-medium mb-2">Смены:</p>
                     <div className="space-y-2">
-                      {schedule.work_schedule_shifts.map((shift: any) => (
-                        <div key={shift.id} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span>{shift.shift_name}</span>
+                      {schedule.work_schedule_shifts.map((shift: any) => {
+                        const netMinutes = shift.net_work_minutes || (shift.gross_work_minutes - shift.break_minutes) || 0;
+                        const hours = Math.floor(netMinutes / 60);
+                        const mins = netMinutes % 60;
+                        return (
+                          <div key={shift.id} className="space-y-1.5">
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span>{shift.shift_name}</span>
+                              </div>
+                              <span className="text-muted-foreground text-xs">
+                                {shift.start_time?.slice(0, 5)} - {shift.end_time?.slice(0, 5)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 justify-end">
+                              <div className="px-2 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs font-medium">
+                                {netMinutes} мин
+                              </div>
+                              <div className="px-2 py-0.5 rounded-full border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
+                                {hours} ч {mins > 0 ? `${mins} мин` : ''}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <span>{shift.start_time?.slice(0, 5)} - {shift.end_time?.slice(0, 5)}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {shift.net_work_minutes} мин
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

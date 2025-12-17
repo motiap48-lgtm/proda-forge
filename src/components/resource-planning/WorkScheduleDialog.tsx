@@ -580,6 +580,31 @@ export const WorkScheduleDialog = ({
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Available time calculation */}
+                  {(() => {
+                    const grossMinutes = calculateGrossMinutes(shift.start_time, shift.end_time);
+                    const netMinutes = grossMinutes - shift.break_minutes;
+                    const hours = Math.floor(netMinutes / 60);
+                    const mins = netMinutes % 60;
+                    return (
+                      <div className="mt-3 p-2 rounded-lg bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/20">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                            Доступное время:
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0">
+                              {netMinutes} мин
+                            </Badge>
+                            <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+                              {hours} ч {mins > 0 ? `${mins} мин` : ''}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             ))}
@@ -681,6 +706,31 @@ export const WorkScheduleDialog = ({
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Available time calculation */}
+                  {(() => {
+                    const grossMinutes = calculateGrossMinutes(shift.start_time, shift.end_time);
+                    const netMinutes = grossMinutes - shift.break_minutes;
+                    const hours = Math.floor(netMinutes / 60);
+                    const mins = netMinutes % 60;
+                    return (
+                      <div className="mt-3 p-2 rounded-lg bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/20">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                            Доступное время:
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0">
+                              {netMinutes} мин
+                            </Badge>
+                            <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+                              {hours} ч {mins > 0 ? `${mins} мин` : ''}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             ))}
