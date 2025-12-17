@@ -49,7 +49,7 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
           product_id,
           products:product_id(id, name, code, product_type, unit)
         `)
-        .in("status", ["planned", "released", "in_progress"])
+        .in("status", ["planned", "released", "in_progress", "on_hold", "completed"])
         .order("planned_start_date", { ascending: false });
 
       if (startDate) {
