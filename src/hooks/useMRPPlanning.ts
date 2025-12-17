@@ -27,6 +27,7 @@ interface BaseRequirement {
 // Потребность к закупке (только материалы)
 export interface PurchaseRequirement extends BaseRequirement {
   product_type: 'material';
+  source_orders: string[]; // Номера заказов, из которых возникла потребность
 }
 
 // Потребность к производству (ПФ, СБ, ГП)
@@ -148,24 +149,31 @@ export const useMRPProductionOrders = (horizonDays: number = 30) => {
   });
 };
 
-export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: string[]) => {
+export const useMRPCalculation = (
+  horizonDays: number = 30, 
+  selectedOrderIds?: string[],
+  includeChildOrders: boolean = false
+) => {
   return useQuery({
-    queryKey: ["mrp-calculation", horizonDays, selectedOrderIds],
+    queryKey: ["mrp-calculation", horizonDays, selectedOrderIds, includeChildOrders],
     queryFn: async (): Promise<MRPCalculationResult> => {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + horizonDays);
 
       // 1. Получаем производственные заказы в горизонте планирования
-      // ВАЖНО: Исключаем дочерние заказы (parent_order_id IS NOT NULL), 
-      // т.к. их потребности уже учтены в BOM-разузловке родительских заказов
       let ordersQuery = supabase
         .from("production_orders")
         .select(`
           *,
           products:product_id(id, code, name, unit, product_type)
         `)
-        .in("status", ["planned", "released"])
-        .is("parent_order_id", null); // Только родительские/самостоятельные заказы
+        .in("status", ["planned", "released"]);
+      
+      // Исключаем дочерние заказы если не включён соответствующий флаг
+      // т.к. их потребности уже учтены в BOM-разузловке родительских заказов
+      if (!includeChildOrders) {
+        ordersQuery = ordersQuery.is("parent_order_id", null);
+      }
       
       // Если выбраны конкретные заказы, фильтруем по ним
       if (selectedOrderIds && selectedOrderIds.length > 0) {
@@ -343,6 +351,7 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
               available: inv?.available || 0,
               net_requirement: 0,
               status: 'ok',
+              source_orders: [],
             });
           }
           const req = purchaseReqs.get(productId)!;
@@ -354,6 +363,10 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
             req.plan_decrease_amount += requiredQty;
           }
           req.gross_requirement += requiredQty;
+          // Добавляем источник заказа
+          if (!req.source_orders.includes(sourceOrder)) {
+            req.source_orders.push(sourceOrder);
+          }
           return;
         }
 
