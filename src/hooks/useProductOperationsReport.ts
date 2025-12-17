@@ -37,8 +37,8 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
   return useQuery({
     queryKey: ["product-operations-report", startDate, endDate],
     queryFn: async () => {
-      // 1. Получаем производственные заказы
-      let ordersQuery = supabase
+      // 1. Получаем ВСЕ производственные заказы для агрегации факта
+      let allOrdersQuery = supabase
         .from("production_orders")
         .select(`
           id,
@@ -47,17 +47,16 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
           completed_quantity,
           status,
           product_id,
+          parent_order_id,
           products:product_id(id, name, code, product_type, unit)
         `)
-        .in("status", ["planned", "released", "in_progress", "on_hold", "completed"])
-        .is("parent_order_id", null) // Исключаем дочерние заказы - они учтены в BOM родителей
-        .order("planned_start_date", { ascending: false });
+        .in("status", ["planned", "released", "in_progress", "on_hold", "completed"]);
 
       if (startDate) {
-        ordersQuery = ordersQuery.gte("planned_start_date", startDate);
+        allOrdersQuery = allOrdersQuery.gte("planned_start_date", startDate);
       }
       if (endDate) {
-        ordersQuery = ordersQuery.lte("planned_end_date", endDate);
+        allOrdersQuery = allOrdersQuery.lte("planned_end_date", endDate);
       }
 
       // 2. Загружаем спецификации
@@ -98,13 +97,13 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
         `)
         .eq("is_active", true);
 
-      const [ordersResult, specsResult, routingResult] = await Promise.all([
-        ordersQuery,
+      const [allOrdersResult, specsResult, routingResult] = await Promise.all([
+        allOrdersQuery,
         specsQuery,
         routingQuery,
       ]);
 
-      if (ordersResult.error) throw ordersResult.error;
+      if (allOrdersResult.error) throw allOrdersResult.error;
       if (specsResult.error) throw specsResult.error;
       if (routingResult.error) throw routingResult.error;
 
@@ -157,24 +156,34 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
         };
       });
 
-      // Аккумулятор требований по продуктам
+      // Разделяем заказы на родительские и дочерние
+      const parentOrders = allOrdersResult.data?.filter(o => !o.parent_order_id) || [];
+      const allOrders = allOrdersResult.data || [];
+
+      // Агрегируем ФАКТ выполнения по всем заказам (включая дочерние)
+      const completedByProduct = new Map<string, number>();
+      allOrders.forEach(order => {
+        const productId = order.product_id;
+        const current = completedByProduct.get(productId) || 0;
+        completedByProduct.set(productId, current + Number(order.completed_quantity));
+      });
+
+      // Аккумулятор требований по продуктам (только ПЛАН из разузловки)
       const productRequirements = new Map<string, {
         product_id: string;
         product_code: string;
         product_name: string;
         product_type: string;
         planned_quantity: number;
-        completed_quantity: number;
       }>();
 
-      // Рекурсивная разузловка
+      // Рекурсивная разузловка (только для ПЛАНА)
       const explodeBOM = (
         productId: string,
         productCode: string,
         productName: string,
         productType: string,
         requiredQty: number,
-        completedQty: number,
         ancestorPath: Set<string> = new Set()
       ) => {
         if (ancestorPath.has(productId)) return;
@@ -184,7 +193,6 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
           const existing = productRequirements.get(productId);
           if (existing) {
             existing.planned_quantity += requiredQty;
-            existing.completed_quantity += completedQty;
           } else {
             productRequirements.set(productId, {
               product_id: productId,
@@ -192,7 +200,6 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
               product_name: productName,
               product_type: productType,
               planned_quantity: requiredQty,
-              completed_quantity: completedQty,
             });
           }
         }
@@ -212,15 +219,14 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
               material.product_name,
               material.product_type,
               materialQty,
-              0,
               newAncestorPath
             );
           });
         }
       };
 
-      // Обрабатываем заказы
-      ordersResult.data?.forEach(order => {
+      // Обрабатываем только РОДИТЕЛЬСКИЕ заказы для плана
+      parentOrders.forEach(order => {
         const product = order.products as any;
         if (!product) return;
 
@@ -230,7 +236,6 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
           product.name,
           product.product_type,
           Number(order.quantity),
-          Number(order.completed_quantity),
           new Set()
         );
       });
@@ -253,7 +258,9 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
           }
         });
 
-        const deviation = req.completed_quantity - req.planned_quantity;
+        // Берём факт из агрегированных данных по всем заказам
+        const completedQty = completedByProduct.get(req.product_id) || 0;
+        const deviation = completedQty - req.planned_quantity;
         const deviationPercent = req.planned_quantity > 0 
           ? (deviation / req.planned_quantity) * 100 
           : 0;
@@ -267,7 +274,7 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
           routing_sheet_code: routing?.code || '',
           routing_sheet_name: routing?.name || '',
           planned_quantity: req.planned_quantity,
-          completed_quantity: req.completed_quantity,
+          completed_quantity: completedQty,
           deviation,
           deviation_percent: deviationPercent,
           operations,
