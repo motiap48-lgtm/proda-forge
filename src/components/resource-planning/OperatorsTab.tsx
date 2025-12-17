@@ -54,6 +54,7 @@ export const OperatorsTab = () => {
       case "operator": return "Станочник";
       case "assembler": return "Сборщик";
       case "welder": return "Сварщик";
+      case "painter": return "Маляр";
       case "universal": return "Универсал";
       default: return type;
     }
@@ -64,6 +65,7 @@ export const OperatorsTab = () => {
       case "operator": return "default";
       case "assembler": return "secondary";
       case "welder": return "destructive";
+      case "painter": return "secondary";
       case "universal": return "outline";
       default: return "outline";
     }
@@ -133,6 +135,7 @@ export const OperatorsTab = () => {
               <SelectItem value="operator">Станочник</SelectItem>
               <SelectItem value="assembler">Сборщик</SelectItem>
               <SelectItem value="welder">Сварщик</SelectItem>
+              <SelectItem value="painter">Маляр</SelectItem>
               <SelectItem value="universal">Универсал</SelectItem>
             </SelectContent>
           </Select>
