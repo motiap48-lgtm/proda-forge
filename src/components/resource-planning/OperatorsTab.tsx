@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock } from "lucide-react";
 import { useOperators, useDeleteOperator } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
 import {
@@ -51,6 +51,21 @@ export const OperatorsTab = () => {
       case "universal": return "outline";
       default: return "outline";
     }
+  };
+
+  const getAvailableTime = (operator: any) => {
+    const shifts = operator.work_schedules?.work_schedule_shifts;
+    if (!shifts || shifts.length === 0) return null;
+    
+    const totalMinutes = shifts.reduce((sum: number, shift: any) => {
+      const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+      return sum + netMinutes;
+    }, 0);
+    
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    return minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`;
   };
 
   const handleEdit = (operator: any) => {
@@ -156,6 +171,15 @@ export const OperatorsTab = () => {
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
                       <span>{operator.work_schedules.name}</span>
+                      {getAvailableTime(operator) && (
+                        <span className="text-primary font-medium">({getAvailableTime(operator)})</span>
+                      )}
+                    </div>
+                  )}
+                  {!operator.work_schedules && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span className="text-muted-foreground/70">График не назначен</span>
                     </div>
                   )}
                   {operator.phone && (
