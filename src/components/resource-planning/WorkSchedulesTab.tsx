@@ -7,6 +7,12 @@ import { Plus, Search, Clock, Calendar, Coffee, Edit, Trash2, Wand2 } from "luci
 import { useWorkSchedules, useDeleteWorkSchedule } from "@/hooks/useResourcePlanning";
 import { WorkScheduleDialog } from "./WorkScheduleDialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -156,14 +162,40 @@ export const WorkSchedulesTab = () => {
                                 {shift.start_time?.slice(0, 5)} - {shift.end_time?.slice(0, 5)}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 justify-end">
-                              <div className="px-2 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs font-medium">
-                                {netMinutes} мин
-                              </div>
-                              <div className="px-2 py-0.5 rounded-full border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
-                                {hours} ч {mins > 0 ? `${mins} мин` : ''}
-                              </div>
-                            </div>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center gap-2 justify-end cursor-help">
+                                    <div className="px-2 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs font-medium">
+                                      {netMinutes} мин
+                                    </div>
+                                    <div className="px-2 py-0.5 rounded-full border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
+                                      {hours} ч {mins > 0 ? `${mins} мин` : ''}
+                                    </div>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs">
+                                  <div className="space-y-1.5">
+                                    <p className="font-medium text-xs">Перерывы ({shift.break_minutes} мин):</p>
+                                    {shift.work_schedule_breaks && shift.work_schedule_breaks.length > 0 ? (
+                                      <div className="space-y-1">
+                                        {shift.work_schedule_breaks.map((breakItem: any) => (
+                                          <div key={breakItem.id} className="flex items-center gap-2 text-xs">
+                                            <Coffee className="h-3 w-3 text-muted-foreground" />
+                                            <span>{breakItem.break_name}</span>
+                                            <span className="text-muted-foreground">
+                                              {breakItem.start_time?.slice(0, 5)} • {breakItem.duration_minutes} мин
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground">Нет перерывов</p>
+                                    )}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </div>
                         );
                       })}
