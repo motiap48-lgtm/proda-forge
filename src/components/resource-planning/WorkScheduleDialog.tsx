@@ -230,7 +230,6 @@ export const WorkScheduleDialog = ({
           end_time: shift.end_time,
           gross_work_minutes: grossMinutes,
           break_minutes: shift.break_minutes,
-          net_work_minutes: grossMinutes - shift.break_minutes,
         });
         
         // Create breaks for this shift
@@ -260,7 +259,6 @@ export const WorkScheduleDialog = ({
           end_time: shift.end_time,
           gross_work_minutes: grossMinutes,
           break_minutes: shift.break_minutes,
-          net_work_minutes: grossMinutes - shift.break_minutes,
         });
         
         // Create breaks for this shift
