@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { startOfDay, startOfWeek, startOfMonth, format, differenceInDays, addDays } from "date-fns";
+import { startOfDay, startOfWeek, startOfMonth, format, differenceInDays, addDays, eachDayOfInterval, parseISO, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 
 export type TimeGranularity = 'day' | 'week' | 'month';
@@ -64,7 +64,7 @@ export const useTimelineAnalytics = (
   return useQuery({
     queryKey: ["timeline-analytics", startDate, endDate, granularity],
     queryFn: async () => {
-      // Fetch production orders with dates
+      // Fetch production orders with dates - use OR logic for date range to include orders active in the period
       let ordersQuery = supabase
         .from("production_orders")
         .select(`
@@ -85,11 +85,16 @@ export const useTimelineAnalytics = (
         `)
         .order("planned_start_date", { ascending: true });
 
-      if (startDate) {
-        ordersQuery = ordersQuery.gte("planned_start_date", startDate);
-      }
-      if (endDate) {
-        ordersQuery = ordersQuery.lte("planned_end_date", endDate);
+      // Get orders that overlap with the selected period
+      if (startDate && endDate) {
+        // Orders where: planned_start <= endDate AND planned_end >= startDate (overlapping interval)
+        ordersQuery = ordersQuery
+          .lte("planned_start_date", endDate)
+          .gte("planned_end_date", startDate);
+      } else if (startDate) {
+        ordersQuery = ordersQuery.gte("planned_end_date", startDate);
+      } else if (endDate) {
+        ordersQuery = ordersQuery.lte("planned_start_date", endDate);
       }
 
       const { data: orders, error } = await ordersQuery;
@@ -120,12 +125,26 @@ export const useTimelineAnalytics = (
         }
       };
 
-      // Timeline trend data
+      // Generate all dates in the range
+      const rangeStart = startDate ? parseISO(startDate) : new Date();
+      const rangeEnd = endDate ? parseISO(endDate) : new Date();
+      
+      const allDates = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
+
+      // Timeline trend data - distribute quantities across dates
       const timelineMap = new Map<string, {
         planned: number;
         completed: number;
         ordersCount: number;
       }>();
+
+      // Initialize all dates with zeros
+      allDates.forEach(date => {
+        const dateKey = getDateKey(format(date, 'yyyy-MM-dd'));
+        if (!timelineMap.has(dateKey)) {
+          timelineMap.set(dateKey, { planned: 0, completed: 0, ordersCount: 0 });
+        }
+      });
 
       // Work center load data
       const workCenterLoadMap = new Map<string, Map<string, {
@@ -143,37 +162,91 @@ export const useTimelineAnalytics = (
       const forecasts: CompletionForecast[] = [];
 
       orders?.forEach(order => {
-        const plannedStart = order.planned_start_date;
-        const dateKey = getDateKey(plannedStart);
+        const orderStart = parseISO(order.planned_start_date);
+        const orderEnd = parseISO(order.planned_end_date);
+        const quantity = Number(order.quantity);
+        const completedQty = Number(order.completed_quantity);
         
-        // Aggregate timeline data
-        if (!timelineMap.has(dateKey)) {
-          timelineMap.set(dateKey, { planned: 0, completed: 0, ordersCount: 0 });
-        }
-        const point = timelineMap.get(dateKey)!;
-        point.planned += Number(order.quantity);
-        point.completed += Number(order.completed_quantity);
-        point.ordersCount++;
+        // Calculate duration in days (min 1 day)
+        const durationDays = Math.max(1, differenceInDays(orderEnd, orderStart) + 1);
+        
+        // Daily planned rate
+        const dailyPlannedRate = quantity / durationDays;
+        
+        // Distribute planned quantity across each day of the order's duration
+        allDates.forEach(date => {
+          const dateStr = format(date, 'yyyy-MM-dd');
+          const dateKey = getDateKey(dateStr);
+          
+          // Check if this date is within the order's planned period
+          if (isWithinInterval(date, { start: orderStart, end: orderEnd })) {
+            const point = timelineMap.get(dateKey)!;
+            point.planned += dailyPlannedRate;
+            
+            // Count order only once per period
+            const orderDateKey = getDateKey(order.planned_start_date);
+            if (dateKey === orderDateKey) {
+              point.ordersCount++;
+            }
+          }
+        });
 
-        // Work center load
+        // For completed: attribute to actual_end_date if available, otherwise to planned_end_date
+        // But only if the order has some completion
+        if (completedQty > 0) {
+          const completionDate = order.actual_end_date || order.planned_end_date;
+          const completionDateKey = getDateKey(completionDate);
+          
+          // Only add if the completion date is within our range
+          if (timelineMap.has(completionDateKey)) {
+            const point = timelineMap.get(completionDateKey)!;
+            point.completed += completedQty;
+          } else {
+            // If completion is before range start, attribute to first date
+            const firstDateKey = Array.from(timelineMap.keys())[0];
+            if (firstDateKey && parseISO(completionDate) < rangeStart) {
+              const point = timelineMap.get(firstDateKey)!;
+              point.completed += completedQty;
+            }
+          }
+        }
+
+        // Work center load - distribute similarly
         const wc = order.work_centers as any;
         if (wc) {
           if (!workCenterLoadMap.has(wc.id)) {
             workCenterLoadMap.set(wc.id, new Map());
           }
           const wcDates = workCenterLoadMap.get(wc.id)!;
-          if (!wcDates.has(dateKey)) {
-            wcDates.set(dateKey, {
-              work_center_name: wc.name,
-              work_center_code: wc.code,
-              department: wc.department,
-              planned: 0,
-              completed: 0,
-            });
+          
+          allDates.forEach(date => {
+            const dateStr = format(date, 'yyyy-MM-dd');
+            const dateKey = getDateKey(dateStr);
+            
+            if (isWithinInterval(date, { start: orderStart, end: orderEnd })) {
+              if (!wcDates.has(dateKey)) {
+                wcDates.set(dateKey, {
+                  work_center_name: wc.name,
+                  work_center_code: wc.code,
+                  department: wc.department,
+                  planned: 0,
+                  completed: 0,
+                });
+              }
+              const wcPoint = wcDates.get(dateKey)!;
+              wcPoint.planned += dailyPlannedRate;
+            }
+          });
+          
+          // Add completed to work center
+          if (completedQty > 0) {
+            const completionDate = order.actual_end_date || order.planned_end_date;
+            const completionDateKey = getDateKey(completionDate);
+            if (wcDates.has(completionDateKey)) {
+              const wcPoint = wcDates.get(completionDateKey)!;
+              wcPoint.completed += completedQty;
+            }
           }
-          const wcPoint = wcDates.get(dateKey)!;
-          wcPoint.planned += Number(order.quantity);
-          wcPoint.completed += Number(order.completed_quantity);
         }
 
         // Order timing
@@ -220,18 +293,16 @@ export const useTimelineAnalytics = (
 
         // Completion forecast for in-progress orders
         if (order.status === 'in_progress' && order.actual_start_date) {
-          const quantity = Number(order.quantity);
-          const completed = Number(order.completed_quantity);
-          const completionPercent = quantity > 0 ? (completed / quantity) * 100 : 0;
+          const completionPercent = quantity > 0 ? (completedQty / quantity) * 100 : 0;
           
           const daysElapsed = differenceInDays(new Date(), new Date(order.actual_start_date)) || 1;
-          const avgDailyRate = completed / daysElapsed;
+          const avgDailyRate = completedQty / daysElapsed;
           
           let estimatedDate: string | null = null;
           let daysRemaining: number | null = null;
           
           if (avgDailyRate > 0) {
-            const remaining = quantity - completed;
+            const remaining = quantity - completedQty;
             daysRemaining = Math.ceil(remaining / avgDailyRate);
             estimatedDate = format(addDays(new Date(), daysRemaining), 'yyyy-MM-dd');
           }
@@ -245,7 +316,7 @@ export const useTimelineAnalytics = (
             order_number: order.order_number,
             product_name: product?.name || '',
             quantity,
-            completed_quantity: completed,
+            completed_quantity: completedQty,
             completion_percent: completionPercent,
             avg_daily_rate: avgDailyRate,
             estimated_completion_date: estimatedDate,
@@ -262,9 +333,9 @@ export const useTimelineAnalytics = (
         .map(([date, data]) => ({
           date,
           label: getDateLabel(date),
-          planned: data.planned,
+          planned: Math.round(data.planned * 100) / 100, // Round to 2 decimal places
           completed: data.completed,
-          deviation: data.completed - data.planned,
+          deviation: data.completed - Math.round(data.planned),
           deviationPercent: data.planned > 0 ? ((data.completed - data.planned) / data.planned) * 100 : 0,
           ordersCount: data.ordersCount,
         }));
@@ -280,7 +351,7 @@ export const useTimelineAnalytics = (
             department: data.department,
             date: dateKey,
             label: getDateLabel(dateKey),
-            planned: data.planned,
+            planned: Math.round(data.planned * 100) / 100,
             completed: data.completed,
             load_percent: data.planned > 0 ? (data.completed / data.planned) * 100 : 0,
           });
