@@ -69,8 +69,8 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
   return useQuery({
     queryKey: ["work-center-reports-v3", startDate, endDate],
     queryFn: async () => {
-      // 1. Получаем все производственные заказы
-      let ordersQuery = supabase
+      // 1. Получаем ВСЕ производственные заказы
+      let allOrdersQuery = supabase
         .from("production_orders")
         .select(`
           id,
@@ -80,16 +80,16 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
           status,
           work_center_id,
           product_id,
+          parent_order_id,
           products:product_id(id, name, code, product_type, unit)
         `)
-        .in("status", ["planned", "released", "in_progress"])
-        .order("planned_start_date", { ascending: false });
+        .in("status", ["planned", "released", "in_progress", "on_hold", "completed"]);
 
       if (startDate) {
-        ordersQuery = ordersQuery.gte("planned_start_date", startDate);
+        allOrdersQuery = allOrdersQuery.gte("planned_start_date", startDate);
       }
       if (endDate) {
-        ordersQuery = ordersQuery.lte("planned_end_date", endDate);
+        allOrdersQuery = allOrdersQuery.lte("planned_end_date", endDate);
       }
 
       // 2. Загружаем ВСЕ активные спецификации
@@ -124,19 +124,23 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
         `)
         .eq("is_active", true);
 
-      const [ordersResult, specsResult, routingResult] = await Promise.all([
-        ordersQuery,
+      const [allOrdersResult, specsResult, routingResult] = await Promise.all([
+        allOrdersQuery,
         specsQuery,
         routingQuery,
       ]);
 
-      if (ordersResult.error) throw ordersResult.error;
+      if (allOrdersResult.error) throw allOrdersResult.error;
       if (specsResult.error) throw specsResult.error;
       if (routingResult.error) throw routingResult.error;
 
-      const ordersData = ordersResult.data;
+      const allOrdersData = allOrdersResult.data;
       const specsData = specsResult.data;
       const routingData = routingResult.data;
+
+      // Разделяем на родительские и дочерние
+      const parentOrders = allOrdersData?.filter(o => !o.parent_order_id) || [];
+      const allOrders = allOrdersData || [];
 
       // Создаем кэш спецификаций по product_id
       const specCache: SpecificationCache = {};
@@ -189,24 +193,30 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
         }
       });
 
-      // Аккумулятор потребностей: product_id -> { planned, completed }
+      // Агрегируем ФАКТ выполнения по всем заказам (включая дочерние)
+      const completedByProduct = new Map<string, number>();
+      allOrders.forEach(order => {
+        const productId = order.product_id;
+        const current = completedByProduct.get(productId) || 0;
+        completedByProduct.set(productId, current + Number(order.completed_quantity));
+      });
+
+      // Аккумулятор потребностей: product_id -> { planned } (без факта - берём из completedByProduct)
       const productRequirements = new Map<string, {
         product_id: string;
         product_code: string;
         product_name: string;
         product_type: ProductType;
         planned_quantity: number;
-        completed_quantity: number;
       }>();
 
-      // Рекурсивная функция разузловки
+      // Рекурсивная функция разузловки (только ПЛАН)
       const explodeBOM = (
         productId: string,
         productCode: string,
         productName: string,
         productType: ProductType,
         requiredQty: number,
-        completedQty: number,
         ancestorPath: Set<string> = new Set()
       ) => {
         // Защита от циклических ссылок
@@ -219,7 +229,6 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
           const existing = productRequirements.get(productId);
           if (existing) {
             existing.planned_quantity += requiredQty;
-            existing.completed_quantity += completedQty;
           } else {
             productRequirements.set(productId, {
               product_id: productId,
@@ -227,7 +236,6 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
               product_name: productName,
               product_type: productType,
               planned_quantity: requiredQty,
-              completed_quantity: completedQty,
             });
           }
         }
@@ -248,20 +256,18 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
               material.product_name,
               material.product_type,
               materialQty,
-              0,
               newAncestorPath
             );
           });
         }
       };
 
-      // Обрабатываем каждый производственный заказ - запускаем разузловку
-      ordersData?.forEach(order => {
+      // Обрабатываем только РОДИТЕЛЬСКИЕ заказы для плана - запускаем разузловку
+      parentOrders.forEach(order => {
         const product = order.products as any;
         if (!product) return;
 
         const remainingQty = Number(order.quantity);
-        const completedQty = Number(order.completed_quantity);
 
         explodeBOM(
           product.id,
@@ -269,7 +275,6 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
           product.name,
           product.product_type,
           remainingQty,
-          completedQty,
           new Set()
         );
       });
@@ -280,6 +285,9 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
       productRequirements.forEach((req) => {
         const workCenters = productWorkCentersCache.get(req.product_id);
         const routingInfo = productRoutingInfo[req.product_id];
+        
+        // Берём факт из агрегированных данных
+        const completedQty = completedByProduct.get(req.product_id) || 0;
         
         // Если у продукта нет маршрута, добавляем в "Без участка"
         const targetWorkCenters = workCenters && workCenters.length > 0 
@@ -305,7 +313,7 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
 
           const wcData = workCenterMap.get(wc.work_center_id)!;
           
-          const deviation = req.completed_quantity - req.planned_quantity;
+          const deviation = completedQty - req.planned_quantity;
           const deviationPercent = req.planned_quantity > 0 
             ? (deviation / req.planned_quantity) * 100 
             : 0;
@@ -318,13 +326,13 @@ export const useWorkCenterReports = (startDate?: string, endDate?: string) => {
             routing_sheet_name: routingInfo?.name || '',
             routing_sheet_code: routingInfo?.code || '',
             planned_quantity: req.planned_quantity,
-            completed_quantity: req.completed_quantity,
+            completed_quantity: completedQty,
             deviation,
             deviation_percent: deviationPercent,
           });
 
           wcData.total_planned += req.planned_quantity;
-          wcData.total_completed += req.completed_quantity;
+          wcData.total_completed += completedQty;
         });
       });
 
