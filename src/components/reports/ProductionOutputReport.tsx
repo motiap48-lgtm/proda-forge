@@ -63,8 +63,33 @@ interface ProductionOutputReportProps {
   endDate?: string;
 }
 
-type GroupingMode = 'by_date' | 'by_department' | 'by_work_center';
+type GroupingMode = 'by_date' | 'by_department' | 'by_work_center' | 'by_operation_type';
 type ReportTab = 'output' | 'plan_fact';
+
+const getOperationTypeBadge = (type: string | undefined) => {
+  switch (type) {
+    case "production":
+      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Производство</Badge>;
+    case "transport":
+      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Транспортировка</Badge>;
+    case "control":
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Контроль</Badge>;
+    case "setup":
+      return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Наладка</Badge>;
+    default:
+      return null;
+  }
+};
+
+const getOperationTypeLabel = (type: string | undefined) => {
+  switch (type) {
+    case "production": return "Производство";
+    case "transport": return "Транспортировка";
+    case "control": return "Контроль";
+    case "setup": return "Наладка";
+    default: return "Прочее";
+  }
+};
 
 const getProductTypeBadge = (type: string) => {
   switch (type) {
@@ -123,6 +148,31 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
     const allItems = filteredData.flatMap(day => 
       day.items.map(item => ({ ...item, date: day.date }))
     );
+
+    if (groupingMode === 'by_operation_type') {
+      const byOpType = new Map<string, { items: (DailyOutputItem & { date: string })[], total: number }>();
+      
+      allItems.forEach(item => {
+        const opType = item.operation_type || 'other';
+        if (!byOpType.has(opType)) {
+          byOpType.set(opType, { items: [], total: 0 });
+        }
+        const group = byOpType.get(opType)!;
+        group.items.push(item);
+        group.total += item.completed_quantity;
+      });
+
+      const typeOrder = ['production', 'transport', 'control', 'setup', 'other'];
+      return Array.from(byOpType.entries())
+        .sort((a, b) => typeOrder.indexOf(a[0]) - typeOrder.indexOf(b[0]))
+        .map(([opType, data]) => ({
+          key: opType,
+          label: getOperationTypeLabel(opType),
+          items: data.items,
+          totalQuantity: data.total,
+          operationType: opType,
+        }));
+    }
 
     if (groupingMode === 'by_department') {
       const byDept = new Map<string, { items: (DailyOutputItem & { date: string })[], total: number }>();
@@ -581,6 +631,9 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
                     <SelectItem value="by_date">По датам</SelectItem>
                     <SelectItem value="by_department">По цехам</SelectItem>
                     <SelectItem value="by_work_center">По участкам</SelectItem>
+                    {reportMode === 'all_operations' && (
+                      <SelectItem value="by_operation_type">По типу операции</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -668,6 +721,7 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
                                       <span className="text-muted-foreground">
                                         {item.operation_name || '-'}
                                       </span>
+                                      {item.operation_type && getOperationTypeBadge(item.operation_type)}
                                     </div>
                                   </TableCell>
                                 )}

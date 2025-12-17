@@ -632,6 +632,52 @@ const RoutingSheets = () => {
     setSelectionMode(false);
   };
 
+  // Auto-rename duplicate operations
+  const handleAutoRenameDuplicates = async (sheet: any) => {
+    const operations = sheet.routing_operations || [];
+    const nameCount = new Map<string, number>();
+    const renamedOps: { id: string; newName: string }[] = [];
+    
+    // First pass: find duplicates and create new names
+    operations.forEach((op: any) => {
+      const originalName = op.name?.trim() || '';
+      const count = (nameCount.get(originalName) || 0) + 1;
+      nameCount.set(originalName, count);
+    });
+    
+    // Second pass: rename only duplicates
+    const nameOccurrence = new Map<string, number>();
+    operations.forEach((op: any) => {
+      const originalName = op.name?.trim() || '';
+      if ((nameCount.get(originalName) || 0) > 1) {
+        const occurrence = (nameOccurrence.get(originalName) || 0) + 1;
+        nameOccurrence.set(originalName, occurrence);
+        renamedOps.push({ id: op.id, newName: `${originalName} ${occurrence}` });
+      }
+    });
+    
+    if (renamedOps.length === 0) {
+      toast.info("Нет операций для переименования");
+      return;
+    }
+    
+    // Update operations in database
+    for (const { id, newName } of renamedOps) {
+      const { error } = await supabase
+        .from("routing_operations")
+        .update({ name: newName })
+        .eq("id", id);
+        
+      if (error) {
+        toast.error(`Ошибка переименования: ${error.message}`);
+        return;
+      }
+    }
+    
+    await refetchSheets();
+    toast.success(`Переименовано ${renamedOps.length} операций`);
+  };
+
   const getSelectedSheetsForBulk = () => {
     return sortedSheets
       .filter(s => selectedSheetIds.has(s.id))
@@ -1387,6 +1433,12 @@ const RoutingSheets = () => {
                                         <History className="mr-2 h-4 w-4" />
                                         История распределений
                                       </DropdownMenuItem>
+                                      {getSheetDuplicateOperations(sheet).length > 0 && (
+                                        <DropdownMenuItem onClick={() => handleAutoRenameDuplicates(sheet)}>
+                                          <Edit className="mr-2 h-4 w-4" />
+                                          Переименовать дубли
+                                        </DropdownMenuItem>
+                                      )}
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem 
                                         onClick={() => handleDelete(sheet)}
@@ -1662,6 +1714,12 @@ const RoutingSheets = () => {
                             <History className="mr-2 h-4 w-4" />
                             История распределений
                           </DropdownMenuItem>
+                          {getSheetDuplicateOperations(sheet).length > 0 && (
+                            <DropdownMenuItem onClick={() => handleAutoRenameDuplicates(sheet)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Переименовать дубли
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             onClick={() => handleDelete(sheet)}
