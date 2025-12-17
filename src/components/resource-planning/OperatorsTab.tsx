@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users } from "lucide-react";
 import { useOperators, useDeleteOperator } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
+import { BulkOperatorDialog } from "./BulkOperatorDialog";
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ export const OperatorsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [editingOperator, setEditingOperator] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [operatorToDelete, setOperatorToDelete] = useState<any>(null);
@@ -134,10 +136,16 @@ export const OperatorsTab = () => {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Добавить оператора
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Добавить несколько
+          </Button>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Добавить оператора
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -257,6 +265,11 @@ export const OperatorsTab = () => {
         open={dialogOpen}
         onOpenChange={handleDialogClose}
         operator={editingOperator}
+      />
+
+      <BulkOperatorDialog
+        open={bulkDialogOpen}
+        onOpenChange={setBulkDialogOpen}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
