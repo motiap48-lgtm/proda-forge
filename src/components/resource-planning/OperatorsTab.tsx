@@ -80,8 +80,10 @@ export const OperatorsTab = () => {
     const totalShifts = shifts.length;
     
     // If operator has rotation enabled
-    if (operator.shift_rotation_enabled && operator.shift_rotation_start_date && totalShifts >= 2) {
-      const startDate = new Date(operator.shift_rotation_start_date);
+    if (operator.shift_rotation_enabled && totalShifts >= 2) {
+      const startDate = operator.shift_rotation_start_date 
+        ? new Date(operator.shift_rotation_start_date) 
+        : new Date(); // Default to today if not set
       const today = new Date();
       const weeksDiff = differenceInWeeks(today, startDate);
       const startingShift = operator.assigned_shift_number || 1;
