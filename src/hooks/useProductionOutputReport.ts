@@ -16,6 +16,7 @@ export interface DailyOutputItem {
   order_numbers: string[];
   operation_name?: string;
   operation_sequence?: number;
+  operation_type?: string; // production, transport, control, setup
 }
 
 export interface DailyOutput {
@@ -379,7 +380,7 @@ export const useProductionOutputReport = (
               existing.order_numbers.push(order.order_number);
             }
           } else {
-            dateItems.set(itemKey, {
+          dateItems.set(itemKey, {
               product_id: order.product_id,
               product_name: order.products.name,
               product_code: order.products.code,
@@ -393,6 +394,7 @@ export const useProductionOutputReport = (
               order_numbers: [order.order_number],
               operation_name: mode === "all_operations" ? operationName : undefined,
               operation_sequence: mode === "all_operations" ? seq : undefined,
+              operation_type: mode === "all_operations" ? opInfo?.operation_type : undefined,
             });
           }
         });
