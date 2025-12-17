@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,10 @@ interface OperatorEntry {
   employee_type: string;
   default_work_center_id: string;
   work_schedule_id: string;
+  phone: string;
+  email: string;
+  hire_date: string;
+  notes: string;
 }
 
 const createEmptyOperator = (): OperatorEntry => ({
@@ -49,6 +54,10 @@ const createEmptyOperator = (): OperatorEntry => ({
   employee_type: "operator",
   default_work_center_id: "",
   work_schedule_id: "",
+  phone: "",
+  email: "",
+  hire_date: "",
+  notes: "",
 });
 
 export const BulkOperatorDialog = ({
@@ -78,7 +87,6 @@ export const BulkOperatorDialog = ({
   };
 
   const addOperator = () => {
-    // Copy parameters from the last operator
     const lastOp = operators[operators.length - 1];
     const newOp: OperatorEntry = {
       id: crypto.randomUUID(),
@@ -87,6 +95,10 @@ export const BulkOperatorDialog = ({
       employee_type: lastOp.employee_type,
       default_work_center_id: lastOp.default_work_center_id,
       work_schedule_id: lastOp.work_schedule_id,
+      phone: "",
+      email: "",
+      hire_date: lastOp.hire_date,
+      notes: "",
     };
     setOperators([...operators, newOp]);
     scrollToBottom();
@@ -104,7 +116,7 @@ export const BulkOperatorDialog = ({
     );
   };
 
-  const copyToAll = (sourceId: string, field: "employee_type" | "default_work_center_id" | "work_schedule_id") => {
+  const copyToAll = (sourceId: string, field: "employee_type" | "default_work_center_id" | "work_schedule_id" | "hire_date") => {
     const sourceOp = operators.find(op => op.id === sourceId);
     if (!sourceOp) return;
     
@@ -113,10 +125,11 @@ export const BulkOperatorDialog = ({
       [field]: sourceOp[field]
     })));
     
-    const fieldLabels = {
+    const fieldLabels: Record<string, string> = {
       employee_type: "Тип",
       default_work_center_id: "Участок",
-      work_schedule_id: "График"
+      work_schedule_id: "График",
+      hire_date: "Дата приёма"
     };
     toast.success(`${fieldLabels[field]} скопирован на все строки`);
   };
@@ -141,6 +154,10 @@ export const BulkOperatorDialog = ({
           employee_type: op.employee_type,
           default_work_center_id: op.default_work_center_id || null,
           work_schedule_id: op.work_schedule_id || null,
+          phone: op.phone || null,
+          email: op.email || null,
+          hire_date: op.hire_date || null,
+          notes: op.notes || null,
           is_active: true,
         });
         successCount++;
@@ -161,7 +178,7 @@ export const BulkOperatorDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Массовое добавление операторов
@@ -181,11 +198,12 @@ export const BulkOperatorDialog = ({
               >
                 <CardContent className="pt-4 pb-4">
                   <div className="flex items-start gap-4">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-medium text-sm shrink-0">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-medium text-sm shrink-0 mt-5">
                       {index + 1}
                     </div>
                     
                     <div className="flex-1 space-y-3">
+                      {/* Row 1: Name, Position */}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className="text-xs">ФИО *</Label>
@@ -207,6 +225,7 @@ export const BulkOperatorDialog = ({
                         </div>
                       </div>
 
+                      {/* Row 2: Type, Work Center, Schedule */}
                       <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
@@ -274,7 +293,7 @@ export const BulkOperatorDialog = ({
                               <SelectItem value="none">Не указан</SelectItem>
                               {workCenters?.map((wc: any) => (
                                 <SelectItem key={wc.id} value={wc.id}>
-                                  {wc.code}
+                                  {wc.code} - {wc.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -311,12 +330,74 @@ export const BulkOperatorDialog = ({
                               <SelectItem value="none">Не указан</SelectItem>
                               {workSchedules?.map((ws: any) => (
                                 <SelectItem key={ws.id} value={ws.id}>
-                                  {ws.code}
+                                  {ws.code} - {ws.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
+                      </div>
+
+                      {/* Row 3: Phone, Email, Hire Date */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Телефон</Label>
+                          <Input
+                            value={operator.phone}
+                            onChange={(e) => updateOperator(operator.id, "phone", e.target.value)}
+                            placeholder="+7 (xxx) xxx-xx-xx"
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Email</Label>
+                          <Input
+                            type="email"
+                            value={operator.email}
+                            onChange={(e) => updateOperator(operator.id, "email", e.target.value)}
+                            placeholder="email@example.com"
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs">Дата приёма</Label>
+                            {operators.length > 1 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => copyToAll(operator.id, "hire_date")}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Копировать на все</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                          <Input
+                            type="date"
+                            value={operator.hire_date}
+                            onChange={(e) => updateOperator(operator.id, "hire_date", e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Row 4: Notes */}
+                      <div className="space-y-1">
+                        <Label className="text-xs">Примечания</Label>
+                        <Textarea
+                          value={operator.notes}
+                          onChange={(e) => updateOperator(operator.id, "notes", e.target.value)}
+                          placeholder="Дополнительная информация"
+                          rows={1}
+                          className="min-h-[36px] resize-none"
+                        />
                       </div>
                     </div>
 
@@ -324,7 +405,7 @@ export const BulkOperatorDialog = ({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      className="shrink-0 text-muted-foreground hover:text-destructive mt-5"
                       onClick={() => removeOperator(operator.id)}
                       disabled={operators.length === 1}
                     >
