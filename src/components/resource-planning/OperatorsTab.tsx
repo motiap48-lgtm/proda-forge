@@ -37,15 +37,17 @@ export const OperatorsTab = () => {
     switch (type) {
       case "operator": return "Станочник";
       case "assembler": return "Сборщик";
+      case "welder": return "Сварщик";
       case "universal": return "Универсал";
       default: return type;
     }
   };
 
-  const getEmployeeTypeVariant = (type: string): "default" | "secondary" | "outline" => {
+  const getEmployeeTypeVariant = (type: string): "default" | "secondary" | "outline" | "destructive" => {
     switch (type) {
       case "operator": return "default";
       case "assembler": return "secondary";
+      case "welder": return "destructive";
       case "universal": return "outline";
       default: return "outline";
     }
