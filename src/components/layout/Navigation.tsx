@@ -35,6 +35,7 @@ const navigationItems = [
     icon: Calendar,
     submenu: [
       { name: "MRP Планирование", path: "/planning/mrp", icon: Calendar },
+      { name: "Ресурсы и ССЗ", path: "/planning/resources", icon: Users },
     ]
   },
   { 
