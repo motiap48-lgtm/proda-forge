@@ -200,6 +200,22 @@ export const WorkSchedulesTab = () => {
                         );
                       })}
                     </div>
+                    {/* Total time for all shifts */}
+                    {schedule.work_schedule_shifts.length > 1 && (() => {
+                      const totalMinutes = schedule.work_schedule_shifts.reduce((sum: number, shift: any) => {
+                        return sum + (shift.net_work_minutes || (shift.gross_work_minutes - shift.break_minutes) || 0);
+                      }, 0);
+                      const totalHours = Math.floor(totalMinutes / 60);
+                      const totalMins = totalMinutes % 60;
+                      return (
+                        <div className="flex items-center justify-between mt-3 pt-2 border-t border-dashed">
+                          <span className="text-sm font-medium">Всего по графику:</span>
+                          <div className="px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-medium">
+                            {totalHours} ч {totalMins > 0 ? `${totalMins} мин` : ''}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
