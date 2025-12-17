@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO, eachDayOfInterval, startOfDay, endOfDay } from "date-fns";
+import { format, parseISO, eachDayOfInterval, differenceInDays, isWithinInterval } from "date-fns";
 
 export interface DailyOutputItem {
   product_id: string;
@@ -80,14 +80,16 @@ export interface PlanFactSummary {
 }
 
 export type OutputReportMode = 'finished_products' | 'all_operations';
+export type PlanFactMode = 'by_deadline' | 'distributed';
 
 export const useProductionOutputReport = (
   startDate?: string, 
   endDate?: string,
-  mode: OutputReportMode = 'finished_products'
+  mode: OutputReportMode = 'finished_products',
+  planFactMode: PlanFactMode = 'by_deadline'
 ) => {
   return useQuery({
-    queryKey: ["production-output-report", startDate, endDate, mode],
+    queryKey: ["production-output-report", startDate, endDate, mode, planFactMode],
     queryFn: async () => {
       // Fetch completed operations with history entries for output registration
       const historyQuery = supabase
@@ -479,29 +481,68 @@ export const useProductionOutputReport = (
       const planFactByDate = new Map<string, { planned: number; actual: number }>();
       const planFactByDept = new Map<string, { planned: number; actual: number }>();
 
-      // Add planned from orders (by planned_end_date)
-      ordersData?.forEach(order => {
-        if (!order.planned_end_date) return;
-        const dateKey = order.planned_end_date;
-        if (!planFactByDate.has(dateKey)) {
+      // Generate all dates in the range for consistent bucketing
+      const rangeStart = startDate ? parseISO(startDate) : null;
+      const rangeEnd = endDate ? parseISO(endDate) : null;
+      
+      let allDatesInRange: Date[] = [];
+      if (rangeStart && rangeEnd) {
+        allDatesInRange = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
+        // Initialize all dates with zeros
+        allDatesInRange.forEach(date => {
+          const dateKey = format(date, 'yyyy-MM-dd');
           planFactByDate.set(dateKey, { planned: 0, actual: 0 });
-        }
-        planFactByDate.get(dateKey)!.planned += Number(order.quantity) || 0;
+        });
+      }
 
-        // By department
+      // Add planned from orders based on planFactMode
+      ordersData?.forEach(order => {
+        if (!order.planned_end_date || !order.planned_start_date) return;
+        
+        const orderStart = parseISO(order.planned_start_date);
+        const orderEnd = parseISO(order.planned_end_date);
+        const quantity = Number(order.quantity) || 0;
         const dept = (order.work_centers as any)?.department || 'Без цеха';
+
+        if (planFactMode === 'by_deadline') {
+          // Mode 1: Bucket all plan by deadline (planned_end_date)
+          const dateKey = format(orderEnd, 'yyyy-MM-dd');
+          if (!planFactByDate.has(dateKey)) {
+            planFactByDate.set(dateKey, { planned: 0, actual: 0 });
+          }
+          planFactByDate.get(dateKey)!.planned += quantity;
+        } else {
+          // Mode 2: Distribute plan evenly across order duration
+          const durationDays = Math.max(1, differenceInDays(orderEnd, orderStart) + 1);
+          const dailyRate = quantity / durationDays;
+          
+          if (rangeStart && rangeEnd) {
+            allDatesInRange.forEach(date => {
+              if (isWithinInterval(date, { start: orderStart, end: orderEnd })) {
+                const dateKey = format(date, 'yyyy-MM-dd');
+                if (!planFactByDate.has(dateKey)) {
+                  planFactByDate.set(dateKey, { planned: 0, actual: 0 });
+                }
+                planFactByDate.get(dateKey)!.planned += dailyRate;
+              }
+            });
+          }
+        }
+
+        // By department (always by deadline for department summary)
         if (!planFactByDept.has(dept)) {
           planFactByDept.set(dept, { planned: 0, actual: 0 });
         }
-        planFactByDept.get(dept)!.planned += Number(order.quantity) || 0;
+        planFactByDept.get(dept)!.planned += quantity;
       });
 
-      // Add actual from daily outputs
+      // Add actual from daily outputs (date is from history created_at, already formatted correctly)
       dailyOutputs.forEach(day => {
-        if (!planFactByDate.has(day.date)) {
-          planFactByDate.set(day.date, { planned: 0, actual: 0 });
+        const dateKey = day.date; // Already in yyyy-MM-dd format from parseISO
+        if (!planFactByDate.has(dateKey)) {
+          planFactByDate.set(dateKey, { planned: 0, actual: 0 });
         }
-        planFactByDate.get(day.date)!.actual += day.totalQuantity;
+        planFactByDate.get(dateKey)!.actual += day.totalQuantity;
 
         // By department
         day.items.forEach(item => {
@@ -517,9 +558,9 @@ export const useProductionOutputReport = (
       const planFactData: PlanFactData[] = Array.from(planFactByDate.entries())
         .map(([date, data]) => ({
           date,
-          planned: data.planned,
+          planned: Math.round(data.planned * 100) / 100, // Round for distributed mode
           actual: data.actual,
-          deviation: data.actual - data.planned,
+          deviation: data.actual - Math.round(data.planned),
           deviationPercent: data.planned > 0 ? ((data.actual - data.planned) / data.planned) * 100 : 0,
         }))
         .sort((a, b) => a.date.localeCompare(b.date));
@@ -528,9 +569,9 @@ export const useProductionOutputReport = (
       const totalActual = planFactData.reduce((sum, d) => sum + d.actual, 0);
 
       const planFactSummary: PlanFactSummary = {
-        totalPlanned,
+        totalPlanned: Math.round(totalPlanned),
         totalActual,
-        totalDeviation: totalActual - totalPlanned,
+        totalDeviation: totalActual - Math.round(totalPlanned),
         deviationPercent: totalPlanned > 0 ? ((totalActual - totalPlanned) / totalPlanned) * 100 : 0,
         byDepartment: Array.from(planFactByDept.entries())
           .map(([dept, data]) => ({
