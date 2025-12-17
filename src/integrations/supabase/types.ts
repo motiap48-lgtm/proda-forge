@@ -14,6 +14,168 @@ export type Database = {
   }
   public: {
     Tables: {
+      brigade_assignments: {
+        Row: {
+          assignment_date: string
+          brigade_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          planned_end_time: string | null
+          planned_start_time: string | null
+          production_order_operation_id: string
+          shift_number: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_date: string
+          brigade_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          planned_end_time?: string | null
+          planned_start_time?: string | null
+          production_order_operation_id: string
+          shift_number?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_date?: string
+          brigade_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          planned_end_time?: string | null
+          planned_start_time?: string | null
+          production_order_operation_id?: string
+          shift_number?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brigade_assignments_brigade_id_fkey"
+            columns: ["brigade_id"]
+            isOneToOne: false
+            referencedRelation: "brigades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brigade_assignments_production_order_operation_id_fkey"
+            columns: ["production_order_operation_id"]
+            isOneToOne: false
+            referencedRelation: "production_order_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brigade_members: {
+        Row: {
+          brigade_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          joined_at: string
+          left_at: string | null
+          operator_id: string
+          role: string
+        }
+        Insert: {
+          brigade_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          joined_at?: string
+          left_at?: string | null
+          operator_id: string
+          role?: string
+        }
+        Update: {
+          brigade_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          joined_at?: string
+          left_at?: string | null
+          operator_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brigade_members_brigade_id_fkey"
+            columns: ["brigade_id"]
+            isOneToOne: false
+            referencedRelation: "brigades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brigade_members_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brigades: {
+        Row: {
+          brigade_type: string
+          code: string
+          created_at: string
+          default_work_center_id: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          productivity_factor: number
+          updated_at: string
+          work_schedule_id: string | null
+        }
+        Insert: {
+          brigade_type?: string
+          code: string
+          created_at?: string
+          default_work_center_id?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          productivity_factor?: number
+          updated_at?: string
+          work_schedule_id?: string | null
+        }
+        Update: {
+          brigade_type?: string
+          code?: string
+          created_at?: string
+          default_work_center_id?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          productivity_factor?: number
+          updated_at?: string
+          work_schedule_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brigades_default_work_center_id_fkey"
+            columns: ["default_work_center_id"]
+            isOneToOne: false
+            referencedRelation: "work_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brigades_work_schedule_id_fkey"
+            columns: ["work_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "work_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contractors: {
         Row: {
           address: string | null
@@ -513,6 +675,216 @@ export type Database = {
           start_date?: string
         }
         Relationships: []
+      }
+      operator_assignments: {
+        Row: {
+          assignment_date: string
+          created_at: string
+          id: string
+          notes: string | null
+          operator_id: string
+          planned_end_time: string | null
+          planned_start_time: string | null
+          production_order_operation_id: string
+          shift_number: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_date: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          operator_id: string
+          planned_end_time?: string | null
+          planned_start_time?: string | null
+          production_order_operation_id: string
+          shift_number?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_date?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          operator_id?: string
+          planned_end_time?: string | null
+          planned_start_time?: string | null
+          production_order_operation_id?: string
+          shift_number?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_assignments_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operator_assignments_production_order_operation_id_fkey"
+            columns: ["production_order_operation_id"]
+            isOneToOne: false
+            referencedRelation: "production_order_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operator_skills: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          operator_id: string
+          skill_level: number
+          standard_operation_id: string | null
+          work_center_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          operator_id: string
+          skill_level?: number
+          standard_operation_id?: string | null
+          work_center_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          operator_id?: string
+          skill_level?: number
+          standard_operation_id?: string | null
+          work_center_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_skills_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operator_skills_standard_operation_id_fkey"
+            columns: ["standard_operation_id"]
+            isOneToOne: false
+            referencedRelation: "standard_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operator_skills_work_center_id_fkey"
+            columns: ["work_center_id"]
+            isOneToOne: false
+            referencedRelation: "work_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operators: {
+        Row: {
+          code: string
+          created_at: string
+          default_work_center_id: string | null
+          email: string | null
+          employee_type: string
+          full_name: string
+          hire_date: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          phone: string | null
+          position: string | null
+          updated_at: string
+          work_schedule_id: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_work_center_id?: string | null
+          email?: string | null
+          employee_type?: string
+          full_name: string
+          hire_date?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+          work_schedule_id?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_work_center_id?: string | null
+          email?: string | null
+          employee_type?: string
+          full_name?: string
+          hire_date?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+          work_schedule_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operators_default_work_center_id_fkey"
+            columns: ["default_work_center_id"]
+            isOneToOne: false
+            referencedRelation: "work_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operators_work_schedule_id_fkey"
+            columns: ["work_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "work_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_calendar: {
+        Row: {
+          calendar_date: string
+          created_at: string
+          day_type: string
+          id: string
+          notes: string | null
+          work_schedule_id: string | null
+        }
+        Insert: {
+          calendar_date: string
+          created_at?: string
+          day_type?: string
+          id?: string
+          notes?: string | null
+          work_schedule_id?: string | null
+        }
+        Update: {
+          calendar_date?: string
+          created_at?: string
+          day_type?: string
+          id?: string
+          notes?: string | null
+          work_schedule_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_calendar_work_schedule_id_fkey"
+            columns: ["work_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "work_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       production_order_history: {
         Row: {
@@ -1292,8 +1664,11 @@ export type Database = {
           efficiency_percent: number
           id: string
           name: string
+          operators_per_shift: number | null
+          resource_type: string | null
           status: string
           updated_at: string
+          work_schedule_id: string | null
         }
         Insert: {
           capacity_minutes_per_day?: number
@@ -1303,8 +1678,11 @@ export type Database = {
           efficiency_percent?: number
           id?: string
           name: string
+          operators_per_shift?: number | null
+          resource_type?: string | null
           status?: string
           updated_at?: string
+          work_schedule_id?: string | null
         }
         Update: {
           capacity_minutes_per_day?: number
@@ -1314,7 +1692,142 @@ export type Database = {
           efficiency_percent?: number
           id?: string
           name?: string
+          operators_per_shift?: number | null
+          resource_type?: string | null
           status?: string
+          updated_at?: string
+          work_schedule_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_centers_work_schedule_id_fkey"
+            columns: ["work_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "work_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_schedule_breaks: {
+        Row: {
+          break_name: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          is_paid: boolean
+          shift_id: string
+          start_time: string
+        }
+        Insert: {
+          break_name: string
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          is_paid?: boolean
+          shift_id: string
+          start_time: string
+        }
+        Update: {
+          break_name?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_paid?: boolean
+          shift_id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_schedule_breaks_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "work_schedule_shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_schedule_shifts: {
+        Row: {
+          break_minutes: number
+          created_at: string
+          end_time: string
+          gross_work_minutes: number
+          id: string
+          net_work_minutes: number | null
+          shift_name: string
+          shift_number: number
+          start_time: string
+          work_schedule_id: string
+        }
+        Insert: {
+          break_minutes?: number
+          created_at?: string
+          end_time?: string
+          gross_work_minutes?: number
+          id?: string
+          net_work_minutes?: number | null
+          shift_name: string
+          shift_number?: number
+          start_time?: string
+          work_schedule_id: string
+        }
+        Update: {
+          break_minutes?: number
+          created_at?: string
+          end_time?: string
+          gross_work_minutes?: number
+          id?: string
+          net_work_minutes?: number | null
+          shift_name?: string
+          shift_number?: number
+          start_time?: string
+          work_schedule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_schedule_shifts_work_schedule_id_fkey"
+            columns: ["work_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "work_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_schedules: {
+        Row: {
+          code: string
+          created_at: string
+          cycle_days_off: number
+          cycle_days_on: number
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          schedule_type: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          cycle_days_off?: number
+          cycle_days_on?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          schedule_type?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          cycle_days_off?: number
+          cycle_days_on?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          schedule_type?: string
           updated_at?: string
         }
         Relationships: []
@@ -1324,9 +1837,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_brigade_code: { Args: never; Returns: string }
       generate_contractor_code: { Args: never; Returns: string }
       generate_customer_code: { Args: never; Returns: string }
       generate_equipment_code: { Args: never; Returns: string }
+      generate_operator_code: { Args: never; Returns: string }
       generate_product_code: {
         Args: { p_product_type: string }
         Returns: string
@@ -1336,6 +1851,7 @@ export type Database = {
       generate_standard_operation_code: { Args: never; Returns: string }
       generate_warehouse_code: { Args: never; Returns: string }
       generate_work_center_code: { Args: never; Returns: string }
+      generate_work_schedule_code: { Args: never; Returns: string }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"][]
