@@ -41,6 +41,21 @@ export const BrigadesTab = () => {
     }
   };
 
+  const getAvailableTime = (brigade: any) => {
+    const shifts = brigade.work_schedules?.work_schedule_shifts;
+    if (!shifts || shifts.length === 0) return null;
+    
+    const totalMinutes = shifts.reduce((sum: number, shift: any) => {
+      const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+      return sum + netMinutes;
+    }, 0);
+    
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    return minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`;
+  };
+
   const handleEdit = (brigade: any) => {
     setEditingBrigade(brigade);
     setDialogOpen(true);
@@ -148,6 +163,9 @@ export const BrigadesTab = () => {
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="h-4 w-4" />
                         <span>{brigade.work_schedules.name}</span>
+                        {getAvailableTime(brigade) && (
+                          <span className="text-primary font-medium">({getAvailableTime(brigade)})</span>
+                        )}
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-muted-foreground">
