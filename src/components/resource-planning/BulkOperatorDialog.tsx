@@ -188,7 +188,7 @@ export const BulkOperatorDialog = ({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4 -mr-4">
+        <ScrollArea className="h-[60vh] pr-4 -mr-4">
           <div className="space-y-4 pb-4">
             {operators.map((operator, index) => (
               <Card 
