@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer } from "lucide-react";
 import { useOperators, useDeleteOperator } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
 import { BulkOperatorDialog } from "./BulkOperatorDialog";
+import { exportOperatorsToExcel, printOperators } from "./OperatorsPrintExport";
 import {
   Select,
   SelectContent,
@@ -148,17 +149,40 @@ export const OperatorsTab = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Users className="h-4 w-4" />
-        <span>Всего: <span className="font-medium text-foreground">{totalOperators}</span></span>
-        <span>•</span>
-        <span>Активных: <span className="font-medium text-foreground">{activeOperators}</span></span>
-        {typeFilter !== "all" && (
-          <>
-            <span>•</span>
-            <span>Отфильтровано: <span className="font-medium text-foreground">{filteredOperators.length}</span></span>
-          </>
-        )}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Users className="h-4 w-4" />
+          <span>Всего: <span className="font-medium text-foreground">{totalOperators}</span></span>
+          <span>•</span>
+          <span>Активных: <span className="font-medium text-foreground">{activeOperators}</span></span>
+          {typeFilter !== "all" && (
+            <>
+              <span>•</span>
+              <span>Отфильтровано: <span className="font-medium text-foreground">{filteredOperators.length}</span></span>
+            </>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => exportOperatorsToExcel(filteredOperators)}
+            disabled={filteredOperators.length === 0}
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Excel
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => printOperators(filteredOperators)}
+            disabled={filteredOperators.length === 0}
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Печать
+          </Button>
+        </div>
       </div>
 
       {filteredOperators.length === 0 ? (
