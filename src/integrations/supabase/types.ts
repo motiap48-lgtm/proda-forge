@@ -787,6 +787,7 @@ export type Database = {
       }
       operators: {
         Row: {
+          assigned_shift_number: number | null
           code: string
           created_at: string
           default_work_center_id: string | null
@@ -799,10 +800,13 @@ export type Database = {
           notes: string | null
           phone: string | null
           position: string | null
+          shift_rotation_enabled: boolean | null
+          shift_rotation_start_date: string | null
           updated_at: string
           work_schedule_id: string | null
         }
         Insert: {
+          assigned_shift_number?: number | null
           code: string
           created_at?: string
           default_work_center_id?: string | null
@@ -815,10 +819,13 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           position?: string | null
+          shift_rotation_enabled?: boolean | null
+          shift_rotation_start_date?: string | null
           updated_at?: string
           work_schedule_id?: string | null
         }
         Update: {
+          assigned_shift_number?: number | null
           code?: string
           created_at?: string
           default_work_center_id?: string | null
@@ -831,6 +838,8 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           position?: string | null
+          shift_rotation_enabled?: boolean | null
+          shift_rotation_start_date?: string | null
           updated_at?: string
           work_schedule_id?: string | null
         }
