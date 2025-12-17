@@ -22,7 +22,9 @@ interface PlanFactByOrderViewProps {
 
 const statusConfig = {
   planned: { label: "Запланирован", variant: "secondary" as const },
+  released: { label: "Запущен", variant: "default" as const },
   in_progress: { label: "В работе", variant: "default" as const },
+  on_hold: { label: "Приостановлен", variant: "outline" as const },
   completed: { label: "Завершен", variant: "default" as const },
   cancelled: { label: "Отменен", variant: "destructive" as const },
 };
