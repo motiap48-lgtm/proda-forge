@@ -156,13 +156,16 @@ export const useMRPCalculation = (horizonDays: number = 30, selectedOrderIds?: s
       endDate.setDate(endDate.getDate() + horizonDays);
 
       // 1. Получаем производственные заказы в горизонте планирования
+      // ВАЖНО: Исключаем дочерние заказы (parent_order_id IS NOT NULL), 
+      // т.к. их потребности уже учтены в BOM-разузловке родительских заказов
       let ordersQuery = supabase
         .from("production_orders")
         .select(`
           *,
           products:product_id(id, code, name, unit, product_type)
         `)
-        .in("status", ["planned", "released"]);
+        .in("status", ["planned", "released"])
+        .is("parent_order_id", null); // Только родительские/самостоятельные заказы
       
       // Если выбраны конкретные заказы, фильтруем по ним
       if (selectedOrderIds && selectedOrderIds.length > 0) {
