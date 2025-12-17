@@ -242,9 +242,6 @@ export const useProductionOutputReport = (
       // Group by date
       const outputByDate = new Map<string, Map<string, DailyOutputItem>>();
 
-      // Track which orders we've already counted (for finished_products mode)
-      const countedOrdersPerDay = new Set<string>();
-
       historyData?.forEach((entry) => {
         const order = entry.production_orders as any;
         if (!order?.products) return;
@@ -276,16 +273,12 @@ export const useProductionOutputReport = (
         // In finished_products mode, only count the LAST operation
         if (mode === "finished_products") {
           const orderInfo = orderMaxSequence.get(entry.production_order_id);
-          const orderDateKey = `${entry.production_order_id}-${dateKey}`;
 
-          if (orderInfo && operationName === orderInfo.lastOperationName) {
-            if (countedOrdersPerDay.has(orderDateKey)) {
-              return;
-            }
-            countedOrdersPerDay.add(orderDateKey);
-          } else {
+          // Skip if not the last operation
+          if (!orderInfo || operationName !== orderInfo.lastOperationName) {
             return;
           }
+          // Don't skip duplicates - aggregate them in the map below
         }
 
         if (!outputByDate.has(dateKey)) {
