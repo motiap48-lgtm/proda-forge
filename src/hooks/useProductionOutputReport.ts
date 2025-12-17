@@ -181,17 +181,20 @@ export const useProductionOutputReport = (
       // Build map: production_order_id -> { maxSequence, lastOperationName }
       // Also build map: `${production_order_id}-${sequence}` -> operation info with work center
       const orderMaxSequence = new Map<string, { maxSequence: number; lastOperationName: string }>();
-      const operationBySequence = new Map<string, {
-        name: string;
-        sequence: number;
-        operation_type: string;
-        work_center_id: string | null;
-        work_center_name: string;
-        work_center_code: string;
-        department: string | null;
-      }>();
-      // Map by name for lookup from history payload (stores sequence for each name)
-      const operationNameToSequence = new Map<string, number>();
+      const operationBySequence = new Map<
+        string,
+        {
+          name: string;
+          sequence: number;
+          operation_type: string;
+          work_center_id: string | null;
+          work_center_name: string;
+          work_center_code: string;
+          department: string | null;
+        }
+      >();
+      // Map by name for lookup from history payload (multiple sequences possible if names repeat)
+      const operationNameToSequences = new Map<string, number[]>();
       // For transport operations we need a reliable "next operation" lookup
       const orderSequences = new Map<string, number[]>();
 
@@ -228,9 +231,12 @@ export const useProductionOutputReport = (
           department: wcInfo?.department || null,
         });
 
-        // Map operation name -> sequence for this order
+        // Track sequences for this operation name (can repeat)
         const nameKey = `${op.production_order_id}-${opName}`;
-        operationNameToSequence.set(nameKey, op.sequence);
+        if (!operationNameToSequences.has(nameKey)) {
+          operationNameToSequences.set(nameKey, []);
+        }
+        operationNameToSequences.get(nameKey)!.push(op.sequence);
       });
 
       // Normalize sequences (sorted, unique)
@@ -239,113 +245,148 @@ export const useProductionOutputReport = (
         orderSequences.set(orderId, uniqueSorted);
       });
 
+      // Normalize name->sequences (sorted, unique)
+      operationNameToSequences.forEach((seqs, key) => {
+        const uniqueSorted = Array.from(new Set(seqs)).sort((a, b) => a - b);
+        operationNameToSequences.set(key, uniqueSorted);
+      });
+
       // Group by date
       const outputByDate = new Map<string, Map<string, DailyOutputItem>>();
 
+      // Process history entries grouped per order per day in chronological order.
+      // This resolves duplicated operation names (e.g. two "Транспортировка между участками")
+      // by picking the next valid sequence as the process moves forward.
+      const historyGroups = new Map<string, any[]>();
       historyData?.forEach((entry) => {
-        const order = entry.production_orders as any;
-        if (!order?.products) return;
+        const dateKey = format(parseISO(entry.created_at), "yyyy-MM-dd");
+        const key = `${entry.production_order_id}-${dateKey}`;
+        if (!historyGroups.has(key)) historyGroups.set(key, []);
+        historyGroups.get(key)!.push(entry);
+      });
 
-        // Extract operation name from history entry
-        let operationName = "";
-        let completedQty = 0;
+      historyGroups.forEach((entries) => {
+        entries.sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
 
-        try {
-          const parsed = JSON.parse(entry.new_value || "{}");
-          if (typeof parsed === "object" && parsed !== null) {
-            operationName = parsed.operation_name || "";
-            completedQty = parsed.good_quantity || 0;
-          } else {
+        let lastResolvedSequence = 0;
+
+        entries.forEach((entry) => {
+          const order = entry.production_orders as any;
+          if (!order?.products) return;
+
+          // Extract operation name from history entry
+          let operationName = "";
+          let completedQty = 0;
+
+          try {
+            const parsed = JSON.parse(entry.new_value || "{}");
+            if (typeof parsed === "object" && parsed !== null) {
+              operationName = parsed.operation_name || "";
+              completedQty = parsed.good_quantity || 0;
+            } else {
+              const newValue = Number(entry.new_value) || 0;
+              const oldValue = Number(entry.old_value) || 0;
+              completedQty = Math.max(0, newValue - oldValue);
+            }
+          } catch {
             const newValue = Number(entry.new_value) || 0;
             const oldValue = Number(entry.old_value) || 0;
             completedQty = Math.max(0, newValue - oldValue);
           }
-        } catch {
-          const newValue = Number(entry.new_value) || 0;
-          const oldValue = Number(entry.old_value) || 0;
-          completedQty = Math.max(0, newValue - oldValue);
-        }
 
-        if (completedQty === 0) return;
+          if (completedQty === 0) return;
 
-        const dateKey = format(parseISO(entry.created_at), "yyyy-MM-dd");
+          const dateKey = format(parseISO(entry.created_at), "yyyy-MM-dd");
 
-        // In finished_products mode, only count the LAST operation
-        if (mode === "finished_products") {
-          const orderInfo = orderMaxSequence.get(entry.production_order_id);
+          // Resolve sequence (handles repeated operation names)
+          const nameKey = `${entry.production_order_id}-${operationName}`;
+          const candidates = operationNameToSequences.get(nameKey);
+          let opSequence: number | undefined;
 
-          // Skip if not the last operation
-          if (!orderInfo || operationName !== orderInfo.lastOperationName) {
-            return;
+          if (candidates && candidates.length > 0) {
+            opSequence =
+              candidates.find((s) => s >= lastResolvedSequence) ??
+              candidates[candidates.length - 1];
           }
-          // Don't skip duplicates - aggregate them in the map below
-        }
 
-        if (!outputByDate.has(dateKey)) {
-          outputByDate.set(dateKey, new Map());
-        }
+          if (opSequence !== undefined) {
+            lastResolvedSequence = Math.max(lastResolvedSequence, opSequence);
+          }
 
-        const dateItems = outputByDate.get(dateKey)!;
-
-        // Get operation info from routing by looking up sequence
-        const nameKey = `${entry.production_order_id}-${operationName}`;
-        const opSequence = operationNameToSequence.get(nameKey);
-        const seqKey = opSequence !== undefined ? `${entry.production_order_id}-${opSequence}` : null;
-        const opInfo = seqKey ? operationBySequence.get(seqKey) : null;
-
-        // Default: work center of that operation
-        let wcId = opInfo?.work_center_id || order.work_center_id;
-        let wcName = opInfo?.work_center_name || order.work_centers?.name || "Не указан";
-        let wcCode = opInfo?.work_center_code || order.work_centers?.code || "";
-        let wcDept = opInfo?.department || order.work_centers?.department || null;
-
-        // Transport: show DESTINATION work center (the next operation by sequence)
-        if (opInfo?.operation_type === "transport" && opSequence !== undefined) {
-          const seqs = orderSequences.get(entry.production_order_id) || [];
-          const nextSeq = seqs.find((s) => s > opSequence);
-          if (nextSeq !== undefined) {
-            const nextSeqKey = `${entry.production_order_id}-${nextSeq}`;
-            const nextOpInfo = operationBySequence.get(nextSeqKey);
-            if (nextOpInfo) {
-              wcId = nextOpInfo.work_center_id;
-              wcName = nextOpInfo.work_center_name;
-              wcCode = nextOpInfo.work_center_code;
-              wcDept = nextOpInfo.department;
+          // In finished_products mode, only count the LAST operation (by sequence)
+          if (mode === "finished_products") {
+            const orderInfo = orderMaxSequence.get(entry.production_order_id);
+            if (!orderInfo || opSequence !== orderInfo.maxSequence) {
+              return;
             }
           }
-        }
 
-        const seq = opInfo?.sequence;
-
-        // Aggregate operations (including transport) by date/product/operation/work center
-        const itemKey =
-          mode === "all_operations"
-            ? `${order.product_id}-${opSequence ?? "unknown"}-${wcId || "none"}`
-            : `${order.product_id}-${wcId || "none"}`;
-
-        if (dateItems.has(itemKey)) {
-          const existing = dateItems.get(itemKey)!;
-          existing.completed_quantity += completedQty;
-          if (!existing.order_numbers.includes(order.order_number)) {
-            existing.order_numbers.push(order.order_number);
+          if (!outputByDate.has(dateKey)) {
+            outputByDate.set(dateKey, new Map());
           }
-        } else {
-          dateItems.set(itemKey, {
-            product_id: order.product_id,
-            product_name: order.products.name,
-            product_code: order.products.code,
-            product_type: order.products.product_type,
-            unit: order.products.unit || 'шт',
-            work_center_id: wcId,
-            work_center_name: wcName,
-            work_center_code: wcCode,
-            department: wcDept,
-            completed_quantity: completedQty,
-            order_numbers: [order.order_number],
-            operation_name: mode === 'all_operations' ? operationName : undefined,
-            operation_sequence: mode === 'all_operations' ? seq : undefined,
-          });
-        }
+
+          const dateItems = outputByDate.get(dateKey)!;
+
+          // Get operation info from routing by looking up sequence
+          const seqKey = opSequence !== undefined ? `${entry.production_order_id}-${opSequence}` : null;
+          const opInfo = seqKey ? operationBySequence.get(seqKey) : null;
+
+          // Default: work center of that operation
+          let wcId = opInfo?.work_center_id || order.work_center_id;
+          let wcName = opInfo?.work_center_name || order.work_centers?.name || "Не указан";
+          let wcCode = opInfo?.work_center_code || order.work_centers?.code || "";
+          let wcDept = opInfo?.department || order.work_centers?.department || null;
+
+          // Transport: show DESTINATION work center (the next operation by sequence)
+          if (opInfo?.operation_type === "transport" && opSequence !== undefined) {
+            const seqs = orderSequences.get(entry.production_order_id) || [];
+            const nextSeq = seqs.find((s) => s > opSequence);
+            if (nextSeq !== undefined) {
+              const nextSeqKey = `${entry.production_order_id}-${nextSeq}`;
+              const nextOpInfo = operationBySequence.get(nextSeqKey);
+              if (nextOpInfo) {
+                wcId = nextOpInfo.work_center_id;
+                wcName = nextOpInfo.work_center_name;
+                wcCode = nextOpInfo.work_center_code;
+                wcDept = nextOpInfo.department;
+              }
+            }
+          }
+
+          const seq = opInfo?.sequence;
+
+          // Aggregate operations (including transport) by date/product/operation/work center
+          const itemKey =
+            mode === "all_operations"
+              ? `${order.product_id}-${opSequence ?? "unknown"}-${wcId || "none"}`
+              : `${order.product_id}-${wcId || "none"}`;
+
+          if (dateItems.has(itemKey)) {
+            const existing = dateItems.get(itemKey)!;
+            existing.completed_quantity += completedQty;
+            if (!existing.order_numbers.includes(order.order_number)) {
+              existing.order_numbers.push(order.order_number);
+            }
+          } else {
+            dateItems.set(itemKey, {
+              product_id: order.product_id,
+              product_name: order.products.name,
+              product_code: order.products.code,
+              product_type: order.products.product_type,
+              unit: order.products.unit || "шт",
+              work_center_id: wcId,
+              work_center_name: wcName,
+              work_center_code: wcCode,
+              department: wcDept,
+              completed_quantity: completedQty,
+              order_numbers: [order.order_number],
+              operation_name: mode === "all_operations" ? operationName : undefined,
+              operation_sequence: mode === "all_operations" ? seq : undefined,
+            });
+          }
+        });
       });
 
       // Convert to array
