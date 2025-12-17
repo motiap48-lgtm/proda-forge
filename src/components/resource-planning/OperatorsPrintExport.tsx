@@ -7,6 +7,7 @@ const getEmployeeTypeLabel = (type: string) => {
     case "operator": return "Станочник";
     case "assembler": return "Сборщик";
     case "welder": return "Сварщик";
+    case "painter": return "Маляр";
     case "universal": return "Универсал";
     default: return type;
   }

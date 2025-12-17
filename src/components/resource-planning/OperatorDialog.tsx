@@ -160,6 +160,7 @@ export const OperatorDialog = ({
                   <SelectItem value="operator">Станочник</SelectItem>
                   <SelectItem value="assembler">Сборщик</SelectItem>
                   <SelectItem value="welder">Сварщик</SelectItem>
+                  <SelectItem value="painter">Маляр</SelectItem>
                   <SelectItem value="universal">Универсал</SelectItem>
                 </SelectContent>
               </Select>
