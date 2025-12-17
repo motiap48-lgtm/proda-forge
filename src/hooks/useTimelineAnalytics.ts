@@ -102,7 +102,8 @@ export const useTimelineAnalytics = (
 
       // Group data by time period
       const getDateKey = (dateStr: string): string => {
-        const date = new Date(dateStr);
+        // IMPORTANT: use parseISO for stable day/week/month bucket keys (avoid UTC shift with new Date('yyyy-MM-dd'))
+        const date = parseISO(dateStr);
         switch (granularity) {
           case 'week':
             return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
@@ -114,7 +115,7 @@ export const useTimelineAnalytics = (
       };
 
       const getDateLabel = (dateStr: string): string => {
-        const date = new Date(dateStr);
+        const date = parseISO(dateStr);
         switch (granularity) {
           case 'week':
             return `Неделя ${format(date, 'w', { locale: ru })} (${format(date, 'dd.MM', { locale: ru })})`;
@@ -128,10 +129,11 @@ export const useTimelineAnalytics = (
       // Generate all dates in the range
       const rangeStart = startDate ? parseISO(startDate) : new Date();
       const rangeEnd = endDate ? parseISO(endDate) : new Date();
-      
+
       const allDates = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
 
-      // Timeline trend data - distribute quantities across dates
+      // Timeline trend data
+      // План/Факт считаем по ДАТЕ ПЛАНОВОГО ОКОНЧАНИЯ (дедлайну), чтобы на дату дедлайна отображалось выполнение заказа.
       const timelineMap = new Map<string, {
         planned: number;
         completed: number;
@@ -145,6 +147,10 @@ export const useTimelineAnalytics = (
           timelineMap.set(dateKey, { planned: 0, completed: 0, ordersCount: 0 });
         }
       });
+
+      const timelineKeys = Array.from(timelineMap.keys());
+      const firstDateKey = timelineKeys[0];
+      const lastDateKey = timelineKeys[timelineKeys.length - 1];
 
       // Work center load data
       const workCenterLoadMap = new Map<string, Map<string, {
@@ -166,50 +172,31 @@ export const useTimelineAnalytics = (
         const orderEnd = parseISO(order.planned_end_date);
         const quantity = Number(order.quantity);
         const completedQty = Number(order.completed_quantity);
-        
-        // Calculate duration in days (min 1 day)
-        const durationDays = Math.max(1, differenceInDays(orderEnd, orderStart) + 1);
-        
-        // Daily planned rate
-        const dailyPlannedRate = quantity / durationDays;
-        
-        // Distribute planned quantity across each day of the order's duration
-        allDates.forEach(date => {
-          const dateStr = format(date, 'yyyy-MM-dd');
-          const dateKey = getDateKey(dateStr);
-          
-          // Check if this date is within the order's planned period
-          if (isWithinInterval(date, { start: orderStart, end: orderEnd })) {
-            const point = timelineMap.get(dateKey)!;
-            point.planned += dailyPlannedRate;
-            
-            // Count order only once per period
-            const orderDateKey = getDateKey(order.planned_start_date);
-            if (dateKey === orderDateKey) {
-              point.ordersCount++;
-            }
-          }
-        });
 
-        // For completed: attribute to actual_end_date if available, otherwise to planned_end_date
-        // But only if the order has some completion
-        if (completedQty > 0) {
-          const completionDate = order.actual_end_date || order.planned_end_date;
-          const completionDateKey = getDateKey(completionDate);
-          
-          // Only add if the completion date is within our range
-          if (timelineMap.has(completionDateKey)) {
-            const point = timelineMap.get(completionDateKey)!;
+        // Timeline: bucket by planned_end_date (deadline)
+        if (firstDateKey && lastDateKey) {
+          const plannedEnd = parseISO(order.planned_end_date);
+          let bucketKey = getDateKey(order.planned_end_date);
+
+          if (!timelineMap.has(bucketKey)) {
+            if (plannedEnd < rangeStart) bucketKey = firstDateKey;
+            else if (plannedEnd > rangeEnd) bucketKey = lastDateKey;
+            else bucketKey = "";
+          }
+
+          if (bucketKey && timelineMap.has(bucketKey)) {
+            const point = timelineMap.get(bucketKey)!;
+            point.planned += quantity;
             point.completed += completedQty;
-          } else {
-            // If completion is before range start, attribute to first date
-            const firstDateKey = Array.from(timelineMap.keys())[0];
-            if (firstDateKey && parseISO(completionDate) < rangeStart) {
-              const point = timelineMap.get(firstDateKey)!;
-              point.completed += completedQty;
-            }
+            point.ordersCount++;
           }
         }
+
+        // Calculate duration in days (min 1 day) - used for load distribution
+        const durationDays = Math.max(1, differenceInDays(orderEnd, orderStart) + 1);
+
+        // Daily planned rate
+        const dailyPlannedRate = quantity / durationDays;
 
         // Work center load - distribute similarly
         const wc = order.work_centers as any;
