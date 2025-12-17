@@ -19,7 +19,8 @@ import {
   ChevronDown,
   ChevronsDown,
   ChevronsUp,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Search
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +46,8 @@ const MRPPlanning = () => {
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [purchaseAlphaFilter, setPurchaseAlphaFilter] = useState<string | null>(null);
   const [purchaseSearch, setPurchaseSearch] = useState("");
+  const [productionSearch, setProductionSearch] = useState("");
+  const [workCenterSearch, setWorkCenterSearch] = useState("");
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [useSelectedOrders, setUseSelectedOrders] = useState(false);
   const [orderSelectionOpen, setOrderSelectionOpen] = useState(false);
@@ -474,12 +477,13 @@ const MRPPlanning = () => {
                 {/* Search and Alphabetical Filter */}
                 {purchaseRequirements.length > 0 && (
                   <div className="mb-4 space-y-3">
-                    <div>
+                    <div className="relative max-w-md">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Поиск по названию материала..."
+                        placeholder="Поиск по названию или коду материала..."
                         value={purchaseSearch}
                         onChange={(e) => setPurchaseSearch(e.target.value)}
-                        className="max-w-md"
+                        className="pl-10"
                       />
                     </div>
                     <div>
@@ -645,11 +649,33 @@ const MRPPlanning = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Search for production requirements */}
+                {productionRequirements.length > 0 && (
+                  <div className="mb-4">
+                    <div className="relative max-w-md">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Поиск по названию или коду..."
+                        value={productionSearch}
+                        onChange={(e) => setProductionSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                )}
                 {isLoading ? (
                   <p className="text-center py-8 text-muted-foreground">Загрузка...</p>
                 ) : productionRequirements.length > 0 ? (
                   <div className="space-y-3">
-                    {productionRequirements.map((item) => (
+                    {productionRequirements
+                      .filter(item => {
+                        if (!productionSearch) return true;
+                        const search = productionSearch.toLowerCase();
+                        return item.product_name.toLowerCase().includes(search) ||
+                          item.product_code.toLowerCase().includes(search) ||
+                          (item.work_center_name && item.work_center_name.toLowerCase().includes(search));
+                      })
+                      .map((item) => (
                       <Card key={item.product_id} className="border-l-4 border-l-blue-500">
                         <CardContent className="p-4">
                           <div className="grid gap-4 md:grid-cols-8">
@@ -805,13 +831,41 @@ const MRPPlanning = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Search for work centers */}
+                {workCenterReports.length > 0 && (
+                  <div className="mb-4">
+                    <div className="relative max-w-md">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Поиск по названию участка или продукции..."
+                        value={workCenterSearch}
+                        onChange={(e) => setWorkCenterSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                )}
                 {isLoading ? (
                   <p className="text-center py-8 text-muted-foreground">Загрузка...</p>
                 ) : workCenterReports.length > 0 ? (
                   <div className="space-y-6">
                     {/* Группируем по подразделениям (как в 1С ERP) */}
                     {(() => {
-                      const departmentGroups = workCenterReports.reduce((acc, report) => {
+                      // Filter work centers by search
+                      const filteredReports = workCenterReports.filter(report => {
+                        if (!workCenterSearch) return true;
+                        const search = workCenterSearch.toLowerCase();
+                        const matchesWorkCenter = report.work_center_name.toLowerCase().includes(search) ||
+                          report.work_center_code.toLowerCase().includes(search) ||
+                          (report.department && report.department.toLowerCase().includes(search));
+                        const matchesItems = report.items.some(item => 
+                          item.product_name.toLowerCase().includes(search) ||
+                          item.product_code.toLowerCase().includes(search)
+                        );
+                        return matchesWorkCenter || matchesItems;
+                      });
+                      
+                      const departmentGroups = filteredReports.reduce((acc, report) => {
                         const dept = report.department || 'Без подразделения';
                         if (!acc[dept]) acc[dept] = [];
                         acc[dept].push(report);
