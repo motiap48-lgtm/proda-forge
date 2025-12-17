@@ -3,9 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users } from "lucide-react";
 import { useOperators, useDeleteOperator } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,16 +29,22 @@ export const OperatorsTab = () => {
   const deleteOperator = useDeleteOperator();
   
   const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingOperator, setEditingOperator] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [operatorToDelete, setOperatorToDelete] = useState<any>(null);
 
-  const filteredOperators = operators?.filter((op: any) =>
-    op.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    op.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    op.position?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filteredOperators = operators?.filter((op: any) => {
+    const matchesSearch = op.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      op.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      op.position?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "all" || op.employee_type === typeFilter;
+    return matchesSearch && matchesType;
+  }) || [];
+
+  const totalOperators = operators?.length || 0;
+  const activeOperators = operators?.filter((op: any) => op.is_active).length || 0;
 
   const getEmployeeTypeLabel = (type: string) => {
     switch (type) {
@@ -98,19 +111,46 @@ export const OperatorsTab = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск операторов..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex flex-col sm:flex-row gap-4 flex-1">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Поиск операторов..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Тип сотрудника" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все типы</SelectItem>
+              <SelectItem value="operator">Станочник</SelectItem>
+              <SelectItem value="assembler">Сборщик</SelectItem>
+              <SelectItem value="welder">Сварщик</SelectItem>
+              <SelectItem value="universal">Универсал</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <Button onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Добавить оператора
         </Button>
+      </div>
+
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Users className="h-4 w-4" />
+        <span>Всего: <span className="font-medium text-foreground">{totalOperators}</span></span>
+        <span>•</span>
+        <span>Активных: <span className="font-medium text-foreground">{activeOperators}</span></span>
+        {typeFilter !== "all" && (
+          <>
+            <span>•</span>
+            <span>Отфильтровано: <span className="font-medium text-foreground">{filteredOperators.length}</span></span>
+          </>
+        )}
       </div>
 
       {filteredOperators.length === 0 ? (

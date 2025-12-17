@@ -241,7 +241,12 @@ export const useBrigades = () => {
         .select(`
           *,
           work_centers:default_work_center_id (id, name, code),
-          work_schedules:work_schedule_id (id, name, code),
+          work_schedules:work_schedule_id (
+            id, name, code,
+            work_schedule_shifts (
+              id, shift_name, net_work_minutes, gross_work_minutes, break_minutes
+            )
+          ),
           brigade_members (
             *,
             operators (id, full_name, code, position)
