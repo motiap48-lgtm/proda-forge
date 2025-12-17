@@ -50,6 +50,7 @@ export const useProductOperationsReport = (startDate?: string, endDate?: string)
           products:product_id(id, name, code, product_type, unit)
         `)
         .in("status", ["planned", "released", "in_progress", "on_hold", "completed"])
+        .is("parent_order_id", null) // Исключаем дочерние заказы - они учтены в BOM родителей
         .order("planned_start_date", { ascending: false });
 
       if (startDate) {
