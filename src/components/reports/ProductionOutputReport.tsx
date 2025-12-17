@@ -474,11 +474,7 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
     setExpandedGroups(new Set());
   };
 
-  if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Загрузка...</div>;
-  }
-
-  // Calculate operation type summary
+  // Calculate operation type summary (must be before conditional return)
   const operationTypeSummary = useMemo(() => {
     const summary = { production: 0, transport: 0, control: 0, setup: 0, other: 0 };
     const allItems = filteredData.flatMap(day => day.items);
@@ -492,6 +488,10 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
     });
     return summary;
   }, [filteredData]);
+
+  if (isLoading) {
+    return <div className="text-center py-8 text-muted-foreground">Загрузка...</div>;
+  }
 
   return (
     <div className="space-y-6">
