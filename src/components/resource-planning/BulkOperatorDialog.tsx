@@ -16,7 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, User, Check } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Plus, Trash2, Check, Copy } from "lucide-react";
 import { useCreateOperator, useActiveWorkSchedules } from "@/hooks/useResourcePlanning";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { toast } from "sonner";
@@ -56,7 +61,6 @@ export const BulkOperatorDialog = ({
   
   const [operators, setOperators] = useState<OperatorEntry[]>([createEmptyOperator()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,7 +78,17 @@ export const BulkOperatorDialog = ({
   };
 
   const addOperator = () => {
-    setOperators([...operators, createEmptyOperator()]);
+    // Copy parameters from the last operator
+    const lastOp = operators[operators.length - 1];
+    const newOp: OperatorEntry = {
+      id: crypto.randomUUID(),
+      full_name: "",
+      position: "",
+      employee_type: lastOp.employee_type,
+      default_work_center_id: lastOp.default_work_center_id,
+      work_schedule_id: lastOp.work_schedule_id,
+    };
+    setOperators([...operators, newOp]);
     scrollToBottom();
   };
 
@@ -90,14 +104,21 @@ export const BulkOperatorDialog = ({
     );
   };
 
-  const getEmployeeTypeLabel = (type: string) => {
-    switch (type) {
-      case "operator": return "Станочник";
-      case "assembler": return "Сборщик";
-      case "welder": return "Сварщик";
-      case "universal": return "Универсал";
-      default: return type;
-    }
+  const copyToAll = (sourceId: string, field: "employee_type" | "default_work_center_id" | "work_schedule_id") => {
+    const sourceOp = operators.find(op => op.id === sourceId);
+    if (!sourceOp) return;
+    
+    setOperators(operators.map(op => ({
+      ...op,
+      [field]: sourceOp[field]
+    })));
+    
+    const fieldLabels = {
+      employee_type: "Тип",
+      default_work_center_id: "Участок",
+      work_schedule_id: "График"
+    };
+    toast.success(`${fieldLabels[field]} скопирован на все строки`);
   };
 
   const handleSubmit = async () => {
@@ -150,7 +171,7 @@ export const BulkOperatorDialog = ({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4 -mr-4" ref={scrollAreaRef}>
+        <ScrollArea className="flex-1 pr-4 -mr-4">
           <div className="space-y-4 pb-4">
             {operators.map((operator, index) => (
               <Card 
@@ -188,7 +209,25 @@ export const BulkOperatorDialog = ({
 
                       <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-xs">Тип</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs">Тип</Label>
+                            {operators.length > 1 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => copyToAll(operator.id, "employee_type")}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Копировать на все</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                           <Select
                             value={operator.employee_type}
                             onValueChange={(value) => updateOperator(operator.id, "employee_type", value)}
@@ -205,7 +244,25 @@ export const BulkOperatorDialog = ({
                           </Select>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Участок</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs">Участок</Label>
+                            {operators.length > 1 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => copyToAll(operator.id, "default_work_center_id")}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Копировать на все</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                           <Select
                             value={operator.default_work_center_id || "none"}
                             onValueChange={(value) => updateOperator(operator.id, "default_work_center_id", value === "none" ? "" : value)}
@@ -224,7 +281,25 @@ export const BulkOperatorDialog = ({
                           </Select>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">График</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs">График</Label>
+                            {operators.length > 1 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => copyToAll(operator.id, "work_schedule_id")}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Копировать на все</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                           <Select
                             value={operator.work_schedule_id || "none"}
                             onValueChange={(value) => updateOperator(operator.id, "work_schedule_id", value === "none" ? "" : value)}
