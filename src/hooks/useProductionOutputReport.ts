@@ -276,15 +276,20 @@ export const useProductionOutputReport = (
           const order = entry.production_orders as any;
           if (!order?.products) return;
 
-          // Extract operation name from history entry
+          // Extract operation name and sequence from history entry
           let operationName = "";
           let completedQty = 0;
+          let historySequence: number | undefined;
 
           try {
             const parsed = JSON.parse(entry.new_value || "{}");
             if (typeof parsed === "object" && parsed !== null) {
               operationName = parsed.operation_name || "";
               completedQty = parsed.good_quantity || 0;
+              // Use sequence from history if available (new format)
+              if (typeof parsed.operation_sequence === "number") {
+                historySequence = parsed.operation_sequence;
+              }
             } else {
               const newValue = Number(entry.new_value) || 0;
               const oldValue = Number(entry.old_value) || 0;
@@ -300,15 +305,19 @@ export const useProductionOutputReport = (
 
           const dateKey = format(parseISO(entry.created_at), "yyyy-MM-dd");
 
-          // Resolve sequence (handles repeated operation names)
-          const nameKey = `${entry.production_order_id}-${operationName}`;
-          const candidates = operationNameToSequences.get(nameKey);
-          let opSequence: number | undefined;
+          // Resolve sequence: prefer historySequence (from new format), fallback to name-based resolution
+          let opSequence: number | undefined = historySequence;
 
-          if (candidates && candidates.length > 0) {
-            opSequence =
-              candidates.find((s) => s >= lastResolvedSequence) ??
-              candidates[candidates.length - 1];
+          if (opSequence === undefined) {
+            // Fallback for old history entries without sequence
+            const nameKey = `${entry.production_order_id}-${operationName}`;
+            const candidates = operationNameToSequences.get(nameKey);
+
+            if (candidates && candidates.length > 0) {
+              opSequence =
+                candidates.find((s) => s >= lastResolvedSequence) ??
+                candidates[candidates.length - 1];
+            }
           }
 
           if (opSequence !== undefined) {
