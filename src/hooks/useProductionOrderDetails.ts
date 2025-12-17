@@ -80,7 +80,7 @@ export const useUpdateOperationStatus = () => {
       // Получаем текущую операцию и заказ
       const { data: currentOp } = await supabase
         .from("production_order_operations")
-        .select("completed_quantity, production_order_id, status, actual_start_date, routing_operations(name)")
+        .select("completed_quantity, production_order_id, status, actual_start_date, sequence, routing_operations(name)")
         .eq("id", id)
         .single();
 
@@ -169,6 +169,7 @@ export const useUpdateOperationStatus = () => {
             good_quantity: goodQuantity,
             defect_quantity: reportData.defectQuantity,
             operation_name: currentOp.routing_operations?.name,
+            operation_sequence: currentOp.sequence,
           });
           
           await supabase.from("production_order_history").insert({
