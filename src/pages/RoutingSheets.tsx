@@ -61,6 +61,7 @@ const RoutingSheets = () => {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
+  const [bulkRenameLoading, setBulkRenameLoading] = useState(false);
   // Bulk selection
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedSheetIds, setSelectedSheetIds] = useState<Set<string>>(new Set());
@@ -678,6 +679,77 @@ const RoutingSheets = () => {
     toast.success(`Переименовано ${renamedOps.length} операций`);
   };
 
+  // Bulk auto-rename duplicate operations in all sheets
+  const handleBulkRenameDuplicates = async () => {
+    const sheetsWithDuplicates = sortedSheets.filter(sheet => {
+      const duplicates = getSheetDuplicateOperations(sheet);
+      return duplicates.length > 0;
+    });
+
+    if (sheetsWithDuplicates.length === 0) {
+      toast.info("Нет техмаршрутов с дублями операций");
+      return;
+    }
+
+    setBulkRenameLoading(true);
+    let totalRenamed = 0;
+    let successfulSheets = 0;
+
+    for (const sheet of sheetsWithDuplicates) {
+      const operations = sheet.routing_operations || [];
+      const nameCount = new Map<string, number>();
+      const renamedOps: { id: string; newName: string }[] = [];
+      
+      // First pass: find duplicates
+      operations.forEach((op: any) => {
+        const originalName = op.name?.trim() || '';
+        const count = (nameCount.get(originalName) || 0) + 1;
+        nameCount.set(originalName, count);
+      });
+      
+      // Second pass: rename only duplicates
+      const nameOccurrence = new Map<string, number>();
+      operations.forEach((op: any) => {
+        const originalName = op.name?.trim() || '';
+        if ((nameCount.get(originalName) || 0) > 1) {
+          const occurrence = (nameOccurrence.get(originalName) || 0) + 1;
+          nameOccurrence.set(originalName, occurrence);
+          renamedOps.push({ id: op.id, newName: `${originalName} ${occurrence}` });
+        }
+      });
+      
+      if (renamedOps.length === 0) continue;
+      
+      // Update operations in database
+      let sheetSuccess = true;
+      for (const { id, newName } of renamedOps) {
+        const { error } = await supabase
+          .from("routing_operations")
+          .update({ name: newName })
+          .eq("id", id);
+          
+        if (error) {
+          sheetSuccess = false;
+          break;
+        }
+      }
+      
+      if (sheetSuccess) {
+        totalRenamed += renamedOps.length;
+        successfulSheets++;
+      }
+    }
+
+    await refetchSheets();
+    setBulkRenameLoading(false);
+    
+    if (successfulSheets > 0) {
+      toast.success(`Переименовано ${totalRenamed} операций в ${successfulSheets} маршрутах`);
+    } else {
+      toast.error("Не удалось переименовать операции");
+    }
+  };
+
   const getSelectedSheetsForBulk = () => {
     return sortedSheets
       .filter(s => selectedSheetIds.has(s.id))
@@ -1255,6 +1327,33 @@ const RoutingSheets = () => {
                     </Badge>
                   )}
                 </Button>
+
+                {/* Bulk rename duplicates button */}
+                {duplicatesCount > 0 && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleBulkRenameDuplicates}
+                          disabled={bulkRenameLoading}
+                          className="gap-1.5 h-9 text-amber-600 hover:text-amber-700 border-amber-300 hover:border-amber-400"
+                        >
+                          {bulkRenameLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Wand2 className="h-4 w-4" />
+                          )}
+                          Переименовать все дубли
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Переименовать дубли операций во всех техмаршрутах ({duplicatesCount} маршрутов)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
 
                 <div className="h-6 w-px bg-border" />
 

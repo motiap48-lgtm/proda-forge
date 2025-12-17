@@ -478,6 +478,21 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
     return <div className="text-center py-8 text-muted-foreground">Загрузка...</div>;
   }
 
+  // Calculate operation type summary
+  const operationTypeSummary = useMemo(() => {
+    const summary = { production: 0, transport: 0, control: 0, setup: 0, other: 0 };
+    const allItems = filteredData.flatMap(day => day.items);
+    allItems.forEach(item => {
+      const type = item.operation_type || 'other';
+      if (type === 'production') summary.production += item.completed_quantity;
+      else if (type === 'transport') summary.transport += item.completed_quantity;
+      else if (type === 'control') summary.control += item.completed_quantity;
+      else if (type === 'setup') summary.setup += item.completed_quantity;
+      else summary.other += item.completed_quantity;
+    });
+    return summary;
+  }, [filteredData]);
+
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
@@ -536,6 +551,58 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Operation Type Summary - only show in all_operations mode */}
+      {reportMode === 'all_operations' && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Layers className="h-5 w-5" />
+              Сводка по типам операций
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="p-2 rounded-full bg-blue-100">
+                  <Package className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-blue-600 font-medium">Производство</p>
+                  <p className="text-xl font-bold text-blue-700">{operationTypeSummary.production}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                <div className="p-2 rounded-full bg-amber-100">
+                  <Package className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-amber-600 font-medium">Транспортировка</p>
+                  <p className="text-xl font-bold text-amber-700">{operationTypeSummary.transport}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
+                <div className="p-2 rounded-full bg-green-100">
+                  <Package className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-green-600 font-medium">Контроль</p>
+                  <p className="text-xl font-bold text-green-700">{operationTypeSummary.control}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                <div className="p-2 rounded-full bg-purple-100">
+                  <Package className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-purple-600 font-medium">Наладка</p>
+                  <p className="text-xl font-bold text-purple-700">{operationTypeSummary.setup}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Report Tabs */}
