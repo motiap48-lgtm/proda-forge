@@ -60,6 +60,7 @@ const RoutingSheets = () => {
   const [useInternalOperationOnly, setUseInternalOperationOnly] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   // Bulk selection
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedSheetIds, setSelectedSheetIds] = useState<Set<string>>(new Set());
@@ -164,7 +165,13 @@ const RoutingSheets = () => {
       // Show if has unlinked components OR not all production ops have materials
       const hasIssues = stats.unlinkedCount > 0 || 
         (stats.totalProductionOps > 0 && !stats.allOpsHaveMaterials);
-      return hasIssues;
+      if (!hasIssues) return false;
+    }
+    
+    // Duplicates filter
+    if (showDuplicatesOnly) {
+      const duplicates = getSheetDuplicateOperations(sheet);
+      if (duplicates.length === 0) return false;
     }
     
     return true;
@@ -186,6 +193,14 @@ const RoutingSheets = () => {
       return stats.linkedCount > 0;
     }).length;
   }, [sortedSheets, specifications]);
+
+  // Count sheets with duplicate operations for badge
+  const duplicatesCount = useMemo(() => {
+    return sortedSheets.filter(sheet => {
+      const duplicates = getSheetDuplicateOperations(sheet);
+      return duplicates.length > 0;
+    }).length;
+  }, [sortedSheets]);
 
   // Grouping logic
   const groupedSheets = useMemo(() => {
@@ -1175,6 +1190,22 @@ const RoutingSheets = () => {
                   {incompleteCount > 0 && (
                     <Badge variant={showIncompleteOnly ? "secondary" : "destructive"} className="h-5 px-1.5">
                       {incompleteCount}
+                    </Badge>
+                  )}
+                </Button>
+
+                {/* Duplicates filter button */}
+                <Button
+                  variant={showDuplicatesOnly ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowDuplicatesOnly(!showDuplicatesOnly)}
+                  className="gap-1.5 h-9"
+                >
+                  <Copy className="h-4 w-4" />
+                  Дубли операций
+                  {duplicatesCount > 0 && (
+                    <Badge variant={showDuplicatesOnly ? "secondary" : "outline"} className="h-5 px-1.5 border-amber-500 text-amber-600">
+                      {duplicatesCount}
                     </Badge>
                   )}
                 </Button>
