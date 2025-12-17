@@ -124,7 +124,7 @@ export const useOperators = () => {
           work_schedules:work_schedule_id (
             id, name, code,
             work_schedule_shifts (
-              id, shift_name, net_work_minutes, gross_work_minutes, break_minutes
+              id, shift_number, shift_name, net_work_minutes, gross_work_minutes, break_minutes
             )
           ),
           operator_skills (
