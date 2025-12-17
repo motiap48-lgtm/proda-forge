@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, DragEvent } from "react";
+import { useState, useEffect, useRef, DragEvent, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -410,6 +410,22 @@ export function RoutingSheetDialog({
   // Get production operations for menu
   const productionOps = operations.filter(op => op.operation_type === "production");
 
+  // Detect duplicate operation names (can break analytics)
+  const duplicateOperationNames = useMemo(() => {
+    const nameCount = new Map<string, number>();
+    operations.forEach(op => {
+      if (op.name.trim()) {
+        const count = nameCount.get(op.name) || 0;
+        nameCount.set(op.name, count + 1);
+      }
+    });
+    return Array.from(nameCount.entries())
+      .filter(([_, count]) => count > 1)
+      .map(([name]) => name);
+  }, [operations]);
+
+  const hasDuplicateOperationNames = duplicateOperationNames.length > 0;
+
   // Handle preview for strategies
   const handleShowPreview = (strategy: DistributionStrategy) => {
     const preview = generatePreview(strategy);
@@ -660,6 +676,23 @@ export function RoutingSheetDialog({
                     Отменить распределение
                   </Button>
                 </div>
+              )}
+
+              {/* Warning for duplicate operation names */}
+              {hasDuplicateOperationNames && (
+                <Alert variant="default" className="border-orange-500/50 bg-orange-500/10">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-700 dark:text-orange-400">
+                    <span className="font-medium">Обнаружены одинаковые названия операций:</span>{" "}
+                    <span className="text-muted-foreground">
+                      {duplicateOperationNames.slice(0, 3).map(name => `"${name}"`).join(", ")}
+                      {duplicateOperationNames.length > 3 && ` и ещё ${duplicateOperationNames.length - 3}...`}
+                    </span>
+                    <p className="text-xs mt-1 text-muted-foreground">
+                      Это может привести к некорректным данным в отчётах выпуска. Рекомендуется использовать уникальные названия.
+                    </p>
+                  </AlertDescription>
+                </Alert>
               )}
 
               {/* Distribution status indicator */}

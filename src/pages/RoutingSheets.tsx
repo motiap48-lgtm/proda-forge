@@ -131,6 +131,21 @@ const RoutingSheets = () => {
     };
   };
 
+  // Helper to detect duplicate operation names in a routing sheet
+  const getSheetDuplicateOperations = (sheet: any): string[] => {
+    const operations = sheet.routing_operations || [];
+    const nameCount = new Map<string, number>();
+    operations.forEach((op: any) => {
+      const name = op.name?.trim();
+      if (name) {
+        nameCount.set(name, (nameCount.get(name) || 0) + 1);
+      }
+    });
+    return Array.from(nameCount.entries())
+      .filter(([_, count]) => count > 1)
+      .map(([name]) => name);
+  };
+
   // Sort sheets by sort_order for display
   const sortedSheets = [...(routingSheets || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
@@ -1409,6 +1424,33 @@ const RoutingSheets = () => {
                                       </TooltipProvider>
                                     );
                                   })()}
+                                  {/* Duplicate operation names warning */}
+                                  {(() => {
+                                    const duplicates = getSheetDuplicateOperations(sheet);
+                                    if (duplicates.length === 0) return null;
+                                    return (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-xs">
+                                              <AlertTriangle className="h-3 w-3 mr-1" />
+                                              дубли операций
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <div className="space-y-1">
+                                              <p className="font-medium">Одинаковые названия операций:</p>
+                                              <p className="text-muted-foreground">
+                                                {duplicates.slice(0, 3).map(n => `"${n}"`).join(", ")}
+                                                {duplicates.length > 3 && ` и ещё ${duplicates.length - 3}...`}
+                                              </p>
+                                              <p className="text-xs text-amber-500">Может привести к ошибкам в отчётах</p>
+                                            </div>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    );
+                                  })()}
                                 </div>
 
                                 {operations.length > 0 && (
@@ -1657,6 +1699,33 @@ const RoutingSheets = () => {
                         </TooltipProvider>
                       );
                     })()}
+                      {/* Duplicate operation names warning */}
+                      {(() => {
+                        const duplicates = getSheetDuplicateOperations(sheet);
+                        if (duplicates.length === 0) return null;
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-xs">
+                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                  дубли операций
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="space-y-1">
+                                  <p className="font-medium">Одинаковые названия операций:</p>
+                                  <p className="text-muted-foreground">
+                                    {duplicates.slice(0, 3).map(n => `"${n}"`).join(", ")}
+                                    {duplicates.length > 3 && ` и ещё ${duplicates.length - 3}...`}
+                                  </p>
+                                  <p className="text-xs text-amber-500">Может привести к ошибкам в отчётах</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
                   </div>
 
                   {operations.length > 0 && (
