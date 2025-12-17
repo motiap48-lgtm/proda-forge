@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { 
   useMRPCalculation, 
   useSaveMRPCalculation,
@@ -52,11 +53,13 @@ const MRPPlanning = () => {
   const [useSelectedOrders, setUseSelectedOrders] = useState(false);
   const [orderSelectionOpen, setOrderSelectionOpen] = useState(false);
   const [expandedWorkCenters, setExpandedWorkCenters] = useState<Set<string>>(new Set());
+  const [includeChildOrders, setIncludeChildOrders] = useState(false);
   
   const { data: productionOrders, isLoading: ordersLoading } = useMRPProductionOrders(planningHorizon);
   const { data: mrpResult, isLoading, refetch } = useMRPCalculation(
     planningHorizon, 
-    useSelectedOrders ? selectedOrderIds : undefined
+    useSelectedOrders ? selectedOrderIds : undefined,
+    includeChildOrders
   );
   const saveMutation = useSaveMRPCalculation();
 
@@ -247,6 +250,16 @@ const MRPPlanning = () => {
                   onChange={(e) => setStartDate(e.target.value)}
                   className="mt-1" 
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch 
+                  id="includeChildOrders" 
+                  checked={includeChildOrders}
+                  onCheckedChange={setIncludeChildOrders}
+                />
+                <Label htmlFor="includeChildOrders" className="cursor-pointer text-sm">
+                  Включить дочерние заказы
+                </Label>
               </div>
               <Button 
                 className="bg-gradient-to-r from-primary to-primary-glow"
@@ -604,6 +617,14 @@ const MRPPlanning = () => {
                               )}
                             </div>
                           </div>
+                          {/* Источники потребности */}
+                          {item.source_orders && item.source_orders.length > 0 && (
+                            <div className="mt-2 pt-2 border-t">
+                              <p className="text-xs text-muted-foreground">
+                                Из заказов: {item.source_orders.join(', ')}
+                              </p>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
