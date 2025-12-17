@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from "react";
-import { useProductionOutputReport, DailyOutput, DailyOutputItem, OutputReportMode, PlanFactData } from "@/hooks/useProductionOutputReport";
+import { useProductionOutputReport, DailyOutput, DailyOutputItem, OutputReportMode, PlanFactData, PlanFactMode } from "@/hooks/useProductionOutputReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,7 +110,8 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
   const [reportMode, setReportMode] = useState<OutputReportMode>('finished_products');
   const [groupingMode, setGroupingMode] = useState<GroupingMode>('by_date');
   const [reportTab, setReportTab] = useState<ReportTab>('output');
-  const { data, isLoading } = useProductionOutputReport(startDate, endDate, reportMode);
+  const [planFactMode, setPlanFactMode] = useState<PlanFactMode>('by_deadline');
+  const { data, isLoading } = useProductionOutputReport(startDate, endDate, reportMode, planFactMode);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const printRef = useRef<HTMLDivElement>(null);
@@ -904,6 +905,25 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
               </Card>
             </div>
           )}
+
+          {/* Plan/Fact Mode Toggle */}
+          <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+            <span className="text-sm font-medium">Метод расчёта плана:</span>
+            <Select value={planFactMode} onValueChange={(v) => setPlanFactMode(v as PlanFactMode)}>
+              <SelectTrigger className="w-[280px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="by_deadline">По дедлайну (дата окончания)</SelectItem>
+                <SelectItem value="distributed">Распределение по дням периода</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">
+              {planFactMode === 'by_deadline' 
+                ? 'План = весь объём на дату planned_end_date' 
+                : 'План = равномерное распределение объёма на каждый день периода заказа'}
+            </span>
+          </div>
 
           {/* Plan/Fact Chart */}
           <Card>
