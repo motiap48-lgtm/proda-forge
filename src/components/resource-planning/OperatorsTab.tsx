@@ -50,6 +50,42 @@ export const OperatorsTab = () => {
   const totalOperators = operators?.length || 0;
   const activeOperators = operators?.filter((op: any) => op.is_active).length || 0;
 
+  // Calculate total available time for all active operators with rotation consideration
+  const totalAvailableTime = useMemo(() => {
+    const activeOps = operators?.filter((op: any) => op.is_active) || [];
+    let totalMinutes = 0;
+    
+    for (const operator of activeOps) {
+      const shifts = (operator.work_schedules as any)?.work_schedule_shifts as any[] | undefined;
+      if (!shifts || shifts.length === 0) continue;
+      
+      let currentShift = null;
+      
+      // Calculate current shift based on rotation
+      if (operator.shift_rotation_enabled && shifts.length >= 2) {
+        const startDate = operator.shift_rotation_start_date 
+          ? new Date(operator.shift_rotation_start_date) 
+          : new Date();
+        const today = new Date();
+        const weeksDiff = differenceInWeeks(today, startDate);
+        const startingShift = operator.assigned_shift_number || 1;
+        const currentShiftNumber = ((startingShift - 1 + weeksDiff) % shifts.length) + 1;
+        currentShift = shifts.find((s: any) => s.shift_number === currentShiftNumber);
+      } else if (operator.assigned_shift_number) {
+        currentShift = shifts.find((s: any) => s.shift_number === operator.assigned_shift_number);
+      }
+      
+      if (currentShift) {
+        const netMinutes = currentShift.net_work_minutes ?? (currentShift.gross_work_minutes - currentShift.break_minutes);
+        totalMinutes += netMinutes;
+      }
+    }
+    
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`;
+  }, [operators]);
+
   const getEmployeeTypeLabel = (type: string) => {
     switch (type) {
       case "operator": return "Станочник";
@@ -205,17 +241,23 @@ export const OperatorsTab = () => {
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Users className="h-4 w-4" />
-          <span>Всего: <span className="font-medium text-foreground">{totalOperators}</span></span>
-          <span>•</span>
-          <span>Активных: <span className="font-medium text-foreground">{activeOperators}</span></span>
-          {typeFilter !== "all" && (
-            <>
-              <span>•</span>
-              <span>Отфильтровано: <span className="font-medium text-foreground">{filteredOperators.length}</span></span>
-            </>
-          )}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Users className="h-4 w-4" />
+            <span>Всего: <span className="font-medium text-foreground">{totalOperators}</span></span>
+            <span>•</span>
+            <span>Активных: <span className="font-medium text-foreground">{activeOperators}</span></span>
+            {typeFilter !== "all" && (
+              <>
+                <span>•</span>
+                <span>Отфильтровано: <span className="font-medium text-foreground">{filteredOperators.length}</span></span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span>Общее доступное время: <span className="font-medium text-primary">{totalAvailableTime}</span></span>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
