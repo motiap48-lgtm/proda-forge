@@ -261,8 +261,6 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
   const [syncingScheduleId, setSyncingScheduleId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [stickyTotal, setStickyTotal] = useState(false);
   
   // Refs for synchronized scrolling
   const scrollContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -1380,21 +1378,6 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 <ChevronsDownUp className="h-4 w-4" />
               </Button>
             </div>
-
-            {/* Sticky total toggle */}
-            <Button
-              variant={stickyTotal ? "default" : "outline"}
-              size="sm"
-              onClick={() => setStickyTotal(!stickyTotal)}
-              className={cn(
-                "gap-1.5 text-xs",
-                stickyTotal && "bg-emerald-600 hover:bg-emerald-700 text-white"
-              )}
-              title="Закрепить колонку Итого справа"
-            >
-              <Clock className="h-3.5 w-3.5" />
-              Закрепить Итого
-            </Button>
 
             {/* Shift legend */}
             <div className="flex gap-2 border-l pl-3 ml-1">
