@@ -1381,7 +1381,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div ref={scrollContainerRef} className="overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+        <div ref={scrollContainerRef} className="relative overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
           <div ref={printRef} className="p-6" style={{ minWidth: gridStyle.minWidth }}>
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
@@ -1472,7 +1472,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     {period === "year" ? (
                       <>
                     <div className="grid gap-1 mb-2 sticky top-0 z-20 bg-background py-1" style={gridStyle}>
-                      <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-10 bg-background min-w-[200px]">Сотрудник</div>
+                      <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">Сотрудник</div>
                       {months.map((month) => (
                         <div 
                           key={month.toISOString()} 
@@ -1503,7 +1503,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         >
                           <HoverCard openDelay={300}>
                             <HoverCardTrigger asChild>
-                              <div className="px-2 flex items-center gap-2 sticky left-0 z-10 bg-background min-w-[200px]">
+                              <div className="px-2 flex items-center gap-2 sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">
                                 <span className="text-sm font-medium truncate flex-1 cursor-default" onClick={(e) => e.stopPropagation()}>
                                   {operator.full_name}
                                 </span>
@@ -1550,7 +1550,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           className="grid gap-1 py-2 mt-2 border-t border-dashed"
                           style={gridStyle}
                         >
-                          <div className="px-2 text-sm font-medium text-muted-foreground sticky left-0 z-10 bg-background min-w-[200px]">
+                          <div className="px-2 text-sm font-medium text-muted-foreground sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">
                             Итого по группе:
                           </div>
                           {months.map((month) => {
@@ -1581,7 +1581,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       <>
                     {/* Regular day view - Header row with days for each group - sticky */}
                     <div className="grid gap-1 mb-2 sticky top-0 z-20 bg-background py-1" style={gridStyle}>
-                      <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-10 bg-background min-w-[200px]">Сотрудник</div>
+                      <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">Сотрудник</div>
                       {days.map((day, idx) => {
                         const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
                         const isWeekend = getDay(day) === 0 || getDay(day) === 6;
@@ -1638,7 +1638,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         >
                           <HoverCard openDelay={300}>
                             <HoverCardTrigger asChild>
-                              <div className="px-2 flex items-center gap-2 sticky left-0 z-10 bg-background min-w-[200px]">
+                              <div className="px-2 flex items-center gap-2 sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">
                                 <span className="text-sm font-medium truncate flex-1 cursor-default" onClick={(e) => e.stopPropagation()}>
                                   {operator.full_name}
                                 </span>
@@ -1742,7 +1742,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           className="grid gap-1 py-2 mt-2 border-t border-dashed"
                           style={gridStyle}
                         >
-                          <div className="px-2 text-sm font-medium text-muted-foreground sticky left-0 z-10 bg-background min-w-[200px] flex items-center gap-3">
+                          <div className="px-2 text-sm font-medium text-muted-foreground sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px] flex items-center gap-3">
                             <span>Итого:</span>
                             <div className="flex items-center gap-2 text-xs">
                               <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
@@ -1784,7 +1784,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   className="grid gap-1 py-2 bg-primary/5 rounded-lg"
                   style={gridStyle}
                 >
-                  <div className="px-2 text-sm font-bold flex items-center gap-2 sticky left-0 z-10 bg-primary/5 min-w-[200px]">
+                  <div className="px-2 text-sm font-bold flex items-center gap-2 sticky left-0 z-30 bg-primary/5 border-r border-border shadow-sm w-[200px]">
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
