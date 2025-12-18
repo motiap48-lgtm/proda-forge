@@ -1881,7 +1881,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden">
                 {/* Fixed label column - same structure as employee column */}
                 <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex flex-col relative" style={{ width: `${employeeColumnWidth}px` }}>
-                  <div className="px-3 h-[52px] flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                  <div className="px-3 h-[40px] flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
@@ -1905,7 +1905,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             const h = Math.floor(monthTotal / 60);
                             const m = monthTotal % 60;
                             return (
-                              <div key={month.toISOString()} className="text-center text-xs font-medium h-[52px] flex items-center justify-center rounded-md bg-gradient-to-b from-muted/20 to-muted/40">
+                              <div key={month.toISOString()} className="text-center text-xs font-medium h-[40px] flex items-center justify-center rounded-md bg-gradient-to-b from-muted/20 to-muted/40">
                                 {h}ч{m > 0 ? ` ${m}м` : ''}
                               </div>
                             );
@@ -1918,7 +1918,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             <div 
                               key={day.toISOString()} 
                               className={cn(
-                                "text-center text-xs text-muted-foreground h-[52px] flex items-center justify-center rounded-md",
+                                "text-center text-xs text-muted-foreground h-[40px] flex items-center justify-center rounded-md",
                                 isWeekend 
                                   ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                                   : "bg-gradient-to-b from-muted/20 to-muted/40",
@@ -1938,7 +1938,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           ? calculateGroupYearlyTotal(filteredOperators)
                           : calculateGroupTotalHours(filteredOperators);
                         return (
-                          <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold">
+                          <div className="text-center p-1.5 h-[40px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold">
                             <div>{grandTotalCalc.hours}ч</div>
                             {grandTotalCalc.minutes > 0 && <div className="text-[10px] opacity-80">{grandTotalCalc.minutes}м</div>}
                           </div>
