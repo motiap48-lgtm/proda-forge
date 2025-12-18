@@ -583,6 +583,30 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
 
   // Use minmax() for minimum column width with horizontal scroll when needed
   // Columns stretch to fill width when few days, scroll when many days
+  // calendarGridStyle is for the scrollable calendar part (excludes employee column)
+  const calendarGridStyle = useMemo(() => {
+    if (period === "year") {
+      const minWidth = 12 * 80 + 80; // 12 months + total column
+      return {
+        gridTemplateColumns: `repeat(12, minmax(80px, 1fr)) 80px`,
+        minWidth: `${minWidth}px`
+      };
+    }
+    // Calculate minimum column width based on day count
+    const minColWidth = daysCount <= 7 ? 70 : daysCount <= 14 ? 60 : 55;
+    const totalMinWidth = daysCount * minColWidth + 80; // days + total column
+    
+    // If content can fit in ~1200px viewport, let columns stretch (no minWidth)
+    // Otherwise, set minWidth to enable horizontal scrolling
+    const shouldStretch = totalMinWidth < 1200;
+    
+    return {
+      gridTemplateColumns: `repeat(${daysCount}, minmax(${minColWidth}px, 1fr)) 80px`,
+      minWidth: shouldStretch ? undefined : `${totalMinWidth}px`
+    };
+  }, [period, daysCount]);
+
+  // Full grid style including employee column (for grand total and other full-width rows)
   const gridStyle = useMemo(() => {
     if (period === "year") {
       return {
@@ -590,12 +614,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         minWidth: `${200 + 12 * 80 + 80}px`
       };
     }
-    // Calculate minimum column width based on day count
     const minColWidth = daysCount <= 7 ? 70 : daysCount <= 14 ? 60 : 55;
     const totalMinWidth = 200 + daysCount * minColWidth + 80;
-    
-    // If content can fit in ~1400px viewport, let columns stretch (no minWidth)
-    // Otherwise, set minWidth to enable horizontal scrolling
     const shouldStretch = totalMinWidth < 1400;
     
     return {
@@ -1488,329 +1508,301 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 )}
               >
                 <div className={cn("overflow-visible", isCollapsed && "overflow-hidden")}>
-                  {/* Horizontal scroll container for the calendar grid */}
-                  <div ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? scrollContainerRef : undefined} className="overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-                    <div ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? printRef : undefined} style={{ minWidth: gridStyle.minWidth ? `calc(${gridStyle.minWidth} + 24px)` : undefined, paddingRight: '24px' }}>
-                  {period === "year" ? (
-                    <>
-                    <div className="grid gap-1 mb-2 sticky top-0 z-20 bg-background py-1" style={gridStyle}>
-                      <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">Сотрудник</div>
-                      {months.map((month) => (
-                        <div 
-                          key={month.toISOString()} 
-                          className="text-center text-sm p-1 rounded-md text-muted-foreground"
-                        >
-                          <div className="font-medium text-xs">
-                            {format(month, "LLL", { locale: ru })}
-                          </div>
-                        </div>
+                  {/* Flex layout: fixed left column + scrollable calendar */}
+                  <div className="flex border border-border rounded-lg overflow-hidden">
+                    {/* Fixed left column - Employee names */}
+                    <div className="w-[200px] flex-shrink-0 bg-background z-10">
+                      {/* Header */}
+                      <div className="text-sm font-medium text-muted-foreground px-2 h-[60px] flex items-center bg-muted/30 border-b border-border">
+                        Сотрудник
+                      </div>
+                      {/* Employee rows */}
+                      {ops.map((operator) => (
+                        <HoverCard key={operator.id} openDelay={300}>
+                          <HoverCardTrigger asChild>
+                            <div 
+                              className={cn(
+                                "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50",
+                                onEditOperator && "hover:bg-muted/50 cursor-pointer"
+                              )}
+                              onClick={() => onEditOperator?.(operator)}
+                            >
+                              <span className="text-sm font-medium truncate flex-1" onClick={(e) => e.stopPropagation()}>
+                                {operator.full_name}
+                              </span>
+                              {operator.shift_rotation_enabled && (
+                                <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              )}
+                              {onEditOperator && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditOperator(operator);
+                                  }}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-80" side="right" align="start">
+                            <OperatorInfoCard operator={operator} />
+                          </HoverCardContent>
+                        </HoverCard>
                       ))}
-                      <div className={cn(
-                        "text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium",
-                        stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
-                      )}>
-                        <Clock className="h-3 w-3 mx-auto mb-0.5" />
-                        <div className="text-[10px]">Год</div>
+                      {/* Group summary row */}
+                      <div className="px-2 h-[44px] flex items-center text-xs text-muted-foreground bg-muted/30 border-t border-border">
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 text-emerald-600">
+                            <CalendarCheck className="h-3 w-3" />
+                            {calculateGroupStats(ops).workingDays}
+                          </span>
+                          <span className="flex items-center gap-1 text-rose-500">
+                            <CalendarX className="h-3 w-3" />
+                            {calculateGroupStats(ops).offDays}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    
-                    {ops.map((operator) => {
-                      const yearlyTotal = calculateYearlyTotal(operator);
-                      return (
-                        <div 
-                          key={operator.id} 
-                          className={cn(
-                            "grid gap-1 py-1 rounded group",
-                            onEditOperator && "hover:bg-muted/50 cursor-pointer"
-                          )}
-                          style={gridStyle}
-                          onClick={() => onEditOperator?.(operator)}
-                        >
-                          <HoverCard openDelay={300}>
-                            <HoverCardTrigger asChild>
-                              <div className="px-2 flex items-center gap-2 sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">
-                                <span className="text-sm font-medium truncate flex-1 cursor-default" onClick={(e) => e.stopPropagation()}>
-                                  {operator.full_name}
-                                </span>
-                                {operator.shift_rotation_enabled && (
-                                  <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                )}
-                              </div>
-                            </HoverCardTrigger>
-                            <HoverCardContent className="w-80" side="right" align="start">
-                              <OperatorInfoCard operator={operator} />
-                            </HoverCardContent>
-                          </HoverCard>
-                          
-                          {months.map((month) => {
-                            const monthHours = calculateMonthHours(operator, month);
-                            return (
-                              <div 
-                                key={month.toISOString()} 
-                                className="text-center p-1.5 rounded-md text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                              >
-                                <div className="font-medium">{monthHours.hours}ч</div>
-                                {monthHours.minutes > 0 && (
-                                  <div className="text-[10px] opacity-80">{monthHours.minutes}м</div>
-                                )}
-                              </div>
-                            );
-                          })}
 
-                          <div className={cn(
-                            "text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium",
-                            stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
-                          )}>
-                            <div>{yearlyTotal.hours}ч</div>
-                            {yearlyTotal.minutes > 0 && (
-                              <div className="text-[10px] opacity-80">{yearlyTotal.minutes}м</div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Group summary row for year view */}
-                    {(() => {
-                      const groupYearlyTotal = calculateGroupYearlyTotal(ops);
-                      return (
-                        <div 
-                          className="grid gap-1 py-2 mt-2 border-t border-dashed"
-                          style={gridStyle}
-                        >
-                          <div className="px-2 text-sm font-medium text-muted-foreground sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">
-                            Итого по группе:
-                          </div>
-                          {months.map((month) => {
-                            let monthTotal = 0;
-                            ops.forEach(op => {
-                              const mh = calculateMonthHours(op, month);
-                              monthTotal += mh.hours * 60 + mh.minutes;
-                            });
-                            const h = Math.floor(monthTotal / 60);
-                            const m = monthTotal % 60;
-                            return (
-                              <div key={month.toISOString()} className="text-center text-xs text-muted-foreground">
-                                {h}ч{m > 0 ? ` ${m}м` : ''}
+                    {/* Scrollable calendar section */}
+                    <div 
+                      ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? scrollContainerRef : undefined} 
+                      className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent border-l border-border"
+                    >
+                      <div 
+                        ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? printRef : undefined}
+                        style={{ minWidth: calendarGridStyle.minWidth, paddingRight: '24px' }}
+                      >
+                        {period === "year" ? (
+                          <>
+                            {/* Year view - Header */}
+                            <div className="grid gap-1 h-[60px] items-center bg-muted/30 border-b border-border px-1" style={calendarGridStyle}>
+                              {months.map((month) => (
+                                <div 
+                                  key={month.toISOString()} 
+                                  className="text-center text-sm p-1 rounded-md text-muted-foreground"
+                                >
+                                  <div className="font-medium text-xs">
+                                    {format(month, "LLL", { locale: ru })}
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                                <Clock className="h-3 w-3 mx-auto mb-0.5" />
+                                <div className="text-[10px]">Год</div>
                               </div>
-                            );
-                          })}
-                          <div className={cn(
-                            "text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold",
-                            stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
-                          )}>
-                            <div>{groupYearlyTotal.hours}ч</div>
-                            {groupYearlyTotal.minutes > 0 && (
-                              <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                      </>
-                    ) : (
-                      <>
-                    {/* Regular day view - Header row with days for each group - sticky */}
-                    <div className="grid gap-1 mb-2 sticky top-0 z-20 bg-background py-1" style={gridStyle}>
-                      <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">Сотрудник</div>
-                      {days.map((day, idx) => {
-                        const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
-                        const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                        const isTodayDate = isToday(day);
-                        return (
-                          <div 
-                            key={day.toISOString()} 
-                            className={cn(
-                              "text-center text-sm p-1.5 rounded-md relative",
-                              isTodayDate 
-                                ? "bg-primary text-primary-foreground font-semibold ring-2 ring-primary ring-offset-2 ring-offset-background" 
-                                : isWeekend 
-                                  ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
-                                  : "bg-muted/50 text-muted-foreground"
-                            )}
-                          >
-                            {isTodayDate && daysCount === 1 && (
-                              <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full whitespace-nowrap shadow-sm">
-                                СЕГОДНЯ
-                              </div>
-                            )}
-                            <div className="font-medium text-xs uppercase">
-                              {format(day, "EEE", { locale: ru })}
                             </div>
-                            <div className={cn("text-sm font-semibold", isTodayDate ? "" : isWeekend ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>
-                              {format(day, "d", { locale: ru })}
-                            </div>
-                            {(showMonth || daysCount <= 14) && (
-                              <div className="text-[10px] opacity-70">
-                                {format(day, "MMM", { locale: ru })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                      {/* Total hours header */}
-                      <div className={cn(
-                        "text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium",
-                        stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
-                      )}>
-                        <Clock className="h-3 w-3 mx-auto mb-0.5" />
-                        <div className="text-[10px]">Итого</div>
-                      </div>
-                    </div>
-                    
-                    {ops.map((operator) => {
-                      const totalHours = calculateTotalHours(operator);
-                      return (
-                        <div 
-                          key={operator.id} 
-                          className={cn(
-                            "grid gap-1 py-1 rounded group",
-                            onEditOperator && "hover:bg-muted/50 cursor-pointer"
-                          )}
-                          style={gridStyle}
-                          onClick={() => onEditOperator?.(operator)}
-                        >
-                          <HoverCard openDelay={300}>
-                            <HoverCardTrigger asChild>
-                              <div className="px-2 flex items-center gap-2 sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">
-                                <span className="text-sm font-medium truncate flex-1 cursor-default" onClick={(e) => e.stopPropagation()}>
-                                  {operator.full_name}
-                                </span>
-                                {operator.shift_rotation_enabled && (
-                                  <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                )}
-                                {onEditOperator && (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onEditOperator(operator);
-                                    }}
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                            </HoverCardTrigger>
-                            <HoverCardContent className="w-80" side="right" align="start">
-                              <OperatorInfoCard operator={operator} />
-                            </HoverCardContent>
-                          </HoverCard>
-                          
-                          {days.map((day) => {
-                            const shift = getShiftForDate(operator, day);
-                            const colors = shift ? shiftColorMap.get(shift.shift_name) : null;
-                            const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
-                            const hours = Math.floor(netMinutes / 60);
-                            const mins = netMinutes % 60;
-                            const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                            const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
                             
-                            return (
-                              <div 
-                                key={day.toISOString()} 
-                                className={cn(
-                                  "text-center p-1.5 rounded-md text-xs transition-colors relative",
-                                  colors 
-                                    ? cn(colors.bg, colors.text, "border", colors.border) 
-                                    : isWeekend 
-                                      ? "bg-rose-50 dark:bg-rose-900/20" 
-                                      : "bg-muted/20",
-                                  isToday(day) && "ring-2 ring-primary/30"
-                                )}
-                                title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
-                              >
-                                {shift ? (
-                                  <>
-                                    <div className="font-medium truncate text-[11px]" title={shift.shift_name}>
-                                      {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name}
+                            {/* Year view - Operator rows */}
+                            {ops.map((operator) => {
+                              const yearlyTotal = calculateYearlyTotal(operator);
+                              return (
+                                <div 
+                                  key={operator.id} 
+                                  className={cn(
+                                    "grid gap-1 h-[52px] items-center border-b border-border/50 px-1",
+                                    onEditOperator && "hover:bg-muted/30 cursor-pointer"
+                                  )}
+                                  style={calendarGridStyle}
+                                  onClick={() => onEditOperator?.(operator)}
+                                >
+                                  {months.map((month) => {
+                                    const monthHours = calculateMonthHours(operator, month);
+                                    return (
+                                      <div 
+                                        key={month.toISOString()} 
+                                        className="text-center p-1.5 rounded-md text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                                      >
+                                        <div className="font-medium">{monthHours.hours}ч</div>
+                                        {monthHours.minutes > 0 && (
+                                          <div className="text-[10px] opacity-80">{monthHours.minutes}м</div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                  <div className="text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                                    <div>{yearlyTotal.hours}ч</div>
+                                    {yearlyTotal.minutes > 0 && (
+                                      <div className="text-[10px]">{yearlyTotal.minutes}м</div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                            {/* Year view - Group summary */}
+                            {(() => {
+                              const groupYearlyTotal = calculateGroupYearlyTotal(ops);
+                              return (
+                                <div className="grid gap-1 h-[44px] items-center bg-muted/30 border-t border-border px-1" style={calendarGridStyle}>
+                                  {months.map((month) => {
+                                    let monthTotal = 0;
+                                    ops.forEach(op => {
+                                      const mh = calculateMonthHours(op, month);
+                                      monthTotal += mh.hours * 60 + mh.minutes;
+                                    });
+                                    const h = Math.floor(monthTotal / 60);
+                                    const m = monthTotal % 60;
+                                    return (
+                                      <div key={month.toISOString()} className="text-center text-[10px] text-muted-foreground">
+                                        {h}ч{m > 0 ? ` ${m}м` : ''}
+                                      </div>
+                                    );
+                                  })}
+                                  <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold">
+                                    <div>{groupYearlyTotal.hours}ч</div>
+                                    {groupYearlyTotal.minutes > 0 && (
+                                      <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </>
+                        ) : (
+                          <>
+                            {/* Day view - Header */}
+                            <div className="grid gap-1 h-[60px] items-center bg-muted/30 border-b border-border px-1" style={calendarGridStyle}>
+                              {days.map((day, idx) => {
+                                const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
+                                const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                                const isTodayDate = isToday(day);
+                                return (
+                                  <div 
+                                    key={day.toISOString()} 
+                                    className={cn(
+                                      "text-center text-sm p-1.5 rounded-md relative",
+                                      isTodayDate 
+                                        ? "bg-primary text-primary-foreground font-semibold ring-2 ring-primary ring-offset-1 ring-offset-background" 
+                                        : isWeekend 
+                                          ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
+                                          : "text-muted-foreground"
+                                    )}
+                                  >
+                                    <div className="font-medium text-xs uppercase">
+                                      {format(day, "EEE", { locale: ru })}
                                     </div>
-                                    {daysCount <= 14 && (
-                                      <div className="text-[10px] opacity-80">
-                                        {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
-                                      </div>
-                                    )}
-                                    {/* Cycle day indicator for cyclic schedules */}
-                                    {cycleInfo && daysCount <= 14 && (
-                                      <div className="text-[9px] opacity-60 font-medium mt-0.5">
-                                        Д{cycleInfo.dayInCycle}
-                                      </div>
-                                    )}
-                                  </>
-                                ) : (
-                                  <div className="flex flex-col items-center">
-                                    <span className={cn(
-                                      "text-sm",
-                                      isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground"
-                                    )}>—</span>
-                                    {/* Show day off indicator for cyclic schedules */}
-                                    {cycleInfo && daysCount <= 14 && (
-                                      <div className="text-[9px] opacity-50 font-medium">
-                                        Д{cycleInfo.dayInCycle}
+                                    <div className={cn("text-sm font-semibold", isTodayDate ? "" : isWeekend ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>
+                                      {format(day, "d", { locale: ru })}
+                                    </div>
+                                    {(showMonth || daysCount <= 14) && (
+                                      <div className="text-[10px] opacity-70">
+                                        {format(day, "MMM", { locale: ru })}
                                       </div>
                                     )}
                                   </div>
-                                )}
+                                );
+                              })}
+                              <div className="text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                                <Clock className="h-3 w-3 mx-auto mb-0.5" />
+                                <div className="text-[10px]">Итого</div>
                               </div>
-                            );
-                          })}
-
-                          {/* Total hours cell */}
-                          <div className={cn(
-                            "text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium",
-                            stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
-                          )}>
-                            <div>{totalHours.hours}ч</div>
-                            {totalHours.minutes > 0 && (
-                              <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Group summary row */}
-                    {(() => {
-                      const groupStats = calculateGroupStats(ops);
-                      return (
-                        <div 
-                          className="grid gap-1 py-2 mt-2 border-t border-dashed"
-                          style={gridStyle}
-                        >
-                          <div className="px-2 text-sm font-medium text-muted-foreground sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px] flex items-center gap-3">
-                            <span>Итого:</span>
-                            <div className="flex items-center gap-2 text-xs">
-                              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                                <CalendarCheck className="h-3 w-3" />
-                                {groupStats.workingDays}
-                              </span>
-                              <span className="flex items-center gap-1 text-rose-500 dark:text-rose-400">
-                                <CalendarX className="h-3 w-3" />
-                                {groupStats.offDays}
-                              </span>
                             </div>
-                          </div>
-                          {days.map((day) => (
-                            <div key={day.toISOString()} className="text-center text-xs text-muted-foreground">
-                              —
-                            </div>
-                          ))}
-                          <div className={cn(
-                            "text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold",
-                            stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
-                          )}>
-                            <div>{groupStats.totalHours}ч</div>
-                            {groupStats.totalMinutes > 0 && (
-                              <div className="text-[10px]">{groupStats.totalMinutes}м</div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                      </>
-                    )}
+                            
+                            {/* Day view - Operator rows */}
+                            {ops.map((operator) => {
+                              const totalHours = calculateTotalHours(operator);
+                              return (
+                                <div 
+                                  key={operator.id} 
+                                  className={cn(
+                                    "grid gap-1 h-[52px] items-center border-b border-border/50 px-1",
+                                    onEditOperator && "hover:bg-muted/30 cursor-pointer"
+                                  )}
+                                  style={calendarGridStyle}
+                                  onClick={() => onEditOperator?.(operator)}
+                                >
+                                  {days.map((day) => {
+                                    const shift = getShiftForDate(operator, day);
+                                    const colors = shift ? shiftColorMap.get(shift.shift_name) : null;
+                                    const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
+                                    const hours = Math.floor(netMinutes / 60);
+                                    const mins = netMinutes % 60;
+                                    const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                                    const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
+                                    
+                                    return (
+                                      <div 
+                                        key={day.toISOString()} 
+                                        className={cn(
+                                          "text-center p-1.5 rounded-md text-xs transition-colors relative",
+                                          colors 
+                                            ? cn(colors.bg, colors.text, "border", colors.border) 
+                                            : isWeekend 
+                                              ? "bg-rose-50 dark:bg-rose-900/20" 
+                                              : "bg-muted/20",
+                                          isToday(day) && "ring-2 ring-primary/30"
+                                        )}
+                                        title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
+                                      >
+                                        {shift ? (
+                                          <>
+                                            <div className="font-medium truncate text-[11px]" title={shift.shift_name}>
+                                              {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name}
+                                            </div>
+                                            {daysCount <= 14 && (
+                                              <div className="text-[10px] opacity-80">
+                                                {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
+                                              </div>
+                                            )}
+                                            {cycleInfo && daysCount <= 14 && (
+                                              <div className="text-[9px] opacity-60 font-medium mt-0.5">
+                                                Д{cycleInfo.dayInCycle}
+                                              </div>
+                                            )}
+                                          </>
+                                        ) : (
+                                          <div className="flex flex-col items-center">
+                                            <span className={cn(
+                                              "text-sm",
+                                              isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground"
+                                            )}>—</span>
+                                            {cycleInfo && daysCount <= 14 && (
+                                              <div className="text-[9px] opacity-50 font-medium">
+                                                Д{cycleInfo.dayInCycle}
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                  <div className="text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                                    <div>{totalHours.hours}ч</div>
+                                    {totalHours.minutes > 0 && (
+                                      <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                            {/* Day view - Group summary */}
+                            {(() => {
+                              const groupStats = calculateGroupStats(ops);
+                              return (
+                                <div className="grid gap-1 h-[44px] items-center bg-muted/30 border-t border-border px-1" style={calendarGridStyle}>
+                                  {days.map((day) => (
+                                    <div key={day.toISOString()} className="text-center text-xs text-muted-foreground">
+                                      —
+                                    </div>
+                                  ))}
+                                  <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold">
+                                    <div>{groupStats.totalHours}ч</div>
+                                    {groupStats.totalMinutes > 0 && (
+                                      <div className="text-[10px]">{groupStats.totalMinutes}м</div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
