@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { format, addDays, getDay, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ScheduleCalendarPreviewProps {
   schedule: {
@@ -44,6 +46,9 @@ export const ScheduleCalendarPreview = ({
 }: ScheduleCalendarPreviewProps) => {
   const [selectedPeriod, setSelectedPeriod] = useState<string>(String(defaultDays));
   const days = parseInt(selectedPeriod);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   
   // Generate days
   const daysArray = useMemo(() => {
@@ -65,6 +70,34 @@ export const ScheduleCalendarPreview = ({
     }, 0);
     return Math.round(totalMinutes / 60);
   }, [schedule.work_schedule_shifts]);
+
+  // Check scroll position
+  const checkScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setCanScrollLeft(scrollLeft > 0);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (el) {
+      el.addEventListener('scroll', checkScroll);
+      return () => el.removeEventListener('scroll', checkScroll);
+    }
+  }, [days]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (!scrollRef.current) return;
+    const scrollAmount = 150;
+    scrollRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  };
+
+  const showScrollControls = days > 7;
 
   return (
     <div className="space-y-2">
@@ -88,41 +121,66 @@ export const ScheduleCalendarPreview = ({
           </Select>
         )}
       </div>
-      <div className="overflow-x-auto">
-        <div className={cn(
-          "flex gap-1",
-          days > 7 ? "w-max" : ""
-        )}>
-          {daysArray.map((day) => {
-            const isWorking = isWorkingDay(schedule, day, startDate);
-            const isTodayDate = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-            const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-            
-            return (
-              <div 
-                key={day.toISOString()} 
-                className={cn(
-                  "text-center p-1 rounded text-[10px] border",
-                  days <= 7 ? "flex-1 min-w-[36px]" : "w-[36px] flex-shrink-0",
-                  isWorking 
-                    ? "bg-primary/10 border-primary/30 text-primary" 
-                    : "bg-muted/50 border-muted text-muted-foreground",
-                  isTodayDate && "ring-2 ring-primary/50"
-                )}
-              >
-                <div className={cn(
-                  "font-medium uppercase",
-                  isWeekend && !isWorking && "text-destructive/70"
-                )}>
-                  {format(day, "EEE", { locale: ru })}
+      <div className="relative">
+        {showScrollControls && canScrollLeft && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-6 w-6 bg-background/80 backdrop-blur-sm shadow-sm"
+            onClick={() => scroll('left')}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
+        <div 
+          ref={scrollRef}
+          className="overflow-x-auto scrollbar-none"
+        >
+          <div className={cn(
+            "flex gap-1",
+            days > 7 ? "w-max" : ""
+          )}>
+            {daysArray.map((day) => {
+              const isWorking = isWorkingDay(schedule, day, startDate);
+              const isTodayDate = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+              const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+              
+              return (
+                <div 
+                  key={day.toISOString()} 
+                  className={cn(
+                    "text-center p-1 rounded text-[10px] border",
+                    days <= 7 ? "flex-1 min-w-[36px]" : "w-[36px] flex-shrink-0",
+                    isWorking 
+                      ? "bg-primary/10 border-primary/30 text-primary" 
+                      : "bg-muted/50 border-muted text-muted-foreground",
+                    isTodayDate && "ring-2 ring-primary/50"
+                  )}
+                >
+                  <div className={cn(
+                    "font-medium uppercase",
+                    isWeekend && !isWorking && "text-destructive/70"
+                  )}>
+                    {format(day, "EEE", { locale: ru })}
+                  </div>
+                  <div className="text-[9px]">
+                    {format(day, "d", { locale: ru })}
+                  </div>
                 </div>
-                <div className="text-[9px]">
-                  {format(day, "d", { locale: ru })}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
+        {showScrollControls && canScrollRight && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-6 w-6 bg-background/80 backdrop-blur-sm shadow-sm"
+            onClick={() => scroll('right')}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
       <div className="flex gap-3 text-[10px] text-muted-foreground">
         <div className="flex items-center gap-1">
