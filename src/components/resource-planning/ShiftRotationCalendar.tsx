@@ -1681,7 +1681,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       className="flex-1 min-w-0 overflow-auto scrollbar-overlay"
                     >
                       {/* Sticky calendar header with top padding to cover scrolling content */}
-                      <div className="sticky top-0 z-20 bg-background pt-1 mb-1" style={calendarGridStyle}>
+                      <div className="sticky top-0 z-20 bg-background pt-1 mb-1 pl-2" style={calendarGridStyle}>
                         {period === "year" ? (
                           <>
                             {months.map((month) => (
@@ -1731,8 +1731,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         )}
                       </div>
                       
-                      {/* Calendar body */}
-                      <div style={calendarGridStyle}>
+                      {/* Calendar body with padding for glow visibility */}
+                      <div className="pl-2" style={calendarGridStyle}>
                           {period === "year" ? (
                             <>
                               {/* Year view - Operator rows */}
@@ -1810,7 +1810,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                               : isWeekend 
                                                 ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                                                 : "bg-gradient-to-b from-muted/20 to-muted/40",
-                                            isToday(day) && "shadow-[0_0_12px_4px_rgba(6,182,212,0.35)]"
+                                            isToday(day) && "animate-pulse-glow"
                                           )}
                                           title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
                                         >
@@ -1881,7 +1881,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     onScroll={handleSyncScroll('grand-total')}
                     className="overflow-x-auto flex-1 min-w-0"
                   >
-                    <div style={calendarGridStyle} className="min-h-[50px] items-center">
+                    <div style={calendarGridStyle} className="min-h-[50px] items-center pl-2">
                       {period === "year" ? (
                         <>
                           {months.map((month) => {
@@ -1909,7 +1909,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           ? calculateGroupYearlyTotal(filteredOperators)
                           : calculateGroupTotalHours(filteredOperators);
                         return (
-                          <div className="text-center p-2 rounded-md text-sm bg-primary text-primary-foreground font-bold">
+                          <div className="text-center p-2 rounded-md text-sm bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold">
                             <div>{grandTotalCalc.hours}ч</div>
                             {grandTotalCalc.minutes > 0 && <div className="text-xs opacity-80">{grandTotalCalc.minutes}м</div>}
                           </div>
