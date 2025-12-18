@@ -451,8 +451,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         gridTemplateColumns: `200px repeat(12, minmax(70px, 1fr)) 80px`
       };
     }
+    const dayWidth = daysCount > 14 ? '55px' : '85px';
     return {
-      gridTemplateColumns: `200px repeat(${daysCount}, minmax(${daysCount > 14 ? '55px' : '85px'}, 1fr)) 70px`
+      gridTemplateColumns: `200px repeat(${daysCount}, ${dayWidth}) 70px`
     };
   }, [period, daysCount]);
 
