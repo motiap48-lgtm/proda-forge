@@ -61,8 +61,12 @@ export const OperatorsTab = () => {
       
       let currentShift = null;
       
+      // If only one shift in schedule - use it
+      if (shifts.length === 1) {
+        currentShift = shifts[0];
+      }
       // Calculate current shift based on rotation
-      if (operator.shift_rotation_enabled && shifts.length >= 2) {
+      else if (operator.shift_rotation_enabled && shifts.length >= 2) {
         const startDate = operator.shift_rotation_start_date 
           ? new Date(operator.shift_rotation_start_date) 
           : new Date();
@@ -71,7 +75,9 @@ export const OperatorsTab = () => {
         const startingShift = operator.assigned_shift_number || 1;
         const currentShiftNumber = ((startingShift - 1 + weeksDiff) % shifts.length) + 1;
         currentShift = shifts.find((s: any) => s.shift_number === currentShiftNumber);
-      } else if (operator.assigned_shift_number) {
+      } 
+      // If operator has fixed shift assigned
+      else if (operator.assigned_shift_number) {
         currentShift = shifts.find((s: any) => s.shift_number === operator.assigned_shift_number);
       }
       
