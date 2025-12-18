@@ -445,22 +445,17 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   }, [filteredOperators]);
 
   // Dynamic grid style based on period - includes total column
+  // Uses minmax() so columns stretch when space available, scroll when not
   const gridStyle = useMemo(() => {
     if (period === "year") {
       return {
         gridTemplateColumns: `200px repeat(12, minmax(70px, 1fr)) 80px`
       };
     }
-    // For 7 days or less - stretch to full width
-    if (daysCount <= 7) {
-      return {
-        gridTemplateColumns: `200px repeat(${daysCount}, 1fr) 70px`
-      };
-    }
-    // For more days - fixed width columns
-    const dayWidth = daysCount > 14 ? '55px' : '85px';
+    // Minimum column width depends on number of days
+    const minDayWidth = daysCount > 14 ? 55 : daysCount > 7 ? 70 : 80;
     return {
-      gridTemplateColumns: `200px repeat(${daysCount}, ${dayWidth}) 70px`
+      gridTemplateColumns: `200px repeat(${daysCount}, minmax(${minDayWidth}px, 1fr)) 70px`
     };
   }, [period, daysCount]);
 
