@@ -1881,7 +1881,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               <div className="mt-4 pt-4 border-t-2 border-primary/20">
                 <div className="border border-primary/30 rounded-lg bg-primary/5 flex">
                   {/* Fixed label column */}
-                  <div className="flex-shrink-0 border-r border-border bg-primary/5 px-2 py-2 text-sm font-bold flex items-center gap-2 h-[50px]" style={{ width: `${employeeColumnWidth}px` }}>
+                  <div className="flex-shrink-0 border-r border-border bg-primary/5 px-2 py-2 text-sm font-bold flex items-center gap-2 h-[52px]" style={{ width: `${employeeColumnWidth}px` }}>
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
