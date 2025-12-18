@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter } from "lucide-react";
+import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
@@ -97,8 +97,21 @@ const getShiftColor = (shiftName: string, index: number) => {
 export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
   const [period, setPeriod] = useState<PeriodType>("7");
   const [scheduleFilter, setScheduleFilter] = useState<string>("all");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const printRef = useRef<HTMLDivElement>(null);
   const daysCount = parseInt(period);
+
+  const toggleGroupCollapse = (scheduleName: string) => {
+    setCollapsedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(scheduleName)) {
+        newSet.delete(scheduleName);
+      } else {
+        newSet.add(scheduleName);
+      }
+      return newSet;
+    });
+  };
   
   // Generate days based on selected period
   const days = useMemo(() => {
@@ -161,9 +174,25 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return groups;
   }, [filteredOperators]);
 
-  // Dynamic grid style based on period
+  // Dynamic grid style based on period - includes total column
   const gridStyle = {
-    gridTemplateColumns: `200px repeat(${daysCount}, minmax(${daysCount > 14 ? '50px' : '80px'}, 1fr))`
+    gridTemplateColumns: `200px repeat(${daysCount}, minmax(${daysCount > 14 ? '50px' : '80px'}, 1fr)) 70px`
+  };
+
+  // Calculate total working hours for an operator over the period
+  const calculateTotalHours = (operator: any): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    days.forEach(day => {
+      const shift = getShiftForDate(operator, day);
+      if (shift) {
+        const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+        totalMinutes += netMinutes;
+      }
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
   };
 
   // Export to Excel
@@ -384,122 +413,153 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         <ScrollArea className="w-full">
           <div ref={printRef} style={{ minWidth: daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
             {/* Operators grouped by schedule */}
-            {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => (
+            {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
+              const isCollapsed = collapsedGroups.has(scheduleName);
+              return (
               <div key={scheduleName} className="mb-6">
-                {/* Group name */}
-                <div className="text-sm font-medium text-muted-foreground mb-2 px-2 py-1 bg-muted/50 rounded">
+                {/* Group name - clickable to collapse */}
+                <button 
+                  className="w-full text-left text-sm font-medium text-muted-foreground mb-2 px-2 py-1.5 bg-muted/50 rounded hover:bg-muted/70 transition-colors flex items-center gap-2"
+                  onClick={() => toggleGroupCollapse(scheduleName)}
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                  )}
                   {scheduleName} ({ops.length})
-                </div>
+                </button>
 
-                {/* Header row with days for each group - sticky */}
-                <div className="grid gap-1 mb-2 sticky top-0 z-10 bg-background py-1" style={gridStyle}>
-                  <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
-                  {days.map((day, idx) => {
-                    const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
-                    const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                    return (
-                      <div 
-                        key={day.toISOString()} 
-                        className={cn(
-                          "text-center text-sm p-1 rounded-md",
-                          isToday(day) ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground",
-                          isWeekend && !isToday(day) && "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
-                        )}
-                      >
-                        <div className="font-medium text-xs">
-                          {format(day, "EEE", { locale: ru })}
-                        </div>
-                        <div className="text-xs">
-                          {daysCount > 14 
-                            ? format(day, "d", { locale: ru })
-                            : format(day, "d MMM", { locale: ru })
-                          }
-                        </div>
-                        {showMonth && daysCount > 14 && (
-                          <div className="text-[9px] opacity-70">
-                            {format(day, "MMM", { locale: ru })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {ops.map((operator) => (
-                  <div 
-                    key={operator.id} 
-                    className={cn(
-                      "grid gap-1 py-1 rounded group",
-                      onEditOperator && "hover:bg-muted/50 cursor-pointer"
-                    )}
-                    style={gridStyle}
-                    onClick={() => onEditOperator?.(operator)}
-                  >
-                    <div className="px-2 flex items-center gap-2">
-                      <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
-                      {operator.shift_rotation_enabled && (
-                        <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                      )}
-                      {onEditOperator && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditOperator(operator);
-                          }}
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                    
-                    {days.map((day) => {
-                      const shift = getShiftForDate(operator, day);
-                      const colors = shift ? shiftColorMap.get(shift.shift_name) : null;
-                      const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
-                      const hours = Math.floor(netMinutes / 60);
-                      const mins = netMinutes % 60;
-                      const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                      
+                {!isCollapsed && (
+                  <>
+                    {/* Header row with days for each group - sticky */}
+                    <div className="grid gap-1 mb-2 sticky top-0 z-10 bg-background py-1" style={gridStyle}>
+                      <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
+                      {days.map((day, idx) => {
+                        const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
+                        const isWeekend = getDay(day) === 0 || getDay(day) === 6;
                         return (
                           <div 
                             key={day.toISOString()} 
                             className={cn(
-                              "text-center p-1.5 rounded-md text-xs transition-colors",
-                              colors 
-                                ? cn(colors.bg, colors.text, "border", colors.border) 
-                                : isWeekend 
-                                  ? "bg-rose-50 dark:bg-rose-900/20" 
-                                  : "bg-muted/20",
-                              isToday(day) && "ring-2 ring-primary/30"
+                              "text-center text-sm p-1 rounded-md",
+                              isToday(day) ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground",
+                              isWeekend && !isToday(day) && "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
                             )}
                           >
-                            {shift ? (
-                              <>
-                                <div className="font-medium truncate text-[11px]" title={shift.shift_name}>
-                                  {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name}
-                                </div>
-                                {daysCount <= 14 && (
-                                  <div className="text-[10px] opacity-80">
-                                    {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <span className={cn(
-                                "text-sm",
-                                isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground"
-                              )}>—</span>
+                            <div className="font-medium text-xs">
+                              {format(day, "EEE", { locale: ru })}
+                            </div>
+                            <div className="text-xs">
+                              {daysCount > 14 
+                                ? format(day, "d", { locale: ru })
+                                : format(day, "d MMM", { locale: ru })
+                              }
+                            </div>
+                            {showMonth && daysCount > 14 && (
+                              <div className="text-[9px] opacity-70">
+                                {format(day, "MMM", { locale: ru })}
+                              </div>
                             )}
                           </div>
                         );
+                      })}
+                      {/* Total hours header */}
+                      <div className="text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                        <Clock className="h-3 w-3 mx-auto mb-0.5" />
+                        <div className="text-[10px]">Итого</div>
+                      </div>
+                    </div>
+                    
+                    {ops.map((operator) => {
+                      const totalHours = calculateTotalHours(operator);
+                      return (
+                        <div 
+                          key={operator.id} 
+                          className={cn(
+                            "grid gap-1 py-1 rounded group",
+                            onEditOperator && "hover:bg-muted/50 cursor-pointer"
+                          )}
+                          style={gridStyle}
+                          onClick={() => onEditOperator?.(operator)}
+                        >
+                          <div className="px-2 flex items-center gap-2">
+                            <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
+                            {operator.shift_rotation_enabled && (
+                              <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            )}
+                            {onEditOperator && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onEditOperator(operator);
+                                }}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                          
+                          {days.map((day) => {
+                            const shift = getShiftForDate(operator, day);
+                            const colors = shift ? shiftColorMap.get(shift.shift_name) : null;
+                            const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
+                            const hours = Math.floor(netMinutes / 60);
+                            const mins = netMinutes % 60;
+                            const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                            
+                            return (
+                              <div 
+                                key={day.toISOString()} 
+                                className={cn(
+                                  "text-center p-1.5 rounded-md text-xs transition-colors",
+                                  colors 
+                                    ? cn(colors.bg, colors.text, "border", colors.border) 
+                                    : isWeekend 
+                                      ? "bg-rose-50 dark:bg-rose-900/20" 
+                                      : "bg-muted/20",
+                                  isToday(day) && "ring-2 ring-primary/30"
+                                )}
+                              >
+                                {shift ? (
+                                  <>
+                                    <div className="font-medium truncate text-[11px]" title={shift.shift_name}>
+                                      {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name}
+                                    </div>
+                                    {daysCount <= 14 && (
+                                      <div className="text-[10px] opacity-80">
+                                        {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className={cn(
+                                    "text-sm",
+                                    isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground"
+                                  )}>—</span>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {/* Total hours cell */}
+                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                            <div>{totalHours.hours}ч</div>
+                            {totalHours.minutes > 0 && (
+                              <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>
+                            )}
+                          </div>
+                        </div>
+                      );
                     })}
-                  </div>
-                ))}
+                  </>
+                )}
               </div>
-            ))}
+            );
+            })}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
