@@ -176,6 +176,39 @@ export type Database = {
           },
         ]
       }
+      calendar_exceptions: {
+        Row: {
+          created_at: string
+          description: string | null
+          exception_date: string
+          exception_type: string
+          id: string
+          is_working_day: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          exception_date: string
+          exception_type?: string
+          id?: string
+          is_working_day?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          exception_date?: string
+          exception_type?: string
+          id?: string
+          is_working_day?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contractors: {
         Row: {
           address: string | null
@@ -1808,6 +1841,7 @@ export type Database = {
           created_at: string
           cycle_days_off: number
           cycle_days_on: number
+          cycle_start_date: string | null
           description: string | null
           id: string
           is_active: boolean
@@ -1820,6 +1854,7 @@ export type Database = {
           created_at?: string
           cycle_days_off?: number
           cycle_days_on?: number
+          cycle_start_date?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -1832,6 +1867,7 @@ export type Database = {
           created_at?: string
           cycle_days_off?: number
           cycle_days_on?: number
+          cycle_start_date?: string | null
           description?: string | null
           id?: string
           is_active?: boolean

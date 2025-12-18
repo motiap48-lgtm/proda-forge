@@ -589,3 +589,90 @@ export const useDeleteWorkScheduleBreak = () => {
     },
   });
 };
+
+// Calendar Exceptions
+export const useCalendarExceptions = () => {
+  return useQuery({
+    queryKey: ["calendar-exceptions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("calendar_exceptions")
+        .select("*")
+        .order("exception_date");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useCreateCalendarException = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (exception: any) => {
+      const { data, error } = await supabase
+        .from("calendar_exceptions")
+        .insert(exception)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendar-exceptions"] });
+      toast.success("Исключение добавлено");
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};
+
+export const useUpdateCalendarException = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const { data, error } = await supabase
+        .from("calendar_exceptions")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendar-exceptions"] });
+      toast.success("Исключение обновлено");
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};
+
+export const useDeleteCalendarException = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("calendar_exceptions")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendar-exceptions"] });
+      toast.success("Исключение удалено");
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};

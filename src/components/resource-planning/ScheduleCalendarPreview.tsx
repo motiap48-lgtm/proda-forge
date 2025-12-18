@@ -11,6 +11,7 @@ interface ScheduleCalendarPreviewProps {
     schedule_type?: string;
     cycle_days_on?: number;
     cycle_days_off?: number;
+    cycle_start_date?: string | null;
     work_schedule_shifts?: any[];
   };
   defaultDays?: number;
@@ -144,8 +145,11 @@ export const ScheduleCalendarPreview = ({
             days > 7 ? "w-max" : ""
           )}>
             {daysArray.map((day) => {
-              const referenceDate = cycleStartDate || startOfYear(new Date());
-              const isWorking = isWorkingDay(schedule, day, referenceDate);
+              // Use schedule's cycle_start_date if available, otherwise fall back to year start
+              const scheduleStartDate = schedule.cycle_start_date 
+                ? new Date(schedule.cycle_start_date) 
+                : startOfYear(new Date());
+              const isWorking = isWorkingDay(schedule, day, scheduleStartDate);
               const isTodayDate = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
               
               return (
