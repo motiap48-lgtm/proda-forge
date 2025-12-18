@@ -96,7 +96,7 @@ interface ShiftRotationCalendarProps {
   onEditOperator?: (operator: any) => void;
 }
 
-type PeriodType = "7" | "14" | "30" | "month" | "year" | "custom";
+type PeriodType = "1" | "7" | "14" | "30" | "month" | "year" | "custom";
 
 // Parse backend date strings safely ("YYYY-MM-DD" should be treated as local date)
 const parseDateOnly = (value?: string | null): Date | null => {
@@ -567,8 +567,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     }
     // Minimum column width depends on number of days
     const minDayWidth = daysCount > 14 ? 55 : daysCount > 7 ? 70 : 80;
+    // Use fixed width for Итого column instead of minmax to prevent it from disappearing
     return {
-      gridTemplateColumns: `200px repeat(${daysCount}, minmax(${minDayWidth}px, 1fr)) 70px`
+      gridTemplateColumns: `200px repeat(${daysCount}, minmax(${minDayWidth}px, 1fr)) 80px`
     };
   }, [period, daysCount]);
 
@@ -1060,6 +1061,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           <div className="flex items-center gap-2 flex-wrap">
             {/* Period selector with toggle buttons */}
             <ToggleGroup type="single" value={period} onValueChange={(val) => val && handlePeriodChange(val as PeriodType)} className="border rounded-md">
+              <ToggleGroupItem value="1" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                1д
+              </ToggleGroupItem>
               <ToggleGroupItem value="7" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
                 7д
               </ToggleGroupItem>
@@ -1355,7 +1359,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       </CardHeader>
       <CardContent className="p-0">
         <div ref={scrollContainerRef} className="overflow-x-auto overflow-y-visible scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-          <div ref={printRef} className="p-6" style={{ minWidth: period === "year" ? "1200px" : daysCount <= 7 ? undefined : daysCount > 14 ? `${270 + daysCount * 55}px` : `${270 + daysCount * 85}px` }}>
+          <div ref={printRef} className="p-6" style={{ minWidth: period === "year" ? "1200px" : `${280 + daysCount * (daysCount > 14 ? 55 : daysCount > 7 ? 70 : 80) + 80}px` }}>
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
               const isCollapsed = collapsedGroups.has(scheduleName);
