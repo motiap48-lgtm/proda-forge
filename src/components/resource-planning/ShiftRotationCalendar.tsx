@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { format, addDays, differenceInWeeks, differenceInDays, differenceInCalendarDays, startOfDay, isToday, getDay, isSameMonth, startOfWeek, startOfMonth, getDaysInMonth, addMonths, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp, CalendarDays, ChevronLeft, ChevronRightIcon, Phone, Mail, Briefcase, Building2 } from "lucide-react";
+import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp, CalendarDays, ChevronLeft, ChevronRightIcon, Phone, Mail, Briefcase, Building2, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
@@ -154,6 +154,30 @@ const isWorkingDay = (schedule: any, date: Date, operator: any): boolean => {
   return true;
 };
 
+// Get cycle day number for cyclic schedules (1-based index within cycle)
+const getCycleDayNumber = (schedule: any, date: Date, operator: any): { dayInCycle: number; cycleLength: number; isWorkDay: boolean } | null => {
+  const scheduleType = schedule?.schedule_type;
+  if (scheduleType !== "cyclic") return null;
+
+  const cycleDaysOn = schedule?.cycle_days_on || 2;
+  const cycleDaysOff = schedule?.cycle_days_off || 2;
+  const cycleLength = cycleDaysOn + cycleDaysOff;
+
+  const reference =
+    parseDateOnly(operator?.shift_rotation_start_date) ??
+    parseDateOnly(schedule?.cycle_start_date) ??
+    new Date(2024, 0, 1);
+
+  const daysDiff = differenceInCalendarDays(startOfDay(date), startOfDay(reference));
+  const dayInCycle = ((daysDiff % cycleLength) + cycleLength) % cycleLength;
+
+  return {
+    dayInCycle: dayInCycle + 1, // 1-based
+    cycleLength,
+    isWorkDay: dayInCycle < cycleDaysOn
+  };
+};
+
 // Calculate shift for a given operator on a specific date
 const getShiftForDate = (operator: any, date: Date) => {
   const schedule = operator.work_schedules;
@@ -226,6 +250,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [period, setPeriod] = useState<PeriodType>("7");
   const [comparisonPeriod, setComparisonPeriod] = useState<PeriodType | null>(null);
   const [scheduleFilter, setScheduleFilter] = useState<string>("all");
+  const [showOnlyCyclic, setShowOnlyCyclic] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
@@ -442,11 +467,17 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return Array.from(schedules).sort();
   }, [operatorsWithSchedules]);
 
-  // Filter operators by selected schedule
+  // Filter operators by selected schedule and cyclic filter
   const filteredOperators = useMemo(() => {
-    if (scheduleFilter === "all") return operatorsWithSchedules;
-    return operatorsWithSchedules.filter(op => op.work_schedules?.name === scheduleFilter);
-  }, [operatorsWithSchedules, scheduleFilter]);
+    let result = operatorsWithSchedules;
+    if (scheduleFilter !== "all") {
+      result = result.filter(op => op.work_schedules?.name === scheduleFilter);
+    }
+    if (showOnlyCyclic) {
+      result = result.filter(op => op.work_schedules?.schedule_type === "cyclic");
+    }
+    return result;
+  }, [operatorsWithSchedules, scheduleFilter, showOnlyCyclic]);
 
   // Group operators by their current shift pattern
   const groupedBySchedule = useMemo(() => {
@@ -1038,6 +1069,21 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               </SelectContent>
             </Select>
 
+            {/* Cyclic schedules only toggle */}
+            <Button
+              variant={showOnlyCyclic ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowOnlyCyclic(!showOnlyCyclic)}
+              className={cn(
+                "gap-1.5 text-xs",
+                showOnlyCyclic && "bg-amber-500 hover:bg-amber-600 text-white"
+              )}
+              title="Показать только циклические графики (2/2, 3/3 и т.д.)"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Только 2/2
+            </Button>
+
             {/* Collapse/Expand buttons */}
             <div className="flex items-center border rounded-md overflow-hidden ml-2">
               <Button 
@@ -1306,12 +1352,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             const hours = Math.floor(netMinutes / 60);
                             const mins = netMinutes % 60;
                             const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                            const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
                             
                             return (
                               <div 
                                 key={day.toISOString()} 
                                 className={cn(
-                                  "text-center p-1.5 rounded-md text-xs transition-colors",
+                                  "text-center p-1.5 rounded-md text-xs transition-colors relative",
                                   colors 
                                     ? cn(colors.bg, colors.text, "border", colors.border) 
                                     : isWeekend 
@@ -1319,6 +1366,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                       : "bg-muted/20",
                                   isToday(day) && "ring-2 ring-primary/30"
                                 )}
+                                title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
                               >
                                 {shift ? (
                                   <>
@@ -1330,12 +1378,26 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                         {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
                                       </div>
                                     )}
+                                    {/* Cycle day indicator for cyclic schedules */}
+                                    {cycleInfo && daysCount <= 14 && (
+                                      <div className="text-[9px] opacity-60 font-medium mt-0.5">
+                                        Д{cycleInfo.dayInCycle}
+                                      </div>
+                                    )}
                                   </>
                                 ) : (
-                                  <span className={cn(
-                                    "text-sm",
-                                    isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground"
-                                  )}>—</span>
+                                  <div className="flex flex-col items-center">
+                                    <span className={cn(
+                                      "text-sm",
+                                      isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground"
+                                    )}>—</span>
+                                    {/* Show day off indicator for cyclic schedules */}
+                                    {cycleInfo && daysCount <= 14 && (
+                                      <div className="text-[9px] opacity-50 font-medium">
+                                        Д{cycleInfo.dayInCycle}
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             );

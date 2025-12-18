@@ -17,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Wand2, RefreshCw, CalendarDays } from "lucide-react";
+import { Wand2, RefreshCw, CalendarDays, AlertTriangle, Link2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCreateOperator, useUpdateOperator, useWorkSchedules } from "@/hooks/useResourcePlanning";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { format, differenceInWeeks } from "date-fns";
@@ -337,35 +338,66 @@ export const OperatorDialog = ({
 
               {/* Show rotation toggle only for non-cyclic schedules */}
               {!isCyclicSchedule && (
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="shift_rotation_enabled" className="flex items-center gap-2">
-                      <RefreshCw className="h-4 w-4" />
-                      Ротация смен
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Чередование смен по неделям
-                    </p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="shift_rotation_enabled" className="flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4" />
+                        Ротация смен
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Чередование смен по неделям
+                      </p>
+                    </div>
+                    <Switch
+                      id="shift_rotation_enabled"
+                      checked={formData.shift_rotation_enabled}
+                      disabled={scheduleShifts.length === 1}
+                      onCheckedChange={(checked) => setFormData({ 
+                        ...formData, 
+                        shift_rotation_enabled: checked,
+                        shift_rotation_start_date: checked ? format(new Date(), "yyyy-MM-dd") : ""
+                      })}
+                    />
                   </div>
-                  <Switch
-                    id="shift_rotation_enabled"
-                    checked={formData.shift_rotation_enabled}
-                    onCheckedChange={(checked) => setFormData({ 
-                      ...formData, 
-                      shift_rotation_enabled: checked,
-                      shift_rotation_start_date: checked ? format(new Date(), "yyyy-MM-dd") : ""
-                    })}
-                  />
+                  {/* Warning for single shift schedules */}
+                  {scheduleShifts.length === 1 && (
+                    <Alert variant="default" className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-sm text-amber-700 dark:text-amber-300">
+                        Ротация недоступна: в графике только одна смена. Для ротации необходимо минимум 2 смены.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               )}
 
               {/* Cycle start date for cyclic schedules (2/2, 3/3, etc.) */}
               {isCyclicSchedule && (
                 <div className="space-y-2">
-                  <Label htmlFor="shift_rotation_start_date" className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4" />
-                    Дата начала цикла
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="shift_rotation_start_date" className="flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4" />
+                      Дата начала цикла
+                    </Label>
+                    {/* Sync button - synchronize with schedule's cycle_start_date */}
+                    {selectedSchedule?.cycle_start_date && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={() => setFormData({ 
+                          ...formData, 
+                          shift_rotation_start_date: selectedSchedule.cycle_start_date 
+                        })}
+                        title={`Синхронизировать с датой графика: ${format(new Date(selectedSchedule.cycle_start_date), 'dd.MM.yyyy')}`}
+                      >
+                        <Link2 className="h-3.5 w-3.5" />
+                        Синхронизировать
+                      </Button>
+                    )}
+                  </div>
                   <Input
                     id="shift_rotation_start_date"
                     type="date"
@@ -373,7 +405,12 @@ export const OperatorDialog = ({
                     onChange={(e) => setFormData({ ...formData, shift_rotation_start_date: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Укажите первый рабочий день оператора в текущем или предыдущем цикле (например, 17 декабря для графика 2/2)
+                    Укажите первый рабочий день оператора в текущем или предыдущем цикле
+                    {selectedSchedule?.cycle_start_date && (
+                      <span className="block mt-1 text-primary">
+                        Дата графика: {format(new Date(selectedSchedule.cycle_start_date), 'dd.MM.yyyy')}
+                      </span>
+                    )}
                   </p>
                 </div>
               )}
