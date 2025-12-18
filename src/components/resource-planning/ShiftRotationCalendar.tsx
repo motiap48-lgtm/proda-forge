@@ -911,18 +911,21 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               const isCollapsed = collapsedGroups.has(scheduleName);
               return (
               <div key={scheduleName} className="mb-6">
-                {/* Group name - clickable to collapse */}
-                <button 
-                  className="w-full text-left text-sm font-medium text-muted-foreground mb-2 px-2 py-1.5 bg-muted/50 rounded hover:bg-muted/70 transition-colors flex items-center gap-2"
-                  onClick={() => toggleGroupCollapse(scheduleName)}
-                >
-                  {isCollapsed ? (
-                    <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                  )}
-                  {scheduleName} ({ops.length})
-                </button>
+                {/* Group name - clickable to collapse - uses grid to match calendar width */}
+                <div className="grid gap-1 mb-2" style={gridStyle}>
+                  <button 
+                    className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded hover:bg-muted/70 transition-colors flex items-center gap-2"
+                    onClick={() => toggleGroupCollapse(scheduleName)}
+                    style={{ gridColumn: `1 / -1` }}
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                    )}
+                    {scheduleName} ({ops.length})
+                  </button>
+                </div>
 
                 {!isCollapsed && period === "year" ? (
                   <>
