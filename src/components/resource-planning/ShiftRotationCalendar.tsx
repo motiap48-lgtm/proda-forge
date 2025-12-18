@@ -1538,8 +1538,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       <div 
                         ref={registerScrollContainer(`header-${scheduleName}`)}
                         onScroll={handleSyncScroll(`header-${scheduleName}`)}
-                        className="flex-1 overflow-x-auto overflow-y-hidden min-w-0"
-                        style={{ scrollbarWidth: 'none' }}
+                        className="flex-1 min-w-0 h-[60px] overflow-x-auto overflow-y-hidden scrollbar-hide"
                       >
                         <div style={calendarGridStyle}>
                           {period === "year" ? (
