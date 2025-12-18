@@ -452,7 +452,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       };
     }
     return {
-      gridTemplateColumns: `200px repeat(${daysCount}, minmax(${daysCount > 14 ? '50px' : '80px'}, 1fr)) 70px`
+      gridTemplateColumns: `200px repeat(${daysCount}, minmax(${daysCount > 14 ? '55px' : '85px'}, 1fr)) 70px`
     };
   }, [period, daysCount]);
 
@@ -897,7 +897,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       </CardHeader>
       <CardContent className="p-0">
         <div ref={scrollContainerRef} className="overflow-x-auto overflow-y-visible scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-          <div ref={printRef} className="p-6" style={{ minWidth: period === "year" ? "1200px" : daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
+          <div ref={printRef} className="p-6" style={{ minWidth: period === "year" ? "1200px" : daysCount > 14 ? `${270 + daysCount * 55}px` : `${270 + daysCount * 85}px` }}>
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
               const isCollapsed = collapsedGroups.has(scheduleName);
