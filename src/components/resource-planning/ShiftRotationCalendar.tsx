@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User, Pencil, Calendar, FileDown } from "lucide-react";
+import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
@@ -96,6 +96,8 @@ const getShiftColor = (shiftName: string, index: number) => {
 
 export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
   const [period, setPeriod] = useState<PeriodType>("7");
+  const [scheduleFilter, setScheduleFilter] = useState<string>("all");
+  const printRef = useRef<HTMLDivElement>(null);
   const daysCount = parseInt(period);
   
   // Generate days based on selected period
@@ -127,11 +129,28 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     op.is_active && op.work_schedules?.work_schedule_shifts?.length > 0
   );
 
+  // Get unique schedule names for filter
+  const uniqueSchedules = useMemo(() => {
+    const schedules = new Set<string>();
+    operatorsWithSchedules.forEach(op => {
+      if (op.work_schedules?.name) {
+        schedules.add(op.work_schedules.name);
+      }
+    });
+    return Array.from(schedules).sort();
+  }, [operatorsWithSchedules]);
+
+  // Filter operators by selected schedule
+  const filteredOperators = useMemo(() => {
+    if (scheduleFilter === "all") return operatorsWithSchedules;
+    return operatorsWithSchedules.filter(op => op.work_schedules?.name === scheduleFilter);
+  }, [operatorsWithSchedules, scheduleFilter]);
+
   // Group operators by their current shift pattern
   const groupedBySchedule = useMemo(() => {
     const groups = new Map<string, any[]>();
     
-    operatorsWithSchedules.forEach(op => {
+    filteredOperators.forEach(op => {
       const scheduleName = op.work_schedules?.name || "Без графика";
       if (!groups.has(scheduleName)) {
         groups.set(scheduleName, []);
@@ -140,7 +159,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     });
     
     return groups;
-  }, [operatorsWithSchedules]);
+  }, [filteredOperators]);
 
   // Dynamic grid style based on period
   const gridStyle = {
@@ -159,7 +178,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     exportData.push(headerRow);
     
     // Data rows
-    operatorsWithSchedules.forEach(operator => {
+    filteredOperators.forEach(operator => {
       const row = [
         operator.full_name,
         operator.work_schedules?.name || 'Без графика',
@@ -193,6 +212,113 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     XLSX.writeFile(wb, `График_ротации_${startDate}-${endDate}.xlsx`);
   };
 
+  // Print handler
+  const handlePrint = () => {
+    const printContent = printRef.current;
+    if (!printContent) return;
+
+    const startDate = format(days[0], 'dd.MM.yyyy');
+    const endDate = format(days[days.length - 1], 'dd.MM.yyyy');
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>График ротации смен ${startDate} - ${endDate}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { font-size: 18px; margin-bottom: 10px; }
+          h2 { font-size: 14px; color: #666; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+          th { background: #f5f5f5; font-weight: 600; }
+          td:first-child { text-align: left; font-weight: 500; }
+          .group-header { background: #eee; font-weight: 600; text-align: left; }
+          .day-off { color: #999; }
+          .shift-1 { background: #dbeafe; }
+          .shift-2 { background: #fef3c7; }
+          .shift-3 { background: #d1fae5; }
+          .shift-4 { background: #ede9fe; }
+          .today { background: #fef08a !important; font-weight: bold; }
+          .weekend { background: #f3f4f6; }
+          .legend { margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; }
+          .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+          .legend-color { width: 16px; height: 16px; border-radius: 3px; border: 1px solid #ccc; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <h1>График ротации смен</h1>
+        <h2>Период: ${startDate} — ${endDate}${scheduleFilter !== 'all' ? ` | График: ${scheduleFilter}` : ''}</h2>
+        
+        <div class="legend">
+          ${Array.from(shiftColorMap.entries()).map(([name], idx) => `
+            <div class="legend-item">
+              <div class="legend-color shift-${(idx % 4) + 1}"></div>
+              <span>${name}</span>
+            </div>
+          `).join('')}
+          <div class="legend-item">
+            <div class="legend-color" style="background: #f3f4f6;"></div>
+            <span>Выходной</span>
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align: left; min-width: 150px;">Сотрудник</th>
+              ${days.map(day => `
+                <th class="${isToday(day) ? 'today' : ''} ${getDay(day) === 0 || getDay(day) === 6 ? 'weekend' : ''}">
+                  ${format(day, 'EEE', { locale: ru })}<br/>
+                  ${format(day, 'd.MM')}
+                </th>
+              `).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => `
+              <tr>
+                <td colspan="${days.length + 1}" class="group-header">${scheduleName} (${ops.length})</td>
+              </tr>
+              ${ops.map(operator => {
+                const shiftNameToIndex = new Map<string, number>();
+                Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
+                
+                return `
+                  <tr>
+                    <td>${operator.full_name}</td>
+                    ${days.map(day => {
+                      const shift = getShiftForDate(operator, day);
+                      const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                      const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
+                      const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
+                      const hours = Math.floor(netMinutes / 60);
+                      const mins = netMinutes % 60;
+                      
+                      return `
+                        <td class="${isToday(day) ? 'today' : ''} ${shift ? `shift-${shiftIdx}` : isWeekend ? 'weekend' : 'day-off'}">
+                          ${shift ? `${shift.shift_name.split(' ')[0]}<br/>${hours}ч${mins > 0 ? ` ${mins}м` : ''}` : '—'}
+                        </td>
+                      `;
+                    }).join('')}
+                  </tr>
+                `;
+              }).join('')}
+            `).join('')}
+          </tbody>
+        </table>
+        
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   if (operatorsWithSchedules.length === 0) {
     return (
       <Card>
@@ -212,7 +338,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             <RefreshCw className="h-5 w-5" />
             График ротации смен
           </CardTitle>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Все графики" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все графики</SelectItem>
+                {uniqueSchedules.map(schedule => (
+                  <SelectItem key={schedule} value={schedule}>{schedule}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={period} onValueChange={(v) => setPeriod(v as PeriodType)}>
               <SelectTrigger className="w-[140px]">
                 <Calendar className="h-4 w-4 mr-2" />
@@ -228,6 +366,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               <FileDown className="h-4 w-4 mr-2" />
               Excel
             </Button>
+            <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Printer className="h-4 w-4 mr-2" />
+              Печать
+            </Button>
             <div className="flex gap-2">
               {Array.from(shiftColorMap.entries()).map(([name, colors]) => (
                 <Badge key={name} variant="outline" className={cn(colors.bg, colors.text, colors.border)}>
@@ -240,7 +382,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       </CardHeader>
       <CardContent>
         <ScrollArea className="w-full">
-          <div style={{ minWidth: daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
+          <div ref={printRef} style={{ minWidth: daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
             {/* Header with days */}
             <div className="grid gap-1 mb-2" style={gridStyle}>
               <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
