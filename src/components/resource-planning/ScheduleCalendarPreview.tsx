@@ -1,0 +1,113 @@
+import { useMemo } from "react";
+import { format, addDays, getDay, differenceInDays } from "date-fns";
+import { ru } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+
+interface ScheduleCalendarPreviewProps {
+  schedule: {
+    schedule_type?: string;
+    cycle_days_on?: number;
+    cycle_days_off?: number;
+    work_schedule_shifts?: any[];
+  };
+  days?: number;
+  startDate?: Date;
+}
+
+// Check if date is a working day based on schedule type
+const isWorkingDay = (schedule: any, date: Date, startDate: Date): boolean => {
+  const scheduleType = schedule?.schedule_type;
+  const cycleDaysOn = schedule?.cycle_days_on || 5;
+  const cycleDaysOff = schedule?.cycle_days_off || 2;
+  
+  // For 5/2 schedule - standard work week (Mon-Fri work, Sat-Sun off)
+  if (scheduleType === '5/2' || scheduleType === 'weekly') {
+    const dayOfWeek = getDay(date); // 0 = Sunday, 6 = Saturday
+    return dayOfWeek !== 0 && dayOfWeek !== 6;
+  }
+  
+  // For cyclic schedules (2/2, 3/3, etc.) - calculate based on cycle
+  const cycleLength = cycleDaysOn + cycleDaysOff;
+  const daysDiff = differenceInDays(date, startDate);
+  const dayInCycle = ((daysDiff % cycleLength) + cycleLength) % cycleLength;
+  
+  return dayInCycle < cycleDaysOn;
+};
+
+export const ScheduleCalendarPreview = ({ 
+  schedule, 
+  days = 7,
+  startDate = new Date()
+}: ScheduleCalendarPreviewProps) => {
+  // Generate days
+  const daysArray = useMemo(() => {
+    const result = [];
+    const today = new Date();
+    for (let i = 0; i < days; i++) {
+      result.push(addDays(today, i));
+    }
+    return result;
+  }, [days]);
+
+  const shiftsCount = schedule.work_schedule_shifts?.length || 0;
+  
+  // Get total work hours per shift
+  const totalWorkHours = useMemo(() => {
+    if (!schedule.work_schedule_shifts?.length) return 0;
+    const totalMinutes = schedule.work_schedule_shifts.reduce((sum: number, shift: any) => {
+      return sum + (shift.net_work_minutes || (shift.gross_work_minutes - shift.break_minutes) || 0);
+    }, 0);
+    return Math.round(totalMinutes / 60);
+  }, [schedule.work_schedule_shifts]);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+        <span>Календарь графика</span>
+        {totalWorkHours > 0 && (
+          <span className="text-muted-foreground">({totalWorkHours} часов)</span>
+        )}
+      </div>
+      <div className="flex gap-1">
+        {daysArray.map((day) => {
+          const isWorking = isWorkingDay(schedule, day, startDate);
+          const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+          const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+          
+          return (
+            <div 
+              key={day.toISOString()} 
+              className={cn(
+                "flex-1 text-center p-1 rounded text-[10px] min-w-[36px] border",
+                isWorking 
+                  ? "bg-primary/10 border-primary/30 text-primary" 
+                  : "bg-muted/50 border-muted text-muted-foreground",
+                isToday && "ring-2 ring-primary/50"
+              )}
+            >
+              <div className={cn(
+                "font-medium uppercase",
+                isWeekend && !isWorking && "text-destructive/70"
+              )}>
+                {format(day, "EEE", { locale: ru })}
+              </div>
+              <div className="text-[9px]">
+                {format(day, "d", { locale: ru })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-3 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded bg-primary/10 border border-primary/30"></div>
+          <span>Рабочий</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded bg-muted/50 border border-muted"></div>
+          <span>Выходной</span>
+        </div>
+      </div>
+    </div>
+  );
+};
