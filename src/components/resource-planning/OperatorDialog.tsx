@@ -22,6 +22,33 @@ import { useCreateOperator, useUpdateOperator, useWorkSchedules } from "@/hooks/
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 import { format, differenceInWeeks } from "date-fns";
 
+// Format phone number to +7(xxx)xxx-xx-xx
+const formatPhoneNumber = (value: string): string => {
+  // Remove all non-digit characters
+  const digits = value.replace(/\D/g, '');
+  
+  // Handle different starting patterns
+  let cleanDigits = digits;
+  if (digits.startsWith('8') && digits.length > 1) {
+    cleanDigits = '7' + digits.slice(1);
+  } else if (digits.startsWith('7')) {
+    cleanDigits = digits;
+  } else if (digits.length > 0) {
+    cleanDigits = '7' + digits;
+  }
+  
+  // Limit to 11 digits (7 + 10 digits)
+  cleanDigits = cleanDigits.slice(0, 11);
+  
+  // Format the number
+  if (cleanDigits.length === 0) return '';
+  if (cleanDigits.length <= 1) return '+' + cleanDigits;
+  if (cleanDigits.length <= 4) return `+${cleanDigits[0]}(${cleanDigits.slice(1)}`;
+  if (cleanDigits.length <= 7) return `+${cleanDigits[0]}(${cleanDigits.slice(1, 4)})${cleanDigits.slice(4)}`;
+  if (cleanDigits.length <= 9) return `+${cleanDigits[0]}(${cleanDigits.slice(1, 4)})${cleanDigits.slice(4, 7)}-${cleanDigits.slice(7)}`;
+  return `+${cleanDigits[0]}(${cleanDigits.slice(1, 4)})${cleanDigits.slice(4, 7)}-${cleanDigits.slice(7, 9)}-${cleanDigits.slice(9)}`;
+};
+
 // Helper to calculate current shift based on rotation
 const getCurrentShiftNumber = (
   shiftRotationEnabled: boolean,
@@ -371,8 +398,8 @@ export const OperatorDialog = ({
               <Input
                 id="phone"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+7 (xxx) xxx-xx-xx"
+                onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
+                placeholder="+7(xxx)xxx-xx-xx"
               />
             </div>
             <div className="space-y-2">
