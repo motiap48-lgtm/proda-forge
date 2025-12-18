@@ -262,48 +262,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [syncingScheduleId, setSyncingScheduleId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [scrollInfo, setScrollInfo] = useState({ scrollLeft: 0, scrollWidth: 0, clientWidth: 0 });
   const [stickyTotal, setStickyTotal] = useState(false);
   
   const updateOperator = useUpdateOperator();
-
-  // Enable horizontal scroll with mouse wheel and track scroll position
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const updateScrollInfo = () => {
-      setScrollInfo({
-        scrollLeft: container.scrollLeft,
-        scrollWidth: container.scrollWidth,
-        clientWidth: container.clientWidth
-      });
-    };
-
-    const handleWheel = (e: WheelEvent) => {
-      // Only handle if there's horizontal overflow
-      if (container.scrollWidth > container.clientWidth) {
-        e.preventDefault();
-        container.scrollLeft += e.deltaY + e.deltaX;
-        updateScrollInfo();
-      }
-    };
-
-    const handleScroll = () => updateScrollInfo();
-
-    // Initial measurement
-    updateScrollInfo();
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    container.addEventListener('scroll', handleScroll);
-    window.addEventListener('resize', updateScrollInfo);
-    
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-      container.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', updateScrollInfo);
-    };
-  }, [period]);
 
   const toggleGroupCollapse = (scheduleName: string) => {
     setCollapsedGroups(prev => {
@@ -581,28 +542,20 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const isAllExpanded = collapsedGroups.size === 0;
   const isAllCollapsed = allGroupNames.length > 0 && collapsedGroups.size === allGroupNames.length;
 
-  // Use minmax() for minimum column width with horizontal scroll when needed
-  // Columns stretch to fill width when few days, scroll when many days
+  // Columns always stretch to fill available width - no horizontal scroll needed
   // calendarGridStyle is for the scrollable calendar part (excludes employee column)
   const calendarGridStyle = useMemo(() => {
     if (period === "year") {
-      const minWidth = 12 * 80 + 80; // 12 months + total column
       return {
-        gridTemplateColumns: `repeat(12, minmax(80px, 1fr)) 80px`,
-        minWidth: `${minWidth}px`
+        gridTemplateColumns: `repeat(12, 1fr) 70px`,
+        minWidth: undefined,
+        gap: '6px'
       };
     }
-    // Calculate minimum column width based on day count
-    const minColWidth = daysCount <= 7 ? 70 : daysCount <= 14 ? 60 : 55;
-    const totalMinWidth = daysCount * minColWidth + 80; // days + total column
-    
-    // If content can fit in ~1200px viewport, let columns stretch (no minWidth)
-    // Otherwise, set minWidth to enable horizontal scrolling
-    const shouldStretch = totalMinWidth < 1200;
-    
     return {
-      gridTemplateColumns: `repeat(${daysCount}, minmax(${minColWidth}px, 1fr)) 80px`,
-      minWidth: shouldStretch ? undefined : `${totalMinWidth}px`
+      gridTemplateColumns: `repeat(${daysCount}, 1fr) 70px`,
+      minWidth: undefined,
+      gap: '4px'
     };
   }, [period, daysCount]);
 
@@ -610,17 +563,15 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const gridStyle = useMemo(() => {
     if (period === "year") {
       return {
-        gridTemplateColumns: `200px repeat(12, minmax(80px, 1fr)) 80px`,
-        minWidth: `${200 + 12 * 80 + 80}px`
+        gridTemplateColumns: `200px repeat(12, 1fr) 70px`,
+        minWidth: undefined,
+        gap: '6px'
       };
     }
-    const minColWidth = daysCount <= 7 ? 70 : daysCount <= 14 ? 60 : 55;
-    const totalMinWidth = 200 + daysCount * minColWidth + 80;
-    const shouldStretch = totalMinWidth < 1400;
-    
     return {
-      gridTemplateColumns: `200px repeat(${daysCount}, minmax(${minColWidth}px, 1fr)) 80px`,
-      minWidth: shouldStretch ? undefined : `${totalMinWidth}px`
+      gridTemplateColumns: `200px repeat(${daysCount}, 1fr) 70px`,
+      minWidth: undefined,
+      gap: '4px'
     };
   }, [period, daysCount]);
 
@@ -1568,19 +1519,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       </div>
                     </div>
 
-                    {/* Scrollable calendar section */}
+                    {/* Calendar section - fits to available width */}
                     <div 
                       ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? scrollContainerRef : undefined} 
-                      className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent border-l border-border"
+                      className="flex-1 border-l border-border"
                     >
                       <div 
                         ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? printRef : undefined}
-                        style={{ minWidth: calendarGridStyle.minWidth, paddingRight: '24px' }}
+                        className="px-2"
                       >
                         {period === "year" ? (
                           <>
                             {/* Year view - Header */}
-                            <div className="grid gap-1 h-[60px] items-center bg-muted/30 border-b border-border px-1" style={calendarGridStyle}>
+                            <div className="grid h-[60px] items-center bg-muted/30 border-b border-border" style={calendarGridStyle}>
                               {months.map((month) => (
                                 <div 
                                   key={month.toISOString()} 
@@ -1604,7 +1555,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                 <div 
                                   key={operator.id} 
                                   className={cn(
-                                    "grid gap-1 h-[52px] items-center border-b border-border/50 px-1",
+                                    "grid h-[52px] items-center border-b border-border/50",
                                     onEditOperator && "hover:bg-muted/30 cursor-pointer"
                                   )}
                                   style={calendarGridStyle}
@@ -1638,7 +1589,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             {(() => {
                               const groupYearlyTotal = calculateGroupYearlyTotal(ops);
                               return (
-                                <div className="grid gap-1 h-[44px] items-center bg-muted/30 border-t border-border px-1" style={calendarGridStyle}>
+                                <div className="grid h-[44px] items-center bg-muted/30 border-t border-border" style={calendarGridStyle}>
                                   {months.map((month) => {
                                     let monthTotal = 0;
                                     ops.forEach(op => {
@@ -1666,7 +1617,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         ) : (
                           <>
                             {/* Day view - Header */}
-                            <div className="grid gap-1 h-[60px] items-center bg-muted/30 border-b border-border px-1" style={calendarGridStyle}>
+                            <div className="grid h-[60px] items-center bg-muted/30 border-b border-border" style={calendarGridStyle}>
                               {days.map((day, idx) => {
                                 const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
                                 const isWeekend = getDay(day) === 0 || getDay(day) === 6;
@@ -1710,7 +1661,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                 <div 
                                   key={operator.id} 
                                   className={cn(
-                                    "grid gap-1 h-[52px] items-center border-b border-border/50 px-1",
+                                    "grid h-[52px] items-center border-b border-border/50",
                                     onEditOperator && "hover:bg-muted/30 cursor-pointer"
                                   )}
                                   style={calendarGridStyle}
@@ -1785,7 +1736,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             {(() => {
                               const groupStats = calculateGroupStats(ops);
                               return (
-                                <div className="grid gap-1 h-[44px] items-center bg-muted/30 border-t border-border px-1" style={calendarGridStyle}>
+                                <div className="grid h-[44px] items-center bg-muted/30 border-t border-border" style={calendarGridStyle}>
                                   {days.map((day) => (
                                     <div key={day.toISOString()} className="text-center text-xs text-muted-foreground">
                                       —
@@ -1820,11 +1771,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
-                  {/* Scrollable right section */}
-                  <div className="flex-1 overflow-x-auto">
+                  {/* Right section - fits to available width */}
+                  <div className="flex-1 px-2">
                     <div 
-                      className="grid gap-1 py-2 px-1"
-                      style={{ ...calendarGridStyle, minWidth: calendarGridStyle.minWidth, paddingRight: '24px' }}
+                      className="grid py-2"
+                      style={calendarGridStyle}
                     >
                       {period === "year" ? (
                         <>
@@ -1869,58 +1820,6 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               </div>
             )}
         </div>
-        
-        {/* Scroll indicator with navigation buttons */}
-        {scrollInfo.scrollWidth > scrollInfo.clientWidth && (
-          <div className="px-6 pb-3">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={() => {
-                  if (scrollContainerRef.current) {
-                    scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-                  }
-                }}
-                title="В начало"
-              >
-                <ChevronLeft className="h-3 w-3" />
-              </Button>
-              
-              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary/50 rounded-full transition-all duration-150"
-                  style={{
-                    width: `${(scrollInfo.clientWidth / scrollInfo.scrollWidth) * 100}%`,
-                    marginLeft: `${(scrollInfo.scrollLeft / scrollInfo.scrollWidth) * 100}%`
-                  }}
-                />
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={() => {
-                  if (scrollContainerRef.current) {
-                    scrollContainerRef.current.scrollTo({ 
-                      left: scrollContainerRef.current.scrollWidth, 
-                      behavior: 'smooth' 
-                    });
-                  }
-                }}
-                title="В конец"
-              >
-                <ChevronRightIcon className="h-3 w-3" />
-              </Button>
-            </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-              <span>← Прокрутите для просмотра →</span>
-              <span>{Math.round((scrollInfo.scrollLeft + scrollInfo.clientWidth) / scrollInfo.scrollWidth * 100)}%</span>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
