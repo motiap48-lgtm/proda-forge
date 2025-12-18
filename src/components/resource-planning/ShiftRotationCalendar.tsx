@@ -1404,93 +1404,95 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div ref={scrollContainerRef} className="relative overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-          <div ref={printRef} className="py-6 px-6" style={{ minWidth: gridStyle.minWidth ? `calc(${gridStyle.minWidth} + 24px)` : undefined }}>
-            {/* Operators grouped by schedule */}
-            {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
-              const isCollapsed = collapsedGroups.has(scheduleName);
-              const schedule = ops[0]?.work_schedules;
-              const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
-              const scheduleId = schedule?.id;
-              const scheduleCycleStartDate = schedule?.cycle_start_date;
-              
-              return (
-              <div key={scheduleName} className="mb-6">
-                {/* Group name - should not move on horizontal scroll */}
-                <div className="mb-2 sticky left-0 z-40">
-                  <div className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2 w-full border border-border/40">
-                    <button 
-                      className="flex items-center gap-2 hover:bg-muted/70 rounded px-1 py-0.5 transition-colors flex-1 min-w-0"
-                      onClick={() => toggleGroupCollapse(scheduleName)}
-                    >
-                      {isCollapsed ? (
-                        <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                      )}
-                      <span className="truncate">{scheduleName} ({ops.length})</span>
-                      {isCyclicSchedule && (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300">
-                          {schedule?.cycle_days_on || 2}/{schedule?.cycle_days_off || 2}
-                        </Badge>
-                      )}
-                    </button>
-                    
-                    {/* Mass sync button for cyclic schedules */}
-                    {isCyclicSchedule && scheduleId && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-7 px-2 text-xs gap-1.5 text-amber-700 hover:text-amber-800 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/30"
-                            disabled={syncingScheduleId === scheduleId}
-                          >
-                            {syncingScheduleId === scheduleId ? (
-                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <RefreshCcw className="h-3.5 w-3.5" />
-                            )}
-                            Синхр. всех
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Синхронизировать даты начала цикла?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Для всех {ops.length} операторов графика "{scheduleName}" будет установлена дата начала цикла: 
-                              <strong className="block mt-1">
-                                {scheduleCycleStartDate 
-                                  ? format(parseDateOnly(scheduleCycleStartDate) || new Date(), 'd MMMM yyyy', { locale: ru })
-                                  : 'Не указана (требуется настроить график)'}
-                              </strong>
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Отмена</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleMassSyncCycleStartDate(scheduleId, scheduleCycleStartDate, ops)}
-                              disabled={!scheduleCycleStartDate}
-                            >
-                              Синхронизировать
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+        <div className="flex flex-col gap-3 py-6 px-6">
+          {/* Operators grouped by schedule */}
+          {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
+            const isCollapsed = collapsedGroups.has(scheduleName);
+            const schedule = ops[0]?.work_schedules;
+            const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
+            const scheduleId = schedule?.id;
+            const scheduleCycleStartDate = schedule?.cycle_start_date;
+            
+            return (
+            <div key={scheduleName}>
+              {/* Group name - stays in place, no horizontal scroll */}
+              <div className="mb-2">
+                <div className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2 border border-border/40">
+                  <button 
+                    className="flex items-center gap-2 hover:bg-muted/70 rounded px-1 py-0.5 transition-colors flex-1 min-w-0"
+                    onClick={() => toggleGroupCollapse(scheduleName)}
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 flex-shrink-0" />
                     )}
-                  </div>
-                </div>
-
-                {/* Animated content wrapper */}
-                <div 
-                  className={cn(
-                    "grid transition-all duration-300 ease-in-out",
-                    isCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
+                    <span className="truncate">{scheduleName} ({ops.length})</span>
+                    {isCyclicSchedule && (
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300">
+                        {schedule?.cycle_days_on || 2}/{schedule?.cycle_days_off || 2}
+                      </Badge>
+                    )}
+                  </button>
+                  
+                  {/* Mass sync button for cyclic schedules */}
+                  {isCyclicSchedule && scheduleId && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-xs gap-1.5 text-amber-700 hover:text-amber-800 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/30"
+                          disabled={syncingScheduleId === scheduleId}
+                        >
+                          {syncingScheduleId === scheduleId ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <RefreshCcw className="h-3.5 w-3.5" />
+                          )}
+                          Синхр. всех
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Синхронизировать даты начала цикла?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Для всех {ops.length} операторов графика "{scheduleName}" будет установлена дата начала цикла: 
+                            <strong className="block mt-1">
+                              {scheduleCycleStartDate 
+                                ? format(parseDateOnly(scheduleCycleStartDate) || new Date(), 'd MMMM yyyy', { locale: ru })
+                                : 'Не указана (требуется настроить график)'}
+                            </strong>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Отмена</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleMassSyncCycleStartDate(scheduleId, scheduleCycleStartDate, ops)}
+                            disabled={!scheduleCycleStartDate}
+                          >
+                            Синхронизировать
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
-                >
-                  <div className={cn("overflow-visible", isCollapsed && "overflow-hidden")}>
-                    {period === "year" ? (
-                      <>
+                </div>
+              </div>
+
+              {/* Animated content wrapper */}
+              <div 
+                className={cn(
+                  "grid transition-all duration-300 ease-in-out",
+                  isCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
+                )}
+              >
+                <div className={cn("overflow-visible", isCollapsed && "overflow-hidden")}>
+                  {/* Horizontal scroll container for the calendar grid */}
+                  <div ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? scrollContainerRef : undefined} className="overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                    <div ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? printRef : undefined} style={{ minWidth: gridStyle.minWidth ? `calc(${gridStyle.minWidth} + 24px)` : undefined, paddingRight: '24px' }}>
+                  {period === "year" ? (
+                    <>
                     <div className="grid gap-1 mb-2 sticky top-0 z-20 bg-background py-1" style={gridStyle}>
                       <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-30 bg-background border-r border-border shadow-sm w-[200px]">Сотрудник</div>
                       {months.map((month) => (
@@ -1809,11 +1811,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     })()}
                       </>
                     )}
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
             );
-            })}
+          })}
 
             {/* Grand total */}
             {filteredOperators.length > 0 && (
@@ -1869,7 +1873,6 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 </div>
               </div>
             )}
-          </div>
         </div>
         
         {/* Scroll indicator with navigation buttons */}
