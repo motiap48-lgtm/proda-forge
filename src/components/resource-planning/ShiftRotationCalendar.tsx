@@ -1610,10 +1610,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden"
                   >
                     {/* Employee column - fixed width, separate vertical scroll */}
-                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative" style={{ width: `${employeeColumnWidth}px` }}>
+                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative" style={{ width: `${employeeColumnWidth}px`, marginRight: '3px' }}>
                       {/* Employee header */}
-                      <div className="flex-shrink-0 bg-muted/30 text-sm font-medium text-muted-foreground px-2 pt-1 h-[64px] flex items-center border-b border-border mb-1">
-                        Сотрудник
+                      <div className="flex-shrink-0 bg-muted/30 text-sm font-semibold text-foreground px-3 pt-1 h-[64px] flex items-center border-b border-border mb-1">
+                        Сотрудники
                       </div>
                       
                       {/* Employee body - vertical scroll synced with calendar */}
@@ -1711,7 +1711,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                   className={cn(
                                     "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
                                     isTodayDate 
-                                      ? "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold hover:animate-pulse-glow" 
+                                      ? "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_6px_2px_rgba(6,182,212,0.3)] hover:animate-pulse-glow" 
                                       : isWeekend 
                                         ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
                                         : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground"
@@ -1810,7 +1810,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                               : isWeekend 
                                                 ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                                                 : "bg-gradient-to-b from-muted/20 to-muted/40",
-                                            isToday(day) && "hover:animate-pulse-glow"
+                                            isToday(day) && "shadow-[0_0_6px_2px_rgba(6,182,212,0.3)] hover:animate-pulse-glow"
                                           )}
                                           title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
                                         >
@@ -1881,7 +1881,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     onScroll={handleSyncScroll('grand-total')}
                     className="overflow-x-auto flex-1 min-w-0"
                   >
-                    <div style={calendarGridStyle} className="min-h-[50px] items-center">
+                    <div style={calendarGridStyle} className="min-h-[52px] items-center">
                       {period === "year" ? (
                         <>
                           {months.map((month) => {
@@ -1909,9 +1909,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           ? calculateGroupYearlyTotal(filteredOperators)
                           : calculateGroupTotalHours(filteredOperators);
                         return (
-                          <div className="text-center p-2 rounded-md text-sm bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold">
+                          <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold">
                             <div>{grandTotalCalc.hours}ч</div>
-                            {grandTotalCalc.minutes > 0 && <div className="text-xs opacity-80">{grandTotalCalc.minutes}м</div>}
+                            {grandTotalCalc.minutes > 0 && <div className="text-[10px] opacity-80">{grandTotalCalc.minutes}м</div>}
                           </div>
                         );
                       })()}
