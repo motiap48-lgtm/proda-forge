@@ -144,27 +144,34 @@ export const ScheduleCalendarPreview = ({
             {daysArray.map((day) => {
               const isWorking = isWorkingDay(schedule, day, startDate);
               const isTodayDate = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-              const isWeekend = getDay(day) === 0 || getDay(day) === 6;
               
               return (
                 <div 
                   key={day.toISOString()} 
                   className={cn(
-                    "text-center p-1 rounded text-[10px] border",
-                    days <= 7 ? "flex-1 min-w-[36px]" : "w-[36px] flex-shrink-0",
+                    "text-center rounded-full flex flex-col items-center justify-center",
+                    days <= 7 ? "flex-1 min-w-[40px] py-1.5 px-1" : "w-[40px] h-[52px] flex-shrink-0",
                     isWorking 
-                      ? "bg-primary/10 border-primary/30 text-primary" 
-                      : "bg-muted/50 border-muted text-muted-foreground",
-                    isTodayDate && "ring-2 ring-primary/50"
+                      ? isTodayDate
+                        ? "bg-gradient-to-b from-cyan-400 to-teal-500 text-white"
+                        : "bg-background border border-border text-foreground"
+                      : "bg-gradient-to-b from-rose-400 to-pink-500 text-white"
                   )}
                 >
                   <div className={cn(
-                    "font-medium uppercase",
-                    isWeekend && !isWorking && "text-destructive/70"
+                    "font-semibold uppercase text-[10px] leading-tight",
+                    !isWorking && "text-white",
+                    isWorking && isTodayDate && "text-white",
+                    isWorking && !isTodayDate && "text-foreground"
                   )}>
                     {format(day, "EEE", { locale: ru })}
                   </div>
-                  <div className="text-[9px]">
+                  <div className={cn(
+                    "font-bold text-sm leading-tight",
+                    !isWorking && "text-white",
+                    isWorking && isTodayDate && "text-white",
+                    isWorking && !isTodayDate && "text-foreground"
+                  )}>
                     {format(day, "d", { locale: ru })}
                   </div>
                 </div>
@@ -185,11 +192,15 @@ export const ScheduleCalendarPreview = ({
       </div>
       <div className="flex gap-3 text-[10px] text-muted-foreground">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-primary/10 border border-primary/30"></div>
+          <div className="w-3 h-3 rounded-full bg-gradient-to-b from-cyan-400 to-teal-500"></div>
+          <span>Сегодня</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-full border border-border bg-background"></div>
           <span>Рабочий</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-muted/50 border border-muted"></div>
+          <div className="w-3 h-3 rounded-full bg-gradient-to-b from-rose-400 to-pink-500"></div>
           <span>Выходной</span>
         </div>
       </div>
