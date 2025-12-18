@@ -83,13 +83,13 @@ const getShiftForDate = (operator: any, date: Date) => {
   return shifts[0];
 };
 
-// Get unique shift colors
+// Get unique shift colors - matching reference styling
 const getShiftColor = (shiftName: string, index: number) => {
   const colors = [
-    { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300", border: "border-blue-300 dark:border-blue-700" },
-    { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-300", border: "border-amber-300 dark:border-amber-700" },
-    { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-300", border: "border-green-300 dark:border-green-700" },
-    { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", border: "border-purple-300 dark:border-purple-700" },
+    { bg: "bg-amber-200 dark:bg-amber-800/50", text: "text-amber-800 dark:text-amber-200", border: "border-amber-400 dark:border-amber-600" },
+    { bg: "bg-green-200 dark:bg-green-800/50", text: "text-green-800 dark:text-green-200", border: "border-green-400 dark:border-green-600" },
+    { bg: "bg-purple-200 dark:bg-purple-800/50", text: "text-purple-800 dark:text-purple-200", border: "border-purple-400 dark:border-purple-600" },
+    { bg: "bg-blue-200 dark:bg-blue-800/50", text: "text-blue-800 dark:text-blue-200", border: "border-blue-400 dark:border-blue-600" },
   ];
   return colors[index % colors.length];
 };
@@ -464,31 +464,31 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       const mins = netMinutes % 60;
                       const isWeekend = getDay(day) === 0 || getDay(day) === 6;
                       
-                      return (
-                        <div 
-                          key={day.toISOString()} 
-                          className={cn(
-                            "text-center p-1 rounded-md text-xs transition-colors",
-                            colors ? cn(colors.bg, colors.text, "border", colors.border) : isWeekend ? "bg-muted/40" : "bg-muted/20",
-                            isToday(day) && "ring-2 ring-primary/30"
-                          )}
-                        >
-                          {shift ? (
-                            <>
-                              <div className="font-medium truncate text-[10px]" title={shift.shift_name}>
-                                {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name.split(" ")[0]}
-                              </div>
-                              {daysCount <= 14 && (
-                                <div className="text-[9px] opacity-75">
-                                  {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
+                        return (
+                          <div 
+                            key={day.toISOString()} 
+                            className={cn(
+                              "text-center p-1.5 rounded-md text-xs transition-colors",
+                              colors ? cn(colors.bg, colors.text, "border", colors.border) : isWeekend ? "bg-muted/40" : "bg-muted/20",
+                              isToday(day) && "ring-2 ring-primary/30"
+                            )}
+                          >
+                            {shift ? (
+                              <>
+                                <div className="font-medium truncate text-[11px]" title={shift.shift_name}>
+                                  {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name}
                                 </div>
-                              )}
-                            </>
-                          ) : (
-                            <span className="opacity-50 text-[10px]">—</span>
-                          )}
-                        </div>
-                      );
+                                {daysCount <= 14 && (
+                                  <div className="text-[10px] opacity-80">
+                                    {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </div>
+                        );
                     })}
                   </div>
                 ))}
