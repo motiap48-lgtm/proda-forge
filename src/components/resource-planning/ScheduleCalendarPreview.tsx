@@ -88,35 +88,41 @@ export const ScheduleCalendarPreview = ({
           </Select>
         )}
       </div>
-      <div className="flex gap-1">
-        {daysArray.map((day) => {
-          const isWorking = isWorkingDay(schedule, day, startDate);
-          const isTodayDate = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-          const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-          
-          return (
-            <div 
-              key={day.toISOString()} 
-              className={cn(
-                "flex-1 text-center p-1 rounded text-[10px] min-w-[36px] border",
-                isWorking 
-                  ? "bg-primary/10 border-primary/30 text-primary" 
-                  : "bg-muted/50 border-muted text-muted-foreground",
-                isTodayDate && "ring-2 ring-primary/50"
-              )}
-            >
-              <div className={cn(
-                "font-medium uppercase",
-                isWeekend && !isWorking && "text-destructive/70"
-              )}>
-                {format(day, "EEE", { locale: ru })}
+      <div className="overflow-x-auto">
+        <div className={cn(
+          "flex gap-1",
+          days > 7 ? "w-max" : ""
+        )}>
+          {daysArray.map((day) => {
+            const isWorking = isWorkingDay(schedule, day, startDate);
+            const isTodayDate = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+            const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+            
+            return (
+              <div 
+                key={day.toISOString()} 
+                className={cn(
+                  "text-center p-1 rounded text-[10px] border",
+                  days <= 7 ? "flex-1 min-w-[36px]" : "w-[36px] flex-shrink-0",
+                  isWorking 
+                    ? "bg-primary/10 border-primary/30 text-primary" 
+                    : "bg-muted/50 border-muted text-muted-foreground",
+                  isTodayDate && "ring-2 ring-primary/50"
+                )}
+              >
+                <div className={cn(
+                  "font-medium uppercase",
+                  isWeekend && !isWorking && "text-destructive/70"
+                )}>
+                  {format(day, "EEE", { locale: ru })}
+                </div>
+                <div className="text-[9px]">
+                  {format(day, "d", { locale: ru })}
+                </div>
               </div>
-              <div className="text-[9px]">
-                {format(day, "d", { locale: ru })}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
       <div className="flex gap-3 text-[10px] text-muted-foreground">
         <div className="flex items-center gap-1">
