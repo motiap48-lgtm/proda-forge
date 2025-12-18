@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock } from "lucide-react";
+import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
@@ -111,6 +111,33 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       }
       return newSet;
     });
+  };
+
+  const collapseAll = () => {
+    const allScheduleNames = Array.from(groupedBySchedule.keys());
+    setCollapsedGroups(new Set(allScheduleNames));
+  };
+
+  const expandAll = () => {
+    setCollapsedGroups(new Set());
+  };
+
+  // Calculate group total hours
+  const calculateGroupTotalHours = (ops: any[]): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    ops.forEach(operator => {
+      days.forEach(day => {
+        const shift = getShiftForDate(operator, day);
+        if (shift) {
+          const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+          totalMinutes += netMinutes;
+        }
+      });
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
   };
   
   // Generate days based on selected period
@@ -391,6 +418,14 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 <SelectItem value="30">Месяц</SelectItem>
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-1 border-l pl-3 ml-1">
+              <Button variant="ghost" size="sm" onClick={expandAll} title="Развернуть все">
+                <ChevronsUpDown className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={collapseAll} title="Свернуть все">
+                <ChevronsDownUp className="h-4 w-4" />
+              </Button>
+            </div>
             <Button variant="outline" size="sm" onClick={handleExportToExcel}>
               <FileDown className="h-4 w-4 mr-2" />
               Excel
@@ -555,11 +590,68 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         </div>
                       );
                     })}
+
+                    {/* Group summary row */}
+                    {(() => {
+                      const groupTotal = calculateGroupTotalHours(ops);
+                      return (
+                        <div 
+                          className="grid gap-1 py-2 mt-2 border-t border-dashed"
+                          style={gridStyle}
+                        >
+                          <div className="px-2 text-sm font-medium text-muted-foreground">
+                            Итого по группе:
+                          </div>
+                          {days.map((day) => (
+                            <div key={day.toISOString()} className="text-center text-xs text-muted-foreground">
+                              —
+                            </div>
+                          ))}
+                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold">
+                            <div>{groupTotal.hours}ч</div>
+                            {groupTotal.minutes > 0 && (
+                              <div className="text-[10px]">{groupTotal.minutes}м</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>
             );
             })}
+
+            {/* Grand total */}
+            {filteredOperators.length > 0 && (
+              <div className="mt-4 pt-4 border-t-2 border-primary/20">
+                <div 
+                  className="grid gap-1 py-2 bg-primary/5 rounded-lg"
+                  style={gridStyle}
+                >
+                  <div className="px-2 text-sm font-bold flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    ОБЩИЙ ИТОГ:
+                  </div>
+                  {days.map((day) => (
+                    <div key={day.toISOString()} className="text-center text-xs text-muted-foreground">
+                      —
+                    </div>
+                  ))}
+                  {(() => {
+                    const grandTotal = calculateGroupTotalHours(filteredOperators);
+                    return (
+                      <div className="text-center p-2 rounded-md text-sm bg-primary text-primary-foreground font-bold">
+                        <div>{grandTotal.hours}ч</div>
+                        {grandTotal.minutes > 0 && (
+                          <div className="text-xs opacity-80">{grandTotal.minutes}м</div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
