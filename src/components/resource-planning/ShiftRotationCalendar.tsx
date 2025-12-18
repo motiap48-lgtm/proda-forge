@@ -260,6 +260,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
   const [syncingScheduleId, setSyncingScheduleId] = useState<string | null>(null);
+  const [isTodayColumnHovered, setIsTodayColumnHovered] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   // Refs for synchronized horizontal scrolling
@@ -1711,11 +1712,16 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                   className={cn(
                                     "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
                                     isTodayDate 
-                                      ? "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)] hover:animate-pulse-glow"
+                                      ? cn(
+                                          "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
+                                          isTodayColumnHovered && "animate-pulse-glow"
+                                        )
                                       : isWeekend 
                                         ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
                                         : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground"
                                   )}
+                                  onMouseEnter={() => isTodayDate && setIsTodayColumnHovered(true)}
+                                  onMouseLeave={() => isTodayDate && setIsTodayColumnHovered(false)}
                                 >
                                   <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
                                   <div className={cn("text-sm font-semibold", isTodayDate ? "text-white" : isWeekend ? "text-rose-600 dark:text-rose-300" : "text-foreground")}>{format(day, "d", { locale: ru })}</div>
@@ -1810,9 +1816,14 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                               : isWeekend 
                                                 ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                                                 : "bg-gradient-to-b from-muted/20 to-muted/40",
-                                            isToday(day) && "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)] hover:animate-pulse-glow"
+                                            isToday(day) && cn(
+                                              "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
+                                              isTodayColumnHovered && "animate-pulse-glow"
+                                            )
                                           )}
                                           title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
+                                          onMouseEnter={() => isToday(day) && setIsTodayColumnHovered(true)}
+                                          onMouseLeave={() => isToday(day) && setIsTodayColumnHovered(false)}
                                         >
                                           {shift ? (
                                             <div className="w-full text-center flex flex-col items-center">
@@ -1901,7 +1912,18 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         </>
                       ) : (
                         days.map((day) => (
-                          <div key={day.toISOString()} className="text-center text-xs text-muted-foreground py-2">—</div>
+                          <div 
+                            key={day.toISOString()} 
+                            className={cn(
+                              "text-center text-xs text-muted-foreground py-2",
+                              isToday(day) && cn(
+                                "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)] rounded-md",
+                                isTodayColumnHovered && "animate-pulse-glow"
+                              )
+                            )}
+                            onMouseEnter={() => isToday(day) && setIsTodayColumnHovered(true)}
+                            onMouseLeave={() => isToday(day) && setIsTodayColumnHovered(false)}
+                          >—</div>
                         ))
                       )}
                       {(() => {
