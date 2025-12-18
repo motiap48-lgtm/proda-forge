@@ -451,6 +451,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         gridTemplateColumns: `200px repeat(12, minmax(70px, 1fr)) 80px`
       };
     }
+    // For 7 days or less - stretch to full width
+    if (daysCount <= 7) {
+      return {
+        gridTemplateColumns: `200px repeat(${daysCount}, 1fr) 70px`
+      };
+    }
+    // For more days - fixed width columns
     const dayWidth = daysCount > 14 ? '55px' : '85px';
     return {
       gridTemplateColumns: `200px repeat(${daysCount}, ${dayWidth}) 70px`
@@ -898,7 +905,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       </CardHeader>
       <CardContent className="p-0">
         <div ref={scrollContainerRef} className="overflow-x-auto overflow-y-visible scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-          <div ref={printRef} className="p-6" style={{ minWidth: period === "year" ? "1200px" : daysCount > 14 ? `${270 + daysCount * 55}px` : `${270 + daysCount * 85}px` }}>
+          <div ref={printRef} className="p-6" style={{ minWidth: period === "year" ? "1200px" : daysCount <= 7 ? undefined : daysCount > 14 ? `${270 + daysCount * 55}px` : `${270 + daysCount * 85}px` }}>
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
               const isCollapsed = collapsedGroups.has(scheduleName);
