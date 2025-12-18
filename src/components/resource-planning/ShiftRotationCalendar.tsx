@@ -1820,12 +1820,12 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                                 {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name}
                                               </div>
                                               {daysCount <= 14 && <div className="text-[9px] opacity-80 truncate">{mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}</div>}
-                                              {cycleInfo && daysCount <= 14 && <div className="text-[8px] opacity-60 font-medium">Д{cycleInfo.dayInCycle}</div>}
+                                              {cycleInfo && <div className="text-[8px] opacity-70 font-semibold flex-shrink-0">Д{cycleInfo.dayInCycle}</div>}
                                             </div>
                                           ) : (
                                             <div className="flex flex-col items-center">
                                               <span className={cn("text-sm", isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground")}>—</span>
-                                              {cycleInfo && daysCount <= 14 && <div className="text-[9px] opacity-50 font-medium">Д{cycleInfo.dayInCycle}</div>}
+                                              {cycleInfo && <div className="text-[8px] opacity-60 font-semibold flex-shrink-0">Д{cycleInfo.dayInCycle}</div>}
                                             </div>
                                           )}
                                         </div>
