@@ -9,7 +9,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { format, addDays, differenceInWeeks, differenceInDays, differenceInCalendarDays, startOfDay, isToday, getDay, isSameMonth, startOfWeek, startOfMonth, getDaysInMonth, addMonths, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp, CalendarDays, ChevronLeft, ChevronRightIcon, Phone, Mail, Briefcase, Building2, RotateCcw } from "lucide-react";
+import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp, CalendarDays, ChevronLeft, ChevronRightIcon, Phone, Mail, Briefcase, Building2, RotateCcw, FileText, RefreshCcw, CalendarCheck, CalendarX } from "lucide-react";
+import { useUpdateOperator } from "@/hooks/useResourcePlanning";
+import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
@@ -256,8 +259,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
+  const [syncingScheduleId, setSyncingScheduleId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  const updateOperator = useUpdateOperator();
 
   // Enable horizontal scroll with mouse wheel
   useEffect(() => {
@@ -327,6 +333,59 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       hours: Math.floor(totalMinutes / 60),
       minutes: totalMinutes % 60
     };
+  };
+
+  // Calculate group statistics: working days, off days, and total time
+  const calculateGroupStats = (ops: any[]): { workingDays: number; offDays: number; totalHours: number; totalMinutes: number } => {
+    let totalWorkingDays = 0;
+    let totalOffDays = 0;
+    let totalMinutes = 0;
+    
+    ops.forEach(operator => {
+      days.forEach(day => {
+        const shift = getShiftForDate(operator, day);
+        if (shift) {
+          totalWorkingDays++;
+          const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+          totalMinutes += netMinutes;
+        } else {
+          totalOffDays++;
+        }
+      });
+    });
+    
+    return {
+      workingDays: totalWorkingDays,
+      offDays: totalOffDays,
+      totalHours: Math.floor(totalMinutes / 60),
+      totalMinutes: totalMinutes % 60
+    };
+  };
+
+  // Mass sync operators' cycle start dates to their schedule's cycle_start_date
+  const handleMassSyncCycleStartDate = async (scheduleId: string, scheduleCycleStartDate: string | null, operatorsToSync: any[]) => {
+    if (!scheduleCycleStartDate) {
+      toast.error("У графика не указана дата начала цикла");
+      return;
+    }
+    
+    setSyncingScheduleId(scheduleId);
+    
+    try {
+      const updates = operatorsToSync.map(op => 
+        updateOperator.mutateAsync({
+          id: op.id,
+          shift_rotation_start_date: scheduleCycleStartDate
+        })
+      );
+      
+      await Promise.all(updates);
+      toast.success(`Синхронизировано ${operatorsToSync.length} операторов`);
+    } catch (error: any) {
+      toast.error("Ошибка синхронизации: " + error.message);
+    } finally {
+      setSyncingScheduleId(null);
+    }
   };
   
   // Generate days based on selected period and start date
@@ -692,8 +751,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     const printContent = printRef.current;
     if (!printContent) return;
 
-    const startDate = format(days[0], 'dd.MM.yyyy');
-    const endDate = format(days[days.length - 1], 'dd.MM.yyyy');
+    const startDateStr = format(days[0], 'dd.MM.yyyy');
+    const endDateStr = format(days[days.length - 1], 'dd.MM.yyyy');
     
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -702,7 +761,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       <!DOCTYPE html>
       <html>
       <head>
-        <title>График ротации смен ${startDate} - ${endDate}</title>
+        <title>График ротации смен ${startDateStr} - ${endDateStr}</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; }
           h1 { font-size: 18px; margin-bottom: 10px; }
@@ -722,12 +781,14 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           .legend { margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; }
           .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; }
           .legend-color { width: 16px; height: 16px; border-radius: 3px; border: 1px solid #ccc; }
+          .cycle-day { font-size: 9px; color: #666; }
+          .group-stats { background: #f9fafb; font-size: 10px; }
           @media print { body { padding: 0; } }
         </style>
       </head>
       <body>
         <h1>График ротации смен</h1>
-        <h2>Период: ${startDate} — ${endDate}${scheduleFilter !== 'all' ? ` | График: ${scheduleFilter}` : ''}</h2>
+        <h2>Период: ${startDateStr} — ${endDateStr}${scheduleFilter !== 'all' ? ` | График: ${scheduleFilter}` : ''}</h2>
         
         <div class="legend">
           ${Array.from(shiftColorMap.entries()).map(([name], idx) => `
@@ -752,16 +813,20 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   ${format(day, 'd.MM')}
                 </th>
               `).join('')}
+              <th>Итого</th>
             </tr>
           </thead>
           <tbody>
-            ${Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => `
+            ${Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
+              const groupStats = calculateGroupStats(ops);
+              return `
               <tr>
-                <td colspan="${days.length + 1}" class="group-header">${scheduleName} (${ops.length})</td>
+                <td colspan="${days.length + 2}" class="group-header">${scheduleName} (${ops.length})</td>
               </tr>
               ${ops.map(operator => {
                 const shiftNameToIndex = new Map<string, number>();
                 Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
+                const opTotal = calculateTotalHours(operator);
                 
                 return `
                   <tr>
@@ -773,17 +838,27 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
                       const hours = Math.floor(netMinutes / 60);
                       const mins = netMinutes % 60;
+                      const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
                       
                       return `
-                        <td class="${isToday(day) ? 'today' : ''} ${shift ? `shift-${shiftIdx}` : isWeekend ? 'weekend' : 'day-off'}">
-                          ${shift ? `${shift.shift_name.split(' ')[0]}<br/>${hours}ч${mins > 0 ? ` ${mins}м` : ''}` : '—'}
+                        <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'}">
+                          ${shift ? `${shift.shift_name.split(' ')[0]}<br/>${hours}ч${mins > 0 ? ' ' + mins + 'м' : ''}` : '—'}
+                          ${cycleInfo ? '<br/><span class="cycle-day">Д' + cycleInfo.dayInCycle + '</span>' : ''}
                         </td>
                       `;
                     }).join('')}
+                    <td>${opTotal.hours}ч${opTotal.minutes > 0 ? ' ' + opTotal.minutes + 'м' : ''}</td>
                   </tr>
                 `;
               }).join('')}
-            `).join('')}
+              <tr class="group-stats">
+                <td colspan="2" style="text-align: left; font-weight: 500;">
+                  Итого: ✓${groupStats.workingDays} раб. | ✗${groupStats.offDays} вых. | ${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? ' ' + groupStats.totalMinutes + 'м' : ''}
+                </td>
+                <td colspan="${days.length}"></td>
+              </tr>
+            `;
+            }).join('')}
           </tbody>
         </table>
         
@@ -792,6 +867,157 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       </html>
     `);
     printWindow.document.close();
+  };
+
+  // PDF export handler with visual formatting
+  const handleExportToPdf = () => {
+    const startDateStr = format(days[0], 'dd.MM.yyyy');
+    const endDateStr = format(days[days.length - 1], 'dd.MM.yyyy');
+    
+    const pdfWindow = window.open('', '_blank');
+    if (!pdfWindow) return;
+
+    pdfWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>График ротации смен ${startDateStr} - ${endDateStr}</title>
+        <style>
+          @page { size: landscape; margin: 10mm; }
+          body { font-family: Arial, sans-serif; padding: 15px; font-size: 10px; }
+          h1 { font-size: 16px; margin-bottom: 8px; color: #1f2937; }
+          h2 { font-size: 12px; color: #666; margin-bottom: 15px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+          th, td { border: 1px solid #e5e7eb; padding: 4px 3px; text-align: center; }
+          th { background: #f3f4f6; font-weight: 600; font-size: 9px; }
+          td:first-child { text-align: left; font-weight: 500; min-width: 100px; }
+          .group-header { background: #1f2937; color: white; font-weight: 600; text-align: left; font-size: 11px; }
+          .shift-1 { background: #fef3c7; color: #92400e; }
+          .shift-2 { background: #d1fae5; color: #065f46; }
+          .shift-3 { background: #ddd6fe; color: #5b21b6; }
+          .shift-4 { background: #dbeafe; color: #1e40af; }
+          .day-off { background: #fef2f2; color: #991b1b; }
+          .weekend { background: #fee2e2; }
+          .today { background: #fef08a !important; font-weight: bold; }
+          .cycle-day { font-size: 8px; color: #6b7280; display: block; }
+          .legend { margin-bottom: 12px; display: flex; gap: 12px; flex-wrap: wrap; }
+          .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; }
+          .legend-color { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #d1d5db; }
+          .group-stats { background: #f9fafb; font-weight: 500; }
+          .group-stats td { font-size: 9px; }
+          .total-col { background: #d1fae5; color: #065f46; font-weight: 600; }
+          .summary { margin-top: 10px; padding: 10px; background: #f3f4f6; border-radius: 4px; }
+          .summary-row { display: flex; gap: 20px; flex-wrap: wrap; font-size: 11px; }
+          .summary-item { display: flex; align-items: center; gap: 5px; }
+          .summary-icon { font-size: 14px; }
+          @media print { 
+            body { padding: 0; } 
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>📅 График ротации смен</h1>
+        <h2>Период: ${startDateStr} — ${endDateStr}${scheduleFilter !== 'all' ? ` | График: ${scheduleFilter}` : ''} | Операторов: ${filteredOperators.length}</h2>
+        
+        <div class="legend">
+          ${Array.from(shiftColorMap.entries()).map(([name], idx) => `
+            <div class="legend-item">
+              <div class="legend-color shift-${(idx % 4) + 1}"></div>
+              <span>${name}</span>
+            </div>
+          `).join('')}
+          <div class="legend-item">
+            <div class="legend-color day-off"></div>
+            <span>Выходной</span>
+          </div>
+        </div>
+        
+        ${Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
+          const groupStats = calculateGroupStats(ops);
+          const schedule = ops[0]?.work_schedules;
+          const isCyclic = schedule?.schedule_type === 'cyclic';
+          
+          return `
+          <table>
+            <thead>
+              <tr>
+                <th colspan="${days.length + 2}" class="group-header">
+                  ${scheduleName} (${ops.length} чел.)
+                  ${isCyclic ? ' — Циклический ' + (schedule?.cycle_days_on || 2) + '/' + (schedule?.cycle_days_off || 2) : ''}
+                </th>
+              </tr>
+              <tr>
+                <th style="text-align: left;">Сотрудник</th>
+                ${days.map(day => `
+                  <th class="${isToday(day) ? 'today' : ''} ${getDay(day) === 0 || getDay(day) === 6 ? 'weekend' : ''}">
+                    ${format(day, 'EEE', { locale: ru })}<br/>
+                    ${format(day, 'd')}
+                  </th>
+                `).join('')}
+                <th>Итого</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${ops.map(operator => {
+                const shiftNameToIndex = new Map<string, number>();
+                Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
+                const opTotal = calculateTotalHours(operator);
+                
+                return `
+                  <tr>
+                    <td>${operator.full_name}${operator.shift_rotation_enabled ? ' 🔄' : ''}</td>
+                    ${days.map(day => {
+                      const shift = getShiftForDate(operator, day);
+                      const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                      const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
+                      const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
+                      const hours = Math.floor(netMinutes / 60);
+                      const mins = netMinutes % 60;
+                      const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
+                      
+                      return `
+                        <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'}">
+                          ${shift ? hours + 'ч' + (mins > 0 ? mins + 'м' : '') : '—'}
+                          ${cycleInfo && isCyclic ? '<span class="cycle-day">Д' + cycleInfo.dayInCycle + '</span>' : ''}
+                        </td>
+                      `;
+                    }).join('')}
+                    <td class="total-col">${opTotal.hours}ч${opTotal.minutes > 0 ? opTotal.minutes + 'м' : ''}</td>
+                  </tr>
+                `;
+              }).join('')}
+              <tr class="group-stats">
+                <td style="text-align: left;">
+                  <strong>Итого по группе:</strong>
+                </td>
+                <td colspan="${days.length}">
+                  ✅ Рабочих: ${groupStats.workingDays} | ⛔ Выходных: ${groupStats.offDays}
+                </td>
+                <td class="total-col">${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? groupStats.totalMinutes + 'м' : ''}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+        }).join('')}
+        
+        <div class="summary">
+          <div class="summary-row">
+            <div class="summary-item"><span class="summary-icon">👥</span> Всего операторов: <strong>${filteredOperators.length}</strong></div>
+            <div class="summary-item"><span class="summary-icon">⏱️</span> Общее время: <strong>${grandTotal.hours}ч${grandTotal.minutes > 0 ? ' ' + grandTotal.minutes + 'м' : ''}</strong></div>
+            <div class="summary-item"><span class="summary-icon">📆</span> Дней в периоде: <strong>${days.length}</strong></div>
+          </div>
+        </div>
+        
+        <p style="text-align: right; font-size: 9px; color: #9ca3af; margin-top: 20px;">
+          Сформировано: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: ru })}
+        </p>
+        
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `);
+    pdfWindow.document.close();
   };
 
   if (operatorsWithSchedules.length === 0) {
@@ -818,6 +1044,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               <Button variant="outline" size="sm" onClick={handleExportToExcel}>
                 <FileDown className="h-4 w-4 mr-2" />
                 Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportToPdf}>
+                <FileText className="h-4 w-4 mr-2" />
+                PDF
               </Button>
               <Button variant="outline" size="sm" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-2" />
@@ -1129,22 +1359,79 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
               const isCollapsed = collapsedGroups.has(scheduleName);
+              const schedule = ops[0]?.work_schedules;
+              const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
+              const scheduleId = schedule?.id;
+              const scheduleCycleStartDate = schedule?.cycle_start_date;
+              
               return (
               <div key={scheduleName} className="mb-6">
                 {/* Group name - clickable to collapse - uses grid to match calendar width */}
                 <div className="grid gap-1 mb-2" style={gridStyle}>
-                  <button 
-                    className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded hover:bg-muted/70 transition-colors flex items-center gap-2"
-                    onClick={() => toggleGroupCollapse(scheduleName)}
+                  <div 
+                    className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2"
                     style={{ gridColumn: `1 / -1` }}
                   >
-                    {isCollapsed ? (
-                      <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                    <button 
+                      className="flex items-center gap-2 hover:bg-muted/70 rounded px-1 py-0.5 transition-colors flex-1"
+                      onClick={() => toggleGroupCollapse(scheduleName)}
+                    >
+                      {isCollapsed ? (
+                        <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                      )}
+                      {scheduleName} ({ops.length})
+                      {isCyclicSchedule && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300">
+                          {schedule?.cycle_days_on || 2}/{schedule?.cycle_days_off || 2}
+                        </Badge>
+                      )}
+                    </button>
+                    
+                    {/* Mass sync button for cyclic schedules */}
+                    {isCyclicSchedule && scheduleId && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2 text-xs gap-1.5 text-amber-700 hover:text-amber-800 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/30"
+                            disabled={syncingScheduleId === scheduleId}
+                          >
+                            {syncingScheduleId === scheduleId ? (
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCcw className="h-3.5 w-3.5" />
+                            )}
+                            Синхр. всех
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Синхронизировать даты начала цикла?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Для всех {ops.length} операторов графика "{scheduleName}" будет установлена дата начала цикла: 
+                              <strong className="block mt-1">
+                                {scheduleCycleStartDate 
+                                  ? format(parseDateOnly(scheduleCycleStartDate) || new Date(), 'd MMMM yyyy', { locale: ru })
+                                  : 'Не указана (требуется настроить график)'}
+                              </strong>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Отмена</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleMassSyncCycleStartDate(scheduleId, scheduleCycleStartDate, ops)}
+                              disabled={!scheduleCycleStartDate}
+                            >
+                              Синхронизировать
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
-                    {scheduleName} ({ops.length})
-                  </button>
+                  </div>
                 </div>
 
                 {/* Animated content wrapper */}
@@ -1416,14 +1703,24 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
 
                     {/* Group summary row */}
                     {(() => {
-                      const groupTotal = calculateGroupTotalHours(ops);
+                      const groupStats = calculateGroupStats(ops);
                       return (
                         <div 
                           className="grid gap-1 py-2 mt-2 border-t border-dashed"
                           style={gridStyle}
                         >
-                          <div className="px-2 text-sm font-medium text-muted-foreground sticky left-0 z-10 bg-background min-w-[200px]">
-                            Итого по группе:
+                          <div className="px-2 text-sm font-medium text-muted-foreground sticky left-0 z-10 bg-background min-w-[200px] flex items-center gap-3">
+                            <span>Итого:</span>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                <CalendarCheck className="h-3 w-3" />
+                                {groupStats.workingDays}
+                              </span>
+                              <span className="flex items-center gap-1 text-rose-500 dark:text-rose-400">
+                                <CalendarX className="h-3 w-3" />
+                                {groupStats.offDays}
+                              </span>
+                            </div>
                           </div>
                           {days.map((day) => (
                             <div key={day.toISOString()} className="text-center text-xs text-muted-foreground">
@@ -1431,9 +1728,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             </div>
                           ))}
                           <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold">
-                            <div>{groupTotal.hours}ч</div>
-                            {groupTotal.minutes > 0 && (
-                              <div className="text-[10px]">{groupTotal.minutes}м</div>
+                            <div>{groupStats.totalHours}ч</div>
+                            {groupStats.totalMinutes > 0 && (
+                              <div className="text-[10px]">{groupStats.totalMinutes}м</div>
                             )}
                           </div>
                         </div>
