@@ -222,43 +222,87 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     };
   };
 
-  // Export to Excel
+  // Export to Excel with group totals and grand total
   const handleExportToExcel = () => {
     const wb = XLSX.utils.book_new();
     
     // Prepare data for export
     const exportData: any[] = [];
     
-    // Header row with dates
-    const headerRow = ['Сотрудник', 'График', ...days.map(day => format(day, 'dd.MM.yyyy'))];
+    // Header row with dates and total column
+    const headerRow = ['Сотрудник', 'График', ...days.map(day => format(day, 'dd.MM.yyyy')), 'Итого'];
     exportData.push(headerRow);
     
-    // Data rows
-    filteredOperators.forEach(operator => {
-      const row = [
-        operator.full_name,
-        operator.work_schedules?.name || 'Без графика',
-        ...days.map(day => {
+    let grandTotalMinutes = 0;
+
+    // Data rows grouped by schedule
+    Array.from(groupedBySchedule.entries()).forEach(([scheduleName, ops]) => {
+      // Group header
+      exportData.push([`--- ${scheduleName} (${ops.length}) ---`]);
+      
+      let groupTotalMinutes = 0;
+
+      ops.forEach(operator => {
+        let operatorTotalMinutes = 0;
+        const dayValues = days.map(day => {
           const shift = getShiftForDate(operator, day);
           if (shift) {
             const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+            operatorTotalMinutes += netMinutes;
             const hours = Math.floor(netMinutes / 60);
             const mins = netMinutes % 60;
             return `${shift.shift_name} (${hours}ч${mins > 0 ? ` ${mins}м` : ''})`;
           }
           return 'Выходной';
-        })
+        });
+
+        const totalHours = Math.floor(operatorTotalMinutes / 60);
+        const totalMins = operatorTotalMinutes % 60;
+        groupTotalMinutes += operatorTotalMinutes;
+
+        const row = [
+          operator.full_name,
+          operator.work_schedules?.name || 'Без графика',
+          ...dayValues,
+          `${totalHours}ч${totalMins > 0 ? ` ${totalMins}м` : ''}`
+        ];
+        exportData.push(row);
+      });
+
+      // Group total row
+      const groupHours = Math.floor(groupTotalMinutes / 60);
+      const groupMins = groupTotalMinutes % 60;
+      grandTotalMinutes += groupTotalMinutes;
+      
+      const groupTotalRow = [
+        `Итого по группе "${scheduleName}":`,
+        '',
+        ...days.map(() => ''),
+        `${groupHours}ч${groupMins > 0 ? ` ${groupMins}м` : ''}`
       ];
-      exportData.push(row);
+      exportData.push(groupTotalRow);
+      exportData.push([]); // Empty row for spacing
     });
+
+    // Grand total row
+    const grandHours = Math.floor(grandTotalMinutes / 60);
+    const grandMins = grandTotalMinutes % 60;
+    exportData.push([]);
+    exportData.push([
+      'ОБЩИЙ ИТОГ:',
+      '',
+      ...days.map(() => ''),
+      `${grandHours}ч${grandMins > 0 ? ` ${grandMins}м` : ''}`
+    ]);
     
     const ws = XLSX.utils.aoa_to_sheet(exportData);
     
     // Set column widths
     ws['!cols'] = [
-      { wch: 25 }, // Сотрудник
-      { wch: 20 }, // График
-      ...days.map(() => ({ wch: 18 })) // Даты
+      { wch: 30 }, // Сотрудник
+      { wch: 25 }, // График
+      ...days.map(() => ({ wch: 18 })), // Даты
+      { wch: 12 } // Итого
     ];
     
     XLSX.utils.book_append_sheet(wb, ws, 'График ротации');
