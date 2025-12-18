@@ -1711,7 +1711,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                   className={cn(
                                     "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
                                     isTodayDate 
-                                      ? "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_6px_2px_rgba(6,182,212,0.3)] hover:animate-pulse-glow" 
+                                      ? "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)] hover:animate-pulse-glow"
                                       : isWeekend 
                                         ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
                                         : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground"
@@ -1810,7 +1810,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                               : isWeekend 
                                                 ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                                                 : "bg-gradient-to-b from-muted/20 to-muted/40",
-                                            isToday(day) && "shadow-[0_0_6px_2px_rgba(6,182,212,0.3)] hover:animate-pulse-glow"
+                                            isToday(day) && "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)] hover:animate-pulse-glow"
                                           )}
                                           title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
                                         >
