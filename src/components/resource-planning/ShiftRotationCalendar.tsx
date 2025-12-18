@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -735,19 +736,33 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           
           {/* Date navigation row */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Period selector */}
-            <Select value={period} onValueChange={handlePeriodChange}>
-              <SelectTrigger className="w-[140px]">
+            {/* Period selector with toggle buttons */}
+            <ToggleGroup type="single" value={period} onValueChange={(val) => val && handlePeriodChange(val as PeriodType)} className="border rounded-md">
+              <ToggleGroupItem value="7" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                7д
+              </ToggleGroupItem>
+              <ToggleGroupItem value="14" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                14д
+              </ToggleGroupItem>
+              <ToggleGroupItem value="30" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                30д
+              </ToggleGroupItem>
+              <ToggleGroupItem value="month" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                Мес
+              </ToggleGroupItem>
+              <ToggleGroupItem value="year" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                Год
+              </ToggleGroupItem>
+            </ToggleGroup>
+            
+            {/* Custom period selector */}
+            <Select value={period === "custom" ? "custom" : ""} onValueChange={(val) => val === "custom" && handlePeriodChange("custom")}>
+              <SelectTrigger className={cn("w-[120px]", period === "custom" && "border-primary bg-primary/10")}>
                 <CalendarDays className="h-4 w-4 mr-2" />
-                <SelectValue />
+                <span className="text-xs">{period === "custom" ? "Произв." : "Ещё..."}</span>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="7">7 дней</SelectItem>
-                <SelectItem value="14">14 дней</SelectItem>
-                <SelectItem value="30">30 дней</SelectItem>
-                <SelectItem value="month">Месяц</SelectItem>
-                <SelectItem value="year">Год</SelectItem>
-                <SelectItem value="custom">Произвольный</SelectItem>
+                <SelectItem value="custom">Произвольный период</SelectItem>
               </SelectContent>
             </Select>
 
@@ -955,9 +970,16 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   </button>
                 </div>
 
-                {!isCollapsed && period === "year" ? (
-                  <>
-                    {/* Year view - monthly summary header */}
+                {/* Animated content wrapper */}
+                <div 
+                  className={cn(
+                    "grid transition-all duration-300 ease-in-out",
+                    isCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    {period === "year" ? (
+                      <>
                     <div className="grid gap-1 mb-2 sticky top-0 z-20 bg-background py-1" style={gridStyle}>
                       <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-10 bg-background min-w-[200px]">Сотрудник</div>
                       {months.map((month) => (
@@ -1063,9 +1085,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         </div>
                       );
                     })()}
-                  </>
-                ) : !isCollapsed && (
-                  <>
+                      </>
+                    ) : (
+                      <>
                     {/* Regular day view - Header row with days for each group - sticky */}
                     <div className="grid gap-1 mb-2 sticky top-0 z-20 bg-background py-1" style={gridStyle}>
                       <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-10 bg-background min-w-[200px]">Сотрудник</div>
@@ -1224,8 +1246,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         </div>
                       );
                     })()}
-                  </>
-                )}
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
             );
             })}
