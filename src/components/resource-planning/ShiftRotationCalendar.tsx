@@ -4,9 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth, startOfWeek } from "date-fns";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth, startOfWeek, startOfMonth, getDaysInMonth, addMonths, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
+import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp, CalendarDays, ChevronLeft, ChevronRightIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
@@ -15,7 +17,7 @@ interface ShiftRotationCalendarProps {
   onEditOperator?: (operator: any) => void;
 }
 
-type PeriodType = "7" | "14" | "30";
+type PeriodType = "7" | "14" | "30" | "month" | "custom";
 
 // Check if date is a working day based on schedule type
 const isWorkingDay = (schedule: any, date: Date, operator: any): boolean => {
@@ -129,8 +131,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [period, setPeriod] = useState<PeriodType>("7");
   const [scheduleFilter, setScheduleFilter] = useState<string>("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
-  const daysCount = parseInt(period);
 
   const toggleGroupCollapse = (scheduleName: string) => {
     setCollapsedGroups(prev => {
@@ -153,6 +156,17 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     setCollapsedGroups(new Set());
   };
 
+  // Calculate days count based on period type
+  const daysCount = useMemo(() => {
+    if (period === "month") {
+      return getDaysInMonth(startDate);
+    }
+    if (period === "custom") {
+      return 7; // Default for custom, but start date matters more
+    }
+    return parseInt(period);
+  }, [period, startDate]);
+
   // Calculate group total hours
   const calculateGroupTotalHours = (ops: any[]): { hours: number; minutes: number } => {
     let totalMinutes = 0;
@@ -171,15 +185,43 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     };
   };
   
-  // Generate days based on selected period
+  // Generate days based on selected period and start date
   const days = useMemo(() => {
     const result = [];
-    const today = new Date();
+    let effectiveStartDate = startDate;
+    
+    // For month view - always start from 1st of the month
+    if (period === "month") {
+      effectiveStartDate = startOfMonth(startDate);
+    }
+    
     for (let i = 0; i < daysCount; i++) {
-      result.push(addDays(today, i));
+      result.push(addDays(effectiveStartDate, i));
     }
     return result;
-  }, [daysCount]);
+  }, [daysCount, startDate, period]);
+
+  // Navigation functions
+  const goToToday = () => setStartDate(new Date());
+  const goToStartOfMonth = () => setStartDate(startOfMonth(new Date()));
+  const goToStartOfWeek = () => setStartDate(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  
+  const goToPreviousPeriod = () => {
+    if (period === "month") {
+      setStartDate(subMonths(startDate, 1));
+    } else {
+      setStartDate(addDays(startDate, -daysCount));
+    }
+  };
+  
+  const goToNextPeriod = () => {
+    if (period === "month") {
+      setStartDate(addMonths(startDate, 1));
+    } else {
+      setStartDate(addDays(startDate, daysCount));
+    }
+  };
+
 
   // Get all unique shift names for color mapping
   const shiftColorMap = useMemo(() => {
@@ -464,12 +506,91 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <RefreshCw className="h-5 w-5" />
-            График ротации смен
-          </CardTitle>
-          <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <RefreshCw className="h-5 w-5" />
+              График ротации смен
+            </CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={handleExportToExcel}>
+                <FileDown className="h-4 w-4 mr-2" />
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Печать
+              </Button>
+            </div>
+          </div>
+          
+          {/* Date navigation row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Period selector */}
+            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodType)}>
+              <SelectTrigger className="w-[130px]">
+                <CalendarDays className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7 дней</SelectItem>
+                <SelectItem value="14">14 дней</SelectItem>
+                <SelectItem value="30">30 дней</SelectItem>
+                <SelectItem value="month">Месяц</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Navigation buttons */}
+            <div className="flex items-center gap-1 border rounded-md">
+              <Button variant="ghost" size="sm" onClick={goToPreviousPeriod} title="Предыдущий период">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={goToNextPeriod} title="Следующий период">
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Quick presets */}
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" onClick={goToToday} className="text-xs">
+                Сегодня
+              </Button>
+              <Button variant="outline" size="sm" onClick={goToStartOfWeek} className="text-xs">
+                С начала недели
+              </Button>
+              <Button variant="outline" size="sm" onClick={goToStartOfMonth} className="text-xs">
+                С начала месяца
+              </Button>
+            </div>
+
+            {/* Date picker */}
+            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Calendar className="h-4 w-4" />
+                  {format(days[0], "d MMM", { locale: ru })} — {format(days[days.length - 1], "d MMM yyyy", { locale: ru })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setStartDate(date);
+                      setIsDatePickerOpen(false);
+                    }
+                  }}
+                  locale={ru}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+
+            <div className="border-l h-6 mx-1" />
+
+            {/* Schedule filter */}
             <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
               <SelectTrigger className="w-[180px]">
                 <Filter className="h-4 w-4 mr-2" />
@@ -482,18 +603,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 ))}
               </SelectContent>
             </Select>
-            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodType)}>
-              <SelectTrigger className="w-[140px]">
-                <Calendar className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">7 дней</SelectItem>
-                <SelectItem value="14">14 дней</SelectItem>
-                <SelectItem value="30">Месяц</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-1 border-l pl-3 ml-1">
+
+            {/* Collapse/Expand buttons */}
+            <div className="flex items-center gap-1 border-l pl-2 ml-1">
               <Button variant="ghost" size="sm" onClick={expandAll} title="Развернуть все">
                 <ChevronsUpDown className="h-4 w-4" />
               </Button>
@@ -501,15 +613,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 <ChevronsDownUp className="h-4 w-4" />
               </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={handleExportToExcel}>
-              <FileDown className="h-4 w-4 mr-2" />
-              Excel
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              Печать
-            </Button>
-            <div className="flex gap-2">
+
+            {/* Shift legend */}
+            <div className="flex gap-2 border-l pl-3 ml-1">
               {Array.from(shiftColorMap.entries()).map(([name, colors]) => (
                 <Badge key={name} variant="outline" className={cn(colors.bg, colors.text, colors.border)}>
                   {name}
