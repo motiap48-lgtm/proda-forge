@@ -1814,54 +1814,57 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             {/* Grand total */}
             {filteredOperators.length > 0 && (
               <div className="mt-4 pt-4 border-t-2 border-primary/20">
-                <div 
-                  className="grid gap-1 py-2 bg-primary/5 rounded-lg"
-                  style={gridStyle}
-                >
-                  <div className="px-2 text-sm font-bold flex items-center gap-2 sticky left-0 z-30 bg-primary/5 border-r border-border shadow-sm w-[200px]">
+                <div className="flex border border-primary/30 rounded-lg overflow-hidden bg-primary/5">
+                  {/* Fixed left column */}
+                  <div className="w-[200px] flex-shrink-0 px-2 py-2 text-sm font-bold flex items-center gap-2 bg-primary/5 border-r border-border">
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
-                  {period === "year" ? (
-                    <>
-                      {months.map((month) => {
-                        let monthTotal = 0;
-                        filteredOperators.forEach(op => {
-                          const mh = calculateMonthHours(op, month);
-                          monthTotal += mh.hours * 60 + mh.minutes;
-                        });
-                        const h = Math.floor(monthTotal / 60);
-                        const m = monthTotal % 60;
+                  {/* Scrollable right section */}
+                  <div className="flex-1 overflow-x-auto">
+                    <div 
+                      className="grid gap-1 py-2 px-1"
+                      style={{ ...calendarGridStyle, minWidth: calendarGridStyle.minWidth, paddingRight: '24px' }}
+                    >
+                      {period === "year" ? (
+                        <>
+                          {months.map((month) => {
+                            let monthTotal = 0;
+                            filteredOperators.forEach(op => {
+                              const mh = calculateMonthHours(op, month);
+                              monthTotal += mh.hours * 60 + mh.minutes;
+                            });
+                            const h = Math.floor(monthTotal / 60);
+                            const m = monthTotal % 60;
+                            return (
+                              <div key={month.toISOString()} className="text-center text-xs font-medium">
+                                {h}ч{m > 0 ? ` ${m}м` : ''}
+                              </div>
+                            );
+                          })}
+                        </>
+                      ) : (
+                        days.map((day) => (
+                          <div key={day.toISOString()} className="text-center text-xs text-muted-foreground">
+                            —
+                          </div>
+                        ))
+                      )}
+                      {(() => {
+                        const grandTotalCalc = period === "year" 
+                          ? calculateGroupYearlyTotal(filteredOperators)
+                          : calculateGroupTotalHours(filteredOperators);
                         return (
-                          <div key={month.toISOString()} className="text-center text-xs font-medium">
-                            {h}ч{m > 0 ? ` ${m}м` : ''}
+                          <div className="text-center p-2 rounded-md text-sm bg-primary text-primary-foreground font-bold">
+                            <div>{grandTotalCalc.hours}ч</div>
+                            {grandTotalCalc.minutes > 0 && (
+                              <div className="text-xs opacity-80">{grandTotalCalc.minutes}м</div>
+                            )}
                           </div>
                         );
-                      })}
-                    </>
-                  ) : (
-                    days.map((day) => (
-                      <div key={day.toISOString()} className="text-center text-xs text-muted-foreground">
-                        —
-                      </div>
-                    ))
-                  )}
-                  {(() => {
-                    const grandTotal = period === "year" 
-                      ? calculateGroupYearlyTotal(filteredOperators)
-                      : calculateGroupTotalHours(filteredOperators);
-                    return (
-                      <div className={cn(
-                        "text-center p-2 rounded-md text-sm bg-primary text-primary-foreground font-bold",
-                        stickyTotal && "sticky right-0 z-20 border-l border-primary-foreground/20 shadow-sm"
-                      )}>
-                        <div>{grandTotal.hours}ч</div>
-                        {grandTotal.minutes > 0 && (
-                          <div className="text-xs opacity-80">{grandTotal.minutes}м</div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                      })()}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
