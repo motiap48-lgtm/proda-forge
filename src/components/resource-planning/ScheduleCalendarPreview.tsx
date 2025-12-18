@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format, addDays, getDay, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ScheduleCalendarPreviewProps {
   schedule: {
@@ -10,8 +11,9 @@ interface ScheduleCalendarPreviewProps {
     cycle_days_off?: number;
     work_schedule_shifts?: any[];
   };
-  days?: number;
+  defaultDays?: number;
   startDate?: Date;
+  showPeriodSelector?: boolean;
 }
 
 // Check if date is a working day based on schedule type
@@ -36,9 +38,13 @@ const isWorkingDay = (schedule: any, date: Date, startDate: Date): boolean => {
 
 export const ScheduleCalendarPreview = ({ 
   schedule, 
-  days = 7,
-  startDate = new Date()
+  defaultDays = 7,
+  startDate = new Date(),
+  showPeriodSelector = true
 }: ScheduleCalendarPreviewProps) => {
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(String(defaultDays));
+  const days = parseInt(selectedPeriod);
+  
   // Generate days
   const daysArray = useMemo(() => {
     const result = [];
@@ -62,16 +68,30 @@ export const ScheduleCalendarPreview = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-        <span>Календарь графика</span>
-        {totalWorkHours > 0 && (
-          <span className="text-muted-foreground">({totalWorkHours} часов)</span>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>Календарь графика</span>
+          {totalWorkHours > 0 && (
+            <span className="text-muted-foreground">({totalWorkHours} часов)</span>
+          )}
+        </div>
+        {showPeriodSelector && (
+          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <SelectTrigger className="h-6 w-[90px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">7 дней</SelectItem>
+              <SelectItem value="14">14 дней</SelectItem>
+              <SelectItem value="30">Месяц</SelectItem>
+            </SelectContent>
+          </Select>
         )}
       </div>
       <div className="flex gap-1">
         {daysArray.map((day) => {
           const isWorking = isWorkingDay(schedule, day, startDate);
-          const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+          const isTodayDate = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
           const isWeekend = getDay(day) === 0 || getDay(day) === 6;
           
           return (
@@ -82,7 +102,7 @@ export const ScheduleCalendarPreview = ({
                 isWorking 
                   ? "bg-primary/10 border-primary/30 text-primary" 
                   : "bg-muted/50 border-muted text-muted-foreground",
-                isToday && "ring-2 ring-primary/50"
+                isTodayDate && "ring-2 ring-primary/50"
               )}
             >
               <div className={cn(
