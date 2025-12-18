@@ -6,11 +6,87 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth, startOfWeek, startOfMonth, getDaysInMonth, addMonths, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp, CalendarDays, ChevronLeft, ChevronRightIcon } from "lucide-react";
+import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp, CalendarDays, ChevronLeft, ChevronRightIcon, Phone, Mail, Briefcase, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
+
+// Operator info card component for hover
+const OperatorInfoCard = ({ operator }: { operator: any }) => (
+  <div className="space-y-3">
+    <div className="flex items-center gap-3">
+      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+        <User className="h-5 w-5 text-primary" />
+      </div>
+      <div>
+        <p className="font-semibold">{operator.full_name}</p>
+        <p className="text-xs text-muted-foreground">{operator.code}</p>
+      </div>
+    </div>
+    
+    <div className="space-y-2 text-sm">
+      {operator.position && (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Briefcase className="h-3.5 w-3.5" />
+          <span>{operator.position}</span>
+        </div>
+      )}
+      
+      {operator.work_schedules?.name && (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Calendar className="h-3.5 w-3.5" />
+          <span>{operator.work_schedules.name}</span>
+        </div>
+      )}
+      
+      {operator.default_work_center?.name && (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Building2 className="h-3.5 w-3.5" />
+          <span>{operator.default_work_center.name}</span>
+        </div>
+      )}
+      
+      {operator.phone && (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Phone className="h-3.5 w-3.5" />
+          <span>{operator.phone}</span>
+        </div>
+      )}
+      
+      {operator.email && (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Mail className="h-3.5 w-3.5" />
+          <span>{operator.email}</span>
+        </div>
+      )}
+    </div>
+    
+    <div className="flex flex-wrap gap-1.5 pt-1">
+      {operator.employee_type && (
+        <Badge variant="secondary" className="text-xs">
+          {operator.employee_type === 'станочник' ? 'Станочник' :
+           operator.employee_type === 'сборщик' ? 'Сборщик' :
+           operator.employee_type === 'сварщик' ? 'Сварщик' :
+           operator.employee_type === 'маляр' ? 'Маляр' :
+           operator.employee_type === 'универсал' ? 'Универсал' : operator.employee_type}
+        </Badge>
+      )}
+      {operator.shift_rotation_enabled && (
+        <Badge variant="outline" className="text-xs gap-1">
+          <RefreshCw className="h-3 w-3" />
+          Ротация
+        </Badge>
+      )}
+      {operator.assigned_shift_number && (
+        <Badge variant="outline" className="text-xs">
+          Смена {operator.assigned_shift_number}
+        </Badge>
+      )}
+    </div>
+  </div>
+);
 
 interface ShiftRotationCalendarProps {
   operators: any[];
@@ -824,8 +900,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 {!isCollapsed && period === "year" ? (
                   <>
                     {/* Year view - monthly summary header */}
-                    <div className="grid gap-1 mb-2 sticky top-0 z-10 bg-background py-1" style={gridStyle}>
-                      <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
+                    <div className="grid gap-1 mb-2 sticky top-0 z-20 bg-background py-1" style={gridStyle}>
+                      <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-10 bg-background min-w-[200px]">Сотрудник</div>
                       {months.map((month) => (
                         <div 
                           key={month.toISOString()} 
@@ -854,12 +930,21 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           style={gridStyle}
                           onClick={() => onEditOperator?.(operator)}
                         >
-                          <div className="px-2 flex items-center gap-2">
-                            <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
-                            {operator.shift_rotation_enabled && (
-                              <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                            )}
-                          </div>
+                          <HoverCard openDelay={300}>
+                            <HoverCardTrigger asChild>
+                              <div className="px-2 flex items-center gap-2 sticky left-0 z-10 bg-background min-w-[200px]">
+                                <span className="text-sm font-medium truncate flex-1 cursor-default" onClick={(e) => e.stopPropagation()}>
+                                  {operator.full_name}
+                                </span>
+                                {operator.shift_rotation_enabled && (
+                                  <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                )}
+                              </div>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80" side="right" align="start">
+                              <OperatorInfoCard operator={operator} />
+                            </HoverCardContent>
+                          </HoverCard>
                           
                           {months.map((month) => {
                             const monthHours = calculateMonthHours(operator, month);
@@ -894,7 +979,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           className="grid gap-1 py-2 mt-2 border-t border-dashed"
                           style={gridStyle}
                         >
-                          <div className="px-2 text-sm font-medium text-muted-foreground">
+                          <div className="px-2 text-sm font-medium text-muted-foreground sticky left-0 z-10 bg-background min-w-[200px]">
                             Итого по группе:
                           </div>
                           {months.map((month) => {
@@ -924,8 +1009,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 ) : !isCollapsed && (
                   <>
                     {/* Regular day view - Header row with days for each group - sticky */}
-                    <div className="grid gap-1 mb-2 sticky top-0 z-10 bg-background py-1" style={gridStyle}>
-                      <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
+                    <div className="grid gap-1 mb-2 sticky top-0 z-20 bg-background py-1" style={gridStyle}>
+                      <div className="text-sm font-medium text-muted-foreground px-2 sticky left-0 z-10 bg-background min-w-[200px]">Сотрудник</div>
                       {days.map((day, idx) => {
                         const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
                         const isWeekend = getDay(day) === 0 || getDay(day) === 6;
@@ -974,25 +1059,34 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           style={gridStyle}
                           onClick={() => onEditOperator?.(operator)}
                         >
-                          <div className="px-2 flex items-center gap-2">
-                            <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
-                            {operator.shift_rotation_enabled && (
-                              <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                            )}
-                            {onEditOperator && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onEditOperator(operator);
-                                }}
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
+                          <HoverCard openDelay={300}>
+                            <HoverCardTrigger asChild>
+                              <div className="px-2 flex items-center gap-2 sticky left-0 z-10 bg-background min-w-[200px]">
+                                <span className="text-sm font-medium truncate flex-1 cursor-default" onClick={(e) => e.stopPropagation()}>
+                                  {operator.full_name}
+                                </span>
+                                {operator.shift_rotation_enabled && (
+                                  <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                )}
+                                {onEditOperator && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onEditOperator(operator);
+                                    }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80" side="right" align="start">
+                              <OperatorInfoCard operator={operator} />
+                            </HoverCardContent>
+                          </HoverCard>
                           
                           {days.map((day) => {
                             const shift = getShiftForDate(operator, day);
@@ -1055,7 +1149,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           className="grid gap-1 py-2 mt-2 border-t border-dashed"
                           style={gridStyle}
                         >
-                          <div className="px-2 text-sm font-medium text-muted-foreground">
+                          <div className="px-2 text-sm font-medium text-muted-foreground sticky left-0 z-10 bg-background min-w-[200px]">
                             Итого по группе:
                           </div>
                           {days.map((day) => (
@@ -1085,7 +1179,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   className="grid gap-1 py-2 bg-primary/5 rounded-lg"
                   style={gridStyle}
                 >
-                  <div className="px-2 text-sm font-bold flex items-center gap-2">
+                  <div className="px-2 text-sm font-bold flex items-center gap-2 sticky left-0 z-10 bg-primary/5 min-w-[200px]">
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
