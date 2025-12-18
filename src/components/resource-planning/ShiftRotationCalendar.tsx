@@ -262,25 +262,47 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [syncingScheduleId, setSyncingScheduleId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollInfo, setScrollInfo] = useState({ scrollLeft: 0, scrollWidth: 0, clientWidth: 0 });
   
   const updateOperator = useUpdateOperator();
 
-  // Enable horizontal scroll with mouse wheel
+  // Enable horizontal scroll with mouse wheel and track scroll position
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
+
+    const updateScrollInfo = () => {
+      setScrollInfo({
+        scrollLeft: container.scrollLeft,
+        scrollWidth: container.scrollWidth,
+        clientWidth: container.clientWidth
+      });
+    };
 
     const handleWheel = (e: WheelEvent) => {
       // Only handle if there's horizontal overflow
       if (container.scrollWidth > container.clientWidth) {
         e.preventDefault();
         container.scrollLeft += e.deltaY + e.deltaX;
+        updateScrollInfo();
       }
     };
 
+    const handleScroll = () => updateScrollInfo();
+
+    // Initial measurement
+    updateScrollInfo();
+
     container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, []);
+    container.addEventListener('scroll', handleScroll);
+    window.addEventListener('resize', updateScrollInfo);
+    
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', updateScrollInfo);
+    };
+  }, [period]);
 
   const toggleGroupCollapse = (scheduleName: string) => {
     setCollapsedGroups(prev => {
@@ -1808,6 +1830,25 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             )}
           </div>
         </div>
+        
+        {/* Scroll indicator */}
+        {scrollInfo.scrollWidth > scrollInfo.clientWidth && (
+          <div className="px-6 pb-3">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary/50 rounded-full transition-all duration-150"
+                style={{
+                  width: `${(scrollInfo.clientWidth / scrollInfo.scrollWidth) * 100}%`,
+                  marginLeft: `${(scrollInfo.scrollLeft / scrollInfo.scrollWidth) * 100}%`
+                }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+              <span>← Прокрутите для просмотра</span>
+              <span>{Math.round((scrollInfo.scrollLeft + scrollInfo.clientWidth) / scrollInfo.scrollWidth * 100)}%</span>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
