@@ -1612,7 +1612,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     {/* Employee column - fixed width, separate vertical scroll */}
                     <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative" style={{ width: `${employeeColumnWidth}px` }}>
                       {/* Employee header */}
-                      <div className="flex-shrink-0 bg-muted/30 text-sm font-medium text-muted-foreground px-2 h-[60px] flex items-center border-b border-border mb-1">
+                      <div className="flex-shrink-0 bg-muted/30 text-sm font-medium text-muted-foreground px-2 pt-1 h-[64px] flex items-center border-b border-border mb-1">
                         Сотрудник
                       </div>
                       
@@ -1620,7 +1620,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       <div 
                         ref={registerVerticalScrollContainer(`emp-${scheduleName}`)}
                         onScroll={handleSyncVerticalScroll(`emp-${scheduleName}`)}
-                        className="flex-1 overflow-x-hidden scrollbar-overlay min-h-0 pt-1"
+                        className="flex-1 overflow-x-hidden scrollbar-overlay min-h-0"
                       >
                         {ops.map((operator) => (
                           <HoverCard key={operator.id} openDelay={300}>
@@ -1678,10 +1678,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         handleSyncScroll(`schedule-${scheduleName}`)(e);
                         handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
                       }}
-                      className="flex-1 min-w-0 overflow-auto scrollbar-overlay pt-1"
+                      className="flex-1 min-w-0 overflow-auto scrollbar-overlay"
                     >
-                      {/* Sticky calendar header */}
-                      <div className="sticky top-0 z-10 bg-background mb-1" style={calendarGridStyle}>
+                      {/* Sticky calendar header with top padding to cover scrolling content */}
+                      <div className="sticky top-0 z-10 bg-background pt-1 mb-1" style={calendarGridStyle}>
                         {period === "year" ? (
                           <>
                             {months.map((month) => (
