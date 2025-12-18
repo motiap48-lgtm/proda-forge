@@ -418,6 +418,7 @@ export const WorkScheduleDialog = ({
                 <SelectContent>
                   <SelectItem value="shift">Сменный</SelectItem>
                   <SelectItem value="weekly">Пятидневка</SelectItem>
+                  <SelectItem value="cyclic">Скользящий</SelectItem>
                   <SelectItem value="custom">Произвольный</SelectItem>
                 </SelectContent>
               </Select>
