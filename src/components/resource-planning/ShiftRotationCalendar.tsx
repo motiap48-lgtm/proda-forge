@@ -1610,9 +1610,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden"
                   >
                     {/* Employee column - fixed width, separate vertical scroll */}
-                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative" style={{ width: `${employeeColumnWidth}px`, marginRight: '3px' }}>
+                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative" style={{ width: `${employeeColumnWidth}px`, marginRight: '5px' }}>
                       {/* Employee header */}
-                      <div className="flex-shrink-0 bg-muted/30 text-sm font-semibold text-foreground px-3 pt-1 h-[64px] flex items-center border-b border-border mb-1">
+                      <div className="flex-shrink-0 bg-muted/30 text-base font-semibold text-foreground px-3 pt-1 h-[64px] flex items-center border-b border-border mb-1">
                         Сотрудники
                       </div>
                       
@@ -1815,17 +1815,17 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                           title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
                                         >
                                           {shift ? (
-                                            <div className="w-full overflow-hidden text-center">
-                                              <div className="font-medium truncate text-[10px] px-0.5" title={shift.shift_name}>
+                                            <div className="w-full text-center flex flex-col items-center">
+                                              <div className="font-medium truncate text-[10px] px-0.5 w-full" title={shift.shift_name}>
                                                 {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name}
                                               </div>
-                                              {daysCount <= 14 && <div className="text-[9px] opacity-80 truncate">{mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}</div>}
-                                              {cycleInfo && <div className="text-[8px] opacity-70 font-semibold flex-shrink-0">Д{cycleInfo.dayInCycle}</div>}
+                                              {daysCount <= 14 && <div className="text-[9px] opacity-80 truncate w-full">{mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}</div>}
+                                              {cycleInfo && <div className="text-[8px] opacity-70 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
                                             </div>
                                           ) : (
                                             <div className="flex flex-col items-center">
                                               <span className={cn("text-sm", isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground")}>—</span>
-                                              {cycleInfo && <div className="text-[8px] opacity-60 font-semibold flex-shrink-0">Д{cycleInfo.dayInCycle}</div>}
+                                              {cycleInfo && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
                                             </div>
                                           )}
                                         </div>
