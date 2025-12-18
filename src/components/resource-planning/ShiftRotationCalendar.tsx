@@ -1804,24 +1804,24 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                         <div 
                                           key={day.toISOString()} 
                                           className={cn(
-                                            "text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative",
+                                            "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative overflow-hidden",
                                             colors 
                                               ? cn(colors.bg, colors.text, "border", colors.border) 
                                               : isWeekend 
                                                 ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                                                 : "bg-gradient-to-b from-muted/20 to-muted/40",
-                                            isToday(day) && "ring-1 ring-cyan-500/50 ring-offset-1 ring-offset-background"
+                                            isToday(day) && "shadow-[inset_0_0_0_2px_rgba(6,182,212,0.5)]"
                                           )}
                                           title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
                                         >
                                           {shift ? (
-                                            <>
-                                              <div className="font-medium truncate text-[11px]" title={shift.shift_name}>
+                                            <div className="w-full overflow-hidden text-center">
+                                              <div className="font-medium truncate text-[10px] px-0.5" title={shift.shift_name}>
                                                 {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name}
                                               </div>
-                                              {daysCount <= 14 && <div className="text-[10px] opacity-80">{mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}</div>}
-                                              {cycleInfo && daysCount <= 14 && <div className="text-[9px] opacity-60 font-medium mt-0.5">Д{cycleInfo.dayInCycle}</div>}
-                                            </>
+                                              {daysCount <= 14 && <div className="text-[9px] opacity-80 truncate">{mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}</div>}
+                                              {cycleInfo && daysCount <= 14 && <div className="text-[8px] opacity-60 font-medium">Д{cycleInfo.dayInCycle}</div>}
+                                            </div>
                                           ) : (
                                             <div className="flex flex-col items-center">
                                               <span className={cn("text-sm", isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground")}>—</span>
