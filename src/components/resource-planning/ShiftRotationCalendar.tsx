@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -213,6 +213,24 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Enable horizontal scroll with mouse wheel
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Only handle if there's horizontal overflow
+      if (container.scrollWidth > container.clientWidth) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY + e.deltaX;
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, []);
 
   const toggleGroupCollapse = (scheduleName: string) => {
     setCollapsedGroups(prev => {
@@ -878,7 +896,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto overflow-y-visible scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+        <div ref={scrollContainerRef} className="overflow-x-auto overflow-y-visible scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
           <div ref={printRef} className="p-6" style={{ minWidth: period === "year" ? "1200px" : daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
