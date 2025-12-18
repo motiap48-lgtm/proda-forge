@@ -1562,22 +1562,28 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       {days.map((day, idx) => {
                         const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
                         const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                        const isTodayDate = isToday(day);
                         return (
                           <div 
                             key={day.toISOString()} 
                             className={cn(
-                              "text-center text-sm p-1.5 rounded-md",
-                              isToday(day) 
-                                ? "bg-primary text-primary-foreground font-semibold" 
+                              "text-center text-sm p-1.5 rounded-md relative",
+                              isTodayDate 
+                                ? "bg-primary text-primary-foreground font-semibold ring-2 ring-primary ring-offset-2 ring-offset-background" 
                                 : isWeekend 
                                   ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
                                   : "bg-muted/50 text-muted-foreground"
                             )}
                           >
+                            {isTodayDate && daysCount === 1 && (
+                              <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full whitespace-nowrap shadow-sm">
+                                СЕГОДНЯ
+                              </div>
+                            )}
                             <div className="font-medium text-xs uppercase">
                               {format(day, "EEE", { locale: ru })}
                             </div>
-                            <div className={cn("text-sm font-semibold", isToday(day) ? "" : isWeekend ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>
+                            <div className={cn("text-sm font-semibold", isTodayDate ? "" : isWeekend ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>
                               {format(day, "d", { locale: ru })}
                             </div>
                             {(showMonth || daysCount <= 14) && (
