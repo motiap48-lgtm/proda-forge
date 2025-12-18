@@ -25,7 +25,8 @@ const isWorkingDay = (schedule: any, date: Date, startDate: Date): boolean => {
   const cycleDaysOff = schedule?.cycle_days_off || 2;
   
   // For 5/2 schedule - standard work week (Mon-Fri work, Sat-Sun off)
-  if (scheduleType === '5/2' || scheduleType === 'weekly') {
+  // 'shift' and 'weekly' are also 5/2 patterns
+  if (scheduleType === '5/2' || scheduleType === 'weekly' || scheduleType === 'shift') {
     const dayOfWeek = getDay(date); // 0 = Sunday, 6 = Saturday
     return dayOfWeek !== 0 && dayOfWeek !== 6;
   }
