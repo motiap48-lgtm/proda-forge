@@ -670,8 +670,45 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return 55; // Narrow for many days
   }, [period, daysCount]);
 
-  // Employee column width
-  const employeeColumnWidth = 200;
+  // Employee column width - resizable with localStorage persistence
+  const EMPLOYEE_COLUMN_WIDTH_KEY = 'shiftRotationCalendar_employeeColumnWidth';
+  const [employeeColumnWidth, setEmployeeColumnWidth] = useState(() => {
+    const saved = localStorage.getItem(EMPLOYEE_COLUMN_WIDTH_KEY);
+    return saved ? parseInt(saved, 10) : 200;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartX = useRef(0);
+  const resizeStartWidth = useRef(0);
+
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = employeeColumnWidth;
+  }, [employeeColumnWidth]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - resizeStartX.current;
+      const newWidth = Math.max(120, Math.min(400, resizeStartWidth.current + delta));
+      setEmployeeColumnWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      localStorage.setItem(EMPLOYEE_COLUMN_WIDTH_KEY, employeeColumnWidth.toString());
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, employeeColumnWidth]);
   
   // calendarGridStyle is for the scrollable calendar part (excludes employee column)
   // It should:
@@ -1155,7 +1192,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   }
 
   return (
-    <Card>
+    <Card className={cn(isResizing && "cursor-col-resize select-none")}>
       <CardHeader className="pb-3">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1573,9 +1610,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden"
                   >
                     {/* Employee column - fixed width, separate vertical scroll */}
-                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col" style={{ width: `${employeeColumnWidth}px` }}>
+                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative" style={{ width: `${employeeColumnWidth}px` }}>
                       {/* Employee header */}
-                      <div className="flex-shrink-0 bg-muted/30 text-sm font-medium text-muted-foreground px-2 h-[60px] flex items-center border-b border-border">
+                      <div className="flex-shrink-0 bg-muted/30 text-sm font-medium text-muted-foreground px-2 h-[60px] flex items-center border-b border-border mb-1">
                         Сотрудник
                       </div>
                       
@@ -1583,7 +1620,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       <div 
                         ref={registerVerticalScrollContainer(`emp-${scheduleName}`)}
                         onScroll={handleSyncVerticalScroll(`emp-${scheduleName}`)}
-                        className="flex-1 overflow-x-hidden scrollbar-overlay min-h-0"
+                        className="flex-1 overflow-x-hidden scrollbar-overlay min-h-0 pt-1"
                       >
                         {ops.map((operator) => (
                           <HoverCard key={operator.id} openDelay={300}>
@@ -1613,13 +1650,22 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         ))}
                         
                         {/* Group summary row */}
-                        <div className="bg-muted/30 px-2 h-[44px] flex items-center text-xs text-muted-foreground border-t border-border mt-1">
+                        <div className="bg-muted/30 px-2 h-[44px] flex items-center text-xs text-muted-foreground border-t border-border">
                           <div className="flex items-center gap-2">
                             <span className="flex items-center gap-1 text-emerald-600"><CalendarCheck className="h-3 w-3" />{calculateGroupStats(ops).workingDays}</span>
                             <span className="flex items-center gap-1 text-rose-500"><CalendarX className="h-3 w-3" />{calculateGroupStats(ops).offDays}</span>
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Resize handle */}
+                      <div
+                        className={cn(
+                          "absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-20",
+                          isResizing && "bg-primary/50"
+                        )}
+                        onMouseDown={handleResizeMouseDown}
+                      />
                     </div>
 
                     {/* Calendar - single scroll container with sticky header */}
@@ -1632,7 +1678,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         handleSyncScroll(`schedule-${scheduleName}`)(e);
                         handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
                       }}
-                      className="flex-1 min-w-0 overflow-auto scrollbar-overlay"
+                      className="flex-1 min-w-0 overflow-auto scrollbar-overlay pt-1"
                     >
                       {/* Sticky calendar header */}
                       <div className="sticky top-0 z-10 bg-background mb-1" style={calendarGridStyle}>
