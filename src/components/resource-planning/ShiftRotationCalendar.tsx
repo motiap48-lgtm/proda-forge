@@ -1405,7 +1405,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       </CardHeader>
       <CardContent className="p-0">
         <div ref={scrollContainerRef} className="relative overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-          <div ref={printRef} className="p-6" style={{ minWidth: gridStyle.minWidth }}>
+          <div ref={printRef} className="py-6 px-6" style={{ minWidth: gridStyle.minWidth ? `calc(${gridStyle.minWidth} + 24px)` : undefined }}>
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
               const isCollapsed = collapsedGroups.has(scheduleName);
