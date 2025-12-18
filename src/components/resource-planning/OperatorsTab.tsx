@@ -406,7 +406,13 @@ export const OperatorsTab = () => {
 
       {/* Calendar view */}
       {viewMode === "calendar" && (
-        <ShiftRotationCalendar operators={operators || []} />
+        <ShiftRotationCalendar 
+          operators={operators || []} 
+          onEditOperator={(operator) => {
+            setEditingOperator(operator);
+            setDialogOpen(true);
+          }}
+        />
       )}
 
       {/* Grouped by shift view */}

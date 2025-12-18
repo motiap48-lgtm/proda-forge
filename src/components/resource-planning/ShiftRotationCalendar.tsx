@@ -2,13 +2,15 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { format, addDays, differenceInWeeks, isToday } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User } from "lucide-react";
+import { RefreshCw, User, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ShiftRotationCalendarProps {
   operators: any[];
+  onEditOperator?: (operator: any) => void;
 }
 
 // Calculate shift for a given operator on a specific date
@@ -51,7 +53,7 @@ const getShiftColor = (shiftName: string, index: number) => {
   return colors[index % colors.length];
 };
 
-export const ShiftRotationCalendar = ({ operators }: ShiftRotationCalendarProps) => {
+export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
   // Generate next 7 days
   const days = useMemo(() => {
     const result = [];
@@ -161,12 +163,29 @@ export const ShiftRotationCalendar = ({ operators }: ShiftRotationCalendarProps)
                 {ops.map((operator) => (
                   <div 
                     key={operator.id} 
-                    className="grid grid-cols-[200px_repeat(7,1fr)] gap-1 py-1 hover:bg-muted/30 rounded"
+                    className={cn(
+                      "grid grid-cols-[200px_repeat(7,1fr)] gap-1 py-1 rounded group",
+                      onEditOperator && "hover:bg-muted/50 cursor-pointer"
+                    )}
+                    onClick={() => onEditOperator?.(operator)}
                   >
                     <div className="px-2 flex items-center gap-2">
-                      <span className="text-sm font-medium truncate">{operator.full_name}</span>
+                      <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
                       {operator.shift_rotation_enabled && (
                         <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      )}
+                      {onEditOperator && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditOperator(operator);
+                          }}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
                       )}
                     </div>
                     
