@@ -748,11 +748,23 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             </Select>
 
             {/* Navigation buttons */}
-            <div className="flex items-center gap-1 border rounded-md">
-              <Button variant="ghost" size="sm" onClick={goToPreviousPeriod} title="Предыдущий период">
+            <div className="flex items-center border rounded-md overflow-hidden">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={goToPreviousPeriod} 
+                title="Предыдущий период"
+                className="rounded-none border-r hover:bg-primary/10 active:bg-primary/20"
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={goToNextPeriod} title="Следующий период">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={goToNextPeriod} 
+                title="Следующий период"
+                className="rounded-none hover:bg-primary/10 active:bg-primary/20"
+              >
                 <ChevronRightIcon className="h-4 w-4" />
               </Button>
             </div>
@@ -877,11 +889,23 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             </Select>
 
             {/* Collapse/Expand buttons */}
-            <div className="flex items-center gap-1 border-l pl-2 ml-1">
-              <Button variant="ghost" size="sm" onClick={expandAll} title="Развернуть все">
+            <div className="flex items-center border rounded-md overflow-hidden border-l-0 ml-1">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={expandAll} 
+                title="Развернуть все"
+                className="rounded-none border-r hover:bg-primary/10 active:bg-primary/20"
+              >
                 <ChevronsUpDown className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={collapseAll} title="Свернуть все">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={collapseAll} 
+                title="Свернуть все"
+                className="rounded-none hover:bg-primary/10 active:bg-primary/20"
+              >
                 <ChevronsDownUp className="h-4 w-4" />
               </Button>
             </div>
