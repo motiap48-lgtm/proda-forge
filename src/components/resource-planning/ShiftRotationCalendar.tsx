@@ -1598,7 +1598,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       <div 
                         ref={registerVerticalScrollContainer(`emp-${scheduleName}`)}
                         onScroll={handleSyncVerticalScroll(`emp-${scheduleName}`)}
-                        className="flex-shrink-0 border-r border-border bg-background overflow-y-auto overflow-x-hidden" 
+                        className="flex-shrink-0 border-r border-border bg-background overflow-x-hidden scrollbar-overlay" 
                         style={{ width: `${employeeColumnWidth}px` }}
                       >
                         {ops.map((operator) => (
@@ -1647,7 +1647,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           handleSyncScroll(`schedule-${scheduleName}`)(e);
                           handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
                         }}
-                        className="overflow-auto flex-1 min-w-0"
+                        className="flex-1 min-w-0 scrollbar-overlay"
                       >
                         <div style={calendarGridStyle}>
                           {period === "year" ? (
