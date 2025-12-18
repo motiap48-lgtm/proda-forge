@@ -1610,7 +1610,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden"
                   >
                     {/* Employee column - fixed width, separate vertical scroll */}
-                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative mr-1" style={{ width: `${employeeColumnWidth}px` }}>
+                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative mr-2" style={{ width: `${employeeColumnWidth}px` }}>
                       {/* Employee header */}
                       <div className="flex-shrink-0 bg-muted/30 text-sm font-medium text-muted-foreground px-2 pt-1 h-[64px] flex items-center border-b border-border mb-1">
                         Сотрудник
@@ -1681,7 +1681,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       className="flex-1 min-w-0 overflow-auto scrollbar-overlay"
                     >
                       {/* Sticky calendar header with top padding to cover scrolling content */}
-                      <div className="sticky top-0 z-10 bg-background pt-1 mb-1" style={calendarGridStyle}>
+                      <div className="sticky top-0 z-20 bg-background pt-1 mb-1" style={calendarGridStyle}>
                         {period === "year" ? (
                           <>
                             {months.map((month) => (
@@ -1810,7 +1810,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                               : isWeekend 
                                                 ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                                                 : "bg-gradient-to-b from-muted/20 to-muted/40",
-                                            isToday(day) && "shadow-[0_0_8px_2px_rgba(6,182,212,0.4)] z-10"
+                                            isToday(day) && "shadow-[0_0_12px_4px_rgba(6,182,212,0.35)]"
                                           )}
                                           title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
                                         >
