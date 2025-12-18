@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { format, addDays, differenceInWeeks, isToday } from "date-fns";
+import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { RefreshCw, User, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,10 +13,47 @@ interface ShiftRotationCalendarProps {
   onEditOperator?: (operator: any) => void;
 }
 
+// Check if date is a working day based on schedule type
+const isWorkingDay = (schedule: any, date: Date, operator: any): boolean => {
+  const scheduleType = schedule?.schedule_type;
+  const cycleDaysOn = schedule?.cycle_days_on || 5;
+  const cycleDaysOff = schedule?.cycle_days_off || 2;
+  
+  // For 5/2 schedule - standard work week (Mon-Fri work, Sat-Sun off)
+  if (scheduleType === '5/2') {
+    const dayOfWeek = getDay(date); // 0 = Sunday, 6 = Saturday
+    return dayOfWeek !== 0 && dayOfWeek !== 6;
+  }
+  
+  // For cyclic schedules (2/2, 3/3, etc.) - calculate based on cycle
+  if (scheduleType === 'cyclic' || (cycleDaysOn > 0 && cycleDaysOff > 0 && scheduleType !== '5/2')) {
+    const cycleLength = cycleDaysOn + cycleDaysOff;
+    const startDate = operator.shift_rotation_start_date 
+      ? new Date(operator.shift_rotation_start_date) 
+      : operator.hire_date 
+        ? new Date(operator.hire_date) 
+        : new Date();
+    
+    const daysDiff = differenceInDays(date, startDate);
+    const dayInCycle = ((daysDiff % cycleLength) + cycleLength) % cycleLength;
+    
+    return dayInCycle < cycleDaysOn;
+  }
+  
+  // Default - always working
+  return true;
+};
+
 // Calculate shift for a given operator on a specific date
 const getShiftForDate = (operator: any, date: Date) => {
-  const shifts = operator.work_schedules?.work_schedule_shifts;
+  const schedule = operator.work_schedules;
+  const shifts = schedule?.work_schedule_shifts;
   if (!shifts || shifts.length === 0) return null;
+  
+  // Check if this is a working day first
+  if (!isWorkingDay(schedule, date, operator)) {
+    return null; // Day off
+  }
   
   // If only one shift - always use it
   if (shifts.length === 1) {
@@ -39,7 +76,7 @@ const getShiftForDate = (operator: any, date: Date) => {
     return shifts.find((s: any) => s.shift_number === operator.assigned_shift_number);
   }
   
-  return null;
+  return shifts[0];
 };
 
 // Get unique shift colors
