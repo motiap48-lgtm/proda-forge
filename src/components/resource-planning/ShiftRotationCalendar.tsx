@@ -386,45 +386,43 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => (
               <div key={scheduleName} className="mb-6">
-                {/* Header row with days for each group */}
-                <div className="grid gap-1 mb-2" style={gridStyle}>
+                {/* Group name */}
+                <div className="text-sm font-medium text-muted-foreground mb-2 px-2 py-1 bg-muted/50 rounded">
+                  {scheduleName} ({ops.length})
+                </div>
+
+                {/* Header row with days for each group - sticky */}
+                <div className="grid gap-1 mb-2 sticky top-0 z-10 bg-background py-1" style={gridStyle}>
                   <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
                   {days.map((day, idx) => {
                     const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
+                    const isWeekend = getDay(day) === 0 || getDay(day) === 6;
                     return (
                       <div 
                         key={day.toISOString()} 
                         className={cn(
                           "text-center text-sm p-1 rounded-md",
-                          isToday(day) ? "bg-primary/10 font-semibold" : "text-muted-foreground",
-                          getDay(day) === 0 || getDay(day) === 6 ? "bg-muted/50" : ""
+                          isToday(day) ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground",
+                          isWeekend && !isToday(day) && "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
                         )}
                       >
                         <div className="font-medium text-xs">
                           {format(day, "EEE", { locale: ru })}
                         </div>
-                        <div className={cn(
-                          "text-xs",
-                          isToday(day) ? "text-primary" : ""
-                        )}>
+                        <div className="text-xs">
                           {daysCount > 14 
                             ? format(day, "d", { locale: ru })
                             : format(day, "d MMM", { locale: ru })
                           }
                         </div>
                         {showMonth && daysCount > 14 && (
-                          <div className="text-[9px] text-muted-foreground">
+                          <div className="text-[9px] opacity-70">
                             {format(day, "MMM", { locale: ru })}
                           </div>
                         )}
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Group name */}
-                <div className="text-sm font-medium text-muted-foreground mb-2 px-2 py-1 bg-muted/50 rounded">
-                  {scheduleName} ({ops.length})
                 </div>
                 
                 {ops.map((operator) => (
@@ -470,7 +468,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             key={day.toISOString()} 
                             className={cn(
                               "text-center p-1.5 rounded-md text-xs transition-colors",
-                              colors ? cn(colors.bg, colors.text, "border", colors.border) : isWeekend ? "bg-muted/40" : "bg-muted/20",
+                              colors 
+                                ? cn(colors.bg, colors.text, "border", colors.border) 
+                                : isWeekend 
+                                  ? "bg-rose-50 dark:bg-rose-900/20" 
+                                  : "bg-muted/20",
                               isToday(day) && "ring-2 ring-primary/30"
                             )}
                           >
@@ -486,7 +488,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                 )}
                               </>
                             ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
+                              <span className={cn(
+                                "text-sm",
+                                isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground"
+                              )}>—</span>
                             )}
                           </div>
                         );
