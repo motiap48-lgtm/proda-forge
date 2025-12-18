@@ -1,17 +1,20 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User, Pencil } from "lucide-react";
+import { RefreshCw, User, Pencil, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ShiftRotationCalendarProps {
   operators: any[];
   onEditOperator?: (operator: any) => void;
 }
+
+type PeriodType = "7" | "14" | "30";
 
 // Check if date is a working day based on schedule type
 const isWorkingDay = (schedule: any, date: Date, operator: any): boolean => {
@@ -91,15 +94,18 @@ const getShiftColor = (shiftName: string, index: number) => {
 };
 
 export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
-  // Generate next 7 days
+  const [period, setPeriod] = useState<PeriodType>("7");
+  const daysCount = parseInt(period);
+  
+  // Generate days based on selected period
   const days = useMemo(() => {
     const result = [];
     const today = new Date();
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < daysCount; i++) {
       result.push(addDays(today, i));
     }
     return result;
-  }, []);
+  }, [daysCount]);
 
   // Get all unique shift names for color mapping
   const shiftColorMap = useMemo(() => {
@@ -135,6 +141,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return groups;
   }, [operatorsWithSchedules]);
 
+  // Dynamic grid style based on period
+  const gridStyle = {
+    gridTemplateColumns: `200px repeat(${daysCount}, minmax(${daysCount > 14 ? '50px' : '80px'}, 1fr))`
+  };
+
   if (operatorsWithSchedules.length === 0) {
     return (
       <Card>
@@ -149,45 +160,70 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <RefreshCw className="h-5 w-5" />
             График ротации смен
           </CardTitle>
-          <div className="flex gap-2">
-            {Array.from(shiftColorMap.entries()).map(([name, colors]) => (
-              <Badge key={name} variant="outline" className={cn(colors.bg, colors.text, colors.border)}>
-                {name}
-              </Badge>
-            ))}
+          <div className="flex items-center gap-3">
+            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodType)}>
+              <SelectTrigger className="w-[140px]">
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7 дней</SelectItem>
+                <SelectItem value="14">14 дней</SelectItem>
+                <SelectItem value="30">Месяц</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              {Array.from(shiftColorMap.entries()).map(([name, colors]) => (
+                <Badge key={name} variant="outline" className={cn(colors.bg, colors.text, colors.border)}>
+                  {name}
+                </Badge>
+              ))}
+            </div>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <ScrollArea className="w-full">
-          <div className="min-w-[800px]">
+          <div style={{ minWidth: daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
             {/* Header with days */}
-            <div className="grid grid-cols-[200px_repeat(7,1fr)] gap-1 mb-2">
+            <div className="grid gap-1 mb-2" style={gridStyle}>
               <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
-              {days.map((day) => (
-                <div 
-                  key={day.toISOString()} 
-                  className={cn(
-                    "text-center text-sm p-2 rounded-md",
-                    isToday(day) ? "bg-primary/10 font-semibold" : "text-muted-foreground"
-                  )}
-                >
-                  <div className="font-medium">
-                    {format(day, "EEE", { locale: ru })}
+              {days.map((day, idx) => {
+                const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
+                return (
+                  <div 
+                    key={day.toISOString()} 
+                    className={cn(
+                      "text-center text-sm p-1 rounded-md",
+                      isToday(day) ? "bg-primary/10 font-semibold" : "text-muted-foreground",
+                      getDay(day) === 0 || getDay(day) === 6 ? "bg-muted/50" : ""
+                    )}
+                  >
+                    <div className="font-medium text-xs">
+                      {format(day, "EEE", { locale: ru })}
+                    </div>
+                    <div className={cn(
+                      "text-xs",
+                      isToday(day) ? "text-primary" : ""
+                    )}>
+                      {daysCount > 14 
+                        ? format(day, "d", { locale: ru })
+                        : format(day, "d MMM", { locale: ru })
+                      }
+                    </div>
+                    {showMonth && daysCount > 14 && (
+                      <div className="text-[9px] text-muted-foreground">
+                        {format(day, "MMM", { locale: ru })}
+                      </div>
+                    )}
                   </div>
-                  <div className={cn(
-                    "text-xs",
-                    isToday(day) ? "text-primary" : ""
-                  )}>
-                    {format(day, "d MMM", { locale: ru })}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Operators grouped by schedule */}
@@ -201,9 +237,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   <div 
                     key={operator.id} 
                     className={cn(
-                      "grid grid-cols-[200px_repeat(7,1fr)] gap-1 py-1 rounded group",
+                      "grid gap-1 py-1 rounded group",
                       onEditOperator && "hover:bg-muted/50 cursor-pointer"
                     )}
+                    style={gridStyle}
                     onClick={() => onEditOperator?.(operator)}
                   >
                     <div className="px-2 flex items-center gap-2">
@@ -232,27 +269,30 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
                       const hours = Math.floor(netMinutes / 60);
                       const mins = netMinutes % 60;
+                      const isWeekend = getDay(day) === 0 || getDay(day) === 6;
                       
                       return (
                         <div 
                           key={day.toISOString()} 
                           className={cn(
-                            "text-center p-1.5 rounded-md text-xs transition-colors",
-                            colors ? cn(colors.bg, colors.text, "border", colors.border) : "bg-muted/30 text-muted-foreground",
+                            "text-center p-1 rounded-md text-xs transition-colors",
+                            colors ? cn(colors.bg, colors.text, "border", colors.border) : isWeekend ? "bg-muted/40" : "bg-muted/20",
                             isToday(day) && "ring-2 ring-primary/30"
                           )}
                         >
                           {shift ? (
                             <>
-                              <div className="font-medium truncate" title={shift.shift_name}>
-                                {shift.shift_name.split(" ")[0]}
+                              <div className="font-medium truncate text-[10px]" title={shift.shift_name}>
+                                {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name.split(" ")[0]}
                               </div>
-                              <div className="text-[10px] opacity-75">
-                                {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
-                              </div>
+                              {daysCount <= 14 && (
+                                <div className="text-[9px] opacity-75">
+                                  {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
+                                </div>
+                              )}
                             </>
                           ) : (
-                            <span className="opacity-50">—</span>
+                            <span className="opacity-50 text-[10px]">—</span>
                           )}
                         </div>
                       );
