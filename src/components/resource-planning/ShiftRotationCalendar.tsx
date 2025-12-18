@@ -1606,7 +1606,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             <HoverCardTrigger asChild>
                               <div 
                                 className={cn(
-                                  "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50",
+                                  "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50 outline outline-2 outline-background",
                                   onEditOperator && "hover:bg-muted/50 cursor-pointer"
                                 )}
                                 onClick={() => onEditOperator?.(operator)}
@@ -1662,14 +1662,14 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                       return (
                                         <div 
                                           key={month.toISOString()} 
-                                          className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-b border-border/50"
+                                          className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-b border-border/50 outline outline-2 outline-background"
                                         >
                                           <div className="font-medium">{monthHours.hours}ч</div>
                                           {monthHours.minutes > 0 && <div className="text-[10px] opacity-80">{monthHours.minutes}м</div>}
                                         </div>
                                       );
                                     })}
-                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border-b border-border/50">
+                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border-b border-border/50 outline outline-2 outline-background">
                                       <div>{yearlyTotal.hours}ч</div>
                                       {yearlyTotal.minutes > 0 && <div className="text-[10px]">{yearlyTotal.minutes}м</div>}
                                     </div>
@@ -1721,7 +1721,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                         <div 
                                           key={day.toISOString()} 
                                           className={cn(
-                                            "text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative border-b border-border/50",
+                                            "text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative border-b border-border/50 outline outline-2 outline-background",
                                             colors 
                                               ? cn(colors.bg, colors.text) 
                                               : isWeekend 
@@ -1748,7 +1748,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                         </div>
                                       );
                                     })}
-                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border-b border-border/50">
+                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border-b border-border/50 outline outline-2 outline-background">
                                       <div>{totalHours.hours}ч</div>
                                       {totalHours.minutes > 0 && <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>}
                                     </div>
