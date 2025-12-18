@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -263,6 +263,40 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const printRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [stickyTotal, setStickyTotal] = useState(false);
+  
+  // Refs for synchronized scrolling
+  const scrollContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const isScrollingRef = useRef(false);
+  
+  // Synchronized scroll handler
+  const handleSyncScroll = useCallback((sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => {
+    if (isScrollingRef.current) return;
+    
+    const source = event.currentTarget;
+    const scrollLeft = source.scrollLeft;
+    
+    isScrollingRef.current = true;
+    
+    scrollContainersRef.current.forEach((container, key) => {
+      if (key !== sourceKey && container && container.scrollLeft !== scrollLeft) {
+        container.scrollLeft = scrollLeft;
+      }
+    });
+    
+    // Reset the flag after a short delay to allow next scroll event
+    requestAnimationFrame(() => {
+      isScrollingRef.current = false;
+    });
+  }, []);
+  
+  // Register scroll container ref
+  const registerScrollContainer = useCallback((key: string) => (el: HTMLDivElement | null) => {
+    if (el) {
+      scrollContainersRef.current.set(key, el);
+    } else {
+      scrollContainersRef.current.delete(key);
+    }
+  }, []);
   
   const updateOperator = useUpdateOperator();
 
@@ -1479,7 +1513,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 <div className={cn("overflow-hidden", isCollapsed && "overflow-hidden")}>
                   {/* Single scrollable container with sticky first column */}
                   <div 
-                    ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? scrollContainerRef : undefined}
+                    ref={registerScrollContainer(`schedule-${scheduleName}`)}
+                    onScroll={handleSyncScroll(`schedule-${scheduleName}`)}
                     className="overflow-x-auto border border-border rounded-lg"
                   >
                     <div 
@@ -1730,7 +1765,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             {/* Grand total */}
             {filteredOperators.length > 0 && (
               <div className="mt-4 pt-4 border-t-2 border-primary/20">
-                <div className="overflow-x-auto border border-primary/30 rounded-lg bg-primary/5">
+                <div 
+                  ref={registerScrollContainer('grand-total')}
+                  onScroll={handleSyncScroll('grand-total')}
+                  className="overflow-x-auto border border-primary/30 rounded-lg bg-primary/5"
+                >
                   <div style={gridStyle} className="min-h-[50px] items-center">
                     <div className="sticky left-0 z-10 bg-primary/5 px-2 py-2 text-sm font-bold flex items-center gap-2 border-r border-border h-full">
                       <Clock className="h-4 w-4" />
