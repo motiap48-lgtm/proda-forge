@@ -110,6 +110,11 @@ export const OperatorDialog = ({
     return selectedSchedule?.work_schedule_shifts || [];
   }, [selectedSchedule]);
 
+  // Check if schedule is cyclic (sliding schedule like 2/2)
+  const isCyclicSchedule = useMemo(() => {
+    return selectedSchedule?.schedule_type === 'cyclic';
+  }, [selectedSchedule]);
+
   // Calculate current shift for display
   const currentShiftDisplay = useMemo(() => {
     if (!formData.work_schedule_id || scheduleShifts.length === 0) return null;
@@ -330,28 +335,51 @@ export const OperatorDialog = ({
                 </Select>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="shift_rotation_enabled" className="flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4" />
-                    Ротация смен
+              {/* Show rotation toggle only for non-cyclic schedules */}
+              {!isCyclicSchedule && (
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="shift_rotation_enabled" className="flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Ротация смен
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Чередование смен по неделям
+                    </p>
+                  </div>
+                  <Switch
+                    id="shift_rotation_enabled"
+                    checked={formData.shift_rotation_enabled}
+                    onCheckedChange={(checked) => setFormData({ 
+                      ...formData, 
+                      shift_rotation_enabled: checked,
+                      shift_rotation_start_date: checked ? format(new Date(), "yyyy-MM-dd") : ""
+                    })}
+                  />
+                </div>
+              )}
+
+              {/* Cycle start date for cyclic schedules (2/2, 3/3, etc.) */}
+              {isCyclicSchedule && (
+                <div className="space-y-2">
+                  <Label htmlFor="shift_rotation_start_date" className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4" />
+                    Дата начала цикла
                   </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Чередование смен по неделям
+                  <Input
+                    id="shift_rotation_start_date"
+                    type="date"
+                    value={formData.shift_rotation_start_date}
+                    onChange={(e) => setFormData({ ...formData, shift_rotation_start_date: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Укажите первый рабочий день оператора в текущем или предыдущем цикле (например, 17 декабря для графика 2/2)
                   </p>
                 </div>
-                <Switch
-                  id="shift_rotation_enabled"
-                  checked={formData.shift_rotation_enabled}
-                  onCheckedChange={(checked) => setFormData({ 
-                    ...formData, 
-                    shift_rotation_enabled: checked,
-                    shift_rotation_start_date: checked ? format(new Date(), "yyyy-MM-dd") : ""
-                  })}
-                />
-              </div>
+              )}
 
-              {formData.shift_rotation_enabled && (
+              {/* Rotation start date for weekly rotation */}
+              {!isCyclicSchedule && formData.shift_rotation_enabled && (
                 <div className="space-y-2">
                   <Label htmlFor="shift_rotation_start_date">
                     Дата начала на Смене {formData.assigned_shift_number || 1}
@@ -382,8 +410,35 @@ export const OperatorDialog = ({
             </div>
           )}
 
-          {/* Show single shift info if schedule has only one shift */}
-          {formData.work_schedule_id && scheduleShifts.length === 1 && (
+          {/* Cycle start date for cyclic schedules with single shift */}
+          {formData.work_schedule_id && scheduleShifts.length === 1 && isCyclicSchedule && (
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+              <div className="p-2 bg-muted/50 rounded-lg text-sm">
+                <div className="font-medium">{scheduleShifts[0].shift_name}</div>
+                <div className="text-muted-foreground">
+                  Выработка: {scheduleShifts[0].net_work_minutes || scheduleShifts[0].gross_work_minutes - scheduleShifts[0].break_minutes} мин/день
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="shift_rotation_start_date" className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  Дата начала цикла
+                </Label>
+                <Input
+                  id="shift_rotation_start_date"
+                  type="date"
+                  value={formData.shift_rotation_start_date}
+                  onChange={(e) => setFormData({ ...formData, shift_rotation_start_date: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Укажите первый рабочий день оператора в текущем или предыдущем цикле
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Show single shift info if schedule has only one shift (non-cyclic) */}
+          {formData.work_schedule_id && scheduleShifts.length === 1 && !isCyclicSchedule && (
             <div className="p-3 bg-muted/50 rounded-lg text-sm">
               <div className="font-medium">{scheduleShifts[0].shift_name}</div>
               <div className="text-muted-foreground">
