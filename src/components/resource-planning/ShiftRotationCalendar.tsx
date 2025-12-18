@@ -689,7 +689,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       display: "grid",
       gridTemplateColumns: `repeat(${colCount}, minmax(${minColWidth}px, 1fr)) ${totalColPx}px`,
       columnGap: `${gapPx}px`,
-      rowGap: "0px",
+      rowGap: `${gapPx}px`,
       width: "100%",
       minWidth: `${totalMinWidth}px`,
     };
@@ -1590,7 +1590,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             <HoverCardTrigger asChild>
                               <div 
                                 className={cn(
-                                  "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50",
+                                  "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50 mb-1",
                                   onEditOperator && "hover:bg-muted/50 cursor-pointer"
                                 )}
                                 onClick={() => onEditOperator?.(operator)}
@@ -1613,7 +1613,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         ))}
                         
                         {/* Group summary row */}
-                        <div className="bg-muted/30 px-2 h-[44px] flex items-center text-xs text-muted-foreground border-t border-border">
+                        <div className="bg-muted/30 px-2 h-[44px] flex items-center text-xs text-muted-foreground border-t border-border mt-1">
                           <div className="flex items-center gap-2">
                             <span className="flex items-center gap-1 text-emerald-600"><CalendarCheck className="h-3 w-3" />{calculateGroupStats(ops).workingDays}</span>
                             <span className="flex items-center gap-1 text-rose-500"><CalendarX className="h-3 w-3" />{calculateGroupStats(ops).offDays}</span>
@@ -1635,7 +1635,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       className="flex-1 min-w-0 overflow-auto scrollbar-overlay"
                     >
                       {/* Sticky calendar header */}
-                      <div className="sticky top-0 z-10 bg-background" style={calendarGridStyle}>
+                      <div className="sticky top-0 z-10 bg-background mb-1" style={calendarGridStyle}>
                         {period === "year" ? (
                           <>
                             {months.map((month) => (
