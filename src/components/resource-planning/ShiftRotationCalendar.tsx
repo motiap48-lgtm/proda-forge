@@ -587,22 +587,23 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const employeeColumnWidth = 200;
   
   // calendarGridStyle is for the scrollable calendar part (excludes employee column)
-  const calendarGridStyle = useMemo(() => {
+  // It should:
+  // - stretch to fill available width when there is room
+  // - become wider than the container (and enable horizontal scroll) only when needed
+  const calendarGridStyle = useMemo<React.CSSProperties>(() => {
     const colCount = period === "year" ? 12 : daysCount;
-    const totalWidth = colCount * columnWidth + 70 + (colCount * 4); // columns + total col + gaps
-    if (period === "year") {
-      return {
-        display: 'grid',
-        gridTemplateColumns: `repeat(12, ${columnWidth}px) 70px`,
-        gap: '4px',
-        minWidth: `${totalWidth}px`
-      };
-    }
+    const minColWidth = columnWidth; // acts as minimum width per day/month
+    const gapPx = 4;
+
+    // +1 fixed "Итого" column (70px). Gaps count is ~number of columns - 1; here we keep a safe estimate.
+    const totalMinWidth = colCount * minColWidth + 70 + colCount * gapPx;
+
     return {
-      display: 'grid',
-      gridTemplateColumns: `repeat(${daysCount}, ${columnWidth}px) 70px`,
-      gap: '4px',
-      minWidth: `${totalWidth}px`
+      display: "grid",
+      width: "100%",
+      gridTemplateColumns: `repeat(${colCount}, minmax(${minColWidth}px, 1fr)) 70px`,
+      gap: `${gapPx}px`,
+      minWidth: `${totalMinWidth}px`,
     };
   }, [period, daysCount, columnWidth]);
 
