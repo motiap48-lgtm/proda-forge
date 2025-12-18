@@ -1416,14 +1416,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               
               return (
               <div key={scheduleName} className="mb-6">
-                {/* Group name - clickable to collapse - uses grid to match calendar width */}
-                <div className="grid gap-1 mb-2" style={gridStyle}>
-                  <div 
-                    className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2"
-                    style={{ gridColumn: `1 / -1` }}
-                  >
+                {/* Group name - should not move on horizontal scroll */}
+                <div className="mb-2 sticky left-0 z-40">
+                  <div className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2 w-full border border-border/40">
                     <button 
-                      className="flex items-center gap-2 hover:bg-muted/70 rounded px-1 py-0.5 transition-colors flex-1"
+                      className="flex items-center gap-2 hover:bg-muted/70 rounded px-1 py-0.5 transition-colors flex-1 min-w-0"
                       onClick={() => toggleGroupCollapse(scheduleName)}
                     >
                       {isCollapsed ? (
@@ -1431,7 +1428,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       ) : (
                         <ChevronDown className="h-4 w-4 flex-shrink-0" />
                       )}
-                      {scheduleName} ({ops.length})
+                      <span className="truncate">{scheduleName} ({ops.length})</span>
                       {isCyclicSchedule && (
                         <Badge variant="outline" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300">
                           {schedule?.cycle_days_on || 2}/{schedule?.cycle_days_off || 2}
