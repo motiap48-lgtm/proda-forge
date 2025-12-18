@@ -679,20 +679,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   // - become wider than the container (and enable horizontal scroll) only when needed
   const calendarGridStyle = useMemo<React.CSSProperties>(() => {
     const colCount = period === "year" ? 12 : daysCount;
-    const minColWidth = columnWidth; // acts as minimum width per day/month
+    const colWidth = columnWidth; // fixed width per day/month
     const gapPx = 4;
+    const totalColPx = 70; // "Итого" column
 
-    // +1 fixed "Итого" column (70px). Gaps count is ~number of columns - 1; here we keep a safe estimate.
-    const totalMinWidth = colCount * minColWidth + 70 + colCount * gapPx;
+    // Fixed width grid - no minmax, no 1fr - pure fixed widths
+    const totalWidth = colCount * colWidth + totalColPx + (colCount) * gapPx;
 
     return {
       display: "grid",
-      width: "100%",
-      gridTemplateColumns: `repeat(${colCount}, minmax(${minColWidth}px, 1fr)) 70px`,
+      gridTemplateColumns: `repeat(${colCount}, ${colWidth}px) ${totalColPx}px`,
       columnGap: `${gapPx}px`,
-      // IMPORTANT: vertical gaps must be 0, otherwise rows will drift vs the employee list
       rowGap: "0px",
-      minWidth: `${totalMinWidth}px`,
+      width: `${totalWidth}px`,
     };
   }, [period, daysCount, columnWidth]);
 
@@ -1568,88 +1567,23 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 )}
               >
                 <div className={cn("overflow-hidden", isCollapsed && "overflow-hidden")}>
-                  {/* Flex container: fixed employee column + scrollable calendar */}
+                  {/* Flex container: fixed employee column + single calendar scroll container */}
                   <div 
                     ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? printRef : undefined}
-                    className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden flex-col"
+                    className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden"
                   >
-                    {/* HEADER ROW - both employee header and calendar header side by side, fixed */}
-                    <div className="flex flex-shrink-0 border-b border-border">
-                      {/* Employee column header */}
-                      <div 
-                        className="flex-shrink-0 border-r border-border bg-muted/30 text-sm font-medium text-muted-foreground px-2 h-[60px] flex items-center" 
-                        style={{ width: `${employeeColumnWidth}px` }}
-                      >
+                    {/* Employee column - fixed width, separate vertical scroll */}
+                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col" style={{ width: `${employeeColumnWidth}px` }}>
+                      {/* Employee header */}
+                      <div className="flex-shrink-0 bg-muted/30 text-sm font-medium text-muted-foreground px-2 h-[60px] flex items-center border-b border-border">
                         Сотрудник
                       </div>
                       
-                      {/* Calendar header - horizontally scrollable, synced */}
-                      <div 
-                        ref={registerScrollContainer(`header-${scheduleName}`)}
-                        onScroll={handleSyncScroll(`header-${scheduleName}`)}
-                        className="flex-1 min-w-0 h-[60px] overflow-x-auto overflow-y-hidden scrollbar-hide"
-                        style={{ paddingRight: `${calendarHeaderPadRightPx[scheduleName] ?? 0}px` }}
-                      >
-                        <div style={calendarGridStyle}>
-                          {period === "year" ? (
-                            <>
-                              {months.map((month) => (
-                                <div 
-                                  key={month.toISOString()} 
-                                  className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-muted/30"
-                                >
-                                  <div className="font-medium text-xs">
-                                    {format(month, "LLL", { locale: ru })}
-                                  </div>
-                                </div>
-                              ))}
-                              <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
-                                <Clock className="h-3 w-3 mb-0.5" />
-                                <div className="text-[10px]">Год</div>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              {days.map((day, idx) => {
-                                const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
-                                const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                                const isTodayDate = isToday(day);
-                                return (
-                                  <div 
-                                    key={day.toISOString()} 
-                                    className={cn(
-                                      "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
-                                      isTodayDate 
-                                        ? "bg-primary text-primary-foreground font-semibold ring-2 ring-primary ring-offset-1 ring-offset-background" 
-                                        : isWeekend 
-                                          ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
-                                          : "text-muted-foreground bg-muted/30"
-                                    )}
-                                  >
-                                    <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
-                                    <div className={cn("text-sm font-semibold", isTodayDate ? "" : isWeekend ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>{format(day, "d", { locale: ru })}</div>
-                                    {(showMonth || daysCount <= 14) && <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>}
-                                  </div>
-                                );
-                              })}
-                              <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
-                                <Clock className="h-3 w-3 mb-0.5" />
-                                <div className="text-[10px]">Итого</div>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* BODY ROW - both employee list and calendar body, synced vertically */}
-                    <div className="flex flex-1 min-h-0">
-                      {/* Employee column body */}
+                      {/* Employee body - vertical scroll synced with calendar */}
                       <div 
                         ref={registerVerticalScrollContainer(`emp-${scheduleName}`)}
                         onScroll={handleSyncVerticalScroll(`emp-${scheduleName}`)}
-                        className="flex-shrink-0 border-r border-border bg-background overflow-x-hidden scrollbar-overlay" 
-                        style={{ width: `${employeeColumnWidth}px` }}
+                        className="flex-1 overflow-x-hidden scrollbar-overlay min-h-0"
                       >
                         {ops.map((operator) => (
                           <HoverCard key={operator.id} openDelay={300}>
@@ -1686,20 +1620,73 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           </div>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Calendar body - synced horizontally with header and other schedules, vertically with employee column */}
-                      <div 
-                        ref={(el) => {
-                          registerScrollContainer(`schedule-${scheduleName}`)(el);
-                          registerVerticalScrollContainer(`cal-${scheduleName}`)(el);
-                        }}
-                        onScroll={(e) => {
-                          handleSyncScroll(`schedule-${scheduleName}`)(e);
-                          handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
-                        }}
-                        className="flex-1 min-w-0 scrollbar-overlay"
-                      >
-                        <div style={calendarGridStyle}>
+                    {/* Calendar - single scroll container with sticky header */}
+                    <div 
+                      ref={(el) => {
+                        registerScrollContainer(`schedule-${scheduleName}`)(el);
+                        registerVerticalScrollContainer(`cal-${scheduleName}`)(el);
+                      }}
+                      onScroll={(e) => {
+                        handleSyncScroll(`schedule-${scheduleName}`)(e);
+                        handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
+                      }}
+                      className="flex-1 min-w-0 overflow-auto scrollbar-overlay"
+                    >
+                      {/* Sticky calendar header */}
+                      <div className="sticky top-0 z-10 bg-background" style={calendarGridStyle}>
+                        {period === "year" ? (
+                          <>
+                            {months.map((month) => (
+                              <div 
+                                key={month.toISOString()} 
+                                className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-muted/30"
+                              >
+                                <div className="font-medium text-xs">
+                                  {format(month, "LLL", { locale: ru })}
+                                </div>
+                              </div>
+                            ))}
+                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                              <Clock className="h-3 w-3 mb-0.5" />
+                              <div className="text-[10px]">Год</div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {days.map((day, idx) => {
+                              const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
+                              const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                              const isTodayDate = isToday(day);
+                              return (
+                                <div 
+                                  key={day.toISOString()} 
+                                  className={cn(
+                                    "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
+                                    isTodayDate 
+                                      ? "bg-primary text-primary-foreground font-semibold ring-2 ring-primary ring-offset-1 ring-offset-background" 
+                                      : isWeekend 
+                                        ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
+                                        : "text-muted-foreground bg-muted/30"
+                                  )}
+                                >
+                                  <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
+                                  <div className={cn("text-sm font-semibold", isTodayDate ? "" : isWeekend ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>{format(day, "d", { locale: ru })}</div>
+                                  {(showMonth || daysCount <= 14) && <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>}
+                                </div>
+                              );
+                            })}
+                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                              <Clock className="h-3 w-3 mb-0.5" />
+                              <div className="text-[10px]">Итого</div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      
+                      {/* Calendar body */}
+                      <div style={calendarGridStyle}>
                           {period === "year" ? (
                             <>
                               {/* Year view - Operator rows */}
@@ -1829,7 +1816,6 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   </div>
                 </div>
               </div>
-            </div>
             );
           })}
 
