@@ -679,19 +679,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   // - become wider than the container (and enable horizontal scroll) only when needed
   const calendarGridStyle = useMemo<React.CSSProperties>(() => {
     const colCount = period === "year" ? 12 : daysCount;
-    const colWidth = columnWidth; // fixed width per day/month
+    const minColWidth = columnWidth;
     const gapPx = 4;
     const totalColPx = 70; // "Итого" column
 
-    // Fixed width grid - no minmax, no 1fr - pure fixed widths
-    const totalWidth = colCount * colWidth + totalColPx + (colCount) * gapPx;
+    const totalMinWidth = colCount * minColWidth + totalColPx + colCount * gapPx;
 
     return {
       display: "grid",
-      gridTemplateColumns: `repeat(${colCount}, ${colWidth}px) ${totalColPx}px`,
+      gridTemplateColumns: `repeat(${colCount}, minmax(${minColWidth}px, 1fr)) ${totalColPx}px`,
       columnGap: `${gapPx}px`,
       rowGap: "0px",
-      width: `${totalWidth}px`,
+      width: "100%",
+      minWidth: `${totalMinWidth}px`,
     };
   }, [period, daysCount, columnWidth]);
 
