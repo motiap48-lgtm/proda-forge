@@ -1904,27 +1904,33 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             const h = Math.floor(monthTotal / 60);
                             const m = monthTotal % 60;
                             return (
-                              <div key={month.toISOString()} className="text-center text-xs font-medium py-2">
+                              <div key={month.toISOString()} className="text-center text-xs font-medium h-[52px] flex items-center justify-center rounded-md bg-gradient-to-b from-muted/20 to-muted/40">
                                 {h}ч{m > 0 ? ` ${m}м` : ''}
                               </div>
                             );
                           })}
                         </>
                       ) : (
-                        days.map((day) => (
-                          <div 
-                            key={day.toISOString()} 
-                            className={cn(
-                              "text-center text-xs text-muted-foreground py-2",
-                              isToday(day) && cn(
-                                "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)] rounded-md",
-                                isTodayColumnHovered && "animate-pulse-glow"
-                              )
-                            )}
-                            onMouseEnter={() => isToday(day) && setIsTodayColumnHovered(true)}
-                            onMouseLeave={() => isToday(day) && setIsTodayColumnHovered(false)}
-                          >—</div>
-                        ))
+                        days.map((day) => {
+                          const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                          return (
+                            <div 
+                              key={day.toISOString()} 
+                              className={cn(
+                                "text-center text-xs text-muted-foreground h-[52px] flex items-center justify-center rounded-md",
+                                isWeekend 
+                                  ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
+                                  : "bg-gradient-to-b from-muted/20 to-muted/40",
+                                isToday(day) && cn(
+                                  "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
+                                  isTodayColumnHovered && "animate-pulse-glow"
+                                )
+                              )}
+                              onMouseEnter={() => isToday(day) && setIsTodayColumnHovered(true)}
+                              onMouseLeave={() => isToday(day) && setIsTodayColumnHovered(false)}
+                            >—</div>
+                          );
+                        })
                       )}
                       {(() => {
                         const grandTotalCalc = period === "year" 
