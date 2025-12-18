@@ -1723,7 +1723,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                           className={cn(
                                             "text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative border-b border-border/50",
                                             colors 
-                                              ? cn(colors.bg, colors.text, "border", colors.border) 
+                                              ? cn(colors.bg, colors.text) 
                                               : isWeekend 
                                                 ? "bg-rose-50 dark:bg-rose-900/20" 
                                                 : "bg-muted/20",
