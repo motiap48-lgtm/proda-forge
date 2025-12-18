@@ -1409,8 +1409,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       </CardHeader>
       <CardContent className="p-0">
         <div className="px-2 py-4">
-          <div className="overflow-auto max-h-[calc(100vh-300px)]" style={{ scrollbarGutter: 'stable' }}>
-            <div className="flex flex-col gap-3 min-w-fit">
+          {/* Only vertical scroll here; horizontal scroll must be inside each calendar */}
+          <div className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-300px)]" style={{ scrollbarGutter: 'stable' }}>
+            <div className="flex flex-col gap-3 w-full min-w-0">
           {/* Operators grouped by schedule */}
           {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
             const isCollapsed = collapsedGroups.has(scheduleName);
@@ -1497,7 +1498,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   {/* Flex container: fixed employee column + scrollable calendar */}
                   <div 
                     ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? printRef : undefined}
-                    className="border border-border rounded-lg flex"
+                    className="border border-border rounded-lg flex w-full min-w-0"
                   >
                     {/* Fixed employee column - no horizontal scroll */}
                     <div className="flex-shrink-0 border-r border-border bg-background" style={{ width: `${employeeColumnWidth}px` }}>
@@ -1547,7 +1548,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     <div 
                       ref={registerScrollContainer(`schedule-${scheduleName}`)}
                       onScroll={handleSyncScroll(`schedule-${scheduleName}`)}
-                      className="overflow-x-auto flex-1"
+                      className="overflow-x-auto flex-1 min-w-0"
                     >
                       <div style={calendarGridStyle}>
                         {period === "year" ? (
@@ -1740,7 +1741,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   <div 
                     ref={registerScrollContainer('grand-total')}
                     onScroll={handleSyncScroll('grand-total')}
-                    className="overflow-x-auto flex-1"
+                    className="overflow-x-auto flex-1 min-w-0"
                   >
                     <div style={calendarGridStyle} className="min-h-[50px] items-center">
                       {period === "year" ? (
