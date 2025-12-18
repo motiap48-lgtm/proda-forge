@@ -180,7 +180,9 @@ const getShiftForDate = (operator: any, date: Date) => {
     }
     
     const startingShift = operator.assigned_shift_number || 1;
-    const currentShiftNumber = ((startingShift - 1 + weeksDiff) % shifts.length) + 1;
+    // Handle negative modulo correctly for dates before rotation start
+    const shiftIndex = ((((startingShift - 1 + weeksDiff) % shifts.length) + shifts.length) % shifts.length);
+    const currentShiftNumber = shiftIndex + 1;
     return shifts.find((s: any) => s.shift_number === currentShiftNumber);
   }
   
