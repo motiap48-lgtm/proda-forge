@@ -17,7 +17,7 @@ interface ShiftRotationCalendarProps {
   onEditOperator?: (operator: any) => void;
 }
 
-type PeriodType = "7" | "14" | "30" | "month" | "custom";
+type PeriodType = "7" | "14" | "30" | "month" | "year" | "custom";
 
 // Check if date is a working day based on schedule type
 const isWorkingDay = (schedule: any, date: Date, operator: any): boolean => {
@@ -132,7 +132,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [scheduleFilter, setScheduleFilter] = useState<string>("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [startDate, setStartDate] = useState<Date>(new Date());
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
+  const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const toggleGroupCollapse = (scheduleName: string) => {
@@ -161,11 +163,14 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     if (period === "month") {
       return getDaysInMonth(startDate);
     }
-    if (period === "custom") {
-      return 7; // Default for custom, but start date matters more
+    if (period === "year") {
+      return 365; // For year view we'll show monthly summaries instead
     }
-    return parseInt(period);
-  }, [period, startDate]);
+    if (period === "custom" && endDate) {
+      return Math.max(1, differenceInDays(endDate, startDate) + 1);
+    }
+    return parseInt(period) || 7;
+  }, [period, startDate, endDate]);
 
   // Calculate group total hours
   const calculateGroupTotalHours = (ops: any[]): { hours: number; minutes: number } => {
@@ -189,26 +194,79 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const days = useMemo(() => {
     const result = [];
     let effectiveStartDate = startDate;
+    let count = daysCount;
     
     // For month view - always start from 1st of the month
     if (period === "month") {
       effectiveStartDate = startOfMonth(startDate);
     }
     
-    for (let i = 0; i < daysCount; i++) {
+    // For year view - show all days of the year but we'll display monthly summaries
+    if (period === "year") {
+      effectiveStartDate = new Date(startDate.getFullYear(), 0, 1); // Jan 1st
+      count = 365 + (new Date(startDate.getFullYear(), 1, 29).getDate() === 29 ? 1 : 0); // Account for leap year
+    }
+    
+    for (let i = 0; i < count; i++) {
       result.push(addDays(effectiveStartDate, i));
     }
     return result;
   }, [daysCount, startDate, period]);
 
+  // Generate months for year view
+  const months = useMemo(() => {
+    if (period !== "year") return [];
+    const year = startDate.getFullYear();
+    return Array.from({ length: 12 }, (_, i) => new Date(year, i, 1));
+  }, [period, startDate]);
+
+  // Calculate hours for a specific month
+  const calculateMonthHours = (operator: any, month: Date): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    const monthStart = startOfMonth(month);
+    const daysInMonth = getDaysInMonth(month);
+    
+    for (let i = 0; i < daysInMonth; i++) {
+      const day = addDays(monthStart, i);
+      const shift = getShiftForDate(operator, day);
+      if (shift) {
+        const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+        totalMinutes += netMinutes;
+      }
+    }
+    
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  };
+
   // Navigation functions
-  const goToToday = () => setStartDate(new Date());
-  const goToStartOfMonth = () => setStartDate(startOfMonth(new Date()));
-  const goToStartOfWeek = () => setStartDate(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const goToToday = () => {
+    setStartDate(new Date());
+    if (period === "custom") setEndDate(addDays(new Date(), 6));
+  };
+  const goToStartOfMonth = () => {
+    setStartDate(startOfMonth(new Date()));
+    if (period === "custom") setEndDate(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0));
+  };
+  const goToStartOfWeek = () => {
+    setStartDate(startOfWeek(new Date(), { weekStartsOn: 1 }));
+    if (period === "custom") setEndDate(addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 6));
+  };
+  const goToStartOfYear = () => {
+    setStartDate(new Date(new Date().getFullYear(), 0, 1));
+  };
   
   const goToPreviousPeriod = () => {
     if (period === "month") {
       setStartDate(subMonths(startDate, 1));
+    } else if (period === "year") {
+      setStartDate(new Date(startDate.getFullYear() - 1, 0, 1));
+    } else if (period === "custom" && endDate) {
+      const range = differenceInDays(endDate, startDate);
+      setStartDate(addDays(startDate, -(range + 1)));
+      setEndDate(addDays(endDate, -(range + 1)));
     } else {
       setStartDate(addDays(startDate, -daysCount));
     }
@@ -217,8 +275,25 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const goToNextPeriod = () => {
     if (period === "month") {
       setStartDate(addMonths(startDate, 1));
+    } else if (period === "year") {
+      setStartDate(new Date(startDate.getFullYear() + 1, 0, 1));
+    } else if (period === "custom" && endDate) {
+      const range = differenceInDays(endDate, startDate);
+      setStartDate(addDays(startDate, range + 1));
+      setEndDate(addDays(endDate, range + 1));
     } else {
       setStartDate(addDays(startDate, daysCount));
+    }
+  };
+
+  // Handle period change
+  const handlePeriodChange = (newPeriod: PeriodType) => {
+    setPeriod(newPeriod);
+    if (newPeriod === "custom" && !endDate) {
+      setEndDate(addDays(startDate, 6));
+    }
+    if (newPeriod === "year") {
+      setStartDate(new Date(new Date().getFullYear(), 0, 1));
     }
   };
 
@@ -275,8 +350,41 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   }, [filteredOperators]);
 
   // Dynamic grid style based on period - includes total column
-  const gridStyle = {
-    gridTemplateColumns: `200px repeat(${daysCount}, minmax(${daysCount > 14 ? '50px' : '80px'}, 1fr)) 70px`
+  const gridStyle = useMemo(() => {
+    if (period === "year") {
+      return {
+        gridTemplateColumns: `200px repeat(12, minmax(70px, 1fr)) 80px`
+      };
+    }
+    return {
+      gridTemplateColumns: `200px repeat(${daysCount}, minmax(${daysCount > 14 ? '50px' : '80px'}, 1fr)) 70px`
+    };
+  }, [period, daysCount]);
+
+  // Calculate yearly total for an operator
+  const calculateYearlyTotal = (operator: any): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    months.forEach(month => {
+      const monthHours = calculateMonthHours(operator, month);
+      totalMinutes += monthHours.hours * 60 + monthHours.minutes;
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  };
+
+  // Calculate group yearly total
+  const calculateGroupYearlyTotal = (ops: any[]): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    ops.forEach(operator => {
+      const yearlyTotal = calculateYearlyTotal(operator);
+      totalMinutes += yearlyTotal.hours * 60 + yearlyTotal.minutes;
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
   };
 
   // Calculate total working hours for an operator over the period
@@ -527,8 +635,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           {/* Date navigation row */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Period selector */}
-            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodType)}>
-              <SelectTrigger className="w-[130px]">
+            <Select value={period} onValueChange={handlePeriodChange}>
+              <SelectTrigger className="w-[140px]">
                 <CalendarDays className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
@@ -537,6 +645,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 <SelectItem value="14">14 дней</SelectItem>
                 <SelectItem value="30">30 дней</SelectItem>
                 <SelectItem value="month">Месяц</SelectItem>
+                <SelectItem value="year">Год</SelectItem>
+                <SelectItem value="custom">Произвольный</SelectItem>
               </SelectContent>
             </Select>
 
@@ -561,32 +671,97 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               <Button variant="outline" size="sm" onClick={goToStartOfMonth} className="text-xs">
                 С начала месяца
               </Button>
+              {period === "year" && (
+                <Button variant="outline" size="sm" onClick={goToStartOfYear} className="text-xs">
+                  Текущий год
+                </Button>
+              )}
             </div>
 
-            {/* Date picker */}
-            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Calendar className="h-4 w-4" />
-                  {format(days[0], "d MMM", { locale: ru })} — {format(days[days.length - 1], "d MMM yyyy", { locale: ru })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={startDate}
-                  onSelect={(date) => {
-                    if (date) {
-                      setStartDate(date);
-                      setIsDatePickerOpen(false);
-                    }
-                  }}
-                  locale={ru}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            {/* Date pickers - different UI for custom range */}
+            {period === "custom" ? (
+              <div className="flex items-center gap-1">
+                <Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Calendar className="h-4 w-4" />
+                      {format(startDate, "d MMM yyyy", { locale: ru })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setStartDate(date);
+                          if (endDate && date > endDate) {
+                            setEndDate(addDays(date, 7));
+                          }
+                          setIsStartDatePickerOpen(false);
+                        }
+                      }}
+                      locale={ru}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-muted-foreground">—</span>
+                <Popover open={isEndDatePickerOpen} onOpenChange={setIsEndDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Calendar className="h-4 w-4" />
+                      {endDate ? format(endDate, "d MMM yyyy", { locale: ru }) : "Выберите"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={endDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setEndDate(date);
+                          setIsEndDatePickerOpen(false);
+                        }
+                      }}
+                      disabled={(date) => date < startDate}
+                      locale={ru}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            ) : period === "year" ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">{startDate.getFullYear()} год</span>
+              </div>
+            ) : (
+              <Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {format(days[0], "d MMM", { locale: ru })} — {format(days[days.length - 1], "d MMM yyyy", { locale: ru })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={startDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setStartDate(date);
+                        setIsStartDatePickerOpen(false);
+                      }
+                    }}
+                    locale={ru}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
 
             <div className="border-l h-6 mx-1" />
 
@@ -627,7 +802,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       </CardHeader>
       <CardContent>
         <ScrollArea className="w-full">
-          <div ref={printRef} style={{ minWidth: daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
+          <div ref={printRef} style={{ minWidth: period === "year" ? "1200px" : daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
               const isCollapsed = collapsedGroups.has(scheduleName);
@@ -646,9 +821,109 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   {scheduleName} ({ops.length})
                 </button>
 
-                {!isCollapsed && (
+                {!isCollapsed && period === "year" ? (
                   <>
-                    {/* Header row with days for each group - sticky */}
+                    {/* Year view - monthly summary header */}
+                    <div className="grid gap-1 mb-2 sticky top-0 z-10 bg-background py-1" style={gridStyle}>
+                      <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
+                      {months.map((month) => (
+                        <div 
+                          key={month.toISOString()} 
+                          className="text-center text-sm p-1 rounded-md text-muted-foreground"
+                        >
+                          <div className="font-medium text-xs">
+                            {format(month, "LLL", { locale: ru })}
+                          </div>
+                        </div>
+                      ))}
+                      <div className="text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                        <Clock className="h-3 w-3 mx-auto mb-0.5" />
+                        <div className="text-[10px]">Год</div>
+                      </div>
+                    </div>
+                    
+                    {ops.map((operator) => {
+                      const yearlyTotal = calculateYearlyTotal(operator);
+                      return (
+                        <div 
+                          key={operator.id} 
+                          className={cn(
+                            "grid gap-1 py-1 rounded group",
+                            onEditOperator && "hover:bg-muted/50 cursor-pointer"
+                          )}
+                          style={gridStyle}
+                          onClick={() => onEditOperator?.(operator)}
+                        >
+                          <div className="px-2 flex items-center gap-2">
+                            <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
+                            {operator.shift_rotation_enabled && (
+                              <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            )}
+                          </div>
+                          
+                          {months.map((month) => {
+                            const monthHours = calculateMonthHours(operator, month);
+                            return (
+                              <div 
+                                key={month.toISOString()} 
+                                className="text-center p-1.5 rounded-md text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                              >
+                                <div className="font-medium">{monthHours.hours}ч</div>
+                                {monthHours.minutes > 0 && (
+                                  <div className="text-[10px] opacity-80">{monthHours.minutes}м</div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                            <div>{yearlyTotal.hours}ч</div>
+                            {yearlyTotal.minutes > 0 && (
+                              <div className="text-[10px] opacity-80">{yearlyTotal.minutes}м</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Group summary row for year view */}
+                    {(() => {
+                      const groupYearlyTotal = calculateGroupYearlyTotal(ops);
+                      return (
+                        <div 
+                          className="grid gap-1 py-2 mt-2 border-t border-dashed"
+                          style={gridStyle}
+                        >
+                          <div className="px-2 text-sm font-medium text-muted-foreground">
+                            Итого по группе:
+                          </div>
+                          {months.map((month) => {
+                            let monthTotal = 0;
+                            ops.forEach(op => {
+                              const mh = calculateMonthHours(op, month);
+                              monthTotal += mh.hours * 60 + mh.minutes;
+                            });
+                            const h = Math.floor(monthTotal / 60);
+                            const m = monthTotal % 60;
+                            return (
+                              <div key={month.toISOString()} className="text-center text-xs text-muted-foreground">
+                                {h}ч{m > 0 ? ` ${m}м` : ''}
+                              </div>
+                            );
+                          })}
+                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold">
+                            <div>{groupYearlyTotal.hours}ч</div>
+                            {groupYearlyTotal.minutes > 0 && (
+                              <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </>
+                ) : !isCollapsed && (
+                  <>
+                    {/* Regular day view - Header row with days for each group - sticky */}
                     <div className="grid gap-1 mb-2 sticky top-0 z-10 bg-background py-1" style={gridStyle}>
                       <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
                       {days.map((day, idx) => {
@@ -814,13 +1089,34 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
-                  {days.map((day) => (
-                    <div key={day.toISOString()} className="text-center text-xs text-muted-foreground">
-                      —
-                    </div>
-                  ))}
+                  {period === "year" ? (
+                    <>
+                      {months.map((month) => {
+                        let monthTotal = 0;
+                        filteredOperators.forEach(op => {
+                          const mh = calculateMonthHours(op, month);
+                          monthTotal += mh.hours * 60 + mh.minutes;
+                        });
+                        const h = Math.floor(monthTotal / 60);
+                        const m = monthTotal % 60;
+                        return (
+                          <div key={month.toISOString()} className="text-center text-xs font-medium">
+                            {h}ч{m > 0 ? ` ${m}м` : ''}
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    days.map((day) => (
+                      <div key={day.toISOString()} className="text-center text-xs text-muted-foreground">
+                        —
+                      </div>
+                    ))
+                  )}
                   {(() => {
-                    const grandTotal = calculateGroupTotalHours(filteredOperators);
+                    const grandTotal = period === "year" 
+                      ? calculateGroupYearlyTotal(filteredOperators)
+                      : calculateGroupTotalHours(filteredOperators);
                     return (
                       <div className="text-center p-2 rounded-md text-sm bg-primary text-primary-foreground font-bold">
                         <div>{grandTotal.hours}ч</div>
