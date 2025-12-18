@@ -27,70 +27,137 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// Helper to calculate current shift based on rotation
+const getCurrentShiftForOperator = (operator: any) => {
+  const shifts = operator.work_schedules?.work_schedule_shifts;
+  if (!shifts || shifts.length === 0) return null;
+  
+  const totalShifts = shifts.length;
+  
+  // If only one shift - use it
+  if (totalShifts === 1) {
+    return shifts[0];
+  }
+  
+  // If operator has rotation enabled
+  if (operator.shift_rotation_enabled && totalShifts >= 2) {
+    const startDate = operator.shift_rotation_start_date 
+      ? new Date(operator.shift_rotation_start_date) 
+      : new Date();
+    const today = new Date();
+    const weeksDiff = differenceInWeeks(today, startDate);
+    const startingShift = operator.assigned_shift_number || 1;
+    const currentShiftNumber = ((startingShift - 1 + weeksDiff) % totalShifts) + 1;
+    return shifts.find((s: any) => s.shift_number === currentShiftNumber);
+  }
+  
+  // If operator has fixed shift assigned
+  if (operator.assigned_shift_number) {
+    return shifts.find((s: any) => s.shift_number === operator.assigned_shift_number);
+  }
+  
+  // No shift assigned - return null (ambiguous)
+  return null;
+};
+
 export const OperatorsTab = () => {
   const { data: operators, isLoading } = useOperators();
   const deleteOperator = useDeleteOperator();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [shiftFilter, setShiftFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [editingOperator, setEditingOperator] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [operatorToDelete, setOperatorToDelete] = useState<any>(null);
 
-  const filteredOperators = operators?.filter((op: any) => {
-    const matchesSearch = op.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      op.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      op.position?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === "all" || op.employee_type === typeFilter;
-    return matchesSearch && matchesType;
-  }) || [];
+  // Collect all unique shift names for filter
+  const availableShifts = useMemo(() => {
+    const shiftSet = new Map<string, { name: string; count: number }>();
+    
+    operators?.forEach((op: any) => {
+      if (!op.is_active) return;
+      const currentShift = getCurrentShiftForOperator(op);
+      if (currentShift?.shift_name) {
+        const existing = shiftSet.get(currentShift.shift_name);
+        if (existing) {
+          existing.count++;
+        } else {
+          shiftSet.set(currentShift.shift_name, { name: currentShift.shift_name, count: 1 });
+        }
+      }
+    });
+    
+    return Array.from(shiftSet.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [operators]);
+
+  const filteredOperators = useMemo(() => {
+    return operators?.filter((op: any) => {
+      const matchesSearch = op.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        op.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        op.position?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = typeFilter === "all" || op.employee_type === typeFilter;
+      
+      // Shift filter
+      let matchesShift = true;
+      if (shiftFilter !== "all") {
+        const currentShift = getCurrentShiftForOperator(op);
+        matchesShift = currentShift?.shift_name === shiftFilter;
+      }
+      
+      return matchesSearch && matchesType && matchesShift;
+    }) || [];
+  }, [operators, searchQuery, typeFilter, shiftFilter]);
 
   const totalOperators = operators?.length || 0;
   const activeOperators = operators?.filter((op: any) => op.is_active).length || 0;
 
-  // Calculate total available time for all active operators with rotation consideration
-  const totalAvailableTime = useMemo(() => {
+  // Calculate total available time for filtered active operators
+  const { totalAvailableTime, filteredAvailableTime } = useMemo(() => {
+    // Total for all active operators
     const activeOps = operators?.filter((op: any) => op.is_active) || [];
     let totalMinutes = 0;
     
     for (const operator of activeOps) {
-      const shifts = (operator.work_schedules as any)?.work_schedule_shifts as any[] | undefined;
-      if (!shifts || shifts.length === 0) continue;
-      
-      let currentShift = null;
-      
-      // If only one shift in schedule - use it
-      if (shifts.length === 1) {
-        currentShift = shifts[0];
-      }
-      // Calculate current shift based on rotation
-      else if (operator.shift_rotation_enabled && shifts.length >= 2) {
-        const startDate = operator.shift_rotation_start_date 
-          ? new Date(operator.shift_rotation_start_date) 
-          : new Date();
-        const today = new Date();
-        const weeksDiff = differenceInWeeks(today, startDate);
-        const startingShift = operator.assigned_shift_number || 1;
-        const currentShiftNumber = ((startingShift - 1 + weeksDiff) % shifts.length) + 1;
-        currentShift = shifts.find((s: any) => s.shift_number === currentShiftNumber);
-      } 
-      // If operator has fixed shift assigned
-      else if (operator.assigned_shift_number) {
-        currentShift = shifts.find((s: any) => s.shift_number === operator.assigned_shift_number);
-      }
-      
+      const currentShift = getCurrentShiftForOperator(operator);
       if (currentShift) {
         const netMinutes = currentShift.net_work_minutes ?? (currentShift.gross_work_minutes - currentShift.break_minutes);
         totalMinutes += netMinutes;
       }
     }
     
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`;
-  }, [operators]);
+    const totalHours = Math.floor(totalMinutes / 60);
+    const totalMins = totalMinutes % 60;
+    const totalTime = totalMins > 0 ? `${totalHours} ч ${totalMins} мин` : `${totalHours} ч`;
+    
+    // Filtered operators time
+    const filteredActiveOps = filteredOperators.filter((op: any) => op.is_active);
+    let filteredMinutes = 0;
+    
+    for (const operator of filteredActiveOps) {
+      const currentShift = getCurrentShiftForOperator(operator);
+      if (currentShift) {
+        const netMinutes = currentShift.net_work_minutes ?? (currentShift.gross_work_minutes - currentShift.break_minutes);
+        filteredMinutes += netMinutes;
+      }
+    }
+    
+    const filteredHours = Math.floor(filteredMinutes / 60);
+    const filteredMins = filteredMinutes % 60;
+    const filteredTime = filteredMins > 0 ? `${filteredHours} ч ${filteredMins} мин` : `${filteredHours} ч`;
+    
+    return { 
+      totalAvailableTime: totalTime, 
+      filteredAvailableTime: filteredTime 
+    };
+  }, [operators, filteredOperators]);
+
+  const getShiftFilterLabel = () => {
+    if (shiftFilter === "all") return "Все смены";
+    return shiftFilter;
+  };
 
   const getEmployeeTypeLabel = (type: string) => {
     switch (type) {
@@ -112,34 +179,6 @@ export const OperatorsTab = () => {
       case "universal": return "outline";
       default: return "outline";
     }
-  };
-
-  // Helper to calculate current shift based on rotation
-  const getCurrentShiftForOperator = (operator: any) => {
-    const shifts = operator.work_schedules?.work_schedule_shifts;
-    if (!shifts || shifts.length === 0) return null;
-    
-    const totalShifts = shifts.length;
-    
-    // If operator has rotation enabled
-    if (operator.shift_rotation_enabled && totalShifts >= 2) {
-      const startDate = operator.shift_rotation_start_date 
-        ? new Date(operator.shift_rotation_start_date) 
-        : new Date(); // Default to today if not set
-      const today = new Date();
-      const weeksDiff = differenceInWeeks(today, startDate);
-      const startingShift = operator.assigned_shift_number || 1;
-      const currentShiftNumber = ((startingShift - 1 + weeksDiff) % totalShifts) + 1;
-      return shifts.find((s: any) => s.shift_number === currentShiftNumber);
-    }
-    
-    // If operator has fixed shift assigned
-    if (operator.assigned_shift_number) {
-      return shifts.find((s: any) => s.shift_number === operator.assigned_shift_number);
-    }
-    
-    // No shift assigned - return null (ambiguous)
-    return null;
   };
 
   const getAvailableTime = (operator: any) => {
@@ -203,6 +242,8 @@ export const OperatorsTab = () => {
     setEditingOperator(null);
   };
 
+  const hasActiveFilters = typeFilter !== "all" || shiftFilter !== "all" || searchQuery.length > 0;
+
   if (isLoading) {
     return <div className="text-center py-8 text-muted-foreground">Загрузка...</div>;
   }
@@ -210,7 +251,7 @@ export const OperatorsTab = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
+        <div className="flex flex-col sm:flex-row gap-4 flex-1 flex-wrap">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -233,6 +274,20 @@ export const OperatorsTab = () => {
               <SelectItem value="universal">Универсал</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={shiftFilter} onValueChange={setShiftFilter}>
+            <SelectTrigger className="w-[200px]">
+              <Clock className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Смена" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все смены</SelectItem>
+              {availableShifts.map((shift) => (
+                <SelectItem key={shift.name} value={shift.name}>
+                  {shift.name} ({shift.count})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setBulkDialogOpen(true)}>
@@ -253,7 +308,7 @@ export const OperatorsTab = () => {
             <span>Всего: <span className="font-medium text-foreground">{totalOperators}</span></span>
             <span>•</span>
             <span>Активных: <span className="font-medium text-foreground">{activeOperators}</span></span>
-            {typeFilter !== "all" && (
+            {hasActiveFilters && (
               <>
                 <span>•</span>
                 <span>Отфильтровано: <span className="font-medium text-foreground">{filteredOperators.length}</span></span>
@@ -262,7 +317,14 @@ export const OperatorsTab = () => {
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span>Общее доступное время: <span className="font-medium text-primary">{totalAvailableTime}</span></span>
+            {hasActiveFilters ? (
+              <span>
+                Доступное время (фильтр): <span className="font-medium text-primary">{filteredAvailableTime}</span>
+                <span className="text-xs ml-2">(всего: {totalAvailableTime})</span>
+              </span>
+            ) : (
+              <span>Общее доступное время: <span className="font-medium text-primary">{totalAvailableTime}</span></span>
+            )}
           </div>
         </div>
         
@@ -270,7 +332,10 @@ export const OperatorsTab = () => {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => exportOperatorsToExcel(filteredOperators)}
+            onClick={() => exportOperatorsToExcel(filteredOperators, {
+              shiftFilter: getShiftFilterLabel(),
+              totalAvailableTime: hasActiveFilters ? filteredAvailableTime : totalAvailableTime
+            })}
             disabled={filteredOperators.length === 0}
           >
             <FileDown className="h-4 w-4 mr-2" />
@@ -279,7 +344,10 @@ export const OperatorsTab = () => {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => printOperators(filteredOperators)}
+            onClick={() => printOperators(filteredOperators, {
+              shiftFilter: getShiftFilterLabel(),
+              totalAvailableTime: hasActiveFilters ? filteredAvailableTime : totalAvailableTime
+            })}
             disabled={filteredOperators.length === 0}
           >
             <Printer className="h-4 w-4 mr-2" />
