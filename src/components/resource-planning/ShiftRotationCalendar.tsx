@@ -889,13 +889,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             </Select>
 
             {/* Collapse/Expand buttons */}
-            <div className="flex items-center border rounded-md overflow-hidden border-l-0 ml-1">
+            <div className="flex items-center border rounded-md overflow-hidden ml-2">
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={expandAll} 
                 title="Развернуть все"
-                className="rounded-none border-r hover:bg-primary/10 active:bg-primary/20"
+                className="rounded-none border-r hover:bg-primary/10 active:bg-primary active:text-primary-foreground transition-colors"
               >
                 <ChevronsUpDown className="h-4 w-4" />
               </Button>
@@ -904,7 +904,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 size="sm" 
                 onClick={collapseAll} 
                 title="Свернуть все"
-                className="rounded-none hover:bg-primary/10 active:bg-primary/20"
+                className="rounded-none hover:bg-primary/10 active:bg-primary active:text-primary-foreground transition-colors"
               >
                 <ChevronsDownUp className="h-4 w-4" />
               </Button>
