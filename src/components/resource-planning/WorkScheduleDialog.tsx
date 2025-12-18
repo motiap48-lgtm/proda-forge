@@ -20,7 +20,16 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Wand2, Plus, Trash2, Clock, Coffee } from "lucide-react";
+import { Wand2, Plus, Trash2, Clock, Coffee, CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format, parseISO } from "date-fns";
+import { ru } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { 
   useCreateWorkSchedule, 
   useUpdateWorkSchedule,
@@ -78,6 +87,7 @@ export const WorkScheduleDialog = ({
     schedule_type: "shift",
     cycle_days_on: 2,
     cycle_days_off: 2,
+    cycle_start_date: null as Date | null,
     is_active: true,
   });
 
@@ -93,6 +103,7 @@ export const WorkScheduleDialog = ({
         schedule_type: schedule.schedule_type || "shift",
         cycle_days_on: schedule.cycle_days_on || 2,
         cycle_days_off: schedule.cycle_days_off || 2,
+        cycle_start_date: schedule.cycle_start_date ? parseISO(schedule.cycle_start_date) : null,
         is_active: schedule.is_active ?? true,
       });
       
@@ -121,6 +132,7 @@ export const WorkScheduleDialog = ({
         schedule_type: "shift",
         cycle_days_on: 2,
         cycle_days_off: 2,
+        cycle_start_date: null,
         is_active: true,
       });
       setShifts([]);
@@ -282,8 +294,13 @@ export const WorkScheduleDialog = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const scheduleData = {
+      ...formData,
+      cycle_start_date: formData.cycle_start_date ? format(formData.cycle_start_date, 'yyyy-MM-dd') : null,
+    };
+
     if (isEditing) {
-      await updateSchedule.mutateAsync({ id: schedule.id, ...formData });
+      await updateSchedule.mutateAsync({ id: schedule.id, ...scheduleData });
       
       // Update existing shifts
       for (const shift of shifts) {
@@ -347,7 +364,7 @@ export const WorkScheduleDialog = ({
       
       onOpenChange(false);
     } else {
-      const newSchedule = await createSchedule.mutateAsync({ ...formData, code: "AUTO" });
+      const newSchedule = await createSchedule.mutateAsync({ ...scheduleData, code: "AUTO" });
       
       // Create shifts for new schedule
       for (const shift of pendingShifts) {
@@ -460,7 +477,42 @@ export const WorkScheduleDialog = ({
                   setFormData({ ...formData, cycle_days_off: parseInt(e.target.value) || 0 })
                 }
               />
+          </div>
+          
+          {/* Show cycle_start_date only for cyclic schedules */}
+          {formData.schedule_type === 'cyclic' && (
+            <div className="col-span-2 space-y-2">
+              <Label>Дата начала цикла</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.cycle_start_date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.cycle_start_date 
+                      ? format(formData.cycle_start_date, "d MMMM yyyy", { locale: ru })
+                      : "Выберите дату"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.cycle_start_date || undefined}
+                    onSelect={(date) => setFormData({ ...formData, cycle_start_date: date || null })}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                Дата, с которой начинается отсчёт рабочих/выходных дней по графику
+              </p>
             </div>
+          )}
           </div>
 
           <Separator />

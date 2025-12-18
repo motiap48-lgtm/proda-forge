@@ -14,13 +14,15 @@ import {
   ChevronDown,
   CheckCircle2,
   AlertCircle,
-  Lightbulb
+  Lightbulb,
+  CalendarDays
 } from "lucide-react";
 import { WorkSchedulesTab } from "@/components/resource-planning/WorkSchedulesTab";
 import { OperatorsTab } from "@/components/resource-planning/OperatorsTab";
 import { BrigadesTab } from "@/components/resource-planning/BrigadesTab";
 import { ShiftTasksTab } from "@/components/resource-planning/ShiftTasksTab";
 import { ResourceGanttChart } from "@/components/resource-planning/ResourceGanttChart";
+import { CalendarExceptionsTab } from "@/components/resource-planning/CalendarExceptionsTab";
 import { cn } from "@/lib/utils";
 
 const ResourcePlanning = () => {
@@ -220,7 +222,7 @@ const ResourcePlanning = () => {
         </Collapsible>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="shift-tasks" className="flex items-center gap-2">
               <CalendarClock className="h-4 w-4" />
               <span className="hidden sm:inline">ССЗ</span>
@@ -235,6 +237,11 @@ const ResourcePlanning = () => {
               <Clock className="h-4 w-4" />
               <span className="hidden sm:inline">Графики</span>
               <span className="sm:hidden">Графики</span>
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              <span className="hidden sm:inline">Календарь</span>
+              <span className="sm:hidden">Кален.</span>
             </TabsTrigger>
             <TabsTrigger value="operators" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -258,6 +265,10 @@ const ResourcePlanning = () => {
 
           <TabsContent value="schedules">
             <WorkSchedulesTab />
+          </TabsContent>
+
+          <TabsContent value="calendar">
+            <CalendarExceptionsTab />
           </TabsContent>
 
           <TabsContent value="operators">
