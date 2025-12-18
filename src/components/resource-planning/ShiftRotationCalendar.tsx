@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User, Pencil, Calendar } from "lucide-react";
+import { RefreshCw, User, Pencil, Calendar, FileDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import * as XLSX from "xlsx";
 
 interface ShiftRotationCalendarProps {
   operators: any[];
@@ -146,6 +147,52 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     gridTemplateColumns: `200px repeat(${daysCount}, minmax(${daysCount > 14 ? '50px' : '80px'}, 1fr))`
   };
 
+  // Export to Excel
+  const handleExportToExcel = () => {
+    const wb = XLSX.utils.book_new();
+    
+    // Prepare data for export
+    const exportData: any[] = [];
+    
+    // Header row with dates
+    const headerRow = ['Сотрудник', 'График', ...days.map(day => format(day, 'dd.MM.yyyy'))];
+    exportData.push(headerRow);
+    
+    // Data rows
+    operatorsWithSchedules.forEach(operator => {
+      const row = [
+        operator.full_name,
+        operator.work_schedules?.name || 'Без графика',
+        ...days.map(day => {
+          const shift = getShiftForDate(operator, day);
+          if (shift) {
+            const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+            const hours = Math.floor(netMinutes / 60);
+            const mins = netMinutes % 60;
+            return `${shift.shift_name} (${hours}ч${mins > 0 ? ` ${mins}м` : ''})`;
+          }
+          return 'Выходной';
+        })
+      ];
+      exportData.push(row);
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(exportData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 25 }, // Сотрудник
+      { wch: 20 }, // График
+      ...days.map(() => ({ wch: 18 })) // Даты
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'График ротации');
+    
+    const startDate = format(days[0], 'dd.MM.yyyy');
+    const endDate = format(days[days.length - 1], 'dd.MM.yyyy');
+    XLSX.writeFile(wb, `График_ротации_${startDate}-${endDate}.xlsx`);
+  };
+
   if (operatorsWithSchedules.length === 0) {
     return (
       <Card>
@@ -177,6 +224,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 <SelectItem value="30">Месяц</SelectItem>
               </SelectContent>
             </Select>
+            <Button variant="outline" size="sm" onClick={handleExportToExcel}>
+              <FileDown className="h-4 w-4 mr-2" />
+              Excel
+            </Button>
             <div className="flex gap-2">
               {Array.from(shiftColorMap.entries()).map(([name, colors]) => (
                 <Badge key={name} variant="outline" className={cn(colors.bg, colors.text, colors.border)}>
