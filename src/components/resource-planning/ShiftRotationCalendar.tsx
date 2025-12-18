@@ -1681,7 +1681,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       className="flex-1 min-w-0 overflow-auto scrollbar-overlay"
                     >
                       {/* Sticky calendar header with top padding to cover scrolling content */}
-                      <div className="sticky top-0 z-20 bg-background pt-1 mb-1" style={calendarGridStyle}>
+                      <div className="sticky top-0 z-20 bg-background pt-1 mb-1 px-2" style={calendarGridStyle}>
                         {period === "year" ? (
                           <>
                             {months.map((month) => (
@@ -1732,7 +1732,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       </div>
                       
                       {/* Calendar body */}
-                      <div style={calendarGridStyle}>
+                      <div className="px-2" style={calendarGridStyle}>
                           {period === "year" ? (
                             <>
                               {/* Year view - Operator rows */}
@@ -1881,7 +1881,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     onScroll={handleSyncScroll('grand-total')}
                     className="overflow-x-auto flex-1 min-w-0"
                   >
-                    <div style={calendarGridStyle} className="min-h-[52px] items-center">
+                    <div style={calendarGridStyle} className="min-h-[52px] items-center px-2">
                       {period === "year" ? (
                         <>
                           {months.map((month) => {
