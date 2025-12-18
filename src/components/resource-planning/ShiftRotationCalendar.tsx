@@ -1482,48 +1482,50 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   {/* Flex container: fixed employee column + scrollable calendar */}
                   <div 
                     ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? printRef : undefined}
-                    className="border border-border rounded-lg flex w-full min-w-0"
+                    className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden"
                   >
                     {/* Fixed employee column - no horizontal scroll */}
-                    <div className="flex-shrink-0 border-r border-border bg-background" style={{ width: `${employeeColumnWidth}px` }}>
-                      {/* Header */}
-                      <div className="bg-muted/30 text-sm font-medium text-muted-foreground px-2 h-[60px] flex items-center border-b border-border">
+                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col" style={{ width: `${employeeColumnWidth}px` }}>
+                      {/* Sticky Header */}
+                      <div className="bg-muted/30 text-sm font-medium text-muted-foreground px-2 h-[60px] flex items-center border-b border-border sticky top-0 z-10">
                         Сотрудник
                       </div>
                       
-                      {/* Operator names */}
-                      {ops.map((operator) => (
-                        <HoverCard key={operator.id} openDelay={300}>
-                          <HoverCardTrigger asChild>
-                            <div 
-                              className={cn(
-                                "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50",
-                                onEditOperator && "hover:bg-muted/50 cursor-pointer"
-                              )}
-                              onClick={() => onEditOperator?.(operator)}
-                            >
-                              <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
-                              {operator.shift_rotation_enabled && (
-                                <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                              )}
-                              {onEditOperator && (
-                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => { e.stopPropagation(); onEditOperator(operator); }}>
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-80" side="right" align="start">
-                            <OperatorInfoCard operator={operator} />
-                          </HoverCardContent>
-                        </HoverCard>
-                      ))}
-                      
-                      {/* Group summary row */}
-                      <div className="bg-muted/30 px-2 h-[44px] flex items-center text-xs text-muted-foreground border-t border-border">
-                        <div className="flex items-center gap-2">
-                          <span className="flex items-center gap-1 text-emerald-600"><CalendarCheck className="h-3 w-3" />{calculateGroupStats(ops).workingDays}</span>
-                          <span className="flex items-center gap-1 text-rose-500"><CalendarX className="h-3 w-3" />{calculateGroupStats(ops).offDays}</span>
+                      {/* Scrollable operator names */}
+                      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                        {ops.map((operator) => (
+                          <HoverCard key={operator.id} openDelay={300}>
+                            <HoverCardTrigger asChild>
+                              <div 
+                                className={cn(
+                                  "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50",
+                                  onEditOperator && "hover:bg-muted/50 cursor-pointer"
+                                )}
+                                onClick={() => onEditOperator?.(operator)}
+                              >
+                                <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
+                                {operator.shift_rotation_enabled && (
+                                  <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                )}
+                                {onEditOperator && (
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => { e.stopPropagation(); onEditOperator(operator); }}>
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80" side="right" align="start">
+                              <OperatorInfoCard operator={operator} />
+                            </HoverCardContent>
+                          </HoverCard>
+                        ))}
+                        
+                        {/* Group summary row */}
+                        <div className="bg-muted/30 px-2 h-[44px] flex items-center text-xs text-muted-foreground border-t border-border">
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1 text-emerald-600"><CalendarCheck className="h-3 w-3" />{calculateGroupStats(ops).workingDays}</span>
+                            <span className="flex items-center gap-1 text-rose-500"><CalendarX className="h-3 w-3" />{calculateGroupStats(ops).offDays}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1532,12 +1534,12 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     <div 
                       ref={registerScrollContainer(`schedule-${scheduleName}`)}
                       onScroll={handleSyncScroll(`schedule-${scheduleName}`)}
-                      className="overflow-x-auto flex-1 min-w-0"
+                      className="overflow-auto flex-1 min-w-0 flex flex-col"
                     >
-                      <div style={calendarGridStyle}>
+                      {/* Sticky Header Row */}
+                      <div style={calendarGridStyle} className="sticky top-0 z-10 bg-background">
                         {period === "year" ? (
                           <>
-                            {/* Year view - Header row */}
                             {months.map((month) => (
                               <div 
                                 key={month.toISOString()} 
@@ -1552,7 +1554,43 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                               <Clock className="h-3 w-3 mb-0.5" />
                               <div className="text-[10px]">Год</div>
                             </div>
-                            
+                          </>
+                        ) : (
+                          <>
+                            {days.map((day, idx) => {
+                              const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
+                              const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                              const isTodayDate = isToday(day);
+                              return (
+                                <div 
+                                  key={day.toISOString()} 
+                                  className={cn(
+                                    "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative border-b border-border",
+                                    isTodayDate 
+                                      ? "bg-primary text-primary-foreground font-semibold ring-2 ring-primary ring-offset-1 ring-offset-background" 
+                                      : isWeekend 
+                                        ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
+                                        : "text-muted-foreground bg-muted/30"
+                                  )}
+                                >
+                                  <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
+                                  <div className={cn("text-sm font-semibold", isTodayDate ? "" : isWeekend ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>{format(day, "d", { locale: ru })}</div>
+                                  {(showMonth || daysCount <= 14) && <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>}
+                                </div>
+                              );
+                            })}
+                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border-b border-border">
+                              <Clock className="h-3 w-3 mb-0.5" />
+                              <div className="text-[10px]">Итого</div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      
+                      {/* Body Rows (operators + summary) */}
+                      <div style={calendarGridStyle}>
+                        {period === "year" ? (
+                          <>
                             {/* Year view - Operator rows */}
                             {ops.map((operator) => {
                               const yearlyTotal = calculateYearlyTotal(operator);
@@ -1604,34 +1642,6 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           </>
                         ) : (
                           <>
-                            {/* Day view - Header row */}
-                            {days.map((day, idx) => {
-                              const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
-                              const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                              const isTodayDate = isToday(day);
-                              return (
-                                <div 
-                                  key={day.toISOString()} 
-                                  className={cn(
-                                    "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative border-b border-border",
-                                    isTodayDate 
-                                      ? "bg-primary text-primary-foreground font-semibold ring-2 ring-primary ring-offset-1 ring-offset-background" 
-                                      : isWeekend 
-                                        ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
-                                        : "text-muted-foreground bg-muted/30"
-                                  )}
-                                >
-                                  <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
-                                  <div className={cn("text-sm font-semibold", isTodayDate ? "" : isWeekend ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>{format(day, "d", { locale: ru })}</div>
-                                  {(showMonth || daysCount <= 14) && <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>}
-                                </div>
-                              );
-                            })}
-                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border-b border-border">
-                              <Clock className="h-3 w-3 mb-0.5" />
-                              <div className="text-[10px]">Итого</div>
-                            </div>
-                            
                             {/* Day view - Operator rows */}
                             {ops.map((operator) => {
                               const totalHours = calculateTotalHours(operator);
