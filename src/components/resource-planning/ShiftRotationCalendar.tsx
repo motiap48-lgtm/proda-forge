@@ -582,6 +582,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const isAllCollapsed = allGroupNames.length > 0 && collapsedGroups.size === allGroupNames.length;
 
   // Use minmax() for minimum column width with horizontal scroll when needed
+  // Columns stretch to fill width when few days, scroll when many days
   const gridStyle = useMemo(() => {
     if (period === "year") {
       return {
@@ -589,11 +590,17 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         minWidth: `${200 + 12 * 80 + 80}px`
       };
     }
-    // Use fixed width columns for consistent layout without overlap
+    // Calculate minimum column width based on day count
     const minColWidth = daysCount <= 7 ? 70 : daysCount <= 14 ? 60 : 55;
+    const totalMinWidth = 200 + daysCount * minColWidth + 80;
+    
+    // If content can fit in ~1400px viewport, let columns stretch (no minWidth)
+    // Otherwise, set minWidth to enable horizontal scrolling
+    const shouldStretch = totalMinWidth < 1400;
+    
     return {
-      gridTemplateColumns: `200px repeat(${daysCount}, ${minColWidth}px) 80px`,
-      minWidth: `${200 + daysCount * minColWidth + 80}px`
+      gridTemplateColumns: `200px repeat(${daysCount}, minmax(${minColWidth}px, 1fr)) 80px`,
+      minWidth: shouldStretch ? undefined : `${totalMinWidth}px`
     };
   }, [period, daysCount]);
 
