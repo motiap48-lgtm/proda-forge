@@ -1612,6 +1612,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   >
                     {/* Employee column - fixed width, separate vertical scroll */}
                     <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative" style={{ width: `${employeeColumnWidth}px` }}>
+                      {/* Blur overlay on right edge */}
+                      <div className="absolute right-0 top-0 bottom-0 w-6 pointer-events-none z-10 bg-gradient-to-r from-transparent to-background/80 backdrop-blur-[2px]" />
+                      
                       {/* Employee header */}
                       <div className="flex-shrink-0 bg-muted/30 text-base font-semibold text-foreground px-3 pt-1 h-[64px] flex items-center border-b border-border mb-1">
                         Сотрудники
@@ -1881,6 +1884,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden">
                 {/* Fixed label column - same structure as employee column */}
                 <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative" style={{ width: `${employeeColumnWidth}px` }}>
+                  {/* Blur overlay on right edge */}
+                  <div className="absolute right-0 top-0 bottom-0 w-6 pointer-events-none z-10 bg-gradient-to-r from-transparent to-emerald-50/80 dark:to-emerald-950/50 backdrop-blur-[2px]" />
+                  
                   <div className="px-3 flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
