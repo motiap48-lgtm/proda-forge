@@ -1,7 +1,6 @@
 import { useMemo, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -878,9 +877,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="w-full">
-          <div ref={printRef} style={{ minWidth: period === "year" ? "1200px" : daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto overflow-y-visible scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+          <div ref={printRef} className="p-6" style={{ minWidth: period === "year" ? "1200px" : daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
               const isCollapsed = collapsedGroups.has(scheduleName);
@@ -1226,8 +1225,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               </div>
             )}
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
