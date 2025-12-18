@@ -1880,8 +1880,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             {filteredOperators.length > 0 && (
               <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden">
                 {/* Fixed label column - same structure as employee column */}
-                <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex flex-col relative" style={{ width: `${employeeColumnWidth}px` }}>
-                  <div className="px-3 h-[40px] flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative" style={{ width: `${employeeColumnWidth}px` }}>
+                  <div className="px-3 flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
@@ -1891,9 +1891,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 <div 
                   ref={registerScrollContainer('grand-total')}
                   onScroll={handleSyncScroll('grand-total')}
-                  className="flex-1 min-w-0 overflow-x-auto scrollbar-overlay"
+                  className="flex-1 min-w-0 overflow-x-auto scrollbar-overlay flex items-center"
                 >
-                  <div style={calendarGridStyle} className="px-2 pb-1">
+                  <div style={calendarGridStyle} className="px-2 py-1 items-center">
                       {period === "year" ? (
                         <>
                           {months.map((month) => {
