@@ -1038,22 +1038,22 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           <div 
                             key={day.toISOString()} 
                             className={cn(
-                              "text-center text-sm p-1 rounded-md",
-                              isToday(day) ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground",
-                              isWeekend && !isToday(day) && "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
+                              "text-center text-sm p-1.5 rounded-md",
+                              isToday(day) 
+                                ? "bg-primary text-primary-foreground font-semibold" 
+                                : isWeekend 
+                                  ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
+                                  : "bg-muted/50 text-muted-foreground"
                             )}
                           >
-                            <div className="font-medium text-xs">
+                            <div className="font-medium text-xs uppercase">
                               {format(day, "EEE", { locale: ru })}
                             </div>
-                            <div className="text-xs">
-                              {daysCount > 14 
-                                ? format(day, "d", { locale: ru })
-                                : format(day, "d MMM", { locale: ru })
-                              }
+                            <div className={cn("text-sm font-semibold", isToday(day) ? "" : isWeekend ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>
+                              {format(day, "d", { locale: ru })}
                             </div>
-                            {showMonth && daysCount > 14 && (
-                              <div className="text-[9px] opacity-70">
+                            {(showMonth || daysCount <= 14) && (
+                              <div className="text-[10px] opacity-70">
                                 {format(day, "MMM", { locale: ru })}
                               </div>
                             )}
