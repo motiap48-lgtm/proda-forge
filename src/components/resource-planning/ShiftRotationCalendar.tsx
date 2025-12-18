@@ -262,11 +262,15 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [syncingScheduleId, setSyncingScheduleId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
   
-  // Refs for synchronized scrolling
+  // Refs for synchronized horizontal scrolling
   const scrollContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const isScrollingRef = useRef(false);
   
-  // Synchronized scroll handler
+  // Refs for synchronized vertical scrolling (employee column + calendar body)
+  const verticalScrollContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const isVerticalScrollingRef = useRef(false);
+  
+  // Synchronized horizontal scroll handler
   const handleSyncScroll = useCallback((sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => {
     if (isScrollingRef.current) return;
     
@@ -287,12 +291,46 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     });
   }, []);
   
-  // Register scroll container ref
+  // Synchronized vertical scroll handler
+  const handleSyncVerticalScroll = useCallback((sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => {
+    if (isVerticalScrollingRef.current) return;
+    
+    const source = event.currentTarget;
+    const scrollTop = source.scrollTop;
+    
+    isVerticalScrollingRef.current = true;
+    
+    // Extract schedule group key from sourceKey (e.g., "emp-ScheduleName" -> "ScheduleName")
+    const scheduleGroup = sourceKey.replace(/^(emp-|cal-)/, '');
+    
+    verticalScrollContainersRef.current.forEach((container, key) => {
+      // Only sync containers from the same schedule group
+      const containerGroup = key.replace(/^(emp-|cal-)/, '');
+      if (key !== sourceKey && containerGroup === scheduleGroup && container && container.scrollTop !== scrollTop) {
+        container.scrollTop = scrollTop;
+      }
+    });
+    
+    requestAnimationFrame(() => {
+      isVerticalScrollingRef.current = false;
+    });
+  }, []);
+  
+  // Register horizontal scroll container ref
   const registerScrollContainer = useCallback((key: string) => (el: HTMLDivElement | null) => {
     if (el) {
       scrollContainersRef.current.set(key, el);
     } else {
       scrollContainersRef.current.delete(key);
+    }
+  }, []);
+  
+  // Register vertical scroll container ref
+  const registerVerticalScrollContainer = useCallback((key: string) => (el: HTMLDivElement | null) => {
+    if (el) {
+      verticalScrollContainersRef.current.set(key, el);
+    } else {
+      verticalScrollContainersRef.current.delete(key);
     }
   }, []);
   
@@ -1491,8 +1529,12 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         Сотрудник
                       </div>
                       
-                      {/* Scrollable operator names */}
-                      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                      {/* Scrollable operator names - synced with calendar vertical scroll */}
+                      <div 
+                        ref={registerVerticalScrollContainer(`emp-${scheduleName}`)}
+                        onScroll={handleSyncVerticalScroll(`emp-${scheduleName}`)}
+                        className="flex-1 overflow-y-auto overflow-x-hidden"
+                      >
                         {ops.map((operator) => (
                           <HoverCard key={operator.id} openDelay={300}>
                             <HoverCardTrigger asChild>
@@ -1530,10 +1572,16 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       </div>
                     </div>
 
-                    {/* Scrollable calendar area */}
+                    {/* Scrollable calendar area - synced horizontally with other schedules and vertically with employee column */}
                     <div 
-                      ref={registerScrollContainer(`schedule-${scheduleName}`)}
-                      onScroll={handleSyncScroll(`schedule-${scheduleName}`)}
+                      ref={(el) => {
+                        registerScrollContainer(`schedule-${scheduleName}`)(el);
+                        registerVerticalScrollContainer(`cal-${scheduleName}`)(el);
+                      }}
+                      onScroll={(e) => {
+                        handleSyncScroll(`schedule-${scheduleName}`)(e);
+                        handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
+                      }}
                       className="overflow-auto flex-1 min-w-0 flex flex-col"
                     >
                       {/* Sticky Header Row */}
