@@ -1468,7 +1468,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     isCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
                   )}
                 >
-                  <div className="overflow-hidden">
+                  <div className={cn("overflow-visible", isCollapsed && "overflow-hidden")}>
                     {period === "year" ? (
                       <>
                     <div className="grid gap-1 mb-2 sticky top-0 z-20 bg-background py-1" style={gridStyle}>
