@@ -443,7 +443,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return groups;
   }, [filteredOperators]);
 
-  // Dynamic grid style based on period - includes total column
+  // Track expand/collapse state for button highlighting
+  const allGroupNames = Array.from(groupedBySchedule.keys());
+  const isAllExpanded = collapsedGroups.size === 0;
+  const isAllCollapsed = allGroupNames.length > 0 && collapsedGroups.size === allGroupNames.length;
+
   // Uses minmax() so columns stretch when space available, scroll when not
   const gridStyle = useMemo(() => {
     if (period === "year") {
@@ -754,7 +758,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 size="sm" 
                 onClick={goToPreviousPeriod} 
                 title="Предыдущий период"
-                className="rounded-none border-r hover:bg-primary/10 active:bg-primary/20"
+                className="rounded-none border-r hover:bg-muted active:bg-primary active:text-primary-foreground transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -763,7 +767,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 size="sm" 
                 onClick={goToNextPeriod} 
                 title="Следующий период"
-                className="rounded-none hover:bg-primary/10 active:bg-primary/20"
+                className="rounded-none hover:bg-muted active:bg-primary active:text-primary-foreground transition-colors"
               >
                 <ChevronRightIcon className="h-4 w-4" />
               </Button>
@@ -895,7 +899,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 size="sm" 
                 onClick={expandAll} 
                 title="Развернуть все"
-                className="rounded-none border-r hover:bg-primary/10 active:bg-primary active:text-primary-foreground transition-colors"
+                className={cn(
+                  "rounded-none border-r hover:bg-muted transition-colors",
+                  isAllExpanded && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
               >
                 <ChevronsUpDown className="h-4 w-4" />
               </Button>
@@ -904,7 +911,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 size="sm" 
                 onClick={collapseAll} 
                 title="Свернуть все"
-                className="rounded-none hover:bg-primary/10 active:bg-primary active:text-primary-foreground transition-colors"
+                className={cn(
+                  "rounded-none hover:bg-muted transition-colors",
+                  isAllCollapsed && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
               >
                 <ChevronsDownUp className="h-4 w-4" />
               </Button>
