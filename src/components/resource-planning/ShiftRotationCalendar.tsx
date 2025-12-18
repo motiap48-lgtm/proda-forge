@@ -1610,7 +1610,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden"
                   >
                     {/* Employee column - fixed width, separate vertical scroll */}
-                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative mr-1" style={{ width: `${employeeColumnWidth}px` }}>
+                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative" style={{ width: `${employeeColumnWidth}px` }}>
                       {/* Employee header */}
                       <div className="flex-shrink-0 bg-muted/30 text-sm font-medium text-muted-foreground px-2 pt-1 h-[64px] flex items-center border-b border-border mb-1">
                         Сотрудник
@@ -1637,7 +1637,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                   <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                                 )}
                                 {onEditOperator && (
-                                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => { e.stopPropagation(); onEditOperator(operator); }}>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => { e.stopPropagation(); onEditOperator(operator); }}>
                                     <Pencil className="h-3 w-3" />
                                   </Button>
                                 )}
@@ -1681,7 +1681,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       className="flex-1 min-w-0 overflow-auto scrollbar-overlay"
                     >
                       {/* Sticky calendar header with top padding to cover scrolling content */}
-                      <div className="sticky top-0 z-20 bg-background pt-1 mb-1 pl-1" style={calendarGridStyle}>
+                      <div className="sticky top-0 z-20 bg-background pt-1 mb-1" style={calendarGridStyle}>
                         {period === "year" ? (
                           <>
                             {months.map((month) => (
@@ -1711,7 +1711,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                   className={cn(
                                     "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
                                     isTodayDate 
-                                      ? "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold animate-pulse-glow" 
+                                      ? "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold hover:animate-pulse-glow" 
                                       : isWeekend 
                                         ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
                                         : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground"
@@ -1731,8 +1731,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         )}
                       </div>
                       
-                      {/* Calendar body with padding for glow visibility */}
-                      <div className="pl-1" style={calendarGridStyle}>
+                      {/* Calendar body */}
+                      <div style={calendarGridStyle}>
                           {period === "year" ? (
                             <>
                               {/* Year view - Operator rows */}
@@ -1810,7 +1810,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                               : isWeekend 
                                                 ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                                                 : "bg-gradient-to-b from-muted/20 to-muted/40",
-                                            isToday(day) && "animate-pulse-glow"
+                                            isToday(day) && "hover:animate-pulse-glow"
                                           )}
                                           title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
                                         >
@@ -1881,7 +1881,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     onScroll={handleSyncScroll('grand-total')}
                     className="overflow-x-auto flex-1 min-w-0"
                   >
-                    <div style={calendarGridStyle} className="min-h-[50px] items-center pl-1">
+                    <div style={calendarGridStyle} className="min-h-[50px] items-center">
                       {period === "year" ? (
                         <>
                           {months.map((month) => {
