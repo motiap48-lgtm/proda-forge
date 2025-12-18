@@ -383,45 +383,46 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       <CardContent>
         <ScrollArea className="w-full">
           <div ref={printRef} style={{ minWidth: daysCount > 14 ? `${200 + daysCount * 55}px` : `${200 + daysCount * 85}px` }}>
-            {/* Header with days */}
-            <div className="grid gap-1 mb-2" style={gridStyle}>
-              <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
-              {days.map((day, idx) => {
-                const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
-                return (
-                  <div 
-                    key={day.toISOString()} 
-                    className={cn(
-                      "text-center text-sm p-1 rounded-md",
-                      isToday(day) ? "bg-primary/10 font-semibold" : "text-muted-foreground",
-                      getDay(day) === 0 || getDay(day) === 6 ? "bg-muted/50" : ""
-                    )}
-                  >
-                    <div className="font-medium text-xs">
-                      {format(day, "EEE", { locale: ru })}
-                    </div>
-                    <div className={cn(
-                      "text-xs",
-                      isToday(day) ? "text-primary" : ""
-                    )}>
-                      {daysCount > 14 
-                        ? format(day, "d", { locale: ru })
-                        : format(day, "d MMM", { locale: ru })
-                      }
-                    </div>
-                    {showMonth && daysCount > 14 && (
-                      <div className="text-[9px] text-muted-foreground">
-                        {format(day, "MMM", { locale: ru })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
             {/* Operators grouped by schedule */}
             {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => (
-              <div key={scheduleName} className="mb-4">
+              <div key={scheduleName} className="mb-6">
+                {/* Header row with days for each group */}
+                <div className="grid gap-1 mb-2" style={gridStyle}>
+                  <div className="text-sm font-medium text-muted-foreground px-2">Сотрудник</div>
+                  {days.map((day, idx) => {
+                    const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
+                    return (
+                      <div 
+                        key={day.toISOString()} 
+                        className={cn(
+                          "text-center text-sm p-1 rounded-md",
+                          isToday(day) ? "bg-primary/10 font-semibold" : "text-muted-foreground",
+                          getDay(day) === 0 || getDay(day) === 6 ? "bg-muted/50" : ""
+                        )}
+                      >
+                        <div className="font-medium text-xs">
+                          {format(day, "EEE", { locale: ru })}
+                        </div>
+                        <div className={cn(
+                          "text-xs",
+                          isToday(day) ? "text-primary" : ""
+                        )}>
+                          {daysCount > 14 
+                            ? format(day, "d", { locale: ru })
+                            : format(day, "d MMM", { locale: ru })
+                          }
+                        </div>
+                        {showMonth && daysCount > 14 && (
+                          <div className="text-[9px] text-muted-foreground">
+                            {format(day, "MMM", { locale: ru })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Group name */}
                 <div className="text-sm font-medium text-muted-foreground mb-2 px-2 py-1 bg-muted/50 rounded">
                   {scheduleName} ({ops.length})
                 </div>
