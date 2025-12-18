@@ -7,7 +7,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth, startOfWeek, startOfMonth, getDaysInMonth, addMonths, subMonths } from "date-fns";
+import { format, addDays, differenceInWeeks, differenceInDays, differenceInCalendarDays, startOfDay, isToday, getDay, isSameMonth, startOfWeek, startOfMonth, getDaysInMonth, addMonths, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp, CalendarDays, ChevronLeft, ChevronRightIcon, Phone, Mail, Briefcase, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -95,43 +95,61 @@ interface ShiftRotationCalendarProps {
 
 type PeriodType = "7" | "14" | "30" | "month" | "year" | "custom";
 
+// Parse backend date strings safely ("YYYY-MM-DD" should be treated as local date)
+const parseDateOnly = (value?: string | null): Date | null => {
+  if (!value) return null;
+
+  // Typical Postgres date comes as YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-").map(Number);
+    if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+      return new Date(y, m - 1, d);
+    }
+  }
+
+  const dt = new Date(value);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+};
+
 // Check if date is a working day based on schedule type
 const isWorkingDay = (schedule: any, date: Date, operator: any): boolean => {
   const scheduleType = schedule?.schedule_type;
   const cycleDaysOn = schedule?.cycle_days_on || 5;
   const cycleDaysOff = schedule?.cycle_days_off || 2;
   const dayOfWeek = getDay(date); // 0 = Sunday, 6 = Saturday
-  
+
   // For weekly or shift schedules with 5/2 pattern - standard work week (Mon-Fri work, Sat-Sun off)
   // This applies when: schedule_type is 'weekly', 'shift', '5/2', or when cycle is 5 on / 2 off
   if (
-    scheduleType === 'weekly' || 
-    scheduleType === '5/2' || 
-    (scheduleType === 'shift' && cycleDaysOn === 5 && cycleDaysOff === 2) ||
-    (cycleDaysOn === 5 && cycleDaysOff === 2 && scheduleType !== 'cyclic')
+    scheduleType === "weekly" ||
+    scheduleType === "5/2" ||
+    (scheduleType === "shift" && cycleDaysOn === 5 && cycleDaysOff === 2) ||
+    (cycleDaysOn === 5 && cycleDaysOff === 2 && scheduleType !== "cyclic")
   ) {
     return dayOfWeek !== 0 && dayOfWeek !== 6; // Mon-Fri are working days
   }
-  
-  // For cyclic schedules (2/2, 3/3, etc.) - calculate based on schedule's cycle_start_date
-  if (scheduleType === 'cyclic') {
+
+  // For cyclic schedules (2/2, 3/3, etc.) - calculate per-operator cycle start (fallback to schedule default)
+  if (scheduleType === "cyclic") {
     const cycleLength = cycleDaysOn + cycleDaysOff;
-    // Use schedule's cycle_start_date as the reference for all operators on this schedule
-    const cycleStartDate = schedule?.cycle_start_date 
-      ? new Date(schedule.cycle_start_date) 
-      : new Date('2024-01-01');
-    
-    const daysDiff = differenceInDays(date, cycleStartDate);
+
+    // IMPORTANT: cycle start is per operator (operators can start their 2/2 on different days)
+    const reference =
+      parseDateOnly(operator?.shift_rotation_start_date) ??
+      parseDateOnly(schedule?.cycle_start_date) ??
+      new Date(2024, 0, 1);
+
+    const daysDiff = differenceInCalendarDays(startOfDay(date), startOfDay(reference));
     const dayInCycle = ((daysDiff % cycleLength) + cycleLength) % cycleLength;
-    
+
     return dayInCycle < cycleDaysOn;
   }
-  
+
   // Default - check by day of week for any 5/2 pattern
   if (cycleDaysOn === 5 && cycleDaysOff === 2) {
     return dayOfWeek !== 0 && dayOfWeek !== 6;
   }
-  
+
   // Default - always working
   return true;
 };
