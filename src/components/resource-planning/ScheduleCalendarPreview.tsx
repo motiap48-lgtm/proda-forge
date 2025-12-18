@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from "react";
-import { format, addDays, getDay, differenceInDays } from "date-fns";
+import { format, addDays, getDay, differenceInDays, startOfYear } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,12 +14,12 @@ interface ScheduleCalendarPreviewProps {
     work_schedule_shifts?: any[];
   };
   defaultDays?: number;
-  startDate?: Date;
+  cycleStartDate?: Date;
   showPeriodSelector?: boolean;
 }
 
 // Check if date is a working day based on schedule type
-const isWorkingDay = (schedule: any, date: Date, startDate: Date): boolean => {
+const isWorkingDay = (schedule: any, date: Date, cycleStartDate: Date): boolean => {
   const scheduleType = schedule?.schedule_type;
   const cycleDaysOn = schedule?.cycle_days_on || 5;
   const cycleDaysOff = schedule?.cycle_days_off || 2;
@@ -31,9 +31,11 @@ const isWorkingDay = (schedule: any, date: Date, startDate: Date): boolean => {
     return dayOfWeek !== 0 && dayOfWeek !== 6;
   }
   
-  // For cyclic schedules (2/2, 3/3, etc.) - calculate based on cycle
+  // For cyclic schedules (2/2, 3/3, etc.) - calculate based on cycle from reference date
+  // Use start of current year as reference point for consistent pattern display
   const cycleLength = cycleDaysOn + cycleDaysOff;
-  const daysDiff = differenceInDays(date, startDate);
+  const referenceDate = cycleStartDate || startOfYear(new Date());
+  const daysDiff = differenceInDays(date, referenceDate);
   const dayInCycle = ((daysDiff % cycleLength) + cycleLength) % cycleLength;
   
   return dayInCycle < cycleDaysOn;
@@ -42,7 +44,7 @@ const isWorkingDay = (schedule: any, date: Date, startDate: Date): boolean => {
 export const ScheduleCalendarPreview = ({ 
   schedule, 
   defaultDays = 7,
-  startDate = new Date(),
+  cycleStartDate,
   showPeriodSelector = true
 }: ScheduleCalendarPreviewProps) => {
   const [selectedPeriod, setSelectedPeriod] = useState<string>(String(defaultDays));
@@ -142,7 +144,8 @@ export const ScheduleCalendarPreview = ({
             days > 7 ? "w-max" : ""
           )}>
             {daysArray.map((day) => {
-              const isWorking = isWorkingDay(schedule, day, startDate);
+              const referenceDate = cycleStartDate || startOfYear(new Date());
+              const isWorking = isWorkingDay(schedule, day, referenceDate);
               const isTodayDate = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
               
               return (
