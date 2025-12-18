@@ -558,16 +558,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const isAllExpanded = collapsedGroups.size === 0;
   const isAllCollapsed = allGroupNames.length > 0 && collapsedGroups.size === allGroupNames.length;
 
-  // Uses minmax() so columns stretch when space available, scroll when not
+  // Use minmax() for minimum column width with horizontal scroll when needed
   const gridStyle = useMemo(() => {
     if (period === "year") {
       return {
-        gridTemplateColumns: `200px repeat(12, 1fr) 80px`
+        gridTemplateColumns: `200px repeat(12, minmax(70px, 1fr)) 80px`,
+        minWidth: `${200 + 12 * 70 + 80}px`
       };
     }
-    // Use 1fr for day columns so they stretch evenly
+    // Minimum 50px per day column for readability
+    const minColWidth = daysCount > 14 ? 50 : 70;
     return {
-      gridTemplateColumns: `200px repeat(${daysCount}, 1fr) 80px`
+      gridTemplateColumns: `200px repeat(${daysCount}, minmax(${minColWidth}px, 1fr)) 80px`,
+      minWidth: `${200 + daysCount * minColWidth + 80}px`
     };
   }, [period, daysCount]);
 
@@ -1458,7 +1461,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           </div>
                         </div>
                       ))}
-                      <div className="text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                      <div className="text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium sticky right-0 z-10 shadow-sm border-l border-border">
                         <Clock className="h-3 w-3 mx-auto mb-0.5" />
                         <div className="text-[10px]">Год</div>
                       </div>
@@ -1507,7 +1510,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             );
                           })}
 
-                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium sticky right-0 z-10 shadow-sm border-l border-border">
                             <div>{yearlyTotal.hours}ч</div>
                             {yearlyTotal.minutes > 0 && (
                               <div className="text-[10px] opacity-80">{yearlyTotal.minutes}м</div>
@@ -1542,7 +1545,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                               </div>
                             );
                           })}
-                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold">
+                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold sticky right-0 z-10 shadow-sm border-l border-border">
                             <div>{groupYearlyTotal.hours}ч</div>
                             {groupYearlyTotal.minutes > 0 && (
                               <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>
@@ -1593,7 +1596,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         );
                       })}
                       {/* Total hours header */}
-                      <div className="text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                      <div className="text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium sticky right-0 z-10 shadow-sm border-l border-border">
                         <Clock className="h-3 w-3 mx-auto mb-0.5" />
                         <div className="text-[10px]">Итого</div>
                       </div>
@@ -1699,7 +1702,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           })}
 
                           {/* Total hours cell */}
-                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium sticky right-0 z-10 shadow-sm border-l border-border">
                             <div>{totalHours.hours}ч</div>
                             {totalHours.minutes > 0 && (
                               <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>
@@ -1735,7 +1738,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                               —
                             </div>
                           ))}
-                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold">
+                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold sticky right-0 z-10 shadow-sm border-l border-border">
                             <div>{groupStats.totalHours}ч</div>
                             {groupStats.totalMinutes > 0 && (
                               <div className="text-[10px]">{groupStats.totalMinutes}м</div>
@@ -1792,7 +1795,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       ? calculateGroupYearlyTotal(filteredOperators)
                       : calculateGroupTotalHours(filteredOperators);
                     return (
-                      <div className="text-center p-2 rounded-md text-sm bg-primary text-primary-foreground font-bold">
+                      <div className="text-center p-2 rounded-md text-sm bg-primary text-primary-foreground font-bold sticky right-0 z-10 shadow-sm border-l border-border">
                         <div>{grandTotal.hours}ч</div>
                         {grandTotal.minutes > 0 && (
                           <div className="text-xs opacity-80">{grandTotal.minutes}м</div>
