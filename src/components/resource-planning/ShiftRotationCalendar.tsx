@@ -640,7 +640,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       display: "grid",
       width: "100%",
       gridTemplateColumns: `repeat(${colCount}, minmax(${minColWidth}px, 1fr)) 70px`,
-      gap: `${gapPx}px`,
+      columnGap: `${gapPx}px`,
+      // IMPORTANT: vertical gaps must be 0, otherwise rows will drift vs the employee list
+      rowGap: "0px",
       minWidth: `${totalMinWidth}px`,
     };
   }, [period, daysCount, columnWidth]);
