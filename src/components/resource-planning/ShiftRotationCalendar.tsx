@@ -206,6 +206,7 @@ const getShiftColor = (shiftName: string, index: number) => {
 
 export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
   const [period, setPeriod] = useState<PeriodType>("7");
+  const [comparisonPeriod, setComparisonPeriod] = useState<PeriodType | null>(null);
   const [scheduleFilter, setScheduleFilter] = useState<string>("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [startDate, setStartDate] = useState<Date>(new Date());
@@ -505,7 +506,49 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     };
   };
 
-  // Export to Excel with group totals and grand total
+  // Calculate grand total for all filtered operators
+  const grandTotal = useMemo(() => {
+    let totalMinutes = 0;
+    filteredOperators.forEach(operator => {
+      const opTotal = calculateTotalHours(operator);
+      totalMinutes += opTotal.hours * 60 + opTotal.minutes;
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  }, [filteredOperators, days]);
+
+  // Calculate comparison period days
+  const comparisonDays = useMemo(() => {
+    if (!comparisonPeriod) return [];
+    const compDaysCount = comparisonPeriod === "month" 
+      ? getDaysInMonth(startDate) 
+      : comparisonPeriod === "year" 
+        ? 365 
+        : parseInt(comparisonPeriod);
+    return Array.from({ length: compDaysCount }, (_, i) => addDays(startDate, i));
+  }, [comparisonPeriod, startDate]);
+
+  // Calculate comparison period total
+  const comparisonTotal = useMemo(() => {
+    if (!comparisonPeriod || comparisonDays.length === 0) return null;
+    let totalMinutes = 0;
+    filteredOperators.forEach(operator => {
+      comparisonDays.forEach(day => {
+        const shift = getShiftForDate(operator, day);
+        if (shift) {
+          const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+          totalMinutes += netMinutes;
+        }
+      });
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  }, [comparisonPeriod, comparisonDays, filteredOperators]);
+
   const handleExportToExcel = () => {
     const wb = XLSX.utils.book_new();
     
@@ -754,6 +797,76 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 Год
               </ToggleGroupItem>
             </ToggleGroup>
+
+            {/* Operators & Time indicator */}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md border">
+              <div className="flex items-center gap-1.5 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{filteredOperators.length}</span>
+              </div>
+              <div className="w-px h-4 bg-border" />
+              <div className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+                <Clock className="h-4 w-4" />
+                <span className="font-medium">
+                  {grandTotal.hours}ч{grandTotal.minutes > 0 ? ` ${grandTotal.minutes}м` : ''}
+                </span>
+              </div>
+              {comparisonTotal && (
+                <>
+                  <div className="w-px h-4 bg-border" />
+                  <div className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400">
+                    <span className="text-xs text-muted-foreground">vs</span>
+                    <span className="font-medium">
+                      {comparisonTotal.hours}ч{comparisonTotal.minutes > 0 ? ` ${comparisonTotal.minutes}м` : ''}
+                    </span>
+                    {(() => {
+                      const diff = (grandTotal.hours * 60 + grandTotal.minutes) - (comparisonTotal.hours * 60 + comparisonTotal.minutes);
+                      const diffHours = Math.floor(Math.abs(diff) / 60);
+                      const diffMins = Math.abs(diff) % 60;
+                      if (diff === 0) return null;
+                      return (
+                        <Badge variant="outline" className={cn(
+                          "text-xs",
+                          diff > 0 ? "text-emerald-600 border-emerald-300" : "text-rose-600 border-rose-300"
+                        )}>
+                          {diff > 0 ? '+' : '-'}{diffHours > 0 ? `${diffHours}ч` : ''}{diffMins > 0 ? `${diffMins}м` : ''}
+                        </Badge>
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Comparison period selector */}
+            <Select 
+              value={comparisonPeriod || ""} 
+              onValueChange={(val) => setComparisonPeriod(val ? val as PeriodType : null)}
+            >
+              <SelectTrigger className={cn(
+                "w-[130px]", 
+                comparisonPeriod && "border-blue-400 bg-blue-50 dark:bg-blue-900/20"
+              )}>
+                <span className="text-xs">{comparisonPeriod ? `Сравн: ${comparisonPeriod === 'month' ? 'Мес' : comparisonPeriod === 'year' ? 'Год' : comparisonPeriod + 'д'}` : 'Сравнить...'}</span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7 дней</SelectItem>
+                <SelectItem value="14">14 дней</SelectItem>
+                <SelectItem value="30">30 дней</SelectItem>
+                <SelectItem value="month">Месяц</SelectItem>
+              </SelectContent>
+            </Select>
+            {comparisonPeriod && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setComparisonPeriod(null)}
+                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                title="Отменить сравнение"
+              >
+                ×
+              </Button>
+            )}
             
             {/* Custom period selector */}
             <Select value={period === "custom" ? "custom" : ""} onValueChange={(val) => val === "custom" && handlePeriodChange("custom")}>
