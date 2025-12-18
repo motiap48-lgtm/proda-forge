@@ -238,13 +238,13 @@ const getShiftForDate = (operator: any, date: Date) => {
   return shifts[0];
 };
 
-// Get unique shift colors - matching reference styling
+// Get unique shift colors - matching reference styling with gradients
 const getShiftColor = (shiftName: string, index: number) => {
   const colors = [
-    { bg: "bg-amber-200 dark:bg-amber-800/50", text: "text-amber-800 dark:text-amber-200", border: "border-amber-400 dark:border-amber-600" },
-    { bg: "bg-green-200 dark:bg-green-800/50", text: "text-green-800 dark:text-green-200", border: "border-green-400 dark:border-green-600" },
-    { bg: "bg-purple-200 dark:bg-purple-800/50", text: "text-purple-800 dark:text-purple-200", border: "border-purple-400 dark:border-purple-600" },
-    { bg: "bg-blue-200 dark:bg-blue-800/50", text: "text-blue-800 dark:text-blue-200", border: "border-blue-400 dark:border-blue-600" },
+    { bg: "bg-gradient-to-b from-amber-300 to-amber-400 dark:from-amber-700 dark:to-amber-800", text: "text-amber-900 dark:text-amber-100", border: "border-amber-500 dark:border-amber-600" },
+    { bg: "bg-gradient-to-b from-green-300 to-green-400 dark:from-green-700 dark:to-green-800", text: "text-green-900 dark:text-green-100", border: "border-green-500 dark:border-green-600" },
+    { bg: "bg-gradient-to-b from-purple-300 to-purple-400 dark:from-purple-700 dark:to-purple-800", text: "text-purple-900 dark:text-purple-100", border: "border-purple-500 dark:border-purple-600" },
+    { bg: "bg-gradient-to-b from-blue-300 to-blue-400 dark:from-blue-700 dark:to-blue-800", text: "text-blue-900 dark:text-blue-100", border: "border-blue-500 dark:border-blue-600" },
   ];
   return colors[index % colors.length];
 };
@@ -1610,7 +1610,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden"
                   >
                     {/* Employee column - fixed width, separate vertical scroll */}
-                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative" style={{ width: `${employeeColumnWidth}px` }}>
+                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative mr-1" style={{ width: `${employeeColumnWidth}px` }}>
                       {/* Employee header */}
                       <div className="flex-shrink-0 bg-muted/30 text-sm font-medium text-muted-foreground px-2 pt-1 h-[64px] flex items-center border-b border-border mb-1">
                         Сотрудник
@@ -1687,14 +1687,14 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             {months.map((month) => (
                               <div 
                                 key={month.toISOString()} 
-                                className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-muted/30"
+                                className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50"
                               >
                                 <div className="font-medium text-xs">
                                   {format(month, "LLL", { locale: ru })}
                                 </div>
                               </div>
                             ))}
-                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
                               <Clock className="h-3 w-3 mb-0.5" />
                               <div className="text-[10px]">Год</div>
                             </div>
@@ -1711,19 +1711,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                   className={cn(
                                     "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
                                     isTodayDate 
-                                      ? "bg-primary text-primary-foreground font-semibold ring-2 ring-primary ring-offset-1 ring-offset-background" 
+                                      ? "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-sm shadow-teal-500/30" 
                                       : isWeekend 
-                                        ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
-                                        : "text-muted-foreground bg-muted/30"
+                                        ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
+                                        : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground"
                                   )}
                                 >
                                   <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
-                                  <div className={cn("text-sm font-semibold", isTodayDate ? "" : isWeekend ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>{format(day, "d", { locale: ru })}</div>
+                                  <div className={cn("text-sm font-semibold", isTodayDate ? "text-white" : isWeekend ? "text-rose-600 dark:text-rose-300" : "text-foreground")}>{format(day, "d", { locale: ru })}</div>
                                   {(showMonth || daysCount <= 14) && <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>}
                                 </div>
                               );
                             })}
-                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
                               <Clock className="h-3 w-3 mb-0.5" />
                               <div className="text-[10px]">Итого</div>
                             </div>
@@ -1745,14 +1745,14 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                       return (
                                         <div 
                                           key={month.toISOString()} 
-                                          className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-b border-border/50"
+                                          className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-900/50 text-blue-700 dark:text-blue-300"
                                         >
                                           <div className="font-medium">{monthHours.hours}ч</div>
                                           {monthHours.minutes > 0 && <div className="text-[10px] opacity-80">{monthHours.minutes}м</div>}
                                         </div>
                                       );
                                     })}
-                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border-b border-border/50">
+                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
                                       <div>{yearlyTotal.hours}ч</div>
                                       {yearlyTotal.minutes > 0 && <div className="text-[10px]">{yearlyTotal.minutes}м</div>}
                                     </div>
@@ -1771,12 +1771,12 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                       const h = Math.floor(monthTotal / 60);
                                       const m = monthTotal % 60;
                                       return (
-                                        <div key={month.toISOString()} className="text-center h-[44px] flex items-center justify-center text-[10px] text-muted-foreground bg-muted/30 border-t border-border">
+                                        <div key={month.toISOString()} className="text-center h-[44px] flex items-center justify-center text-[10px] text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">
                                           {h}ч{m > 0 ? ` ${m}м` : ''}
                                         </div>
                                       );
                                     })}
-                                    <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold border-t border-border">
+                                    <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
                                       <div>{groupYearlyTotal.hours}ч</div>
                                       {groupYearlyTotal.minutes > 0 && <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>}
                                     </div>
@@ -1804,13 +1804,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                         <div 
                                           key={day.toISOString()} 
                                           className={cn(
-                                            "text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative border-b border-border/50",
+                                            "text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative",
                                             colors 
                                               ? cn(colors.bg, colors.text, "border", colors.border) 
                                               : isWeekend 
-                                                ? "bg-rose-50 dark:bg-rose-900/20" 
-                                                : "bg-muted/20",
-                                            isToday(day) && "ring-2 ring-primary/30"
+                                                ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
+                                                : "bg-gradient-to-b from-muted/20 to-muted/40",
+                                            isToday(day) && "ring-1 ring-cyan-500/50 ring-offset-1 ring-offset-background"
                                           )}
                                           title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
                                         >
@@ -1831,7 +1831,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                         </div>
                                       );
                                     })}
-                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium border-b border-border/50">
+                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
                                       <div>{totalHours.hours}ч</div>
                                       {totalHours.minutes > 0 && <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>}
                                     </div>
@@ -1845,9 +1845,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                 return (
                                   <>
                                     {days.map((day) => (
-                                      <div key={day.toISOString()} className="text-center h-[44px] flex items-center justify-center text-xs text-muted-foreground bg-muted/30 border-t border-border">—</div>
+                                      <div key={day.toISOString()} className="text-center h-[44px] flex items-center justify-center text-xs text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">—</div>
                                     ))}
-                                    <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold border-t border-border">
+                                    <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
                                       <div>{groupStats.totalHours}ч</div>
                                       {groupStats.totalMinutes > 0 && <div className="text-[10px]">{groupStats.totalMinutes}м</div>}
                                     </div>
