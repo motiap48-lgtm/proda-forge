@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, Clock, Calendar, Coffee, Edit, Trash2, Wand2 } from "lucide-react";
 import { useWorkSchedules, useDeleteWorkSchedule } from "@/hooks/useResourcePlanning";
 import { WorkScheduleDialog } from "./WorkScheduleDialog";
+import { ScheduleCalendarPreview } from "./ScheduleCalendarPreview";
 import {
   Tooltip,
   TooltipContent,
@@ -218,6 +219,11 @@ export const WorkSchedulesTab = () => {
                     })()}
                   </div>
                 )}
+
+                {/* Schedule Calendar Preview */}
+                <div className="border-t pt-3 mt-3">
+                  <ScheduleCalendarPreview schedule={schedule} days={7} />
+                </div>
 
                 {schedule.description && (
                   <p className="text-sm text-muted-foreground">{schedule.description}</p>
