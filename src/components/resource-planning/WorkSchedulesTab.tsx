@@ -43,6 +43,7 @@ export const WorkSchedulesTab = () => {
     switch (type) {
       case "shift": return "Сменный";
       case "weekly": return "Пятидневка";
+      case "cyclic": return "Скользящий";
       case "custom": return "Произвольный";
       default: return type;
     }
