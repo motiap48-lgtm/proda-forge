@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth } from "date-fns";
+import { format, addDays, differenceInWeeks, differenceInDays, isToday, getDay, isSameMonth, startOfWeek } from "date-fns";
 import { ru } from "date-fns/locale";
 import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -80,7 +80,27 @@ const getShiftForDate = (operator: any, date: Date) => {
     const startDate = operator.shift_rotation_start_date 
       ? new Date(operator.shift_rotation_start_date) 
       : new Date();
-    const weeksDiff = differenceInWeeks(date, startDate);
+    
+    // For 5/2 schedules - rotation happens on Mondays (start of calendar week)
+    const cycleDaysOn = schedule?.cycle_days_on || 5;
+    const cycleDaysOff = schedule?.cycle_days_off || 2;
+    const scheduleType = schedule?.schedule_type;
+    
+    const is52Schedule = 
+      scheduleType === 'weekly' || 
+      scheduleType === '5/2' || 
+      (cycleDaysOn === 5 && cycleDaysOff === 2);
+    
+    let weeksDiff: number;
+    if (is52Schedule) {
+      // Use Monday as start of week for 5/2 schedules
+      const startOfCurrentWeek = startOfWeek(date, { weekStartsOn: 1 }); // Monday
+      const startOfRotationWeek = startOfWeek(startDate, { weekStartsOn: 1 });
+      weeksDiff = differenceInWeeks(startOfCurrentWeek, startOfRotationWeek);
+    } else {
+      weeksDiff = differenceInWeeks(date, startDate);
+    }
+    
     const startingShift = operator.assigned_shift_number || 1;
     const currentShiftNumber = ((startingShift - 1 + weeksDiff) % shifts.length) + 1;
     return shifts.find((s: any) => s.shift_number === currentShiftNumber);
