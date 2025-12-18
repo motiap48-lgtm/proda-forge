@@ -263,6 +263,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const printRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollInfo, setScrollInfo] = useState({ scrollLeft: 0, scrollWidth: 0, clientWidth: 0 });
+  const [stickyTotal, setStickyTotal] = useState(false);
   
   const updateOperator = useUpdateOperator();
 
@@ -1369,6 +1370,21 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
               </Button>
             </div>
 
+            {/* Sticky total toggle */}
+            <Button
+              variant={stickyTotal ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStickyTotal(!stickyTotal)}
+              className={cn(
+                "gap-1.5 text-xs",
+                stickyTotal && "bg-emerald-600 hover:bg-emerald-700 text-white"
+              )}
+              title="Закрепить колонку Итого справа"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              Закрепить Итого
+            </Button>
+
             {/* Shift legend */}
             <div className="flex gap-2 border-l pl-3 ml-1">
               {Array.from(shiftColorMap.entries()).map(([name, colors]) => (
@@ -1483,7 +1499,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           </div>
                         </div>
                       ))}
-                      <div className="text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                      <div className={cn(
+                        "text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium",
+                        stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
+                      )}>
                         <Clock className="h-3 w-3 mx-auto mb-0.5" />
                         <div className="text-[10px]">Год</div>
                       </div>
@@ -1532,7 +1551,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                             );
                           })}
 
-                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                          <div className={cn(
+                            "text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium",
+                            stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
+                          )}>
                             <div>{yearlyTotal.hours}ч</div>
                             {yearlyTotal.minutes > 0 && (
                               <div className="text-[10px] opacity-80">{yearlyTotal.minutes}м</div>
@@ -1567,7 +1589,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                               </div>
                             );
                           })}
-                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold">
+                          <div className={cn(
+                            "text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold",
+                            stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
+                          )}>
                             <div>{groupYearlyTotal.hours}ч</div>
                             {groupYearlyTotal.minutes > 0 && (
                               <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>
@@ -1618,7 +1643,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         );
                       })}
                       {/* Total hours header */}
-                      <div className="text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                      <div className={cn(
+                        "text-center text-sm p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium",
+                        stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
+                      )}>
                         <Clock className="h-3 w-3 mx-auto mb-0.5" />
                         <div className="text-[10px]">Итого</div>
                       </div>
@@ -1724,7 +1752,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           })}
 
                           {/* Total hours cell */}
-                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                          <div className={cn(
+                            "text-center p-1.5 rounded-md text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium",
+                            stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
+                          )}>
                             <div>{totalHours.hours}ч</div>
                             {totalHours.minutes > 0 && (
                               <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>
@@ -1760,7 +1791,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                               —
                             </div>
                           ))}
-                          <div className="text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold">
+                          <div className={cn(
+                            "text-center p-1.5 rounded-md text-xs bg-emerald-200 dark:bg-emerald-800/50 text-emerald-800 dark:text-emerald-200 font-bold",
+                            stickyTotal && "sticky right-0 z-20 border-l border-border shadow-sm"
+                          )}>
                             <div>{groupStats.totalHours}ч</div>
                             {groupStats.totalMinutes > 0 && (
                               <div className="text-[10px]">{groupStats.totalMinutes}м</div>
@@ -1817,7 +1851,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       ? calculateGroupYearlyTotal(filteredOperators)
                       : calculateGroupTotalHours(filteredOperators);
                     return (
-                      <div className="text-center p-2 rounded-md text-sm bg-primary text-primary-foreground font-bold">
+                      <div className={cn(
+                        "text-center p-2 rounded-md text-sm bg-primary text-primary-foreground font-bold",
+                        stickyTotal && "sticky right-0 z-20 border-l border-primary-foreground/20 shadow-sm"
+                      )}>
                         <div>{grandTotal.hours}ч</div>
                         {grandTotal.minutes > 0 && (
                           <div className="text-xs opacity-80">{grandTotal.minutes}м</div>
@@ -1831,20 +1868,53 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           </div>
         </div>
         
-        {/* Scroll indicator */}
+        {/* Scroll indicator with navigation buttons */}
         {scrollInfo.scrollWidth > scrollInfo.clientWidth && (
           <div className="px-6 pb-3">
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary/50 rounded-full transition-all duration-150"
-                style={{
-                  width: `${(scrollInfo.clientWidth / scrollInfo.scrollWidth) * 100}%`,
-                  marginLeft: `${(scrollInfo.scrollLeft / scrollInfo.scrollWidth) * 100}%`
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => {
+                  if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                  }
                 }}
-              />
+                title="В начало"
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary/50 rounded-full transition-all duration-150"
+                  style={{
+                    width: `${(scrollInfo.clientWidth / scrollInfo.scrollWidth) * 100}%`,
+                    marginLeft: `${(scrollInfo.scrollLeft / scrollInfo.scrollWidth) * 100}%`
+                  }}
+                />
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => {
+                  if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTo({ 
+                      left: scrollContainerRef.current.scrollWidth, 
+                      behavior: 'smooth' 
+                    });
+                  }
+                }}
+                title="В конец"
+              >
+                <ChevronRightIcon className="h-3 w-3" />
+              </Button>
             </div>
             <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-              <span>← Прокрутите для просмотра</span>
+              <span>← Прокрутите для просмотра →</span>
               <span>{Math.round((scrollInfo.scrollLeft + scrollInfo.clientWidth) / scrollInfo.scrollWidth * 100)}%</span>
             </div>
           </div>
