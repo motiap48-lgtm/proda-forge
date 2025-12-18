@@ -112,16 +112,15 @@ const isWorkingDay = (schedule: any, date: Date, operator: any): boolean => {
     return dayOfWeek !== 0 && dayOfWeek !== 6; // Mon-Fri are working days
   }
   
-  // For cyclic schedules (2/2, 3/3, etc.) - calculate based on cycle rotation
+  // For cyclic schedules (2/2, 3/3, etc.) - calculate based on schedule's cycle_start_date
   if (scheduleType === 'cyclic') {
     const cycleLength = cycleDaysOn + cycleDaysOff;
-    const startDate = operator.shift_rotation_start_date 
-      ? new Date(operator.shift_rotation_start_date) 
-      : operator.hire_date 
-        ? new Date(operator.hire_date) 
-        : new Date();
+    // Use schedule's cycle_start_date as the reference for all operators on this schedule
+    const cycleStartDate = schedule?.cycle_start_date 
+      ? new Date(schedule.cycle_start_date) 
+      : new Date('2024-01-01');
     
-    const daysDiff = differenceInDays(date, startDate);
+    const daysDiff = differenceInDays(date, cycleStartDate);
     const dayInCycle = ((daysDiff % cycleLength) + cycleLength) % cycleLength;
     
     return dayInCycle < cycleDaysOn;
