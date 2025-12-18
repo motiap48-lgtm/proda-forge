@@ -1738,7 +1738,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       </div>
                       
                       {/* Calendar body */}
-                      <div className="px-2" style={calendarGridStyle}>
+                      <div className="px-2 pb-1" style={calendarGridStyle}>
                           {period === "year" ? (
                             <>
                               {/* Year view - Operator rows */}
@@ -1891,9 +1891,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 <div 
                   ref={registerScrollContainer('grand-total')}
                   onScroll={handleSyncScroll('grand-total')}
-                  className="overflow-x-auto flex-1 min-w-0"
+                  className="flex-1 min-w-0 overflow-x-auto scrollbar-overlay"
                 >
-                  <div style={calendarGridStyle} className="px-2">
+                  <div style={calendarGridStyle} className="px-2 pb-1">
                       {period === "year" ? (
                         <>
                           {months.map((month) => {
