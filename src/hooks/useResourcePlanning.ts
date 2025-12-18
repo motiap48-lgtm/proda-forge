@@ -122,7 +122,13 @@ export const useOperators = () => {
           *,
           work_centers:default_work_center_id (id, name, code),
           work_schedules:work_schedule_id (
-            id, name, code,
+            id,
+            name,
+            code,
+            schedule_type,
+            cycle_days_on,
+            cycle_days_off,
+            cycle_start_date,
             work_schedule_shifts (
               id, shift_number, shift_name, net_work_minutes, gross_work_minutes, break_minutes
             )
@@ -242,7 +248,13 @@ export const useBrigades = () => {
           *,
           work_centers:default_work_center_id (id, name, code),
           work_schedules:work_schedule_id (
-            id, name, code,
+            id,
+            name,
+            code,
+            schedule_type,
+            cycle_days_on,
+            cycle_days_off,
+            cycle_start_date,
             work_schedule_shifts (
               id, shift_name, net_work_minutes, gross_work_minutes, break_minutes
             )
