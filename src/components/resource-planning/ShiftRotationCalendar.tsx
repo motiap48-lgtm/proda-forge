@@ -1878,21 +1878,22 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
 
             {/* Grand total */}
             {filteredOperators.length > 0 && (
-              <div className="mt-4 pt-4 border-t-2 border-primary/20">
-                <div className="border border-primary/30 rounded-lg bg-primary/5 flex">
-                  {/* Fixed label column */}
-                  <div className="flex-shrink-0 border-r border-border bg-primary/5 px-2 py-2 text-sm font-bold flex items-center gap-2 h-[52px]" style={{ width: `${employeeColumnWidth}px` }}>
+              <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden">
+                {/* Fixed label column - same structure as employee column */}
+                <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex flex-col relative" style={{ width: `${employeeColumnWidth}px` }}>
+                  <div className="px-3 h-[52px] flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
-                  
-                  {/* Scrollable total area */}
-                  <div 
-                    ref={registerScrollContainer('grand-total')}
-                    onScroll={handleSyncScroll('grand-total')}
-                    className="overflow-x-auto flex-1 min-w-0"
-                  >
-                    <div style={calendarGridStyle} className="min-h-[52px] items-center px-2">
+                </div>
+                
+                {/* Scrollable total area */}
+                <div 
+                  ref={registerScrollContainer('grand-total')}
+                  onScroll={handleSyncScroll('grand-total')}
+                  className="overflow-x-auto flex-1 min-w-0"
+                >
+                  <div style={calendarGridStyle} className="px-2">
                       {period === "year" ? (
                         <>
                           {months.map((month) => {
@@ -1946,7 +1947,6 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     </div>
                   </div>
                 </div>
-              </div>
             )}
             </div>
           </div>
