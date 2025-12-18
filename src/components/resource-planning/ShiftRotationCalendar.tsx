@@ -22,15 +22,21 @@ const isWorkingDay = (schedule: any, date: Date, operator: any): boolean => {
   const scheduleType = schedule?.schedule_type;
   const cycleDaysOn = schedule?.cycle_days_on || 5;
   const cycleDaysOff = schedule?.cycle_days_off || 2;
+  const dayOfWeek = getDay(date); // 0 = Sunday, 6 = Saturday
   
-  // For 5/2 schedule - standard work week (Mon-Fri work, Sat-Sun off)
-  if (scheduleType === '5/2') {
-    const dayOfWeek = getDay(date); // 0 = Sunday, 6 = Saturday
-    return dayOfWeek !== 0 && dayOfWeek !== 6;
+  // For weekly or shift schedules with 5/2 pattern - standard work week (Mon-Fri work, Sat-Sun off)
+  // This applies when: schedule_type is 'weekly', 'shift', '5/2', or when cycle is 5 on / 2 off
+  if (
+    scheduleType === 'weekly' || 
+    scheduleType === '5/2' || 
+    (scheduleType === 'shift' && cycleDaysOn === 5 && cycleDaysOff === 2) ||
+    (cycleDaysOn === 5 && cycleDaysOff === 2 && scheduleType !== 'cyclic')
+  ) {
+    return dayOfWeek !== 0 && dayOfWeek !== 6; // Mon-Fri are working days
   }
   
-  // For cyclic schedules (2/2, 3/3, etc.) - calculate based on cycle
-  if (scheduleType === 'cyclic' || (cycleDaysOn > 0 && cycleDaysOff > 0 && scheduleType !== '5/2')) {
+  // For cyclic schedules (2/2, 3/3, etc.) - calculate based on cycle rotation
+  if (scheduleType === 'cyclic') {
     const cycleLength = cycleDaysOn + cycleDaysOff;
     const startDate = operator.shift_rotation_start_date 
       ? new Date(operator.shift_rotation_start_date) 
@@ -42,6 +48,11 @@ const isWorkingDay = (schedule: any, date: Date, operator: any): boolean => {
     const dayInCycle = ((daysDiff % cycleLength) + cycleLength) % cycleLength;
     
     return dayInCycle < cycleDaysOn;
+  }
+  
+  // Default - check by day of week for any 5/2 pattern
+  if (cycleDaysOn === 5 && cycleDaysOff === 2) {
+    return dayOfWeek !== 0 && dayOfWeek !== 6;
   }
   
   // Default - always working
