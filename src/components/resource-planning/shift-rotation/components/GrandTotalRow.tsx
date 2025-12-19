@@ -70,7 +70,7 @@ export const GrandTotalRow: React.FC<GrandTotalRowProps> = ({
       <div 
         ref={registerScrollContainer('grand-total')}
         onScroll={handleSyncScroll('grand-total')}
-        className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden scrollbar-overlay flex items-center relative"
+        className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate"
       >
         <div style={calendarGridStyle} className="px-2 py-1.5 items-center">
           {period === "year" ? (
