@@ -86,8 +86,11 @@ export const useCalendarCalculations = ({
     const minColWidth = columnWidth;
     const gapPx = 4;
     const totalColPx = 70;
+    // Padding: pl-2 = 8px, pr-6 = 24px = 32px total
+    const paddingPx = 32;
 
-    const totalMinWidth = colCount * minColWidth + totalColPx + colCount * gapPx;
+    // Total min-width = (columns * width) + total column + (gaps between all columns) + padding
+    const totalMinWidth = colCount * minColWidth + totalColPx + (colCount) * gapPx + paddingPx;
 
     return {
       display: "grid",
