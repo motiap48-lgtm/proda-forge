@@ -8,6 +8,7 @@ interface OperatorInfoCardProps {
 
 export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator }) => (
   <div className="space-y-3">
+    {/* Employee name and code at the top */}
     <div className="flex items-center gap-3">
       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
         <User className="h-5 w-5 text-primary" />
@@ -18,14 +19,40 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator }) 
       </div>
     </div>
     
-    <div className="space-y-2 text-sm">
-      {operator.position && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Briefcase className="h-3.5 w-3.5" />
-          <span>{operator.position}</span>
-        </div>
+    {/* Position right after name */}
+    {operator.position && (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Briefcase className="h-3.5 w-3.5" />
+        <span>{operator.position}</span>
+      </div>
+    )}
+    
+    {/* Badges section */}
+    <div className="flex flex-wrap gap-1.5">
+      {operator.employee_type && (
+        <Badge variant="secondary" className="text-xs">
+          {operator.employee_type === 'станочник' ? 'Станочник' :
+           operator.employee_type === 'сборщик' ? 'Сборщик' :
+           operator.employee_type === 'сварщик' ? 'Сварщик' :
+           operator.employee_type === 'маляр' ? 'Маляр' :
+           operator.employee_type === 'универсал' ? 'Универсал' : operator.employee_type}
+        </Badge>
       )}
-      
+      {operator.shift_rotation_enabled && (
+        <Badge variant="outline" className="text-xs gap-1">
+          <RefreshCw className="h-3 w-3" />
+          Ротация
+        </Badge>
+      )}
+      {operator.assigned_shift_number && (
+        <Badge variant="outline" className="text-xs">
+          Смена {operator.assigned_shift_number}
+        </Badge>
+      )}
+    </div>
+    
+    {/* Additional info */}
+    <div className="space-y-2 text-sm border-t pt-2">
       {operator.work_schedules?.name && (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Calendar className="h-3.5 w-3.5" />
@@ -52,29 +79,6 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator }) 
           <Mail className="h-3.5 w-3.5" />
           <span>{operator.email}</span>
         </div>
-      )}
-    </div>
-    
-    <div className="flex flex-wrap gap-1.5 pt-1">
-      {operator.employee_type && (
-        <Badge variant="secondary" className="text-xs">
-          {operator.employee_type === 'станочник' ? 'Станочник' :
-           operator.employee_type === 'сборщик' ? 'Сборщик' :
-           operator.employee_type === 'сварщик' ? 'Сварщик' :
-           operator.employee_type === 'маляр' ? 'Маляр' :
-           operator.employee_type === 'универсал' ? 'Универсал' : operator.employee_type}
-        </Badge>
-      )}
-      {operator.shift_rotation_enabled && (
-        <Badge variant="outline" className="text-xs gap-1">
-          <RefreshCw className="h-3 w-3" />
-          Ротация
-        </Badge>
-      )}
-      {operator.assigned_shift_number && (
-        <Badge variant="outline" className="text-xs">
-          Смена {operator.assigned_shift_number}
-        </Badge>
       )}
     </div>
   </div>
