@@ -194,7 +194,7 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
                         )}
                       </div>
                     </HoverCardTrigger>
-                    <HoverCardContent className="w-80" side="right" align="start">
+                    <HoverCardContent className="w-80 z-[100]" side="right" align="start">
                       <OperatorInfoCard operator={operator} />
                     </HoverCardContent>
                   </HoverCard>
