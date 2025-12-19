@@ -1,253 +1,29 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { format, addDays, differenceInWeeks, differenceInDays, differenceInCalendarDays, startOfDay, isToday, getDay, isSameMonth, startOfWeek, startOfMonth, getDaysInMonth, addMonths, subMonths } from "date-fns";
+import React, { useMemo, useState, useRef } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { User } from "lucide-react";
+import { format, addDays, getDaysInMonth, getDay, isToday } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, User, Pencil, Calendar, FileDown, Printer, Filter, ChevronDown, ChevronRight, Clock, ChevronsUpDown, ChevronsDownUp, CalendarDays, ChevronLeft, ChevronRightIcon, Phone, Mail, Briefcase, Building2, RotateCcw, FileText, RefreshCcw, CalendarCheck, CalendarX } from "lucide-react";
 import { useUpdateOperator } from "@/hooks/useResourcePlanning";
 import { toast } from "sonner";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
-// Operator info card component for hover
-const OperatorInfoCard = ({ operator }: { operator: any }) => (
-  <div className="space-y-3">
-    <div className="flex items-center gap-3">
-      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-        <User className="h-5 w-5 text-primary" />
-      </div>
-      <div>
-        <p className="font-semibold">{operator.full_name}</p>
-        <p className="text-xs text-muted-foreground">{operator.code}</p>
-      </div>
-    </div>
-    
-    <div className="space-y-2 text-sm">
-      {operator.position && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Briefcase className="h-3.5 w-3.5" />
-          <span>{operator.position}</span>
-        </div>
-      )}
-      
-      {operator.work_schedules?.name && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Calendar className="h-3.5 w-3.5" />
-          <span>{operator.work_schedules.name}</span>
-        </div>
-      )}
-      
-      {operator.default_work_center?.name && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Building2 className="h-3.5 w-3.5" />
-          <span>{operator.default_work_center.name}</span>
-        </div>
-      )}
-      
-      {operator.phone && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Phone className="h-3.5 w-3.5" />
-          <span>{operator.phone}</span>
-        </div>
-      )}
-      
-      {operator.email && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Mail className="h-3.5 w-3.5" />
-          <span>{operator.email}</span>
-        </div>
-      )}
-    </div>
-    
-    <div className="flex flex-wrap gap-1.5 pt-1">
-      {operator.employee_type && (
-        <Badge variant="secondary" className="text-xs">
-          {operator.employee_type === 'станочник' ? 'Станочник' :
-           operator.employee_type === 'сборщик' ? 'Сборщик' :
-           operator.employee_type === 'сварщик' ? 'Сварщик' :
-           operator.employee_type === 'маляр' ? 'Маляр' :
-           operator.employee_type === 'универсал' ? 'Универсал' : operator.employee_type}
-        </Badge>
-      )}
-      {operator.shift_rotation_enabled && (
-        <Badge variant="outline" className="text-xs gap-1">
-          <RefreshCw className="h-3 w-3" />
-          Ротация
-        </Badge>
-      )}
-      {operator.assigned_shift_number && (
-        <Badge variant="outline" className="text-xs">
-          Смена {operator.assigned_shift_number}
-        </Badge>
-      )}
-    </div>
-  </div>
-);
+import {
+  useScrollSync,
+  useResizableColumn,
+  useCalendarCalculations,
+  CalendarToolbar,
+  ScheduleGroup,
+  GrandTotalRow,
+  getShiftForDate,
+  getCycleDayNumber,
+  type PeriodType,
+} from "./shift-rotation";
 
 interface ShiftRotationCalendarProps {
   operators: any[];
   onEditOperator?: (operator: any) => void;
 }
-
-type PeriodType = "1" | "7" | "14" | "30" | "month" | "year" | "custom";
-
-// Parse backend date strings safely ("YYYY-MM-DD" should be treated as local date)
-const parseDateOnly = (value?: string | null): Date | null => {
-  if (!value) return null;
-
-  // Typical Postgres date comes as YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [y, m, d] = value.split("-").map(Number);
-    if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
-      return new Date(y, m - 1, d);
-    }
-  }
-
-  const dt = new Date(value);
-  return Number.isNaN(dt.getTime()) ? null : dt;
-};
-
-// Check if date is a working day based on schedule type
-const isWorkingDay = (schedule: any, date: Date, operator: any): boolean => {
-  const scheduleType = schedule?.schedule_type;
-  const cycleDaysOn = schedule?.cycle_days_on || 5;
-  const cycleDaysOff = schedule?.cycle_days_off || 2;
-  const dayOfWeek = getDay(date); // 0 = Sunday, 6 = Saturday
-
-  // For weekly or shift schedules with 5/2 pattern - standard work week (Mon-Fri work, Sat-Sun off)
-  // This applies when: schedule_type is 'weekly', 'shift', '5/2', or when cycle is 5 on / 2 off
-  if (
-    scheduleType === "weekly" ||
-    scheduleType === "5/2" ||
-    (scheduleType === "shift" && cycleDaysOn === 5 && cycleDaysOff === 2) ||
-    (cycleDaysOn === 5 && cycleDaysOff === 2 && scheduleType !== "cyclic")
-  ) {
-    return dayOfWeek !== 0 && dayOfWeek !== 6; // Mon-Fri are working days
-  }
-
-  // For cyclic schedules (2/2, 3/3, etc.) - calculate per-operator cycle start (fallback to schedule default)
-  if (scheduleType === "cyclic") {
-    const cycleLength = cycleDaysOn + cycleDaysOff;
-
-    // IMPORTANT: cycle start is per operator (operators can start their 2/2 on different days)
-    const reference =
-      parseDateOnly(operator?.shift_rotation_start_date) ??
-      parseDateOnly(schedule?.cycle_start_date) ??
-      new Date(2024, 0, 1);
-
-    const daysDiff = differenceInCalendarDays(startOfDay(date), startOfDay(reference));
-    const dayInCycle = ((daysDiff % cycleLength) + cycleLength) % cycleLength;
-
-    return dayInCycle < cycleDaysOn;
-  }
-
-  // Default - check by day of week for any 5/2 pattern
-  if (cycleDaysOn === 5 && cycleDaysOff === 2) {
-    return dayOfWeek !== 0 && dayOfWeek !== 6;
-  }
-
-  // Default - always working
-  return true;
-};
-
-// Get cycle day number for cyclic schedules (1-based index within cycle)
-const getCycleDayNumber = (schedule: any, date: Date, operator: any): { dayInCycle: number; cycleLength: number; isWorkDay: boolean } | null => {
-  const scheduleType = schedule?.schedule_type;
-  if (scheduleType !== "cyclic") return null;
-
-  const cycleDaysOn = schedule?.cycle_days_on || 2;
-  const cycleDaysOff = schedule?.cycle_days_off || 2;
-  const cycleLength = cycleDaysOn + cycleDaysOff;
-
-  const reference =
-    parseDateOnly(operator?.shift_rotation_start_date) ??
-    parseDateOnly(schedule?.cycle_start_date) ??
-    new Date(2024, 0, 1);
-
-  const daysDiff = differenceInCalendarDays(startOfDay(date), startOfDay(reference));
-  const dayInCycle = ((daysDiff % cycleLength) + cycleLength) % cycleLength;
-
-  return {
-    dayInCycle: dayInCycle + 1, // 1-based
-    cycleLength,
-    isWorkDay: dayInCycle < cycleDaysOn
-  };
-};
-
-// Calculate shift for a given operator on a specific date
-const getShiftForDate = (operator: any, date: Date) => {
-  const schedule = operator.work_schedules;
-  const shifts = schedule?.work_schedule_shifts;
-  if (!shifts || shifts.length === 0) return null;
-  
-  // Check if this is a working day first
-  if (!isWorkingDay(schedule, date, operator)) {
-    return null; // Day off
-  }
-  
-  // If only one shift - always use it
-  if (shifts.length === 1) {
-    return shifts[0];
-  }
-  
-  // If rotation enabled
-  if (operator.shift_rotation_enabled && shifts.length >= 2) {
-    const startDate = operator.shift_rotation_start_date 
-      ? new Date(operator.shift_rotation_start_date) 
-      : new Date();
-    
-    // For 5/2 schedules - rotation happens on Mondays (start of calendar week)
-    const cycleDaysOn = schedule?.cycle_days_on || 5;
-    const cycleDaysOff = schedule?.cycle_days_off || 2;
-    const scheduleType = schedule?.schedule_type;
-    
-    const is52Schedule = 
-      scheduleType === 'weekly' || 
-      scheduleType === '5/2' || 
-      (cycleDaysOn === 5 && cycleDaysOff === 2);
-    
-    let weeksDiff: number;
-    if (is52Schedule) {
-      // Use Monday as start of week for 5/2 schedules
-      const startOfCurrentWeek = startOfWeek(date, { weekStartsOn: 1 }); // Monday
-      const startOfRotationWeek = startOfWeek(startDate, { weekStartsOn: 1 });
-      weeksDiff = differenceInWeeks(startOfCurrentWeek, startOfRotationWeek);
-    } else {
-      weeksDiff = differenceInWeeks(date, startDate);
-    }
-    
-    const startingShift = operator.assigned_shift_number || 1;
-    // Handle negative modulo correctly for dates before rotation start
-    const shiftIndex = ((((startingShift - 1 + weeksDiff) % shifts.length) + shifts.length) % shifts.length);
-    const currentShiftNumber = shiftIndex + 1;
-    return shifts.find((s: any) => s.shift_number === currentShiftNumber);
-  }
-  
-  // Fixed shift
-  if (operator.assigned_shift_number) {
-    return shifts.find((s: any) => s.shift_number === operator.assigned_shift_number);
-  }
-  
-  return shifts[0];
-};
-
-// Get unique shift colors - matching reference styling with gradients
-const getShiftColor = (shiftName: string, index: number) => {
-  const colors = [
-    { bg: "bg-gradient-to-b from-amber-300 to-amber-400 dark:from-amber-700 dark:to-amber-800", text: "text-amber-900 dark:text-amber-100", border: "border-amber-500 dark:border-amber-600" },
-    { bg: "bg-gradient-to-b from-green-300 to-green-400 dark:from-green-700 dark:to-green-800", text: "text-green-900 dark:text-green-100", border: "border-green-500 dark:border-green-600" },
-    { bg: "bg-gradient-to-b from-purple-300 to-purple-400 dark:from-purple-700 dark:to-purple-800", text: "text-purple-900 dark:text-purple-100", border: "border-purple-500 dark:border-purple-600" },
-    { bg: "bg-gradient-to-b from-blue-300 to-blue-400 dark:from-blue-700 dark:to-blue-800", text: "text-blue-900 dark:text-blue-100", border: "border-blue-500 dark:border-blue-600" },
-  ];
-  return colors[index % colors.length];
-};
 
 export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
   const [period, setPeriod] = useState<PeriodType>("7");
@@ -263,356 +39,21 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [isTodayColumnHovered, setIsTodayColumnHovered] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Refs for synchronized horizontal scrolling
-  const scrollContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
-  const isScrollingRef = useRef(false);
+  const {
+    calendarHeaderPadRightPx,
+    handleSyncScroll,
+    handleSyncVerticalScroll,
+    registerScrollContainer,
+    registerVerticalScrollContainer,
+  } = useScrollSync();
 
-  // Refs for synchronized vertical scrolling (employee column + calendar body)
-  const verticalScrollContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
-  const isVerticalScrollingRef = useRef(false);
-
-  // Keep calendar header aligned with calendar body when vertical scrollbar appears in body.
-  // We measure scrollbar width per schedule group and add equivalent right padding to header scroll container.
-  const [calendarHeaderPadRightPx, setCalendarHeaderPadRightPx] = useState<Record<string, number>>({});
-
-  const measureCalendarHeaderPad = useCallback(() => {
-    const next: Record<string, number> = {};
-
-    verticalScrollContainersRef.current.forEach((el, key) => {
-      if (!el) return;
-      if (!key.startsWith("cal-")) return;
-
-      const scheduleName = key.slice("cal-".length);
-      const hasVerticalScrollbar = el.scrollHeight > el.clientHeight + 1;
-      const scrollbarPx = hasVerticalScrollbar ? Math.max(0, el.offsetWidth - el.clientWidth) : 0;
-      next[scheduleName] = scrollbarPx;
-    });
-
-    setCalendarHeaderPadRightPx((prev) => {
-      const prevKeys = Object.keys(prev);
-      const nextKeys = Object.keys(next);
-      if (prevKeys.length !== nextKeys.length) return next;
-      for (const k of nextKeys) {
-        if (prev[k] !== next[k]) return next;
-      }
-      return prev;
-    });
-  }, []);
-
-  // Synchronized horizontal scroll handler
-  const handleSyncScroll = useCallback(
-    (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => {
-      if (isScrollingRef.current) return;
-
-      const source = event.currentTarget;
-      const scrollLeft = source.scrollLeft;
-
-      isScrollingRef.current = true;
-
-      scrollContainersRef.current.forEach((container, key) => {
-        if (key !== sourceKey && container && container.scrollLeft !== scrollLeft) {
-          container.scrollLeft = scrollLeft;
-        }
-      });
-
-      // Reset the flag after a short delay to allow next scroll event
-      requestAnimationFrame(() => {
-        isScrollingRef.current = false;
-      });
-    },
-    []
-  );
-
-  // Synchronized vertical scroll handler
-  const handleSyncVerticalScroll = useCallback(
-    (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => {
-      if (isVerticalScrollingRef.current) return;
-
-      const source = event.currentTarget;
-      const scrollTop = source.scrollTop;
-
-      isVerticalScrollingRef.current = true;
-
-      // Extract schedule group key from sourceKey (e.g., "emp-ScheduleName" -> "ScheduleName")
-      const scheduleGroup = sourceKey.replace(/^(emp-|cal-)/, "");
-
-      verticalScrollContainersRef.current.forEach((container, key) => {
-        // Only sync containers from the same schedule group
-        const containerGroup = key.replace(/^(emp-|cal-)/, "");
-        if (key !== sourceKey && containerGroup === scheduleGroup && container && container.scrollTop !== scrollTop) {
-          container.scrollTop = scrollTop;
-        }
-      });
-
-      requestAnimationFrame(() => {
-        isVerticalScrollingRef.current = false;
-      });
-    },
-    []
-  );
-
-  // Register horizontal scroll container ref
-  const registerScrollContainer = useCallback(
-    (key: string) => (el: HTMLDivElement | null) => {
-      if (el) {
-        scrollContainersRef.current.set(key, el);
-      } else {
-        scrollContainersRef.current.delete(key);
-      }
-    },
-    []
-  );
-
-  // Register vertical scroll container ref
-  const registerVerticalScrollContainer = useCallback(
-    (key: string) => (el: HTMLDivElement | null) => {
-      if (el) {
-        verticalScrollContainersRef.current.set(key, el);
-        // Newly mounted containers can change scrollbar presence
-        queueMicrotask(measureCalendarHeaderPad);
-      } else {
-        verticalScrollContainersRef.current.delete(key);
-        queueMicrotask(measureCalendarHeaderPad);
-      }
-    },
-    [measureCalendarHeaderPad]
-  );
-
-  useEffect(() => {
-    measureCalendarHeaderPad();
-    window.addEventListener("resize", measureCalendarHeaderPad);
-    return () => window.removeEventListener("resize", measureCalendarHeaderPad);
-  }, [measureCalendarHeaderPad]);
+  const {
+    employeeColumnWidth,
+    isResizing,
+    handleResizeMouseDown,
+  } = useResizableColumn();
 
   const updateOperator = useUpdateOperator();
-
-  const toggleGroupCollapse = (scheduleName: string) => {
-    setCollapsedGroups(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(scheduleName)) {
-        newSet.delete(scheduleName);
-      } else {
-        newSet.add(scheduleName);
-      }
-      return newSet;
-    });
-  };
-
-  const collapseAll = () => {
-    const allScheduleNames = Array.from(groupedBySchedule.keys());
-    setCollapsedGroups(new Set(allScheduleNames));
-  };
-
-  const expandAll = () => {
-    setCollapsedGroups(new Set());
-  };
-
-  // Calculate days count based on period type
-  const daysCount = useMemo(() => {
-    if (period === "month") {
-      return getDaysInMonth(startDate);
-    }
-    if (period === "year") {
-      return 365; // For year view we'll show monthly summaries instead
-    }
-    if (period === "custom" && endDate) {
-      return Math.max(1, differenceInDays(endDate, startDate) + 1);
-    }
-    return parseInt(period) || 7;
-  }, [period, startDate, endDate]);
-
-  // Calculate group total hours
-  const calculateGroupTotalHours = (ops: any[]): { hours: number; minutes: number } => {
-    let totalMinutes = 0;
-    ops.forEach(operator => {
-      days.forEach(day => {
-        const shift = getShiftForDate(operator, day);
-        if (shift) {
-          const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
-          totalMinutes += netMinutes;
-        }
-      });
-    });
-    return {
-      hours: Math.floor(totalMinutes / 60),
-      minutes: totalMinutes % 60
-    };
-  };
-
-  // Calculate group statistics: working days, off days, and total time
-  const calculateGroupStats = (ops: any[]): { workingDays: number; offDays: number; totalHours: number; totalMinutes: number } => {
-    let totalWorkingDays = 0;
-    let totalOffDays = 0;
-    let totalMinutes = 0;
-    
-    ops.forEach(operator => {
-      days.forEach(day => {
-        const shift = getShiftForDate(operator, day);
-        if (shift) {
-          totalWorkingDays++;
-          const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
-          totalMinutes += netMinutes;
-        } else {
-          totalOffDays++;
-        }
-      });
-    });
-    
-    return {
-      workingDays: totalWorkingDays,
-      offDays: totalOffDays,
-      totalHours: Math.floor(totalMinutes / 60),
-      totalMinutes: totalMinutes % 60
-    };
-  };
-
-  // Mass sync operators' cycle start dates to their schedule's cycle_start_date
-  const handleMassSyncCycleStartDate = async (scheduleId: string, scheduleCycleStartDate: string | null, operatorsToSync: any[]) => {
-    if (!scheduleCycleStartDate) {
-      toast.error("У графика не указана дата начала цикла");
-      return;
-    }
-    
-    setSyncingScheduleId(scheduleId);
-    
-    try {
-      const updates = operatorsToSync.map(op => 
-        updateOperator.mutateAsync({
-          id: op.id,
-          shift_rotation_start_date: scheduleCycleStartDate
-        })
-      );
-      
-      await Promise.all(updates);
-      toast.success(`Синхронизировано ${operatorsToSync.length} операторов`);
-    } catch (error: any) {
-      toast.error("Ошибка синхронизации: " + error.message);
-    } finally {
-      setSyncingScheduleId(null);
-    }
-  };
-  
-  // Generate days based on selected period and start date
-  const days = useMemo(() => {
-    const result = [];
-    let effectiveStartDate = startDate;
-    let count = daysCount;
-    
-    // For month view - always start from 1st of the month
-    if (period === "month") {
-      effectiveStartDate = startOfMonth(startDate);
-    }
-    
-    // For year view - show all days of the year but we'll display monthly summaries
-    if (period === "year") {
-      effectiveStartDate = new Date(startDate.getFullYear(), 0, 1); // Jan 1st
-      count = 365 + (new Date(startDate.getFullYear(), 1, 29).getDate() === 29 ? 1 : 0); // Account for leap year
-    }
-    
-    for (let i = 0; i < count; i++) {
-      result.push(addDays(effectiveStartDate, i));
-    }
-    return result;
-  }, [daysCount, startDate, period]);
-
-  // Generate months for year view
-  const months = useMemo(() => {
-    if (period !== "year") return [];
-    const year = startDate.getFullYear();
-    return Array.from({ length: 12 }, (_, i) => new Date(year, i, 1));
-  }, [period, startDate]);
-
-  // Calculate hours for a specific month
-  const calculateMonthHours = (operator: any, month: Date): { hours: number; minutes: number } => {
-    let totalMinutes = 0;
-    const monthStart = startOfMonth(month);
-    const daysInMonth = getDaysInMonth(month);
-    
-    for (let i = 0; i < daysInMonth; i++) {
-      const day = addDays(monthStart, i);
-      const shift = getShiftForDate(operator, day);
-      if (shift) {
-        const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
-        totalMinutes += netMinutes;
-      }
-    }
-    
-    return {
-      hours: Math.floor(totalMinutes / 60),
-      minutes: totalMinutes % 60
-    };
-  };
-
-  // Navigation functions
-  const goToToday = () => {
-    setStartDate(new Date());
-    if (period === "custom") setEndDate(addDays(new Date(), 6));
-  };
-  const goToStartOfMonth = () => {
-    setStartDate(startOfMonth(new Date()));
-    if (period === "custom") setEndDate(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0));
-  };
-  const goToStartOfWeek = () => {
-    setStartDate(startOfWeek(new Date(), { weekStartsOn: 1 }));
-    if (period === "custom") setEndDate(addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 6));
-  };
-  const goToStartOfYear = () => {
-    setStartDate(new Date(new Date().getFullYear(), 0, 1));
-  };
-  
-  const goToPreviousPeriod = () => {
-    if (period === "month") {
-      setStartDate(subMonths(startDate, 1));
-    } else if (period === "year") {
-      setStartDate(new Date(startDate.getFullYear() - 1, 0, 1));
-    } else if (period === "custom" && endDate) {
-      const range = differenceInDays(endDate, startDate);
-      setStartDate(addDays(startDate, -(range + 1)));
-      setEndDate(addDays(endDate, -(range + 1)));
-    } else {
-      setStartDate(addDays(startDate, -daysCount));
-    }
-  };
-  
-  const goToNextPeriod = () => {
-    if (period === "month") {
-      setStartDate(addMonths(startDate, 1));
-    } else if (period === "year") {
-      setStartDate(new Date(startDate.getFullYear() + 1, 0, 1));
-    } else if (period === "custom" && endDate) {
-      const range = differenceInDays(endDate, startDate);
-      setStartDate(addDays(startDate, range + 1));
-      setEndDate(addDays(endDate, range + 1));
-    } else {
-      setStartDate(addDays(startDate, daysCount));
-    }
-  };
-
-  // Handle period change
-  const handlePeriodChange = (newPeriod: PeriodType) => {
-    setPeriod(newPeriod);
-    if (newPeriod === "custom" && !endDate) {
-      setEndDate(addDays(startDate, 6));
-    }
-    if (newPeriod === "year") {
-      setStartDate(new Date(new Date().getFullYear(), 0, 1));
-    }
-  };
-
-
-  // Get all unique shift names for color mapping
-  const shiftColorMap = useMemo(() => {
-    const shiftNames = new Set<string>();
-    operators.forEach(op => {
-      const shifts = op.work_schedules?.work_schedule_shifts;
-      shifts?.forEach((s: any) => shiftNames.add(s.shift_name));
-    });
-    const map = new Map<string, ReturnType<typeof getShiftColor>>();
-    Array.from(shiftNames).forEach((name, index) => {
-      map.set(name, getShiftColor(name, index));
-    });
-    return map;
-  }, [operators]);
 
   // Only show operators with schedules
   const operatorsWithSchedules = operators.filter(op => 
@@ -642,7 +83,26 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return result;
   }, [operatorsWithSchedules, scheduleFilter, showOnlyCyclic]);
 
-  // Group operators by their current shift pattern
+  const {
+    daysCount,
+    days,
+    months,
+    shiftColorMap,
+    calendarGridStyle,
+    calculateMonthHours,
+    calculateTotalHours,
+    calculateGroupTotalHours,
+    calculateGroupStats,
+    calculateYearlyTotal,
+    calculateGroupYearlyTotal,
+  } = useCalendarCalculations({
+    operators: filteredOperators,
+    period,
+    startDate,
+    endDate,
+  });
+
+  // Group operators by their schedule
   const groupedBySchedule = useMemo(() => {
     const groups = new Map<string, any[]>();
     
@@ -657,125 +117,43 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return groups;
   }, [filteredOperators]);
 
-  // Track expand/collapse state for button highlighting
+  // Track expand/collapse state
   const allGroupNames = Array.from(groupedBySchedule.keys());
   const isAllExpanded = collapsedGroups.size === 0;
   const isAllCollapsed = allGroupNames.length > 0 && collapsedGroups.size === allGroupNames.length;
 
-  // Fixed column widths for calendar cells - ensures consistent sizing
-  const columnWidth = useMemo(() => {
-    if (period === "year") return 70; // Month columns
-    if (daysCount <= 7) return 90; // Wider for few days
-    if (daysCount <= 14) return 75;
-    if (daysCount <= 31) return 65;
-    return 55; // Narrow for many days
-  }, [period, daysCount]);
-
-  // Employee column width - resizable with localStorage persistence
-  const EMPLOYEE_COLUMN_WIDTH_KEY = 'shiftRotationCalendar_employeeColumnWidth';
-  const [employeeColumnWidth, setEmployeeColumnWidth] = useState(() => {
-    const saved = localStorage.getItem(EMPLOYEE_COLUMN_WIDTH_KEY);
-    return saved ? parseInt(saved, 10) : 200;
-  });
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeStartX = useRef(0);
-  const resizeStartWidth = useRef(0);
-
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    resizeStartX.current = e.clientX;
-    resizeStartWidth.current = employeeColumnWidth;
-  }, [employeeColumnWidth]);
-
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const delta = e.clientX - resizeStartX.current;
-      const newWidth = Math.max(120, Math.min(400, resizeStartWidth.current + delta));
-      setEmployeeColumnWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      localStorage.setItem(EMPLOYEE_COLUMN_WIDTH_KEY, employeeColumnWidth.toString());
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, employeeColumnWidth]);
-  
-  // calendarGridStyle is for the scrollable calendar part (excludes employee column)
-  // It should:
-  // - stretch to fill available width when there is room
-  // - become wider than the container (and enable horizontal scroll) only when needed
-  const calendarGridStyle = useMemo<React.CSSProperties>(() => {
-    const colCount = period === "year" ? 12 : daysCount;
-    const minColWidth = columnWidth;
-    const gapPx = 4;
-    const totalColPx = 70; // "Итого" column
-
-    const totalMinWidth = colCount * minColWidth + totalColPx + colCount * gapPx;
-
-    return {
-      display: "grid",
-      gridTemplateColumns: `repeat(${colCount}, minmax(${minColWidth}px, 1fr)) ${totalColPx}px`,
-      columnGap: `${gapPx}px`,
-      rowGap: `${gapPx}px`,
-      width: "100%",
-      minWidth: `${totalMinWidth}px`,
-    };
-  }, [period, daysCount, columnWidth]);
-
-  // Calculate yearly total for an operator
-  const calculateYearlyTotal = (operator: any): { hours: number; minutes: number } => {
-    let totalMinutes = 0;
-    months.forEach(month => {
-      const monthHours = calculateMonthHours(operator, month);
-      totalMinutes += monthHours.hours * 60 + monthHours.minutes;
-    });
-    return {
-      hours: Math.floor(totalMinutes / 60),
-      minutes: totalMinutes % 60
-    };
-  };
-
-  // Calculate group yearly total
-  const calculateGroupYearlyTotal = (ops: any[]): { hours: number; minutes: number } => {
-    let totalMinutes = 0;
-    ops.forEach(operator => {
-      const yearlyTotal = calculateYearlyTotal(operator);
-      totalMinutes += yearlyTotal.hours * 60 + yearlyTotal.minutes;
-    });
-    return {
-      hours: Math.floor(totalMinutes / 60),
-      minutes: totalMinutes % 60
-    };
-  };
-
-  // Calculate total working hours for an operator over the period
-  const calculateTotalHours = (operator: any): { hours: number; minutes: number } => {
-    let totalMinutes = 0;
-    days.forEach(day => {
-      const shift = getShiftForDate(operator, day);
-      if (shift) {
-        const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
-        totalMinutes += netMinutes;
+  const toggleGroupCollapse = (scheduleName: string) => {
+    setCollapsedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(scheduleName)) {
+        newSet.delete(scheduleName);
+      } else {
+        newSet.add(scheduleName);
       }
+      return newSet;
     });
-    return {
-      hours: Math.floor(totalMinutes / 60),
-      minutes: totalMinutes % 60
-    };
   };
 
-  // Calculate grand total for all filtered operators
+  const collapseAll = () => {
+    setCollapsedGroups(new Set(allGroupNames));
+  };
+
+  const expandAll = () => {
+    setCollapsedGroups(new Set());
+  };
+
+  // Handle period change
+  const handlePeriodChange = (newPeriod: PeriodType) => {
+    setPeriod(newPeriod);
+    if (newPeriod === "custom" && !endDate) {
+      setEndDate(addDays(startDate, 6));
+    }
+    if (newPeriod === "year") {
+      setStartDate(new Date(new Date().getFullYear(), 0, 1));
+    }
+  };
+
+  // Calculate grand total
   const grandTotal = useMemo(() => {
     let totalMinutes = 0;
     filteredOperators.forEach(operator => {
@@ -786,22 +164,18 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       hours: Math.floor(totalMinutes / 60),
       minutes: totalMinutes % 60
     };
-  }, [filteredOperators, days]);
+  }, [filteredOperators, calculateTotalHours]);
 
-  // Calculate comparison period days
-  const comparisonDays = useMemo(() => {
-    if (!comparisonPeriod) return [];
+  // Calculate comparison period total
+  const comparisonTotal = useMemo(() => {
+    if (!comparisonPeriod) return null;
     const compDaysCount = comparisonPeriod === "month" 
       ? getDaysInMonth(startDate) 
       : comparisonPeriod === "year" 
         ? 365 
         : parseInt(comparisonPeriod);
-    return Array.from({ length: compDaysCount }, (_, i) => addDays(startDate, i));
-  }, [comparisonPeriod, startDate]);
-
-  // Calculate comparison period total
-  const comparisonTotal = useMemo(() => {
-    if (!comparisonPeriod || comparisonDays.length === 0) return null;
+    const comparisonDays = Array.from({ length: compDaysCount }, (_, i) => addDays(startDate, i));
+    
     let totalMinutes = 0;
     filteredOperators.forEach(operator => {
       comparisonDays.forEach(day => {
@@ -816,23 +190,45 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       hours: Math.floor(totalMinutes / 60),
       minutes: totalMinutes % 60
     };
-  }, [comparisonPeriod, comparisonDays, filteredOperators]);
+  }, [comparisonPeriod, startDate, filteredOperators]);
 
+  // Mass sync operators' cycle start dates
+  const handleMassSyncCycleStartDate = async (scheduleId: string, scheduleCycleStartDate: string | null, operatorsToSync: any[]) => {
+    if (!scheduleCycleStartDate) {
+      toast.error("У графика не указана дата начала цикла");
+      return;
+    }
+    
+    setSyncingScheduleId(scheduleId);
+    
+    try {
+      const updates = operatorsToSync.map(op => 
+        updateOperator.mutateAsync({
+          id: op.id,
+          shift_rotation_start_date: scheduleCycleStartDate
+        })
+      );
+      
+      await Promise.all(updates);
+      toast.success(`Синхронизировано ${operatorsToSync.length} операторов`);
+    } catch (error: any) {
+      toast.error("Ошибка синхронизации: " + error.message);
+    } finally {
+      setSyncingScheduleId(null);
+    }
+  };
+
+  // Export to Excel
   const handleExportToExcel = () => {
     const wb = XLSX.utils.book_new();
-    
-    // Prepare data for export
     const exportData: any[] = [];
     
-    // Header row with dates and total column
     const headerRow = ['Сотрудник', 'График', ...days.map(day => format(day, 'dd.MM.yyyy')), 'Итого'];
     exportData.push(headerRow);
     
     let grandTotalMinutes = 0;
 
-    // Data rows grouped by schedule
     Array.from(groupedBySchedule.entries()).forEach(([scheduleName, ops]) => {
-      // Group header
       exportData.push([`--- ${scheduleName} (${ops.length}) ---`]);
       
       let groupTotalMinutes = 0;
@@ -864,22 +260,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         exportData.push(row);
       });
 
-      // Group total row
       const groupHours = Math.floor(groupTotalMinutes / 60);
       const groupMins = groupTotalMinutes % 60;
       grandTotalMinutes += groupTotalMinutes;
       
-      const groupTotalRow = [
+      exportData.push([
         `Итого по группе "${scheduleName}":`,
         '',
         ...days.map(() => ''),
         `${groupHours}ч${groupMins > 0 ? ` ${groupMins}м` : ''}`
-      ];
-      exportData.push(groupTotalRow);
-      exportData.push([]); // Empty row for spacing
+      ]);
+      exportData.push([]);
     });
 
-    // Grand total row
     const grandHours = Math.floor(grandTotalMinutes / 60);
     const grandMins = grandTotalMinutes % 60;
     exportData.push([]);
@@ -891,27 +284,22 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     ]);
     
     const ws = XLSX.utils.aoa_to_sheet(exportData);
-    
-    // Set column widths
     ws['!cols'] = [
-      { wch: 30 }, // Сотрудник
-      { wch: 25 }, // График
-      ...days.map(() => ({ wch: 18 })), // Даты
-      { wch: 12 } // Итого
+      { wch: 30 },
+      { wch: 25 },
+      ...days.map(() => ({ wch: 18 })),
+      { wch: 12 }
     ];
     
     XLSX.utils.book_append_sheet(wb, ws, 'График ротации');
     
-    const startDate = format(days[0], 'dd.MM.yyyy');
-    const endDate = format(days[days.length - 1], 'dd.MM.yyyy');
-    XLSX.writeFile(wb, `График_ротации_${startDate}-${endDate}.xlsx`);
+    const startDateStr = format(days[0], 'dd.MM.yyyy');
+    const endDateStr = format(days[days.length - 1], 'dd.MM.yyyy');
+    XLSX.writeFile(wb, `График_ротации_${startDateStr}-${endDateStr}.xlsx`);
   };
 
   // Print handler
   const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent) return;
-
     const startDateStr = format(days[0], 'dd.MM.yyyy');
     const endDateStr = format(days[days.length - 1], 'dd.MM.yyyy');
     
@@ -938,40 +326,22 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           .shift-3 { background: #d1fae5; }
           .shift-4 { background: #ede9fe; }
           .today { background: #fef08a !important; font-weight: bold; }
-          .weekend { background: #f3f4f6; }
-          .legend { margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; }
-          .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; }
-          .legend-color { width: 16px; height: 16px; border-radius: 3px; border: 1px solid #ccc; }
-          .cycle-day { font-size: 9px; color: #666; }
-          .group-stats { background: #f9fafb; font-size: 10px; }
-          @media print { body { padding: 0; } }
+          .weekend { background: #fee2e2; }
+          .cycle-day { font-size: 9px; color: #888; }
+          .group-stats { background: #f8fafc; font-style: italic; }
         </style>
       </head>
       <body>
-        <h1>График ротации смен</h1>
-        <h2>Период: ${startDateStr} — ${endDateStr}${scheduleFilter !== 'all' ? ` | График: ${scheduleFilter}` : ''}</h2>
-        
-        <div class="legend">
-          ${Array.from(shiftColorMap.entries()).map(([name], idx) => `
-            <div class="legend-item">
-              <div class="legend-color shift-${(idx % 4) + 1}"></div>
-              <span>${name}</span>
-            </div>
-          `).join('')}
-          <div class="legend-item">
-            <div class="legend-color" style="background: #f3f4f6;"></div>
-            <span>Выходной</span>
-          </div>
-        </div>
+        <h1>📅 График ротации смен</h1>
+        <h2>Период: ${startDateStr} — ${endDateStr} | Операторов: ${filteredOperators.length}</h2>
         
         <table>
           <thead>
             <tr>
-              <th style="text-align: left; min-width: 150px;">Сотрудник</th>
+              <th>Сотрудник</th>
               ${days.map(day => `
                 <th class="${isToday(day) ? 'today' : ''} ${getDay(day) === 0 || getDay(day) === 6 ? 'weekend' : ''}">
-                  ${format(day, 'EEE', { locale: ru })}<br/>
-                  ${format(day, 'd.MM')}
+                  ${format(day, 'EEE', { locale: ru })}<br/>${format(day, 'd MMM', { locale: ru })}
                 </th>
               `).join('')}
               <th>Итого</th>
@@ -981,44 +351,44 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
             ${Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
               const groupStats = calculateGroupStats(ops);
               return `
-              <tr>
-                <td colspan="${days.length + 2}" class="group-header">${scheduleName} (${ops.length})</td>
-              </tr>
-              ${ops.map(operator => {
-                const shiftNameToIndex = new Map<string, number>();
-                Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
-                const opTotal = calculateTotalHours(operator);
-                
-                return `
-                  <tr>
-                    <td>${operator.full_name}</td>
-                    ${days.map(day => {
-                      const shift = getShiftForDate(operator, day);
-                      const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                      const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
-                      const netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
-                      const hours = Math.floor(netMinutes / 60);
-                      const mins = netMinutes % 60;
-                      const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
-                      
-                      return `
-                        <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'}">
-                          ${shift ? `${shift.shift_name.split(' ')[0]}<br/>${hours}ч${mins > 0 ? ' ' + mins + 'м' : ''}` : '—'}
-                          ${cycleInfo ? '<br/><span class="cycle-day">Д' + cycleInfo.dayInCycle + '</span>' : ''}
-                        </td>
-                      `;
-                    }).join('')}
-                    <td>${opTotal.hours}ч${opTotal.minutes > 0 ? ' ' + opTotal.minutes + 'м' : ''}</td>
-                  </tr>
-                `;
-              }).join('')}
-              <tr class="group-stats">
-                <td colspan="2" style="text-align: left; font-weight: 500;">
-                  Итого: ✓${groupStats.workingDays} раб. | ✗${groupStats.offDays} вых. | ${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? ' ' + groupStats.totalMinutes + 'м' : ''}
-                </td>
-                <td colspan="${days.length}"></td>
-              </tr>
-            `;
+                <tr class="group-header">
+                  <td colspan="${days.length + 2}">${scheduleName} (${ops.length} чел.)</td>
+                </tr>
+                ${ops.map(operator => {
+                  const shiftNameToIndex = new Map<string, number>();
+                  Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
+                  const opTotal = calculateTotalHours(operator);
+                  
+                  return `
+                    <tr>
+                      <td>${operator.full_name}</td>
+                      ${days.map(day => {
+                        const shift = getShiftForDate(operator, day);
+                        const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                        const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
+                        const netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
+                        const hours = Math.floor(netMinutes / 60);
+                        const mins = netMinutes % 60;
+                        const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
+                        
+                        return `
+                          <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'}">
+                            ${shift ? `${shift.shift_name.split(' ')[0]}<br/>${hours}ч${mins > 0 ? ' ' + mins + 'м' : ''}` : '—'}
+                            ${cycleInfo ? '<br/><span class="cycle-day">Д' + cycleInfo.dayInCycle + '</span>' : ''}
+                          </td>
+                        `;
+                      }).join('')}
+                      <td>${opTotal.hours}ч${opTotal.minutes > 0 ? ' ' + opTotal.minutes + 'м' : ''}</td>
+                    </tr>
+                  `;
+                }).join('')}
+                <tr class="group-stats">
+                  <td colspan="2" style="text-align: left; font-weight: 500;">
+                    Итого: ✓${groupStats.workingDays} раб. | ✗${groupStats.offDays} вых. | ${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? ' ' + groupStats.totalMinutes + 'м' : ''}
+                  </td>
+                  <td colspan="${days.length}"></td>
+                </tr>
+              `;
             }).join('')}
           </tbody>
         </table>
@@ -1030,7 +400,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     printWindow.document.close();
   };
 
-  // PDF export handler with visual formatting
+  // PDF export
   const handleExportToPdf = () => {
     const startDateStr = format(days[0], 'dd.MM.yyyy');
     const endDateStr = format(days[days.length - 1], 'dd.MM.yyyy');
@@ -1060,39 +430,14 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           .day-off { background: #fef2f2; color: #991b1b; }
           .weekend { background: #fee2e2; }
           .today { background: #fef08a !important; font-weight: bold; }
-          .cycle-day { font-size: 8px; color: #6b7280; display: block; }
-          .legend { margin-bottom: 12px; display: flex; gap: 12px; flex-wrap: wrap; }
-          .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; }
-          .legend-color { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #d1d5db; }
-          .group-stats { background: #f9fafb; font-weight: 500; }
-          .group-stats td { font-size: 9px; }
           .total-col { background: #d1fae5; color: #065f46; font-weight: 600; }
           .summary { margin-top: 10px; padding: 10px; background: #f3f4f6; border-radius: 4px; }
-          .summary-row { display: flex; gap: 20px; flex-wrap: wrap; font-size: 11px; }
-          .summary-item { display: flex; align-items: center; gap: 5px; }
-          .summary-icon { font-size: 14px; }
-          @media print { 
-            body { padding: 0; } 
-            .no-print { display: none; }
-          }
+          @media print { body { padding: 0; } }
         </style>
       </head>
       <body>
         <h1>📅 График ротации смен</h1>
-        <h2>Период: ${startDateStr} — ${endDateStr}${scheduleFilter !== 'all' ? ` | График: ${scheduleFilter}` : ''} | Операторов: ${filteredOperators.length}</h2>
-        
-        <div class="legend">
-          ${Array.from(shiftColorMap.entries()).map(([name], idx) => `
-            <div class="legend-item">
-              <div class="legend-color shift-${(idx % 4) + 1}"></div>
-              <span>${name}</span>
-            </div>
-          `).join('')}
-          <div class="legend-item">
-            <div class="legend-color day-off"></div>
-            <span>Выходной</span>
-          </div>
-        </div>
+        <h2>Период: ${startDateStr} — ${endDateStr} | Операторов: ${filteredOperators.length}</h2>
         
         ${Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
           const groupStats = calculateGroupStats(ops);
@@ -1112,8 +457,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 <th style="text-align: left;">Сотрудник</th>
                 ${days.map(day => `
                   <th class="${isToday(day) ? 'today' : ''} ${getDay(day) === 0 || getDay(day) === 6 ? 'weekend' : ''}">
-                    ${format(day, 'EEE', { locale: ru })}<br/>
-                    ${format(day, 'd')}
+                    ${format(day, 'EEE', { locale: ru })}<br/>${format(day, 'd')}
                   </th>
                 `).join('')}
                 <th>Итого</th>
@@ -1135,12 +479,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       const netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
                       const hours = Math.floor(netMinutes / 60);
                       const mins = netMinutes % 60;
-                      const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
                       
                       return `
                         <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'}">
                           ${shift ? hours + 'ч' + (mins > 0 ? mins + 'м' : '') : '—'}
-                          ${cycleInfo && isCyclic ? '<span class="cycle-day">Д' + cycleInfo.dayInCycle + '</span>' : ''}
                         </td>
                       `;
                     }).join('')}
@@ -1148,13 +490,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   </tr>
                 `;
               }).join('')}
-              <tr class="group-stats">
-                <td style="text-align: left;">
-                  <strong>Итого по группе:</strong>
-                </td>
-                <td colspan="${days.length}">
-                  ✅ Рабочих: ${groupStats.workingDays} | ⛔ Выходных: ${groupStats.offDays}
-                </td>
+              <tr style="background: #f9fafb; font-weight: 500;">
+                <td style="text-align: left;"><strong>Итого:</strong></td>
+                <td colspan="${days.length}">✅ Рабочих: ${groupStats.workingDays} | ⛔ Выходных: ${groupStats.offDays}</td>
                 <td class="total-col">${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? groupStats.totalMinutes + 'м' : ''}</td>
               </tr>
             </tbody>
@@ -1163,16 +501,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         }).join('')}
         
         <div class="summary">
-          <div class="summary-row">
-            <div class="summary-item"><span class="summary-icon">👥</span> Всего операторов: <strong>${filteredOperators.length}</strong></div>
-            <div class="summary-item"><span class="summary-icon">⏱️</span> Общее время: <strong>${grandTotal.hours}ч${grandTotal.minutes > 0 ? ' ' + grandTotal.minutes + 'м' : ''}</strong></div>
-            <div class="summary-item"><span class="summary-icon">📆</span> Дней в периоде: <strong>${days.length}</strong></div>
-          </div>
+          <strong>ОБЩИЙ ИТОГ:</strong> ${filteredOperators.length} операторов, ${grandTotal.hours}ч${grandTotal.minutes > 0 ? ' ' + grandTotal.minutes + 'м' : ''}
         </div>
-        
-        <p style="text-align: right; font-size: 9px; color: #9ca3af; margin-top: 20px;">
-          Сформировано: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: ru })}
-        </p>
         
         <script>window.onload = function() { window.print(); }</script>
       </body>
@@ -1195,794 +525,92 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   return (
     <Card className={cn(isResizing && "cursor-col-resize select-none")}>
       <CardHeader className="pb-3">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <RefreshCw className="h-5 w-5" />
-              График ротации смен
-            </CardTitle>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button variant="outline" size="sm" onClick={handleExportToExcel}>
-                <FileDown className="h-4 w-4 mr-2" />
-                Excel
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExportToPdf}>
-                <FileText className="h-4 w-4 mr-2" />
-                PDF
-              </Button>
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-2" />
-                Печать
-              </Button>
-            </div>
-          </div>
-          
-          {/* Date navigation row */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Period selector with toggle buttons */}
-            <ToggleGroup type="single" value={period} onValueChange={(val) => val && handlePeriodChange(val as PeriodType)} className="border rounded-md">
-              <ToggleGroupItem value="1" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                1д
-              </ToggleGroupItem>
-              <ToggleGroupItem value="7" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                7д
-              </ToggleGroupItem>
-              <ToggleGroupItem value="14" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                14д
-              </ToggleGroupItem>
-              <ToggleGroupItem value="30" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                30д
-              </ToggleGroupItem>
-              <ToggleGroupItem value="month" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                Мес
-              </ToggleGroupItem>
-              <ToggleGroupItem value="year" size="sm" className="text-xs px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                Год
-              </ToggleGroupItem>
-            </ToggleGroup>
-
-            {/* Operators & Time indicator */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md border">
-              <div className="flex items-center gap-1.5 text-sm">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{filteredOperators.length}</span>
-              </div>
-              <div className="w-px h-4 bg-border" />
-              <div className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
-                <Clock className="h-4 w-4" />
-                <span className="font-medium">
-                  {grandTotal.hours}ч{grandTotal.minutes > 0 ? ` ${grandTotal.minutes}м` : ''}
-                </span>
-              </div>
-              {comparisonTotal && (
-                <>
-                  <div className="w-px h-4 bg-border" />
-                  <div className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400">
-                    <span className="text-xs text-muted-foreground">vs</span>
-                    <span className="font-medium">
-                      {comparisonTotal.hours}ч{comparisonTotal.minutes > 0 ? ` ${comparisonTotal.minutes}м` : ''}
-                    </span>
-                    {(() => {
-                      const diff = (grandTotal.hours * 60 + grandTotal.minutes) - (comparisonTotal.hours * 60 + comparisonTotal.minutes);
-                      const diffHours = Math.floor(Math.abs(diff) / 60);
-                      const diffMins = Math.abs(diff) % 60;
-                      if (diff === 0) return null;
-                      return (
-                        <Badge variant="outline" className={cn(
-                          "text-xs",
-                          diff > 0 ? "text-emerald-600 border-emerald-300" : "text-rose-600 border-rose-300"
-                        )}>
-                          {diff > 0 ? '+' : '-'}{diffHours > 0 ? `${diffHours}ч` : ''}{diffMins > 0 ? `${diffMins}м` : ''}
-                        </Badge>
-                      );
-                    })()}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Comparison period selector */}
-            <Select 
-              value={comparisonPeriod || ""} 
-              onValueChange={(val) => setComparisonPeriod(val ? val as PeriodType : null)}
-            >
-              <SelectTrigger className={cn(
-                "w-[130px]", 
-                comparisonPeriod && "border-blue-400 bg-blue-50 dark:bg-blue-900/20"
-              )}>
-                <span className="text-xs">{comparisonPeriod ? `Сравн: ${comparisonPeriod === 'month' ? 'Мес' : comparisonPeriod === 'year' ? 'Год' : comparisonPeriod + 'д'}` : 'Сравнить...'}</span>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">7 дней</SelectItem>
-                <SelectItem value="14">14 дней</SelectItem>
-                <SelectItem value="30">30 дней</SelectItem>
-                <SelectItem value="month">Месяц</SelectItem>
-              </SelectContent>
-            </Select>
-            {comparisonPeriod && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setComparisonPeriod(null)}
-                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                title="Отменить сравнение"
-              >
-                ×
-              </Button>
-            )}
-            
-            {/* Custom period selector */}
-            <Select value={period === "custom" ? "custom" : ""} onValueChange={(val) => val === "custom" && handlePeriodChange("custom")}>
-              <SelectTrigger className={cn("w-[120px]", period === "custom" && "border-primary bg-primary/10")}>
-                <CalendarDays className="h-4 w-4 mr-2" />
-                <span className="text-xs">{period === "custom" ? "Произв." : "Ещё..."}</span>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="custom">Произвольный период</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Navigation buttons */}
-            <div className="flex items-center border rounded-md overflow-hidden">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={goToPreviousPeriod} 
-                title="Предыдущий период"
-                className="rounded-none border-r hover:bg-muted active:bg-primary active:text-primary-foreground transition-colors"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={goToNextPeriod} 
-                title="Следующий период"
-                className="rounded-none hover:bg-muted active:bg-primary active:text-primary-foreground transition-colors"
-              >
-                <ChevronRightIcon className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Quick presets */}
-            <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" onClick={goToToday} className="text-xs">
-                Сегодня
-              </Button>
-              <Button variant="outline" size="sm" onClick={goToStartOfWeek} className="text-xs">
-                С начала недели
-              </Button>
-              <Button variant="outline" size="sm" onClick={goToStartOfMonth} className="text-xs">
-                С начала месяца
-              </Button>
-              {period === "year" && (
-                <Button variant="outline" size="sm" onClick={goToStartOfYear} className="text-xs">
-                  Текущий год
-                </Button>
-              )}
-            </div>
-
-            {/* Date pickers - different UI for custom range */}
-            {period === "custom" ? (
-              <div className="flex items-center gap-1">
-                <Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {format(startDate, "d MMM yyyy", { locale: ru })}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={startDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          setStartDate(date);
-                          if (endDate && date > endDate) {
-                            setEndDate(addDays(date, 7));
-                          }
-                          setIsStartDatePickerOpen(false);
-                        }
-                      }}
-                      locale={ru}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <span className="text-muted-foreground">—</span>
-                <Popover open={isEndDatePickerOpen} onOpenChange={setIsEndDatePickerOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {endDate ? format(endDate, "d MMM yyyy", { locale: ru }) : "Выберите"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={endDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          setEndDate(date);
-                          setIsEndDatePickerOpen(false);
-                        }
-                      }}
-                      disabled={(date) => date < startDate}
-                      locale={ru}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            ) : period === "year" ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{startDate.getFullYear()} год</span>
-              </div>
-            ) : (
-              <Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Calendar className="h-4 w-4" />
-                    {format(days[0], "d MMM", { locale: ru })} — {format(days[days.length - 1], "d MMM yyyy", { locale: ru })}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={startDate}
-                    onSelect={(date) => {
-                      if (date) {
-                        setStartDate(date);
-                        setIsStartDatePickerOpen(false);
-                      }
-                    }}
-                    locale={ru}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
-
-            <div className="border-l h-6 mx-1" />
-
-            {/* Schedule filter */}
-            <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Все графики" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все графики</SelectItem>
-                {uniqueSchedules.map(schedule => (
-                  <SelectItem key={schedule} value={schedule}>{schedule}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Cyclic schedules only toggle */}
-            <Button
-              variant={showOnlyCyclic ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowOnlyCyclic(!showOnlyCyclic)}
-              className={cn(
-                "gap-1.5 text-xs",
-                showOnlyCyclic && "bg-amber-500 hover:bg-amber-600 text-white"
-              )}
-              title="Показать только циклические графики (2/2, 3/3 и т.д.)"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Только 2/2
-            </Button>
-
-            {/* Collapse/Expand buttons */}
-            <div className="flex items-center border rounded-md overflow-hidden ml-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={expandAll} 
-                title="Развернуть все"
-                className={cn(
-                  "rounded-none border-r hover:bg-muted transition-colors",
-                  isAllExpanded && "bg-primary text-primary-foreground hover:bg-primary/90"
-                )}
-              >
-                <ChevronsUpDown className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={collapseAll} 
-                title="Свернуть все"
-                className={cn(
-                  "rounded-none hover:bg-muted transition-colors",
-                  isAllCollapsed && "bg-primary text-primary-foreground hover:bg-primary/90"
-                )}
-              >
-                <ChevronsDownUp className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Shift legend */}
-            <div className="flex gap-2 border-l pl-3 ml-1">
-              {Array.from(shiftColorMap.entries()).map(([name, colors]) => (
-                <Badge key={name} variant="outline" className={cn(colors.bg, colors.text, colors.border)}>
-                  {name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </div>
+        <CalendarToolbar
+          period={period}
+          onPeriodChange={handlePeriodChange}
+          startDate={startDate}
+          onStartDateChange={setStartDate}
+          endDate={endDate}
+          onEndDateChange={setEndDate}
+          scheduleFilter={scheduleFilter}
+          onScheduleFilterChange={setScheduleFilter}
+          uniqueSchedules={uniqueSchedules}
+          showOnlyCyclic={showOnlyCyclic}
+          onShowOnlyCyclicChange={setShowOnlyCyclic}
+          filteredOperatorsCount={filteredOperators.length}
+          grandTotal={grandTotal}
+          comparisonPeriod={comparisonPeriod}
+          onComparisonPeriodChange={setComparisonPeriod}
+          comparisonTotal={comparisonTotal}
+          shiftColorMap={shiftColorMap}
+          isAllExpanded={isAllExpanded}
+          isAllCollapsed={isAllCollapsed}
+          onExpandAll={expandAll}
+          onCollapseAll={collapseAll}
+          onExportExcel={handleExportToExcel}
+          onExportPdf={handleExportToPdf}
+          onPrint={handlePrint}
+          isStartDatePickerOpen={isStartDatePickerOpen}
+          onStartDatePickerOpenChange={setIsStartDatePickerOpen}
+          isEndDatePickerOpen={isEndDatePickerOpen}
+          onEndDatePickerOpenChange={setIsEndDatePickerOpen}
+          daysCount={daysCount}
+        />
       </CardHeader>
       <CardContent className="p-0">
         <div className="px-2 py-4">
-          {/* Only vertical scroll here; horizontal scroll must be inside each calendar */}
           <div className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-300px)]" style={{ scrollbarGutter: 'stable' }}>
             <div className="flex flex-col gap-3 w-full min-w-0">
-          {/* Operators grouped by schedule */}
-          {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
-            const isCollapsed = collapsedGroups.has(scheduleName);
-            const schedule = ops[0]?.work_schedules;
-            const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
-            const scheduleId = schedule?.id;
-            const scheduleCycleStartDate = schedule?.cycle_start_date;
-            
-            return (
-            <div key={scheduleName}>
-              {/* Group name - stays in place, no horizontal scroll */}
-              <div className="mb-2">
-                <div className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2 border border-border/40">
-                  <button 
-                    className="flex items-center gap-2 hover:bg-muted/70 rounded px-1 py-0.5 transition-colors flex-1 min-w-0"
-                    onClick={() => toggleGroupCollapse(scheduleName)}
-                  >
-                    {isCollapsed ? (
-                      <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                    )}
-                    <span className="truncate">{scheduleName} ({ops.length})</span>
-                    {isCyclicSchedule && (
-                      <Badge variant="outline" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300">
-                        {schedule?.cycle_days_on || 2}/{schedule?.cycle_days_off || 2}
-                      </Badge>
-                    )}
-                  </button>
-                  
-                  {/* Mass sync button for cyclic schedules */}
-                  {isCyclicSchedule && scheduleId && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-7 px-2 text-xs gap-1.5 text-amber-700 hover:text-amber-800 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/30"
-                          disabled={syncingScheduleId === scheduleId}
-                        >
-                          {syncingScheduleId === scheduleId ? (
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <RefreshCcw className="h-3.5 w-3.5" />
-                          )}
-                          Синхр. всех
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Синхронизировать даты начала цикла?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Для всех {ops.length} операторов графика "{scheduleName}" будет установлена дата начала цикла: 
-                            <strong className="block mt-1">
-                              {scheduleCycleStartDate 
-                                ? format(parseDateOnly(scheduleCycleStartDate) || new Date(), 'd MMMM yyyy', { locale: ru })
-                                : 'Не указана (требуется настроить график)'}
-                            </strong>
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Отмена</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={() => handleMassSyncCycleStartDate(scheduleId, scheduleCycleStartDate, ops)}
-                            disabled={!scheduleCycleStartDate}
-                          >
-                            Синхронизировать
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
-              </div>
+              {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops], index) => (
+                <ScheduleGroup
+                  key={scheduleName}
+                  scheduleName={scheduleName}
+                  operators={ops}
+                  isCollapsed={collapsedGroups.has(scheduleName)}
+                  onToggleCollapse={() => toggleGroupCollapse(scheduleName)}
+                  onEditOperator={onEditOperator}
+                  days={days}
+                  months={months}
+                  period={period}
+                  daysCount={daysCount}
+                  shiftColorMap={shiftColorMap}
+                  calendarGridStyle={calendarGridStyle}
+                  employeeColumnWidth={employeeColumnWidth}
+                  isResizing={isResizing}
+                  onResizeMouseDown={handleResizeMouseDown}
+                  isTodayColumnHovered={isTodayColumnHovered}
+                  onTodayColumnHover={setIsTodayColumnHovered}
+                  syncingScheduleId={syncingScheduleId}
+                  onMassSyncCycleStartDate={handleMassSyncCycleStartDate}
+                  registerScrollContainer={registerScrollContainer}
+                  registerVerticalScrollContainer={registerVerticalScrollContainer}
+                  handleSyncScroll={handleSyncScroll}
+                  handleSyncVerticalScroll={handleSyncVerticalScroll}
+                  calculateTotalHours={calculateTotalHours}
+                  calculateMonthHours={calculateMonthHours}
+                  calculateGroupStats={calculateGroupStats}
+                  calculateYearlyTotal={calculateYearlyTotal}
+                  calculateGroupYearlyTotal={calculateGroupYearlyTotal}
+                  printRef={printRef}
+                  isFirstGroup={index === 0}
+                />
+              ))}
 
-              {/* Animated content wrapper */}
-              <div 
-                className={cn(
-                  "grid transition-all duration-300 ease-in-out",
-                  isCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
-                )}
-              >
-                <div className={cn("overflow-hidden", isCollapsed && "overflow-hidden")}>
-                  {/* Flex container: fixed employee column + single calendar scroll container */}
-                  <div 
-                    ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? printRef : undefined}
-                    className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden relative isolate"
-                  >
-                    {/* Employee column - fixed width, separate vertical scroll */}
-                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-50" style={{ width: `${employeeColumnWidth}px` }}>
-                      {/* Employee header - matches calendar header height and styling */}
-                      <div 
-                        className="flex-shrink-0 bg-muted/30 text-base font-semibold text-foreground px-3 pt-1 h-[64px] flex items-center border-b border-border mb-1"
-                        style={{ boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)' }}
-                      >
-                        Сотрудники
-                      </div>
-                      
-                      {/* Employee body - vertical scroll synced with calendar */}
-                      <div 
-                        ref={registerVerticalScrollContainer(`emp-${scheduleName}`)}
-                        onScroll={handleSyncVerticalScroll(`emp-${scheduleName}`)}
-                        className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-overlay min-h-0"
-                      >
-                        {ops.map((operator) => (
-                          <HoverCard key={operator.id} openDelay={300}>
-                            <HoverCardTrigger asChild>
-                              <div 
-                                className={cn(
-                                  "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50 mb-1",
-                                  onEditOperator && "hover:bg-muted/50 cursor-pointer"
-                                )}
-                                onClick={() => onEditOperator?.(operator)}
-                              >
-                                <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
-                                {operator.shift_rotation_enabled && (
-                                  <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                )}
-                                {onEditOperator && (
-                                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => { e.stopPropagation(); onEditOperator(operator); }}>
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                            </HoverCardTrigger>
-                            <HoverCardContent className="w-80" side="right" align="start">
-                              <OperatorInfoCard operator={operator} />
-                            </HoverCardContent>
-                          </HoverCard>
-                        ))}
-                        
-                        {/* Group summary row */}
-                        <div className="bg-muted/30 px-2 h-[44px] flex items-center text-xs text-muted-foreground border-t border-border">
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1 text-emerald-600"><CalendarCheck className="h-3 w-3" />{calculateGroupStats(ops).workingDays}</span>
-                            <span className="flex items-center gap-1 text-rose-500"><CalendarX className="h-3 w-3" />{calculateGroupStats(ops).offDays}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Resize handle */}
-                      <div
-                        className={cn(
-                          "absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-30",
-                          isResizing && "bg-primary/50"
-                        )}
-                        onMouseDown={handleResizeMouseDown}
-                      />
-                    </div>
-                    
-                    {/* Blur overlays: left edge (between employee column and calendar) + right edge (calendar fading) */}
-                    <div
-                      className="absolute top-0 bottom-0 w-10 pointer-events-none z-[60]"
-                      style={{ left: `${employeeColumnWidth}px` }}
-                    >
-                      <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent" />
-                    </div>
-
-                    <div className="absolute top-0 bottom-0 right-0 w-10 pointer-events-none z-[60]">
-                      <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent" />
-                    </div>
-
-                    {/* Calendar - single scroll container with sticky header */}
-                    <div 
-                      ref={(el) => {
-                        registerScrollContainer(`schedule-${scheduleName}`)(el);
-                        registerVerticalScrollContainer(`cal-${scheduleName}`)(el);
-                      }}
-                      onScroll={(e) => {
-                        handleSyncScroll(`schedule-${scheduleName}`)(e);
-                        handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
-                      }}
-                      className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate"
-                    >
-                      {/* Sticky calendar header - high z-index + isolation to prevent content from leaking */}
-                      <div 
-                        className="sticky top-0 z-40 bg-background pt-1 mb-1 px-2 isolate"
-                        style={{ 
-                          ...calendarGridStyle,
-                          boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)'
-                        }}
-                      >
-                        {period === "year" ? (
-                          <>
-                            {months.map((month) => (
-                              <div 
-                                key={month.toISOString()} 
-                                className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50"
-                              >
-                                <div className="font-medium text-xs">
-                                  {format(month, "LLL", { locale: ru })}
-                                </div>
-                              </div>
-                            ))}
-                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                              <Clock className="h-3 w-3 mb-0.5" />
-                              <div className="text-[10px]">Год</div>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            {days.map((day, idx) => {
-                              const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
-                              const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                              const isTodayDate = isToday(day);
-                              return (
-                                <div 
-                                  key={day.toISOString()} 
-                                  className={cn(
-                                    "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
-                                    isTodayDate 
-                                      ? cn(
-                                          "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
-                                          isTodayColumnHovered && "animate-pulse-glow"
-                                        )
-                                      : isWeekend 
-                                        ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
-                                        : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground"
-                                  )}
-                                  onMouseEnter={() => isTodayDate && setIsTodayColumnHovered(true)}
-                                  onMouseLeave={() => isTodayDate && setIsTodayColumnHovered(false)}
-                                >
-                                  <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
-                                  <div className={cn("text-sm font-semibold", isTodayDate ? "text-white" : isWeekend ? "text-rose-600 dark:text-rose-300" : "text-foreground")}>{format(day, "d", { locale: ru })}</div>
-                                  {(showMonth || daysCount <= 14) && <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>}
-                                </div>
-                              );
-                            })}
-                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                              <Clock className="h-3 w-3 mb-0.5" />
-                              <div className="text-[10px]">Итого</div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      
-                      {/* Calendar body */}
-                      <div className="px-2 pb-1" style={calendarGridStyle}>
-                          {period === "year" ? (
-                            <>
-                              {/* Year view - Operator rows */}
-                              {ops.map((operator) => {
-                                const yearlyTotal = calculateYearlyTotal(operator);
-                                return (
-                                  <React.Fragment key={operator.id}>
-                                    {months.map((month) => {
-                                      const monthHours = calculateMonthHours(operator, month);
-                                      return (
-                                        <div 
-                                          key={month.toISOString()} 
-                                          className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-900/50 text-blue-700 dark:text-blue-300"
-                                        >
-                                          <div className="font-medium">{monthHours.hours}ч</div>
-                                          {monthHours.minutes > 0 && <div className="text-[10px] opacity-80">{monthHours.minutes}м</div>}
-                                        </div>
-                                      );
-                                    })}
-                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                                      <div>{yearlyTotal.hours}ч</div>
-                                      {yearlyTotal.minutes > 0 && <div className="text-[10px]">{yearlyTotal.minutes}м</div>}
-                                    </div>
-                                  </React.Fragment>
-                                );
-                              })}
-
-                              {/* Year view - Group summary */}
-                              {(() => {
-                                const groupYearlyTotal = calculateGroupYearlyTotal(ops);
-                                return (
-                                  <>
-                                    {months.map((month) => {
-                                      let monthTotal = 0;
-                                      ops.forEach(op => { const mh = calculateMonthHours(op, month); monthTotal += mh.hours * 60 + mh.minutes; });
-                                      const h = Math.floor(monthTotal / 60);
-                                      const m = monthTotal % 60;
-                                      return (
-                                        <div key={month.toISOString()} className="text-center h-[44px] flex items-center justify-center text-[10px] text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">
-                                          {h}ч{m > 0 ? ` ${m}м` : ''}
-                                        </div>
-                                      );
-                                    })}
-                                    <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
-                                      <div>{groupYearlyTotal.hours}ч</div>
-                                      {groupYearlyTotal.minutes > 0 && <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>}
-                                    </div>
-                                  </>
-                                );
-                              })()}
-                            </>
-                          ) : (
-                            <>
-                              {/* Day view - Operator rows */}
-                              {ops.map((operator) => {
-                                const totalHours = calculateTotalHours(operator);
-                                return (
-                                  <React.Fragment key={operator.id}>
-                                    {days.map((day) => {
-                                      const shift = getShiftForDate(operator, day);
-                                      const colors = shift ? shiftColorMap.get(shift.shift_name) : null;
-                                      const netMinutes = shift 
-                                        ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) 
-                                        : 0;
-                                      const hours = Math.floor(netMinutes / 60);
-                                      const mins = netMinutes % 60;
-                                      const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                                      const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
-                                      
-                                      return (
-                                        <div 
-                                          key={day.toISOString()} 
-                                          className={cn(
-                                            "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative overflow-hidden",
-                                            colors 
-                                              ? cn(colors.bg, colors.text, "border", colors.border) 
-                                              : isWeekend 
-                                                ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
-                                                : "bg-gradient-to-b from-muted/20 to-muted/40",
-                                            isToday(day) && cn(
-                                              "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
-                                              isTodayColumnHovered && "animate-pulse-glow"
-                                            )
-                                          )}
-                                          title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
-                                          onMouseEnter={() => isToday(day) && setIsTodayColumnHovered(true)}
-                                          onMouseLeave={() => isToday(day) && setIsTodayColumnHovered(false)}
-                                        >
-                                          {shift ? (
-                                            <div className="w-full text-center flex flex-col items-center">
-                                              <div className="font-medium truncate text-[10px] px-0.5 w-full" title={shift.shift_name}>
-                                                {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name}
-                                              </div>
-                                              {daysCount <= 14 && <div className="text-[9px] opacity-80 truncate w-full">{mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}</div>}
-                                              {cycleInfo && <div className="text-[8px] opacity-70 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
-                                            </div>
-                                          ) : (
-                                            <div className="flex flex-col items-center">
-                                              <span className={cn("text-sm", isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground")}>—</span>
-                                              {cycleInfo && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                                      <div>{totalHours.hours}ч</div>
-                                      {totalHours.minutes > 0 && <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>}
-                                    </div>
-                                  </React.Fragment>
-                                );
-                              })}
-
-                              {/* Day view - Group summary */}
-                              {(() => {
-                                const groupStats = calculateGroupStats(ops);
-                                return (
-                                  <>
-                                    {days.map((day) => (
-                                      <div key={day.toISOString()} className="text-center h-[44px] flex items-center justify-center text-xs text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">—</div>
-                                    ))}
-                                     <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
-                                       <div>{groupStats.totalHours}ч</div>
-                                       {groupStats.totalMinutes > 0 && <div className="text-[10px]">{groupStats.totalMinutes}м</div>}
-                                     </div>
-                                  </>
-                                );
-                              })()}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-            {/* Grand total */}
-            {filteredOperators.length > 0 && (
-              <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate">
-                {/* Fixed label column - same structure as employee column */}
-                <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-50" style={{ width: `${employeeColumnWidth}px` }}>
-                  <div className="px-3 flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
-                    <Clock className="h-4 w-4" />
-                    ОБЩИЙ ИТОГ:
-                  </div>
-                </div>
-                
-                {/* Blur overlays: left edge (between label column and totals) + right edge (totals fading) */}
-                <div
-                  className="absolute top-0 bottom-0 w-10 pointer-events-none z-[60]"
-                  style={{ left: `${employeeColumnWidth}px` }}
-                >
-                  <div className="h-full w-full bg-gradient-to-r from-emerald-50 dark:from-emerald-950/80 via-emerald-50/70 dark:via-emerald-950/50 to-transparent" />
-                </div>
-
-                <div className="absolute top-0 bottom-0 right-0 w-10 pointer-events-none z-[60]">
-                  <div className="h-full w-full bg-gradient-to-l from-emerald-50 dark:from-emerald-950/80 via-emerald-50/70 dark:via-emerald-950/50 to-transparent" />
-                </div>
-
-                {/* Scrollable total area */}
-                <div 
-                  ref={registerScrollContainer('grand-total')}
-                  onScroll={handleSyncScroll('grand-total')}
-                  className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden scrollbar-overlay flex items-center relative"
-                >
-                  <div style={calendarGridStyle} className="px-2 py-1 items-center">
-                      {period === "year" ? (
-                        <>
-                          {months.map((month) => {
-                            let monthTotal = 0;
-                            filteredOperators.forEach(op => {
-                              const mh = calculateMonthHours(op, month);
-                              monthTotal += mh.hours * 60 + mh.minutes;
-                            });
-                            const h = Math.floor(monthTotal / 60);
-                            const m = monthTotal % 60;
-                            return (
-                              <div key={month.toISOString()} className="text-center text-xs font-medium h-[40px] flex items-center justify-center rounded-md bg-gradient-to-b from-muted/20 to-muted/40">
-                                {h}ч{m > 0 ? ` ${m}м` : ''}
-                              </div>
-                            );
-                          })}
-                        </>
-                      ) : (
-                        days.map((day) => {
-                          const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                          return (
-                            <div 
-                              key={day.toISOString()} 
-                              className={cn(
-                                "text-center text-xs text-muted-foreground h-[40px] flex items-center justify-center rounded-md",
-                                isWeekend 
-                                  ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
-                                  : "bg-gradient-to-b from-muted/20 to-muted/40",
-                                isToday(day) && cn(
-                                  "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
-                                  isTodayColumnHovered && "animate-pulse-glow"
-                                )
-                              )}
-                              onMouseEnter={() => isToday(day) && setIsTodayColumnHovered(true)}
-                              onMouseLeave={() => isToday(day) && setIsTodayColumnHovered(false)}
-                            >—</div>
-                          );
-                        })
-                      )}
-                      {(() => {
-                        const grandTotalCalc = period === "year" 
-                          ? calculateGroupYearlyTotal(filteredOperators)
-                          : calculateGroupTotalHours(filteredOperators);
-                        return (
-                           <div className="text-center p-1.5 h-[40px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold">
-                             <div>{grandTotalCalc.hours}ч</div>
-                             {grandTotalCalc.minutes > 0 && <div className="text-[10px] opacity-80">{grandTotalCalc.minutes}м</div>}
-                           </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-              </div>
-            )}
+              <GrandTotalRow
+                days={days}
+                months={months}
+                period={period}
+                filteredOperators={filteredOperators}
+                employeeColumnWidth={employeeColumnWidth}
+                calendarGridStyle={calendarGridStyle}
+                isTodayColumnHovered={isTodayColumnHovered}
+                onTodayColumnHover={setIsTodayColumnHovered}
+                registerScrollContainer={registerScrollContainer}
+                handleSyncScroll={handleSyncScroll}
+                calculateMonthHours={calculateMonthHours}
+                calculateGroupTotalHours={calculateGroupTotalHours}
+                calculateGroupYearlyTotal={calculateGroupYearlyTotal}
+              />
             </div>
           </div>
         </div>
