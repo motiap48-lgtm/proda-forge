@@ -1522,19 +1522,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           {/* Only vertical scroll here; horizontal scroll must be inside each calendar */}
           <div className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-300px)]" style={{ scrollbarGutter: 'stable' }}>
             <div className="flex flex-col gap-3 w-full min-w-0">
-          {/* Operators grouped by schedule */}
-          {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
-            const isCollapsed = collapsedGroups.has(scheduleName);
-            const schedule = ops[0]?.work_schedules;
-            const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
-            const scheduleId = schedule?.id;
-            const scheduleCycleStartDate = schedule?.cycle_start_date;
-            
-            return (
-            <div key={scheduleName}>
-              {/* Group name - stays in place, no horizontal scroll */}
-              <div className="mb-2">
-                <div className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2 border border-border/40">
+              {/* Operators grouped by schedule */}
+              {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
+                const isCollapsed = collapsedGroups.has(scheduleName);
+                const schedule = ops[0]?.work_schedules;
+                const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
+                const scheduleId = schedule?.id;
+                const scheduleCycleStartDate = schedule?.cycle_start_date;
+                
+                return (
+                  <div key={scheduleName}>
+                    {/* Group name - stays in place, no horizontal scroll */}
+                    <div className="mb-2">
+                      <div className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2 border border-border/40">
                   <button 
                     className="flex items-center gap-2 hover:bg-muted/70 rounded px-1 py-0.5 transition-colors flex-1 min-w-0"
                     onClick={() => toggleGroupCollapse(scheduleName)}
@@ -1912,14 +1912,14 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         </div>
                       </div>
                     </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                  </div>
+                );
+              })}
 
-            {/* Grand total */}
-            {filteredOperators.length > 0 && (
+              {/* Grand total */}
+              {filteredOperators.length > 0 && (
               <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate">
                 {/* Fixed label column - same structure as employee column */}
                 <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-50" style={{ width: `${employeeColumnWidth}px` }}>
