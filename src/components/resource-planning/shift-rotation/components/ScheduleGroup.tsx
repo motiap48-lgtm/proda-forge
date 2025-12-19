@@ -260,7 +260,7 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
                       {months.map((month) => (
                         <div
                           key={month.toISOString()}
-                          className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50"
+                          className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-gradient-to-b from-muted to-secondary"
                         >
                           <div className="font-medium text-xs">{format(month, "LLL", { locale: ru })}</div>
                         </div>
@@ -289,7 +289,7 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
                                   )
                                 : isWeekend
                                   ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
-                                  : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground",
+                                  : "bg-gradient-to-b from-muted to-secondary text-muted-foreground",
                             )}
                             onMouseEnter={() => isTodayDate && onTodayColumnHover(true)}
                             onMouseLeave={() => isTodayDate && onTodayColumnHover(false)}
