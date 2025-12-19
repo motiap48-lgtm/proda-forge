@@ -221,35 +221,35 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               />
             </div>
             
-            {/* Edge blur overlays: header + body */}
-            {/* Header edge blur */}
+            {/* Edge fade overlays: subtle gradient for smooth edges */}
+            {/* Header edge fade */}
             <div
-              className="absolute top-0 h-[var(--sr-header-h)] w-12 pointer-events-none z-[90]"
+              className="absolute top-0 h-[var(--sr-header-h)] w-8 pointer-events-none z-[90]"
               style={{ left: `${employeeColumnWidth}px` }}
               aria-hidden="true"
             >
-              <div className="h-full w-full bg-gradient-to-r from-background/90 via-background/50 to-transparent backdrop-blur-md" />
+              <div className="h-full w-full bg-gradient-to-r from-background/40 to-transparent" />
             </div>
             <div
-              className="absolute top-0 h-[var(--sr-header-h)] right-0 w-12 pointer-events-none z-[90]"
+              className="absolute top-0 h-[var(--sr-header-h)] right-0 w-8 pointer-events-none z-[90]"
               aria-hidden="true"
             >
-              <div className="h-full w-full bg-gradient-to-l from-background/90 via-background/50 to-transparent backdrop-blur-md" />
+              <div className="h-full w-full bg-gradient-to-l from-background/40 to-transparent" />
             </div>
 
-            {/* Body edge blur */}
+            {/* Body edge fade */}
             <div
-              className="absolute top-[var(--sr-header-h)] bottom-0 w-12 pointer-events-none z-[70]"
+              className="absolute top-[var(--sr-header-h)] bottom-0 w-8 pointer-events-none z-[70]"
               style={{ left: `${employeeColumnWidth}px` }}
               aria-hidden="true"
             >
-              <div className="h-full w-full bg-gradient-to-r from-background/80 via-background/30 to-transparent backdrop-blur-sm" />
+              <div className="h-full w-full bg-gradient-to-r from-background/30 to-transparent" />
             </div>
             <div
-              className="absolute top-[var(--sr-header-h)] bottom-0 right-0 w-12 pointer-events-none z-[70]"
+              className="absolute top-[var(--sr-header-h)] bottom-0 right-0 w-8 pointer-events-none z-[70]"
               aria-hidden="true"
             >
-              <div className="h-full w-full bg-gradient-to-l from-background/80 via-background/30 to-transparent backdrop-blur-sm" />
+              <div className="h-full w-full bg-gradient-to-l from-background/30 to-transparent" />
             </div>
 
             {/* Calendar */}
