@@ -242,11 +242,11 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
                 handleSyncScroll(`schedule-${scheduleName}`)(e);
                 handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
               }}
-              className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate"
+              className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate bg-background"
             >
               {/* Sticky calendar header */}
               <div
-                className="sticky top-0 z-[70] bg-background px-2 pt-1 pb-1"
+                className="sticky top-0 z-[70] bg-background px-2 pt-1 pb-1 overflow-hidden"
                 style={{
                   ...calendarGridStyle,
                   boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)',
