@@ -307,7 +307,7 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               </div>
               
               {/* Calendar body */}
-              <div className="px-2 pb-1" style={calendarGridStyle}>
+              <div className="px-2 pb-1 relative z-0" style={calendarGridStyle}>
                 {period === "year" ? (
                   <>
                     {/* Year view - Operator rows */}
