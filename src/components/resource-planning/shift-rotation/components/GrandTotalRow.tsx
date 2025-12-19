@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { getDay, isToday } from "date-fns";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ interface GrandTotalRowProps {
   calculateGroupYearlyTotal: (ops: any[]) => { hours: number; minutes: number };
 }
 
-export const GrandTotalRow: React.FC<GrandTotalRowProps> = ({
+const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   days,
   months,
   period,
@@ -72,7 +72,7 @@ export const GrandTotalRow: React.FC<GrandTotalRowProps> = ({
         onScroll={handleSyncScroll('grand-total')}
         className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate bg-emerald-50 dark:bg-emerald-950/30"
       >
-        <div style={calendarGridStyle} className="pl-2 pr-6 py-1.5 items-center">
+        <div style={calendarGridStyle} className="pl-2 pr-0.5 py-1.5 items-center">
           {period === "year" ? (
             <>
               {months.map((month) => {
@@ -125,3 +125,15 @@ export const GrandTotalRow: React.FC<GrandTotalRowProps> = ({
     </div>
   );
 };
+
+// Memoized component for performance optimization
+export const GrandTotalRow = memo(GrandTotalRowComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.filteredOperators.length === nextProps.filteredOperators.length &&
+    prevProps.period === nextProps.period &&
+    prevProps.days.length === nextProps.days.length &&
+    prevProps.employeeColumnWidth === nextProps.employeeColumnWidth &&
+    prevProps.isTodayColumnHovered === nextProps.isTodayColumnHovered &&
+    prevProps.filteredOperators === nextProps.filteredOperators
+  );
+});
