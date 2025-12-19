@@ -220,15 +220,15 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               />
             </div>
             
-            {/* Blur overlays */}
+            {/* Blur overlays (only for scroll body, not for sticky header) */}
             <div
-              className="absolute top-0 bottom-0 w-10 pointer-events-none z-[60]"
+              className="absolute top-[76px] bottom-0 w-10 pointer-events-none z-[60]"
               style={{ left: `${employeeColumnWidth}px` }}
             >
               <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent" />
             </div>
 
-            <div className="absolute top-0 bottom-0 right-0 w-10 pointer-events-none z-[60]">
+            <div className="absolute top-[76px] bottom-0 right-0 w-10 pointer-events-none z-[60]">
               <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent" />
             </div>
 
