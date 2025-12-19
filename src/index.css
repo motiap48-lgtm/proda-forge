@@ -153,7 +153,6 @@ All colors MUST be HSL.
   
   /* Overlay scrollbar - appears only on hover/scroll, reserves space to prevent layout shift */
   .scrollbar-overlay {
-    overflow: auto;
     scrollbar-gutter: stable;
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
