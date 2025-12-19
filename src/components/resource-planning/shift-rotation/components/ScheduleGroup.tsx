@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo, useMemo } from "react";
 import { format, getDay, isToday, isSameMonth } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ interface ScheduleGroupProps {
   isFirstGroup?: boolean;
 }
 
-export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
+const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   scheduleName,
   operators,
   isCollapsed,
@@ -268,12 +268,12 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               <div
                 className="sticky top-0 z-[80] relative"
                 style={{
-                  boxShadow: "0 2px 4px -2px hsl(var(--border) / 0.5)",
+                  boxShadow: "0 4px 12px -4px hsl(var(--foreground) / 0.15), 0 2px 6px -2px hsl(var(--foreground) / 0.1)",
                 }}
               >
                 {/* Grid header with full-width background */}
                 <div
-                  className="relative pl-2 pr-6 py-2 bg-background h-[var(--sr-header-h)]"
+                  className="relative pl-2 pr-0.5 py-2 bg-background h-[var(--sr-header-h)]"
                   style={calendarGridStyle}
                 >
                   {period === "year" ? (
@@ -344,7 +344,7 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               </div>
               
               {/* Calendar body */}
-              <div className="pl-2 pr-6 pt-1 pb-1 relative z-0" style={calendarGridStyle}>
+              <div className="pl-2 pr-0.5 pt-1 pb-1 relative z-0" style={calendarGridStyle}>
                 {period === "year" ? (
                   <>
                     {/* Year view - Operator rows */}
@@ -482,3 +482,21 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
     </div>
   );
 };
+
+// Memoized component for performance optimization with many operators
+export const ScheduleGroup = memo(ScheduleGroupComponent, (prevProps, nextProps) => {
+  // Custom comparison - skip re-render if key props haven't changed
+  return (
+    prevProps.isCollapsed === nextProps.isCollapsed &&
+    prevProps.scheduleName === nextProps.scheduleName &&
+    prevProps.operators.length === nextProps.operators.length &&
+    prevProps.period === nextProps.period &&
+    prevProps.daysCount === nextProps.daysCount &&
+    prevProps.employeeColumnWidth === nextProps.employeeColumnWidth &&
+    prevProps.isTodayColumnHovered === nextProps.isTodayColumnHovered &&
+    prevProps.isResizing === nextProps.isResizing &&
+    prevProps.syncingScheduleId === nextProps.syncingScheduleId &&
+    prevProps.days.length === nextProps.days.length &&
+    prevProps.operators === nextProps.operators
+  );
+});
