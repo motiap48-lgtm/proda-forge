@@ -1611,9 +1611,12 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden relative isolate"
                   >
                     {/* Employee column - fixed width, separate vertical scroll */}
-                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-20" style={{ width: `${employeeColumnWidth}px` }}>
-                      {/* Employee header */}
-                      <div className="flex-shrink-0 bg-muted/30 text-base font-semibold text-foreground px-3 pt-1 h-[64px] flex items-center border-b border-border mb-1">
+                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-50" style={{ width: `${employeeColumnWidth}px` }}>
+                      {/* Employee header - matches calendar header height and styling */}
+                      <div 
+                        className="flex-shrink-0 bg-muted/30 text-base font-semibold text-foreground px-3 pt-1 h-[64px] flex items-center border-b border-border mb-1"
+                        style={{ boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)' }}
+                      >
                         Сотрудники
                       </div>
                       
@@ -1671,13 +1674,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                     
                     {/* Blur overlays: left edge (between employee column and calendar) + right edge (calendar fading) */}
                     <div
-                      className="absolute top-0 bottom-0 w-10 pointer-events-none z-30"
+                      className="absolute top-0 bottom-0 w-10 pointer-events-none z-[60]"
                       style={{ left: `${employeeColumnWidth}px` }}
                     >
                       <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent" />
                     </div>
 
-                    <div className="absolute top-0 bottom-0 right-0 w-10 pointer-events-none z-30">
+                    <div className="absolute top-0 bottom-0 right-0 w-10 pointer-events-none z-[60]">
                       <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent" />
                     </div>
 
@@ -1691,10 +1694,16 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         handleSyncScroll(`schedule-${scheduleName}`)(e);
                         handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
                       }}
-                      className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative"
+                      className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate"
                     >
-                      {/* Sticky calendar header with top padding to cover scrolling content */}
-                      <div className="sticky top-0 z-10 bg-background pt-1 mb-1 px-2" style={calendarGridStyle}>
+                      {/* Sticky calendar header - high z-index + isolation to prevent content from leaking */}
+                      <div 
+                        className="sticky top-0 z-40 bg-background pt-1 mb-1 px-2 isolate"
+                        style={{ 
+                          ...calendarGridStyle,
+                          boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)'
+                        }}
+                      >
                         {period === "year" ? (
                           <>
                             {months.map((month) => (
@@ -1890,26 +1899,26 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
 
             {/* Grand total */}
             {filteredOperators.length > 0 && (
-              <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative">
+              <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate">
                 {/* Fixed label column - same structure as employee column */}
-                <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-20" style={{ width: `${employeeColumnWidth}px` }}>
+                <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-50" style={{ width: `${employeeColumnWidth}px` }}>
                   <div className="px-3 flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
                 </div>
                 
-                 {/* Blur overlays: left edge (between label column and totals) + right edge (totals fading) */}
-                 <div
-                   className="absolute top-0 bottom-0 w-10 pointer-events-none z-30"
-                   style={{ left: `${employeeColumnWidth}px` }}
-                 >
-                   <div className="h-full w-full bg-gradient-to-r from-emerald-50 dark:from-emerald-950/80 via-emerald-50/70 dark:via-emerald-950/50 to-transparent" />
-                 </div>
+                {/* Blur overlays: left edge (between label column and totals) + right edge (totals fading) */}
+                <div
+                  className="absolute top-0 bottom-0 w-10 pointer-events-none z-[60]"
+                  style={{ left: `${employeeColumnWidth}px` }}
+                >
+                  <div className="h-full w-full bg-gradient-to-r from-emerald-50 dark:from-emerald-950/80 via-emerald-50/70 dark:via-emerald-950/50 to-transparent" />
+                </div>
 
-                 <div className="absolute top-0 bottom-0 right-0 w-10 pointer-events-none z-30">
-                   <div className="h-full w-full bg-gradient-to-l from-emerald-50 dark:from-emerald-950/80 via-emerald-50/70 dark:via-emerald-950/50 to-transparent" />
-                 </div>
+                <div className="absolute top-0 bottom-0 right-0 w-10 pointer-events-none z-[60]">
+                  <div className="h-full w-full bg-gradient-to-l from-emerald-50 dark:from-emerald-950/80 via-emerald-50/70 dark:via-emerald-950/50 to-transparent" />
+                </div>
 
                 {/* Scrollable total area */}
                 <div 
