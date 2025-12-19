@@ -1608,7 +1608,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   {/* Flex container: fixed employee column + single calendar scroll container */}
                   <div 
                     ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? printRef : undefined}
-                    className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden relative"
+                    className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden relative isolate"
                   >
                     {/* Employee column - fixed width, separate vertical scroll */}
                     <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-20" style={{ width: `${employeeColumnWidth}px` }}>
@@ -1878,6 +1878,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Right-side gradient overlay */}
+                    <div className="absolute top-0 bottom-0 right-0 w-8 pointer-events-none z-30">
+                      <div className="h-full w-full bg-gradient-to-l from-background via-background/60 to-transparent" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1962,7 +1967,12 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       })()}
                     </div>
                   </div>
+                
+                {/* Right-side gradient overlay for grand total */}
+                <div className="absolute top-0 bottom-0 right-0 w-8 pointer-events-none z-30">
+                  <div className="h-full w-full bg-gradient-to-l from-emerald-50 dark:from-emerald-950/80 via-emerald-50/60 dark:via-emerald-950/40 to-transparent" />
                 </div>
+              </div>
             )}
             </div>
           </div>
