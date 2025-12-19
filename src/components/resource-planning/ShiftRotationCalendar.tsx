@@ -1669,12 +1669,16 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       />
                     </div>
                     
-                    {/* Blur overlay between employee column and calendar */}
-                    <div 
-                      className="absolute top-0 bottom-0 w-10 pointer-events-none z-30" 
+                    {/* Blur overlays: left edge (between employee column and calendar) + right edge (calendar fading) */}
+                    <div
+                      className="absolute top-0 bottom-0 w-10 pointer-events-none z-30"
                       style={{ left: `${employeeColumnWidth}px` }}
                     >
                       <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent" />
+                    </div>
+
+                    <div className="absolute top-0 bottom-0 right-0 w-10 pointer-events-none z-30">
+                      <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent" />
                     </div>
 
                     {/* Calendar - single scroll container with sticky header */}
@@ -1703,7 +1707,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                 </div>
                               </div>
                             ))}
-                            <div className="sticky right-0 z-30 text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium relative before:content-[''] before:absolute before:inset-y-0 before:left-[-40px] before:w-10 before:bg-gradient-to-l before:from-emerald-200/90 before:via-emerald-200/50 before:to-transparent dark:before:from-emerald-900/80 dark:before:via-emerald-900/40">
+                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
                               <Clock className="h-3 w-3 mb-0.5" />
                               <div className="text-[10px]">Год</div>
                             </div>
@@ -1737,7 +1741,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                 </div>
                               );
                             })}
-                            <div className="sticky right-0 z-30 text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium relative before:content-[''] before:absolute before:inset-y-0 before:left-[-40px] before:w-10 before:bg-gradient-to-l before:from-emerald-200/90 before:via-emerald-200/50 before:to-transparent dark:before:from-emerald-900/80 dark:before:via-emerald-900/40">
+                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
                               <Clock className="h-3 w-3 mb-0.5" />
                               <div className="text-[10px]">Итого</div>
                             </div>
@@ -1766,7 +1770,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                         </div>
                                       );
                                     })}
-                                    <div className="sticky right-0 z-20 text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium relative before:content-[''] before:absolute before:inset-y-0 before:left-[-40px] before:w-10 before:bg-gradient-to-l before:from-emerald-200/90 before:via-emerald-200/50 before:to-transparent dark:before:from-emerald-900/80 dark:before:via-emerald-900/40">
+                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
                                       <div>{yearlyTotal.hours}ч</div>
                                       {yearlyTotal.minutes > 0 && <div className="text-[10px]">{yearlyTotal.minutes}м</div>}
                                     </div>
@@ -1790,7 +1794,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                         </div>
                                       );
                                     })}
-                                    <div className="sticky right-0 z-20 text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border relative before:content-[''] before:absolute before:inset-y-0 before:left-[-40px] before:w-10 before:bg-gradient-to-l before:from-emerald-300/90 before:via-emerald-300/50 before:to-transparent dark:before:from-emerald-800/80 dark:before:via-emerald-800/40">
+                                    <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
                                       <div>{groupYearlyTotal.hours}ч</div>
                                       {groupYearlyTotal.minutes > 0 && <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>}
                                     </div>
@@ -1850,7 +1854,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                         </div>
                                       );
                                     })}
-                                    <div className="sticky right-0 z-20 text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium relative before:content-[''] before:absolute before:inset-y-0 before:left-[-40px] before:w-10 before:bg-gradient-to-l before:from-emerald-200/90 before:via-emerald-200/50 before:to-transparent dark:before:from-emerald-900/80 dark:before:via-emerald-900/40">
+                                    <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
                                       <div>{totalHours.hours}ч</div>
                                       {totalHours.minutes > 0 && <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>}
                                     </div>
@@ -1866,10 +1870,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                     {days.map((day) => (
                                       <div key={day.toISOString()} className="text-center h-[44px] flex items-center justify-center text-xs text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">—</div>
                                     ))}
-                                    <div className="sticky right-0 z-20 text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border relative before:content-[''] before:absolute before:inset-y-0 before:left-[-40px] before:w-10 before:bg-gradient-to-l before:from-emerald-300/90 before:via-emerald-300/50 before:to-transparent dark:before:from-emerald-800/80 dark:before:via-emerald-800/40">
-                                      <div>{groupStats.totalHours}ч</div>
-                                      {groupStats.totalMinutes > 0 && <div className="text-[10px]">{groupStats.totalMinutes}м</div>}
-                                    </div>
+                                     <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
+                                       <div>{groupStats.totalHours}ч</div>
+                                       {groupStats.totalMinutes > 0 && <div className="text-[10px]">{groupStats.totalMinutes}м</div>}
+                                     </div>
                                   </>
                                 );
                               })()}
@@ -1895,14 +1899,18 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   </div>
                 </div>
                 
-                {/* Blur overlay between label column and scrollable area */}
-                <div 
-                  className="absolute top-0 bottom-0 w-10 pointer-events-none z-30" 
-                  style={{ left: `${employeeColumnWidth}px` }}
-                >
-                  <div className="h-full w-full bg-gradient-to-r from-emerald-50 dark:from-emerald-950/80 via-emerald-50/70 dark:via-emerald-950/50 to-transparent" />
-                </div>
-                
+                 {/* Blur overlays: left edge (between label column and totals) + right edge (totals fading) */}
+                 <div
+                   className="absolute top-0 bottom-0 w-10 pointer-events-none z-30"
+                   style={{ left: `${employeeColumnWidth}px` }}
+                 >
+                   <div className="h-full w-full bg-gradient-to-r from-emerald-50 dark:from-emerald-950/80 via-emerald-50/70 dark:via-emerald-950/50 to-transparent" />
+                 </div>
+
+                 <div className="absolute top-0 bottom-0 right-0 w-10 pointer-events-none z-30">
+                   <div className="h-full w-full bg-gradient-to-l from-emerald-50 dark:from-emerald-950/80 via-emerald-50/70 dark:via-emerald-950/50 to-transparent" />
+                 </div>
+
                 {/* Scrollable total area */}
                 <div 
                   ref={registerScrollContainer('grand-total')}
@@ -1954,10 +1962,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                           ? calculateGroupYearlyTotal(filteredOperators)
                           : calculateGroupTotalHours(filteredOperators);
                         return (
-                          <div className="sticky right-0 z-20 text-center p-1.5 h-[40px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold relative before:content-[''] before:absolute before:inset-y-0 before:left-[-40px] before:w-10 before:bg-gradient-to-l before:from-emerald-300/90 before:via-emerald-300/50 before:to-transparent dark:before:from-emerald-800/80 dark:before:via-emerald-800/40">
-                            <div>{grandTotalCalc.hours}ч</div>
-                            {grandTotalCalc.minutes > 0 && <div className="text-[10px] opacity-80">{grandTotalCalc.minutes}м</div>}
-                          </div>
+                           <div className="text-center p-1.5 h-[40px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold">
+                             <div>{grandTotalCalc.hours}ч</div>
+                             {grandTotalCalc.minutes > 0 && <div className="text-[10px] opacity-80">{grandTotalCalc.minutes}м</div>}
+                           </div>
                         );
                       })()}
                     </div>
