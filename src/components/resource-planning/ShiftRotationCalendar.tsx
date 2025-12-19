@@ -1912,15 +1912,16 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                         </div>
                       </div>
                     </div>
-                    </div>
                   </div>
+                </div>
+              </div>
                   </div>
                 );
               })}
 
               {/* Grand total */}
               {filteredOperators.length > 0 && (
-              <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate">
+                <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate">
                 {/* Fixed label column - same structure as employee column */}
                 <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-50" style={{ width: `${employeeColumnWidth}px` }}>
                   <div className="px-3 flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
