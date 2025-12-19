@@ -155,15 +155,16 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
       >
         <div className={cn("overflow-hidden", isCollapsed && "overflow-hidden")}>
           {/* Flex container: fixed employee column + single calendar scroll container */}
-          <div 
+          <div
             ref={isFirstGroup ? printRef : undefined}
             className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden relative isolate"
+            style={{ ["--sr-header-h" as any]: "76px" }}
           >
             {/* Employee column */}
             <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-50" style={{ width: `${employeeColumnWidth}px` }}>
-              <div 
-                className="flex-shrink-0 bg-muted/30 text-base font-semibold text-foreground px-3 pt-1 h-[64px] flex items-center gap-2 border-b border-border mb-1"
-                style={{ boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)' }}
+              <div
+                className="flex-shrink-0 bg-muted/30 text-base font-semibold text-foreground px-3 py-2 h-[var(--sr-header-h)] flex items-center gap-2 border-b border-border mb-1"
+                style={{ boxShadow: "0 2px 4px -2px hsl(var(--border) / 0.5)" }}
               >
                 <Users className="h-5 w-5 text-muted-foreground" />
                 Сотрудники
@@ -220,29 +221,35 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               />
             </div>
             
-            {/* Edge blur overlays: header + body (prevents bleed-through and keeps blur effect) */}
+            {/* Edge blur overlays: header + body */}
             {/* Header edge blur */}
             <div
-              className="absolute top-0 h-[76px] w-12 pointer-events-none z-[90]"
+              className="absolute top-0 h-[var(--sr-header-h)] w-12 pointer-events-none z-[90]"
               style={{ left: `${employeeColumnWidth}px` }}
               aria-hidden="true"
             >
-              <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent backdrop-blur-md" />
+              <div className="h-full w-full bg-gradient-to-r from-background/90 via-background/50 to-transparent backdrop-blur-md" />
             </div>
-            <div className="absolute top-0 h-[76px] right-0 w-12 pointer-events-none z-[90]" aria-hidden="true">
-              <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent backdrop-blur-md" />
+            <div
+              className="absolute top-0 h-[var(--sr-header-h)] right-0 w-12 pointer-events-none z-[90]"
+              aria-hidden="true"
+            >
+              <div className="h-full w-full bg-gradient-to-l from-background/90 via-background/50 to-transparent backdrop-blur-md" />
             </div>
 
             {/* Body edge blur */}
             <div
-              className="absolute top-[76px] bottom-0 w-12 pointer-events-none z-[70]"
+              className="absolute top-[var(--sr-header-h)] bottom-0 w-12 pointer-events-none z-[70]"
               style={{ left: `${employeeColumnWidth}px` }}
               aria-hidden="true"
             >
-              <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent" />
+              <div className="h-full w-full bg-gradient-to-r from-background/80 via-background/30 to-transparent backdrop-blur-sm" />
             </div>
-            <div className="absolute top-[76px] bottom-0 right-0 w-12 pointer-events-none z-[70]" aria-hidden="true">
-              <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent" />
+            <div
+              className="absolute top-[var(--sr-header-h)] bottom-0 right-0 w-12 pointer-events-none z-[70]"
+              aria-hidden="true"
+            >
+              <div className="h-full w-full bg-gradient-to-l from-background/80 via-background/30 to-transparent backdrop-blur-sm" />
             </div>
 
             {/* Calendar */}
@@ -259,16 +266,16 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
             >
               {/* Sticky calendar header */}
               <div
-                className="sticky top-0 z-[80] bg-background relative"
+                className="sticky top-0 z-[80] bg-background relative h-[var(--sr-header-h)]"
                 style={{
-                  boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)',
+                  boxShadow: "0 2px 4px -2px hsl(var(--border) / 0.5)",
                 }}
               >
                 {/* Solid backplate to prevent any bleed-through */}
                 <div className="absolute inset-0 bg-background" aria-hidden="true" />
 
                 <div
-                  className="relative pl-2 pr-6 pt-1 pb-1"
+                  className="relative pl-2 pr-6 py-2 h-full"
                   style={calendarGridStyle}
                 >
                   {period === "year" ? (
@@ -339,7 +346,7 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               </div>
               
               {/* Calendar body */}
-              <div className="pl-2 pr-6 pb-1 relative z-0" style={calendarGridStyle}>
+              <div className="pl-2 pr-6 pt-1 pb-1 relative z-0" style={calendarGridStyle}>
                 {period === "year" ? (
                   <>
                     {/* Year view - Operator rows */}
