@@ -244,12 +244,9 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               }}
               className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate bg-background"
             >
-              {/* Mask for scrollbar/gutter area to prevent bleed-through */}
-              <div className="pointer-events-none absolute top-0 right-0 h-[76px] w-5 bg-background z-[80]" />
-
               {/* Sticky calendar header */}
               <div
-                className="sticky top-0 z-[70] bg-background px-2 pt-1 pb-1"
+                className="sticky top-0 z-[70] bg-background pl-2 pr-6 pt-1 pb-1"
                 style={{
                   ...calendarGridStyle,
                   boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)',
@@ -322,7 +319,7 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               </div>
               
               {/* Calendar body */}
-              <div className="px-2 pb-1 relative z-0" style={calendarGridStyle}>
+              <div className="pl-2 pr-6 pb-1 relative z-0" style={calendarGridStyle}>
                 {period === "year" ? (
                   <>
                     {/* Year view - Operator rows */}
