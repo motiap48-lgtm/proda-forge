@@ -221,35 +221,35 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               />
             </div>
             
-            {/* Edge fade overlays: subtle gradient for smooth edges */}
+            {/* Edge fade overlays - matching GrandTotalRow style */}
             {/* Header edge fade */}
             <div
-              className="absolute top-0 h-[var(--sr-header-h)] w-8 pointer-events-none z-[90]"
+              className="absolute top-0 h-[var(--sr-header-h)] w-10 pointer-events-none z-[90]"
               style={{ left: `${employeeColumnWidth}px` }}
               aria-hidden="true"
             >
-              <div className="h-full w-full bg-gradient-to-r from-background/40 to-transparent" />
+              <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent" />
             </div>
             <div
-              className="absolute top-0 h-[var(--sr-header-h)] right-0 w-8 pointer-events-none z-[90]"
+              className="absolute top-0 h-[var(--sr-header-h)] right-0 w-10 pointer-events-none z-[90]"
               aria-hidden="true"
             >
-              <div className="h-full w-full bg-gradient-to-l from-background/40 to-transparent" />
+              <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent" />
             </div>
 
             {/* Body edge fade */}
             <div
-              className="absolute top-[var(--sr-header-h)] bottom-0 w-8 pointer-events-none z-[70]"
+              className="absolute top-[var(--sr-header-h)] bottom-0 w-10 pointer-events-none z-[70]"
               style={{ left: `${employeeColumnWidth}px` }}
               aria-hidden="true"
             >
-              <div className="h-full w-full bg-gradient-to-r from-background/30 to-transparent" />
+              <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent" />
             </div>
             <div
-              className="absolute top-[var(--sr-header-h)] bottom-0 right-0 w-8 pointer-events-none z-[70]"
+              className="absolute top-[var(--sr-header-h)] bottom-0 right-0 w-10 pointer-events-none z-[70]"
               aria-hidden="true"
             >
-              <div className="h-full w-full bg-gradient-to-l from-background/30 to-transparent" />
+              <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent" />
             </div>
 
             {/* Calendar */}
