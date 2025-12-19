@@ -996,7 +996,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       const shift = getShiftForDate(operator, day);
                       const isWeekend = getDay(day) === 0 || getDay(day) === 6;
                       const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
-                      const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
+                      const netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
                       const hours = Math.floor(netMinutes / 60);
                       const mins = netMinutes % 60;
                       const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
@@ -1132,7 +1132,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       const shift = getShiftForDate(operator, day);
                       const isWeekend = getDay(day) === 0 || getDay(day) === 6;
                       const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
-                      const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
+                      const netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
                       const hours = Math.floor(netMinutes / 60);
                       const mins = netMinutes % 60;
                       const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
