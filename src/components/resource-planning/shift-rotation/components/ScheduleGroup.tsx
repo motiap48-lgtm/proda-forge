@@ -246,7 +246,7 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
             >
               {/* Sticky calendar header */}
               <div 
-                className="sticky top-0 z-40 bg-background pt-1 mb-1 px-2 isolate"
+                className="sticky top-0 z-[70] bg-background pt-1 mb-1 px-2"
                 style={{ 
                   ...calendarGridStyle,
                   boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)'
