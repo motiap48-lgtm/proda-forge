@@ -1697,10 +1697,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate"
                     >
                       {/* Sticky calendar header - wrapper covers full width including scrollbar area */}
-                      <div className="sticky top-0 z-40 bg-background isolate">
-                        {/* Inner container with shadow */}
+                      <div 
+                        className="sticky top-0 z-40 bg-background isolate pt-1"
+                        style={{ marginBottom: '4px' }}
+                      >
+                        {/* Inner container with shadow - bg-background covers gaps between grid cells */}
                         <div 
-                          className="pt-1 mb-1 px-2"
+                          className="px-2 bg-background"
                           style={{ 
                             ...calendarGridStyle,
                             boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)'
