@@ -175,32 +175,52 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                 onScroll={handleSyncVerticalScroll(`emp-${scheduleName}`)}
                 className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-overlay min-h-0"
               >
-                {operators.map((operator) => (
-                  <HoverCard key={operator.id} openDelay={300}>
-                    <HoverCardTrigger asChild>
-                      <div 
-                        className={cn(
-                          "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50 mb-1",
-                          onEditOperator && "hover:bg-muted/50 cursor-pointer"
-                        )}
-                        onClick={() => onEditOperator?.(operator)}
-                      >
-                        <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
-                        {operator.shift_rotation_enabled && (
-                          <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                        )}
-                        {onEditOperator && (
-                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => { e.stopPropagation(); onEditOperator(operator); }}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </HoverCardTrigger>
-                    <HoverCardContent className="w-80 z-[100]" side="right" align="start">
-                      <OperatorInfoCard operator={operator} />
-                    </HoverCardContent>
-                  </HoverCard>
-                ))}
+                {operators.map((operator) => {
+                  const schedule = operator.work_schedules;
+                  const isCyclic = schedule?.schedule_type === 'cyclic';
+                  const shifts = schedule?.work_schedule_shifts || [];
+                  const hasMultipleShifts = shifts.length > 1;
+                  
+                  // For cyclic schedules: show icon if operator has personal cycle start date
+                  const hasPersonalCycleDate = isCyclic && operator.shift_rotation_start_date;
+                  
+                  // For non-cyclic schedules with multiple shifts: show rotation icon
+                  const showShiftRotationIcon = !isCyclic && hasMultipleShifts && operator.shift_rotation_enabled;
+                  
+                  return (
+                    <HoverCard key={operator.id} openDelay={300}>
+                      <HoverCardTrigger asChild>
+                        <div 
+                          className={cn(
+                            "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50 mb-1",
+                            onEditOperator && "hover:bg-muted/50 cursor-pointer"
+                          )}
+                          onClick={() => onEditOperator?.(operator)}
+                        >
+                          <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
+                          {hasPersonalCycleDate && (
+                            <span title="Персональная дата цикла">
+                              <CalendarCheck className="h-3 w-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                            </span>
+                          )}
+                          {showShiftRotationIcon && (
+                            <span title="Ротация смен">
+                              <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            </span>
+                          )}
+                          {onEditOperator && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => { e.stopPropagation(); onEditOperator(operator); }}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80 z-[100]" side="right" align="start">
+                        <OperatorInfoCard operator={operator} />
+                      </HoverCardContent>
+                    </HoverCard>
+                  );
+                })}
                 
                 {/* Group summary row */}
                 <div className="bg-muted/30 px-2 h-[44px] flex items-center text-xs text-muted-foreground border-t border-border">
