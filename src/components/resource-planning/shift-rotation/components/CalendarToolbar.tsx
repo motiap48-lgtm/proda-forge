@@ -339,7 +339,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Все графики</SelectItem>
-            {uniqueSchedules.map(name => (
+            {uniqueSchedules.filter(name => name && name.trim() !== '').map(name => (
               <SelectItem key={name} value={name}>{name}</SelectItem>
             ))}
           </SelectContent>
