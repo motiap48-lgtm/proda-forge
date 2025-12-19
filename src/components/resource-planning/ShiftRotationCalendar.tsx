@@ -1821,7 +1821,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                                     {days.map((day) => {
                                       const shift = getShiftForDate(operator, day);
                                       const colors = shift ? shiftColorMap.get(shift.shift_name) : null;
-                                      const netMinutes = shift?.net_work_minutes ?? (shift?.gross_work_minutes - shift?.break_minutes);
+                                      const netMinutes = shift 
+                                        ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) 
+                                        : 0;
                                       const hours = Math.floor(netMinutes / 60);
                                       const mins = netMinutes % 60;
                                       const isWeekend = getDay(day) === 0 || getDay(day) === 6;
