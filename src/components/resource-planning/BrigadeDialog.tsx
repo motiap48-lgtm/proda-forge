@@ -222,14 +222,14 @@ export const BrigadeDialog = ({
           <div className="space-y-2">
             <Label htmlFor="default_work_center_id">Основной участок</Label>
             <Select
-              value={formData.default_work_center_id}
-              onValueChange={(value) => setFormData({ ...formData, default_work_center_id: value })}
+              value={formData.default_work_center_id || "none"}
+              onValueChange={(value) => setFormData({ ...formData, default_work_center_id: value === "none" ? "" : value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Выберите участок" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Не указан</SelectItem>
+                <SelectItem value="none">Не указан</SelectItem>
                 {workCenters?.map((wc: any) => (
                   <SelectItem key={wc.id} value={wc.id}>
                     {wc.code} - {wc.name}
@@ -242,14 +242,14 @@ export const BrigadeDialog = ({
           <div className="space-y-2">
             <Label htmlFor="work_schedule_id">График работы</Label>
             <Select
-              value={formData.work_schedule_id}
-              onValueChange={(value) => setFormData({ ...formData, work_schedule_id: value })}
+              value={formData.work_schedule_id || "none"}
+              onValueChange={(value) => setFormData({ ...formData, work_schedule_id: value === "none" ? "" : value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Выберите график" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Не указан</SelectItem>
+                <SelectItem value="none">Не указан</SelectItem>
                 {workSchedules?.map((ws: any) => (
                   <SelectItem key={ws.id} value={ws.id}>
                     {ws.code} - {ws.name}
