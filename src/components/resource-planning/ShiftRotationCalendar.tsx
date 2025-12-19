@@ -1522,19 +1522,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           {/* Only vertical scroll here; horizontal scroll must be inside each calendar */}
           <div className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-300px)]" style={{ scrollbarGutter: 'stable' }}>
             <div className="flex flex-col gap-3 w-full min-w-0">
-              {/* Operators grouped by schedule */}
-              {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
-                const isCollapsed = collapsedGroups.has(scheduleName);
-                const schedule = ops[0]?.work_schedules;
-                const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
-                const scheduleId = schedule?.id;
-                const scheduleCycleStartDate = schedule?.cycle_start_date;
-                
-                return (
-                  <div key={scheduleName}>
-                    {/* Group name - stays in place, no horizontal scroll */}
-                    <div className="mb-2">
-                      <div className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2 border border-border/40">
+          {/* Operators grouped by schedule */}
+          {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
+            const isCollapsed = collapsedGroups.has(scheduleName);
+            const schedule = ops[0]?.work_schedules;
+            const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
+            const scheduleId = schedule?.id;
+            const scheduleCycleStartDate = schedule?.cycle_start_date;
+            
+            return (
+            <div key={scheduleName}>
+              {/* Group name - stays in place, no horizontal scroll */}
+              <div className="mb-2">
+                <div className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2 border border-border/40">
                   <button 
                     className="flex items-center gap-2 hover:bg-muted/70 rounded px-1 py-0.5 transition-colors flex-1 min-w-0"
                     onClick={() => toggleGroupCollapse(scheduleName)}
@@ -1684,103 +1684,82 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent" />
                     </div>
 
-                    {/* Calendar - separate header (horizontal scroll) + body (horizontal + vertical scroll) */}
-                    <div className="flex-1 min-w-0 flex flex-col relative isolate">
-                      {/* Header scroll (no vertical scrollbar, so header background never becomes "transparent" when horizontally scrolling) */}
-                      <div
-                        ref={registerScrollContainer(`header-${scheduleName}`)}
-                        onScroll={handleSyncScroll(`header-${scheduleName}`)}
-                        className="overflow-x-auto overflow-y-hidden scrollbar-overlay relative"
-                        style={{ paddingRight: `${calendarHeaderPadRightPx[scheduleName] ?? 0}px` }}
+                    {/* Calendar - single scroll container with sticky header */}
+                    <div 
+                      ref={(el) => {
+                        registerScrollContainer(`schedule-${scheduleName}`)(el);
+                        registerVerticalScrollContainer(`cal-${scheduleName}`)(el);
+                      }}
+                      onScroll={(e) => {
+                        handleSyncScroll(`schedule-${scheduleName}`)(e);
+                        handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
+                      }}
+                      className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate"
+                    >
+                      {/* Sticky calendar header - high z-index + isolation to prevent content from leaking */}
+                      <div 
+                        className="sticky top-0 z-40 bg-background pt-1 mb-1 px-2 isolate"
+                        style={{ 
+                          ...calendarGridStyle,
+                          boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)'
+                        }}
                       >
-                        <div className="bg-background isolate pt-1" style={{ marginBottom: "4px" }}>
-                          <div
-                            className="px-2 bg-background"
-                            style={{
-                              ...calendarGridStyle,
-                              boxShadow: "0 2px 4px -2px hsl(var(--border) / 0.5)",
-                            }}
-                          >
-                            {period === "year" ? (
-                              <>
-                                {months.map((month) => (
-                                  <div
-                                    key={month.toISOString()}
-                                    className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50"
-                                  >
-                                    <div className="font-medium text-xs">{format(month, "LLL", { locale: ru })}</div>
-                                  </div>
-                                ))}
-                                <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                                  <Clock className="h-3 w-3 mb-0.5" />
-                                  <div className="text-[10px]">Год</div>
+                        {period === "year" ? (
+                          <>
+                            {months.map((month) => (
+                              <div 
+                                key={month.toISOString()} 
+                                className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50"
+                              >
+                                <div className="font-medium text-xs">
+                                  {format(month, "LLL", { locale: ru })}
                                 </div>
-                              </>
-                            ) : (
-                              <>
-                                {days.map((day, idx) => {
-                                  const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
-                                  const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                                  const isTodayDate = isToday(day);
-                                  return (
-                                    <div
-                                      key={day.toISOString()}
-                                      className={cn(
-                                        "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
-                                        isTodayDate
-                                          ? cn(
-                                              "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
-                                              isTodayColumnHovered && "animate-pulse-glow"
-                                            )
-                                          : isWeekend
-                                            ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
-                                            : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground"
-                                      )}
-                                      onMouseEnter={() => isTodayDate && setIsTodayColumnHovered(true)}
-                                      onMouseLeave={() => isTodayDate && setIsTodayColumnHovered(false)}
-                                    >
-                                      <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
-                                      <div
-                                        className={cn(
-                                          "text-sm font-semibold",
-                                          isTodayDate
-                                            ? "text-white"
-                                            : isWeekend
-                                              ? "text-rose-600 dark:text-rose-300"
-                                              : "text-foreground"
-                                        )}
-                                      >
-                                        {format(day, "d", { locale: ru })}
-                                      </div>
-                                      {(showMonth || daysCount <= 14) && (
-                                        <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                                <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                                  <Clock className="h-3 w-3 mb-0.5" />
-                                  <div className="text-[10px]">Итого</div>
+                              </div>
+                            ))}
+                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
+                              <Clock className="h-3 w-3 mb-0.5" />
+                              <div className="text-[10px]">Год</div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {days.map((day, idx) => {
+                              const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
+                              const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                              const isTodayDate = isToday(day);
+                              return (
+                                <div 
+                                  key={day.toISOString()} 
+                                  className={cn(
+                                    "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
+                                    isTodayDate 
+                                      ? cn(
+                                          "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
+                                          isTodayColumnHovered && "animate-pulse-glow"
+                                        )
+                                      : isWeekend 
+                                        ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
+                                        : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground"
+                                  )}
+                                  onMouseEnter={() => isTodayDate && setIsTodayColumnHovered(true)}
+                                  onMouseLeave={() => isTodayDate && setIsTodayColumnHovered(false)}
+                                >
+                                  <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
+                                  <div className={cn("text-sm font-semibold", isTodayDate ? "text-white" : isWeekend ? "text-rose-600 dark:text-rose-300" : "text-foreground")}>{format(day, "d", { locale: ru })}</div>
+                                  {(showMonth || daysCount <= 14) && <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>}
                                 </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
+                              );
+                            })}
+                            <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
+                              <Clock className="h-3 w-3 mb-0.5" />
+                              <div className="text-[10px]">Итого</div>
+                            </div>
+                          </>
+                        )}
                       </div>
-
-                      {/* Calendar body (vertical + horizontal scroll, synced with employee column) */}
-                      <div
-                        ref={(el) => {
-                          registerScrollContainer(`schedule-${scheduleName}`)(el);
-                          registerVerticalScrollContainer(`cal-${scheduleName}`)(el);
-                        }}
-                        onScroll={(e) => {
-                          handleSyncScroll(`schedule-${scheduleName}`)(e);
-                          handleSyncVerticalScroll(`cal-${scheduleName}`)(e);
-                        }}
-                        className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative"
-                      >
-                        <div className="px-2 pb-1" style={calendarGridStyle}>
+                      
+                      {/* Calendar body */}
+                      <div className="px-2 pb-1" style={calendarGridStyle}>
                           {period === "year" ? (
                             <>
                               {/* Year view - Operator rows */}
@@ -1915,13 +1894,12 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   </div>
                 </div>
               </div>
-                  </div>
-                );
-              })}
+            );
+          })}
 
-              {/* Grand total */}
-              {filteredOperators.length > 0 && (
-                <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate">
+            {/* Grand total */}
+            {filteredOperators.length > 0 && (
+              <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate">
                 {/* Fixed label column - same structure as employee column */}
                 <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-50" style={{ width: `${employeeColumnWidth}px` }}>
                   <div className="px-3 flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
