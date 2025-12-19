@@ -246,76 +246,80 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
             >
               {/* Sticky calendar header */}
               <div
-                className="sticky top-0 z-[70] bg-background pl-2 pr-6 pt-1 pb-1"
+                className="sticky top-0 z-[70] bg-background"
                 style={{
-                  ...calendarGridStyle,
                   boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)',
                 }}
               >
-                {period === "year" ? (
-                  <>
-                    {months.map((month) => (
-                      <div
-                        key={month.toISOString()}
-                        className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50"
-                      >
-                        <div className="font-medium text-xs">{format(month, "LLL", { locale: ru })}</div>
-                      </div>
-                    ))}
-                    <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                      <Clock className="h-3 w-3 mb-0.5" />
-                      <div className="text-[10px]">Год</div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {days.map((day, idx) => {
-                      const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
-                      const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                      const isTodayDate = isToday(day);
-
-                      return (
+                <div
+                  className="pl-2 pr-6 pt-1 pb-1"
+                  style={calendarGridStyle}
+                >
+                  {period === "year" ? (
+                    <>
+                      {months.map((month) => (
                         <div
-                          key={day.toISOString()}
-                          className={cn(
-                            "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
-                            isTodayDate
-                              ? cn(
-                                  "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
-                                  isTodayColumnHovered && "animate-pulse-glow",
-                                )
-                              : isWeekend
-                                ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
-                                : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground",
-                          )}
-                          onMouseEnter={() => isTodayDate && onTodayColumnHover(true)}
-                          onMouseLeave={() => isTodayDate && onTodayColumnHover(false)}
+                          key={month.toISOString()}
+                          className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50"
                         >
-                          <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
-                          <div
-                            className={cn(
-                              "text-sm font-semibold",
-                              isTodayDate
-                                ? "text-white"
-                                : isWeekend
-                                  ? "text-rose-600 dark:text-rose-300"
-                                  : "text-foreground",
-                            )}
-                          >
-                            {format(day, "d", { locale: ru })}
-                          </div>
-                          {(showMonth || daysCount <= 14) && (
-                            <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>
-                          )}
+                          <div className="font-medium text-xs">{format(month, "LLL", { locale: ru })}</div>
                         </div>
-                      );
-                    })}
-                    <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                      <Clock className="h-3 w-3 mb-0.5" />
-                      <div className="text-[10px]">Итого</div>
-                    </div>
-                  </>
-                )}
+                      ))}
+                      <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
+                        <Clock className="h-3 w-3 mb-0.5" />
+                        <div className="text-[10px]">Год</div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {days.map((day, idx) => {
+                        const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
+                        const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+                        const isTodayDate = isToday(day);
+
+                        return (
+                          <div
+                            key={day.toISOString()}
+                            className={cn(
+                              "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
+                              isTodayDate
+                                ? cn(
+                                    "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
+                                    isTodayColumnHovered && "animate-pulse-glow",
+                                  )
+                                : isWeekend
+                                  ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
+                                  : "bg-gradient-to-b from-muted/40 to-muted/60 text-muted-foreground",
+                            )}
+                            onMouseEnter={() => isTodayDate && onTodayColumnHover(true)}
+                            onMouseLeave={() => isTodayDate && onTodayColumnHover(false)}
+                          >
+                            <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
+                            <div
+                              className={cn(
+                                "text-sm font-semibold",
+                                isTodayDate
+                                  ? "text-white"
+                                  : isWeekend
+                                    ? "text-rose-600 dark:text-rose-300"
+                                    : "text-foreground",
+                              )}
+                            >
+                              {format(day, "d", { locale: ru })}
+                            </div>
+                            {(showMonth || daysCount <= 14) && (
+                              <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
+                        <Clock className="h-3 w-3 mb-0.5" />
+                        <div className="text-[10px]">Итого</div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               
               {/* Calendar body */}
