@@ -220,15 +220,28 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               />
             </div>
             
-            {/* Blur overlays (only for scroll body, not for sticky header) */}
+            {/* Edge blur overlays: header + body (prevents bleed-through and keeps blur effect) */}
+            {/* Header edge blur */}
             <div
-              className="absolute top-[76px] bottom-0 w-10 pointer-events-none z-[60]"
+              className="absolute top-0 h-[76px] w-12 pointer-events-none z-[90]"
               style={{ left: `${employeeColumnWidth}px` }}
+              aria-hidden="true"
+            >
+              <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent backdrop-blur-md" />
+            </div>
+            <div className="absolute top-0 h-[76px] right-0 w-12 pointer-events-none z-[90]" aria-hidden="true">
+              <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent backdrop-blur-md" />
+            </div>
+
+            {/* Body edge blur */}
+            <div
+              className="absolute top-[76px] bottom-0 w-12 pointer-events-none z-[70]"
+              style={{ left: `${employeeColumnWidth}px` }}
+              aria-hidden="true"
             >
               <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent" />
             </div>
-
-            <div className="absolute top-[76px] bottom-0 right-0 w-10 pointer-events-none z-[60]">
+            <div className="absolute top-[76px] bottom-0 right-0 w-12 pointer-events-none z-[70]" aria-hidden="true">
               <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent" />
             </div>
 
