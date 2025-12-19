@@ -1608,13 +1608,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   {/* Flex container: fixed employee column + single calendar scroll container */}
                   <div 
                     ref={scheduleName === Array.from(groupedBySchedule.keys())[0] ? printRef : undefined}
-                    className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden"
+                    className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden relative"
                   >
                     {/* Employee column - fixed width, separate vertical scroll */}
-                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative" style={{ width: `${employeeColumnWidth}px` }}>
-                      {/* Blur overlay on right edge */}
-                      <div className="absolute right-0 top-0 bottom-0 w-6 pointer-events-none z-10 bg-gradient-to-r from-transparent to-background/80 backdrop-blur-[2px]" />
-                      
+                    <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-20" style={{ width: `${employeeColumnWidth}px` }}>
                       {/* Employee header */}
                       <div className="flex-shrink-0 bg-muted/30 text-base font-semibold text-foreground px-3 pt-1 h-[64px] flex items-center border-b border-border mb-1">
                         Сотрудники
@@ -1665,11 +1662,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       {/* Resize handle */}
                       <div
                         className={cn(
-                          "absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-20",
+                          "absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-30",
                           isResizing && "bg-primary/50"
                         )}
                         onMouseDown={handleResizeMouseDown}
                       />
+                    </div>
+                    
+                    {/* Blur overlay between employee column and calendar */}
+                    <div 
+                      className="absolute top-0 bottom-0 w-8 pointer-events-none z-30" 
+                      style={{ left: `${employeeColumnWidth}px` }}
+                    >
+                      <div className="h-full w-full bg-gradient-to-r from-background via-background/60 to-transparent" />
                     </div>
 
                     {/* Calendar - single scroll container with sticky header */}
@@ -1685,7 +1690,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                       className="flex-1 min-w-0 overflow-auto scrollbar-overlay"
                     >
                       {/* Sticky calendar header with top padding to cover scrolling content */}
-                      <div className="sticky top-0 z-20 bg-background pt-1 mb-1 px-2" style={calendarGridStyle}>
+                      <div className="sticky top-0 z-10 bg-background pt-1 mb-1 px-2" style={calendarGridStyle}>
                         {period === "year" ? (
                           <>
                             {months.map((month) => (
@@ -1881,23 +1886,28 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
 
             {/* Grand total */}
             {filteredOperators.length > 0 && (
-              <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden">
+              <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative">
                 {/* Fixed label column - same structure as employee column */}
-                <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative" style={{ width: `${employeeColumnWidth}px` }}>
-                  {/* Blur overlay on right edge */}
-                  <div className="absolute right-0 top-0 bottom-0 w-6 pointer-events-none z-10 bg-gradient-to-r from-transparent to-emerald-50/80 dark:to-emerald-950/50 backdrop-blur-[2px]" />
-                  
+                <div className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-20" style={{ width: `${employeeColumnWidth}px` }}>
                   <div className="px-3 flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
                     <Clock className="h-4 w-4" />
                     ОБЩИЙ ИТОГ:
                   </div>
                 </div>
                 
+                {/* Blur overlay between label column and scrollable area */}
+                <div 
+                  className="absolute top-0 bottom-0 w-8 pointer-events-none z-30" 
+                  style={{ left: `${employeeColumnWidth}px` }}
+                >
+                  <div className="h-full w-full bg-gradient-to-r from-emerald-50 dark:from-emerald-950/80 via-emerald-50/60 dark:via-emerald-950/40 to-transparent" />
+                </div>
+                
                 {/* Scrollable total area */}
                 <div 
                   ref={registerScrollContainer('grand-total')}
                   onScroll={handleSyncScroll('grand-total')}
-                  className="flex-1 min-w-0 overflow-x-auto scrollbar-overlay flex items-center"
+                  className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden scrollbar-overlay flex items-center"
                 >
                   <div style={calendarGridStyle} className="px-2 py-1 items-center">
                       {period === "year" ? (
