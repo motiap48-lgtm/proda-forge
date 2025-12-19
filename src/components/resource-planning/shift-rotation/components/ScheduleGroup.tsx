@@ -244,9 +244,12 @@ export const ScheduleGroup: React.FC<ScheduleGroupProps> = ({
               }}
               className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate bg-background"
             >
+              {/* Mask for scrollbar/gutter area to prevent bleed-through */}
+              <div className="pointer-events-none absolute top-0 right-0 h-[76px] w-5 bg-background z-[80]" />
+
               {/* Sticky calendar header */}
               <div
-                className="sticky top-0 z-[70] bg-background px-2 pt-1 pb-1 overflow-hidden"
+                className="sticky top-0 z-[70] bg-background px-2 pt-1 pb-1"
                 style={{
                   ...calendarGridStyle,
                   boxShadow: '0 2px 4px -2px hsl(var(--border) / 0.5)',
