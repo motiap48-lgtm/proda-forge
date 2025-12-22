@@ -315,7 +315,14 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                           )}
                         </div>
                       </HoverCardTrigger>
-                      <HoverCardContent className="w-80 z-[100]" side="right" align="start">
+                      <HoverCardContent 
+                        className="w-80" 
+                        side="right" 
+                        align="start"
+                        sideOffset={5}
+                        style={{ zIndex: 99999 }}
+                        forceMount={undefined}
+                      >
                         <OperatorInfoCard operator={operator} onEdit={onEditOperator} onManageAbsences={onManageAbsences} />
                       </HoverCardContent>
                     </HoverCard>
