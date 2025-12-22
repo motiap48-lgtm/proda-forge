@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 
 export interface ScheduleOverride {
   id: string;
@@ -64,13 +64,16 @@ export const useCreateScheduleOverride = () => {
       shift_number?: number | null;
       reason?: string | null;
       notes?: string | null;
+      shift_cycle_start_date?: string | null; // New: if provided, update operator's cycle start date
     }) => {
+      const { shift_cycle_start_date, ...overrideData } = override;
       const { data: session } = await supabase.auth.getSession();
       
+      // Create the override
       const { data, error } = await supabase
         .from("operator_schedule_overrides")
         .upsert({
-          ...override,
+          ...overrideData,
           created_by: session?.session?.user?.id || null,
         }, {
           onConflict: "operator_id,override_date",
@@ -79,10 +82,29 @@ export const useCreateScheduleOverride = () => {
         .single();
 
       if (error) throw error;
+
+      // If shift_cycle_start_date is provided, update the operator's cycle start date
+      if (shift_cycle_start_date) {
+        const { error: operatorError } = await supabase
+          .from("operators")
+          .update({
+            shift_rotation_start_date: shift_cycle_start_date,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", override.operator_id);
+
+        if (operatorError) {
+          console.error("Error updating operator cycle start date:", operatorError);
+          // Don't fail the whole operation, just log the error
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schedule-overrides"] });
+      queryClient.invalidateQueries({ queryKey: ["operators"] });
+      queryClient.invalidateQueries({ queryKey: ["resourcePlanning"] });
       toast.success("Изменение графика сохранено");
     },
     onError: (error: Error) => {
