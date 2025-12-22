@@ -23,6 +23,7 @@ import {
 } from "./shift-rotation";
 import { OperatorAbsenceDialog } from "./OperatorAbsenceDialog";
 import { BulkAbsenceDialog } from "./BulkAbsenceDialog";
+import { AbsenceExportDialog } from "./AbsenceExportDialog";
 
 interface ShiftRotationCalendarProps {
   operators: any[];
@@ -50,6 +51,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [absenceOperator, setAbsenceOperator] = useState<any>(null);
   const [showBulkAbsenceDialog, setShowBulkAbsenceDialog] = useState(false);
+  const [showExportAbsenceDialog, setShowExportAbsenceDialog] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
 
@@ -652,6 +654,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           onToggleFullscreen={toggleFullscreen}
           hasActiveFilters={hasActiveFilters}
           onResetFilters={resetFilters}
+          onExportAbsences={() => setShowExportAbsenceDialog(true)}
         />
       </CardHeader>
       <CardContent className="p-0">
@@ -733,6 +736,12 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         open={showBulkAbsenceDialog}
         onOpenChange={setShowBulkAbsenceDialog}
         operators={filteredOperators}
+      />
+
+      {/* Absence export dialog */}
+      <AbsenceExportDialog
+        open={showExportAbsenceDialog}
+        onOpenChange={setShowExportAbsenceDialog}
       />
     </Card>
   );

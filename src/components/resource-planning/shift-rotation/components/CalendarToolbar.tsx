@@ -46,6 +46,7 @@ interface CalendarToolbarProps {
   onExportPdf: () => void;
   onPrint: () => void;
   onBulkAbsence?: () => void;
+  onExportAbsences?: () => void;
   isStartDatePickerOpen: boolean;
   onStartDatePickerOpenChange: (open: boolean) => void;
   isEndDatePickerOpen: boolean;
@@ -87,6 +88,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onExportPdf,
   onPrint,
   onBulkAbsence,
+  onExportAbsences,
   isStartDatePickerOpen,
   onStartDatePickerOpenChange,
   isEndDatePickerOpen,
@@ -164,6 +166,12 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             <Printer className="h-4 w-4 mr-2" />
             Печать
           </Button>
+          {onExportAbsences && (
+            <Button variant="outline" size="sm" onClick={onExportAbsences} className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 dark:bg-orange-900/20 dark:hover:bg-orange-900/30 dark:border-orange-800 dark:text-orange-300">
+              <FileDown className="h-4 w-4 mr-2" />
+              Отсутствия
+            </Button>
+          )}
         </div>
       </div>
       

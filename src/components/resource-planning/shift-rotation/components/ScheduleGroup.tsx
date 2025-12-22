@@ -38,7 +38,7 @@ interface ScheduleGroupProps {
   handleSyncVerticalScroll: (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => void;
   calculateTotalHours: (operator: any, absences?: OperatorAbsence[]) => { hours: number; minutes: number };
   calculateMonthHours: (operator: any, month: Date) => { hours: number; minutes: number };
-  calculateGroupStats: (ops: any[]) => { workingDays: number; offDays: number; totalHours: number; totalMinutes: number };
+  calculateGroupStats: (ops: any[]) => { workingDays: number; offDays: number; absenceDays: number; totalHours: number; totalMinutes: number };
   calculateYearlyTotal: (operator: any) => { hours: number; minutes: number };
   calculateGroupYearlyTotal: (ops: any[]) => { hours: number; minutes: number };
   printRef?: React.RefObject<HTMLDivElement>;
@@ -229,9 +229,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                 
                 {/* Group summary row */}
                 <div className="bg-muted/30 px-2 h-[44px] flex items-center text-xs text-muted-foreground border-t border-border">
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1 text-emerald-600"><CalendarCheck className="h-3 w-3" />{groupStats.workingDays}</span>
-                    <span className="flex items-center gap-1 text-rose-500"><CalendarX className="h-3 w-3" />{groupStats.offDays}</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="flex items-center gap-1 text-emerald-600" title="Рабочие дни"><CalendarCheck className="h-3 w-3" />{groupStats.workingDays}</span>
+                    <span className="flex items-center gap-1 text-rose-500" title="Выходные"><CalendarX className="h-3 w-3" />{groupStats.offDays}</span>
+                    {groupStats.absenceDays > 0 && (
+                      <span className="flex items-center gap-1 text-orange-500" title="Дни отсутствий"><Plane className="h-3 w-3" />{groupStats.absenceDays}</span>
+                    )}
                   </div>
                 </div>
               </div>
