@@ -7,11 +7,16 @@ const Popover = PopoverPrimitive.Root;
 
 const PopoverTrigger = PopoverPrimitive.Trigger;
 
+const getFullscreenPortalContainer = (): HTMLElement | undefined => {
+  if (typeof document === "undefined") return undefined;
+  return (document.fullscreenElement as HTMLElement | null) ?? undefined;
+};
+
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
 >(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
+  <PopoverPrimitive.Portal container={getFullscreenPortalContainer()}>
     <PopoverPrimitive.Content
       ref={ref}
       align={align}

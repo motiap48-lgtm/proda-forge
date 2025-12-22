@@ -8,7 +8,17 @@ const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
-const DialogPortal = DialogPrimitive.Portal;
+const getFullscreenPortalContainer = (): HTMLElement | undefined => {
+  if (typeof document === "undefined") return undefined;
+  return (document.fullscreenElement as HTMLElement | null) ?? undefined;
+};
+
+const DialogPortal = ({
+  container,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Portal>) => (
+  <DialogPrimitive.Portal container={container ?? getFullscreenPortalContainer()} {...props} />
+);
 
 const DialogClose = DialogPrimitive.Close;
 
