@@ -339,7 +339,13 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
 
       {/* Filters row */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Filter className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-1.5">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Badge variant="secondary" className="text-xs font-medium">
+            <User className="h-3 w-3 mr-1" />
+            {filteredOperatorsCount}
+          </Badge>
+        </div>
         
         <Select value={scheduleFilter} onValueChange={onScheduleFilterChange}>
           <SelectTrigger className="w-[180px]">
