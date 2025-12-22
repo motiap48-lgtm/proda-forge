@@ -93,15 +93,19 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   // State for creating new absence from empty cell click
   const [creatingAbsence, setCreatingAbsence] = useState<{ operatorId: string; operatorName: string; date: string } | null>(null);
   
-  // Drag and drop functionality
+  // Drag and drop functionality with resize support
   const {
     handleDragStart,
+    handleResizeStart,
     handleDragOver,
     handleDragLeave,
     handleDrop,
     handleDragEnd,
     isDropTarget,
     isDragging,
+    handleAbsenceHover,
+    isAbsenceHovered,
+    isAbsenceEdge,
   } = useAbsenceDragDrop();
 
   return (
@@ -497,6 +501,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               const AbsenceIcon = absence.absence_type === 'sick_leave' ? Stethoscope 
                                 : absence.absence_type === 'business_trip' ? Briefcase 
                                 : Plane;
+                              const { isStart, isEnd } = isAbsenceEdge(absence, day);
+                              const isHovered = isAbsenceHovered(absence.id);
                               
                               return (
                                 <div 
@@ -504,9 +510,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   draggable
                                   onDragStart={(e) => handleDragStart(absence, operator.id, e)}
                                   onDragEnd={handleDragEnd}
+                                  onMouseEnter={() => handleAbsenceHover(absence.id)}
+                                  onMouseLeave={() => handleAbsenceHover(null)}
                                   className={cn(
-                                    "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden cursor-grab active:cursor-grabbing",
-                                    "hover:ring-2 hover:ring-primary/50",
+                                    "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden cursor-grab active:cursor-grabbing group",
+                                    isHovered && "ring-2 ring-primary/60 z-10",
+                                    !isHovered && "hover:ring-2 hover:ring-primary/50",
                                     isDragging(absence.id) && "opacity-50 scale-95",
                                     absence.absence_type === 'annual_leave' && "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-900/50 dark:to-blue-900/70 text-blue-700 dark:text-blue-300",
                                     absence.absence_type === 'sick_leave' && "bg-gradient-to-b from-red-200 to-red-300 dark:from-red-900/50 dark:to-red-900/70 text-red-700 dark:text-red-300",
@@ -520,7 +529,33 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   title={`${absenceInfo.label}${absence.notes ? `: ${absence.notes}` : ''} (клик - редактировать, перетащить - переместить)`}
                                   onClick={() => setEditingCellAbsence({ absence, operatorName: operator.full_name })}
                                 >
-                                  <GripVertical className="h-2.5 w-2.5 absolute top-0.5 right-0.5 opacity-40" />
+                                  {/* Left resize handle */}
+                                  {isStart && (
+                                    <div
+                                      draggable
+                                      onDragStart={(e) => handleResizeStart(absence, operator.id, 'start', e)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-primary/30 transition-opacity flex items-center justify-center"
+                                      title="Перетащите для изменения даты начала"
+                                    >
+                                      <div className="w-0.5 h-4 bg-current rounded-full opacity-60" />
+                                    </div>
+                                  )}
+                                  
+                                  {/* Right resize handle */}
+                                  {isEnd && (
+                                    <div
+                                      draggable
+                                      onDragStart={(e) => handleResizeStart(absence, operator.id, 'end', e)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-primary/30 transition-opacity flex items-center justify-center"
+                                      title="Перетащите для изменения даты окончания"
+                                    >
+                                      <div className="w-0.5 h-4 bg-current rounded-full opacity-60" />
+                                    </div>
+                                  )}
+                                  
+                                  <GripVertical className="h-2.5 w-2.5 absolute top-0.5 right-0.5 opacity-40 group-hover:opacity-0" />
                                   <AbsenceIcon className="h-3.5 w-3.5 mb-0.5" />
                                   <div className="text-[9px] font-medium truncate w-full px-0.5">
                                     {daysCount > 14 ? absenceInfo.icon : absenceInfo.label.split(' ')[0]}
