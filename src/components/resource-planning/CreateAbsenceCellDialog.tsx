@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   Dialog,
@@ -7,7 +7,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
+import { parseDateOnly } from "@/components/resource-planning/shift-rotation/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,6 +67,48 @@ export const CreateAbsenceCellDialog = ({
     }
   }, [initialDate, initialEndDate]);
 
+  // Горячие клавиши для быстрого выбора типа отсутствия
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Игнорируем если фокус в текстовом поле
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      switch (e.key.toLowerCase()) {
+        case 'v':
+        case 'м': // Russian 'м' for 'v' position
+          e.preventDefault();
+          setFormData(prev => ({ ...prev, absence_type: 'annual_leave' }));
+          break;
+        case 'b':
+        case 'и': // Russian 'и' for 'b' position
+          e.preventDefault();
+          setFormData(prev => ({ ...prev, absence_type: 'sick_leave' }));
+          break;
+        case 'k':
+        case 'л': // Russian 'л' for 'k' position
+          e.preventDefault();
+          setFormData(prev => ({ ...prev, absence_type: 'business_trip' }));
+          break;
+        case 'a':
+        case 'ф': // Russian 'ф' for 'a' position
+          e.preventDefault();
+          setFormData(prev => ({ ...prev, absence_type: 'administrative_leave' }));
+          break;
+        case 'p':
+        case 'з': // Russian 'з' for 'p' position
+          e.preventDefault();
+          setFormData(prev => ({ ...prev, absence_type: 'unauthorized_absence' }));
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
+
   // Валидация: дата окончания не может быть раньше даты начала
   const isDateRangeValid = formData.start_date <= formData.end_date;
 
@@ -86,10 +130,12 @@ export const CreateAbsenceCellDialog = ({
     );
   };
 
-  // Calculate date range display
+  // Calculate date range display - use parseDateOnly to avoid timezone shift
+  const startParsed = parseDateOnly(formData.start_date);
+  const endParsed = parseDateOnly(formData.end_date);
   const dateRangeDisplay = formData.start_date === formData.end_date
-    ? format(parseISO(formData.start_date), "d MMMM yyyy", { locale: ru })
-    : `${format(parseISO(formData.start_date), "d MMM", { locale: ru })} — ${format(parseISO(formData.end_date), "d MMM yyyy", { locale: ru })}`;
+    ? format(startParsed ?? new Date(), "d MMMM yyyy", { locale: ru })
+    : `${format(startParsed ?? new Date(), "d MMM", { locale: ru })} — ${format(endParsed ?? new Date(), "d MMM yyyy", { locale: ru })}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -110,6 +156,16 @@ export const CreateAbsenceCellDialog = ({
                 Период: {dateRangeDisplay}
               </div>
             </div>
+          </div>
+
+          {/* Keyboard shortcuts hint */}
+          <div className="text-[10px] text-muted-foreground bg-muted/50 rounded px-2 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+            <span className="font-medium">Горячие клавиши:</span>
+            <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">V</kbd> Отпуск</span>
+            <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">B</kbd> Больничный</span>
+            <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">K</kbd> Командировка</span>
+            <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">A</kbd> Административный</span>
+            <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">P</kbd> Прогул</span>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -198,9 +254,11 @@ export const CreateAbsenceCellDialog = ({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
-            </Button>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Отмена
+              </Button>
+            </DialogClose>
             <Button 
               type="submit" 
               disabled={createAbsence.isPending || !isDateRangeValid} 

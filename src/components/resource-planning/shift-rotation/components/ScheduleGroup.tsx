@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useState, useCallback, useEffect } from "react";
-import { format, getDay, isToday, isSameMonth } from "date-fns";
+import { format, getDay, isToday, isSameMonth, differenceInCalendarDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -924,6 +924,29 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           <div className="text-sm font-medium text-primary flex items-center gap-2">
             <CalendarCheck className="h-4 w-4" />
             <span>Новый период: {dragPreview.formattedRange}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Drag selection tooltip - shows selected days count */}
+      {isDraggingSelection && dragSelection && dragSelection.endDate && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 bg-blue-600 text-white rounded-lg px-4 py-2 shadow-lg">
+          <div className="text-sm font-medium flex items-center gap-2">
+            <CalendarCheck className="h-4 w-4" />
+            <span>
+              {(() => {
+                let start = dragSelection.startDate;
+                let end = dragSelection.endDate!;
+                if (end < start) {
+                  const temp = start;
+                  start = end;
+                  end = temp;
+                }
+                const daysCount = differenceInCalendarDays(end, start) + 1;
+                const daysLabel = daysCount === 1 ? 'день' : daysCount < 5 ? 'дня' : 'дней';
+                return `${format(start, "d MMM", { locale: ru })} — ${format(end, "d MMM", { locale: ru })} (${daysCount} ${daysLabel})`;
+              })()}
+            </span>
           </div>
         </div>
       )}
