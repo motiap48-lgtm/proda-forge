@@ -683,12 +683,17 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   canCreateAbsence && !inPreview && "cursor-pointer hover:ring-2 hover:ring-primary/30 hover:bg-primary/5",
                                   isDropTarget(day, operator.id) && "ring-2 ring-primary bg-primary/10",
                                   inPreview && "ring-2 ring-primary/70 bg-primary/20 z-10",
-                                  // Override styling
-                                  hasOverride && !effectiveIsWorking && "bg-gradient-to-b from-amber-100 to-amber-200 dark:from-amber-900/40 dark:to-amber-900/60 border-2 border-dashed border-amber-400",
-                                  hasOverride && effectiveIsWorking && !originalIsWorking && colors 
+                                  // Override styling - working day override: shift colors + dashed border
+                                  hasOverride && effectiveIsWorking && colors 
                                     ? cn(colors.bg, colors.text, "border-2 border-dashed border-amber-400") 
                                     : null,
-                                  // Normal styling (when no override or override keeps original state)
+                                  // Override styling - day off override: normal weekend/off styling + dashed border
+                                  hasOverride && !effectiveIsWorking && isWeekend 
+                                    ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50 border-2 border-dashed border-amber-400"
+                                    : hasOverride && !effectiveIsWorking 
+                                      ? "bg-gradient-to-b from-muted/20 to-muted/40 border-2 border-dashed border-amber-400"
+                                      : null,
+                                  // Normal styling (when no override)
                                   !hasOverride && !inPreview && colors 
                                     ? cn(colors.bg, colors.text, "border", colors.border) 
                                     : !hasOverride && !inPreview && !effectiveIsWorking && isWeekend 
