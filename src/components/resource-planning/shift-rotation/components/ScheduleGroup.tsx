@@ -164,7 +164,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-50" style={{ width: `${employeeColumnWidth}px` }}>
               <div
                 className="flex-shrink-0 bg-muted/30 text-base font-semibold text-foreground px-3 py-2 h-[var(--sr-header-h)] flex items-center gap-2 border-b border-border mb-1"
-                style={{ boxShadow: "0 2px 4px -2px hsl(var(--border) / 0.5)" }}
+                style={{ boxShadow: "0 4px 12px -4px hsl(var(--foreground) / 0.15), 0 2px 6px -2px hsl(var(--foreground) / 0.1)" }}
               >
                 <Users className="h-5 w-5 text-muted-foreground" />
                 Сотрудники
