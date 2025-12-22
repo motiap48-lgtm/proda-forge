@@ -1,6 +1,7 @@
 export { useScrollSync } from "./hooks/useScrollSync";
 export { useResizableColumn } from "./hooks/useResizableColumn";
 export { useCalendarCalculations } from "./hooks/useCalendarCalculations";
+export { useAbsenceRangeSelection } from "./hooks/useAbsenceRangeSelection";
 export { OperatorInfoCard } from "./components/OperatorInfoCard";
 export { CalendarToolbar, type AbsenceStatusFilter } from "./components/CalendarToolbar";
 export { ScheduleGroup } from "./components/ScheduleGroup";

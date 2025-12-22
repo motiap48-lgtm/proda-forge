@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX } from "lucide-react";
+import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle } from "lucide-react";
 import {
   useOperatorAbsences,
   useCreateOperatorAbsence,
@@ -88,8 +88,13 @@ export const OperatorAbsenceDialog = ({
     }
   }, [editingAbsence, isAddingNew]);
 
+  // Валидация: дата окончания не может быть раньше даты начала
+  const isDateRangeValid = formData.start_date <= formData.end_date;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isDateRangeValid) return;
 
     if (editingAbsence) {
       updateAbsence.mutate(
@@ -189,9 +194,18 @@ export const OperatorAbsenceDialog = ({
             value={formData.end_date}
             onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
             required
+            className={!isDateRangeValid ? "border-destructive" : ""}
           />
         </div>
       </div>
+
+      {/* Date validation error */}
+      {!isDateRangeValid && (
+        <div className="flex items-center gap-2 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          Дата окончания не может быть раньше даты начала
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label>Примечание</Label>
@@ -214,7 +228,10 @@ export const OperatorAbsenceDialog = ({
         >
           Отмена
         </Button>
-        <Button type="submit" disabled={createAbsence.isPending || updateAbsence.isPending}>
+        <Button 
+          type="submit" 
+          disabled={createAbsence.isPending || updateAbsence.isPending || !isDateRangeValid}
+        >
           {editingAbsence ? "Сохранить" : "Добавить"}
         </Button>
       </div>
