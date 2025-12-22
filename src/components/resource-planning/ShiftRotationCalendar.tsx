@@ -145,6 +145,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     startDate,
     endDate,
     absences,
+    scheduleOverrides,
   });
 
   // Group operators by their schedule

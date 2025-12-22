@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { addDays, getDaysInMonth, differenceInDays, startOfMonth } from "date-fns";
+import { addDays, getDaysInMonth, differenceInDays, startOfMonth, format } from "date-fns";
 import { getShiftForDate, getShiftColor, type PeriodType, type ShiftColors } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence } from "@/hooks/useOperatorAbsences";
+import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
 
 interface CalendarCalculationsProps {
   operators: any[];
@@ -9,6 +10,7 @@ interface CalendarCalculationsProps {
   startDate: Date;
   endDate?: Date;
   absences?: OperatorAbsence[];
+  scheduleOverrides?: ScheduleOverride[];
 }
 
 export const useCalendarCalculations = ({
@@ -17,6 +19,7 @@ export const useCalendarCalculations = ({
   startDate,
   endDate,
   absences = [],
+  scheduleOverrides = [],
 }: CalendarCalculationsProps) => {
   // Calculate days count based on period type
   const daysCount = useMemo(() => {
@@ -120,7 +123,40 @@ export const useCalendarCalculations = ({
     return true;
   };
 
-  // Calculate hours for a specific month (with absence consideration)
+  // Helper to get schedule override for a specific operator and date
+  const getOverrideForDate = (operatorId: string, date: Date): ScheduleOverride | undefined => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return scheduleOverrides.find(
+      (o) => o.operator_id === operatorId && o.override_date === dateStr
+    );
+  };
+
+  // Get shift for date considering overrides
+  const getShiftForDateWithOverride = (operator: any, date: Date) => {
+    const override = getOverrideForDate(operator.id, date);
+    
+    if (override) {
+      // If override says it's not a working day, return null
+      if (!override.is_working_day) {
+        return null;
+      }
+      // If override says it's a working day, get the shift (based on override shift_number or default)
+      const schedule = operator.work_schedules;
+      const shifts = schedule?.work_schedule_shifts;
+      if (!shifts || shifts.length === 0) return null;
+      
+      if (override.shift_number) {
+        return shifts.find((s: any) => s.shift_number === override.shift_number) || shifts[0];
+      }
+      // Return default shift for the day
+      return getShiftForDate(operator, date) || shifts[0];
+    }
+    
+    // No override, use normal logic
+    return getShiftForDate(operator, date);
+  };
+
+  // Calculate hours for a specific month (with absence and override consideration)
   const calculateMonthHours = (operator: any, month: Date): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     const monthStart = startOfMonth(month);
@@ -132,7 +168,7 @@ export const useCalendarCalculations = ({
       // Skip if operator is not available
       if (!isOperatorAvailable(operator, day)) continue;
       
-      const shift = getShiftForDate(operator, day);
+      const shift = getShiftForDateWithOverride(operator, day);
       if (shift) {
         const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
         totalMinutes += netMinutes;
@@ -145,14 +181,14 @@ export const useCalendarCalculations = ({
     };
   };
 
-  // Calculate total working hours for an operator over the period (with absence consideration)
+  // Calculate total working hours for an operator over the period (with absence and override consideration)
   const calculateTotalHours = (operator: any): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     days.forEach(day => {
       // Skip if operator is not available
       if (!isOperatorAvailable(operator, day)) return;
       
-      const shift = getShiftForDate(operator, day);
+      const shift = getShiftForDateWithOverride(operator, day);
       if (shift) {
         const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
         totalMinutes += netMinutes;
@@ -164,7 +200,7 @@ export const useCalendarCalculations = ({
     };
   };
 
-  // Calculate group total hours (with absence consideration)
+  // Calculate group total hours (with absence and override consideration)
   const calculateGroupTotalHours = (ops: any[]): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     ops.forEach(operator => {
@@ -172,7 +208,7 @@ export const useCalendarCalculations = ({
         // Skip if operator is not available
         if (!isOperatorAvailable(operator, day)) return;
         
-        const shift = getShiftForDate(operator, day);
+        const shift = getShiftForDateWithOverride(operator, day);
         if (shift) {
           const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
           totalMinutes += netMinutes;
@@ -185,7 +221,7 @@ export const useCalendarCalculations = ({
     };
   };
 
-  // Calculate group statistics (with absence consideration)
+  // Calculate group statistics (with absence and override consideration)
   const calculateGroupStats = (ops: any[]): { workingDays: number; offDays: number; absenceDays: number; totalHours: number; totalMinutes: number } => {
     let totalWorkingDays = 0;
     let totalOffDays = 0;
@@ -207,7 +243,7 @@ export const useCalendarCalculations = ({
           return;
         }
         
-        const shift = getShiftForDate(operator, day);
+        const shift = getShiftForDateWithOverride(operator, day);
         if (shift) {
           totalWorkingDays++;
           const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
