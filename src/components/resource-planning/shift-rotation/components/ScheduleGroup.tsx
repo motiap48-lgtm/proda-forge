@@ -1,18 +1,19 @@
-import React, { memo, useMemo, useState, useCallback } from "react";
+import React, { memo, useMemo, useState, useCallback, useEffect } from "react";
 import { format, getDay, isToday, isSameMonth } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, type ShiftColors, type PeriodType } from "../utils";
-import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
+import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, useDeleteOperatorAbsence, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
 import { AbsenceCellDialog } from "@/components/resource-planning/AbsenceCellDialog";
 import { CreateAbsenceCellDialog } from "@/components/resource-planning/CreateAbsenceCellDialog";
 import { useAbsenceDragDrop } from "../hooks/useAbsenceDragDrop";
+import { toast } from "sonner";
 
 interface ScheduleGroupProps {
   scheduleName: string;
@@ -95,6 +96,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   
   // Drag and drop functionality with resize support
   const {
+    dragPreview,
     handleDragStart,
     handleResizeStart,
     handleDragOver,
@@ -103,10 +105,47 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
     handleDragEnd,
     isDropTarget,
     isDragging,
+    isInDragPreview,
     handleAbsenceHover,
     isAbsenceHovered,
+    handleAbsenceSelect,
+    isAbsenceSelected,
+    selectedAbsenceId,
     isAbsenceEdge,
   } = useAbsenceDragDrop();
+
+  // Delete absence mutation for keyboard shortcut
+  const deleteAbsence = useDeleteOperatorAbsence();
+
+  // Keyboard shortcuts handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedAbsenceId) return;
+      
+      const selectedAbsence = absences.find(a => a.id === selectedAbsenceId);
+      if (!selectedAbsence) return;
+
+      const selectedOperator = operators.find(op => op.id === selectedAbsence.operator_id);
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        if (confirm("Удалить выбранное отсутствие?")) {
+          deleteAbsence.mutate(selectedAbsenceId);
+          handleAbsenceSelect(null);
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedOperator) {
+          setEditingCellAbsence({ absence: selectedAbsence, operatorName: selectedOperator.full_name });
+        }
+      } else if (e.key === 'Escape') {
+        handleAbsenceSelect(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedAbsenceId, absences, operators, deleteAbsence, handleAbsenceSelect]);
 
   return (
     <div>
@@ -500,22 +539,32 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               const absenceInfo = ABSENCE_TYPE_LABELS[absence.absence_type];
                               const AbsenceIcon = absence.absence_type === 'sick_leave' ? Stethoscope 
                                 : absence.absence_type === 'business_trip' ? Briefcase 
+                                : absence.absence_type === 'administrative_leave' ? FileText
+                                : absence.absence_type === 'unauthorized_absence' ? Ban
                                 : Plane;
                               const { isStart, isEnd } = isAbsenceEdge(absence, day);
                               const isHovered = isAbsenceHovered(absence.id);
+                              const isSelected = isAbsenceSelected(absence.id);
                               
                               return (
                                 <div 
                                   key={day.toISOString()} 
+                                  tabIndex={0}
                                   draggable
                                   onDragStart={(e) => handleDragStart(absence, operator.id, e)}
                                   onDragEnd={handleDragEnd}
                                   onMouseEnter={() => handleAbsenceHover(absence.id)}
                                   onMouseLeave={() => handleAbsenceHover(null)}
+                                  onFocus={() => handleAbsenceSelect(absence.id)}
+                                  onClick={() => {
+                                    handleAbsenceSelect(absence.id);
+                                    setEditingCellAbsence({ absence, operatorName: operator.full_name });
+                                  }}
                                   className={cn(
-                                    "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden cursor-grab active:cursor-grabbing group",
-                                    isHovered && "ring-2 ring-primary/60 z-10",
-                                    !isHovered && "hover:ring-2 hover:ring-primary/50",
+                                    "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden cursor-grab active:cursor-grabbing group outline-none",
+                                    isSelected && "ring-2 ring-primary z-20",
+                                    isHovered && !isSelected && "ring-2 ring-primary/60 z-10",
+                                    !isHovered && !isSelected && "hover:ring-2 hover:ring-primary/50",
                                     isDragging(absence.id) && "opacity-50 scale-95",
                                     absence.absence_type === 'annual_leave' && "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-900/50 dark:to-blue-900/70 text-blue-700 dark:text-blue-300",
                                     absence.absence_type === 'sick_leave' && "bg-gradient-to-b from-red-200 to-red-300 dark:from-red-900/50 dark:to-red-900/70 text-red-700 dark:text-red-300",
@@ -523,11 +572,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     absence.absence_type === 'maternity_leave' && "bg-gradient-to-b from-pink-200 to-pink-300 dark:from-pink-900/50 dark:to-pink-900/70 text-pink-700 dark:text-pink-300",
                                     absence.absence_type === 'unpaid_leave' && "bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 text-gray-600 dark:text-gray-300",
                                     absence.absence_type === 'business_trip' && "bg-gradient-to-b from-purple-200 to-purple-300 dark:from-purple-900/50 dark:to-purple-900/70 text-purple-700 dark:text-purple-300",
+                                    absence.absence_type === 'unauthorized_absence' && "bg-gradient-to-b from-rose-300 to-rose-400 dark:from-rose-800/60 dark:to-rose-900/80 text-rose-800 dark:text-rose-200",
                                     absence.absence_type === 'other' && "bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 text-slate-600 dark:text-slate-300",
                                     isToday(day) && "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]"
                                   )}
-                                  title={`${absenceInfo.label}${absence.notes ? `: ${absence.notes}` : ''} (клик - редактировать, перетащить - переместить)`}
-                                  onClick={() => setEditingCellAbsence({ absence, operatorName: operator.full_name })}
+                                  title={`${absenceInfo.label}${absence.notes ? `: ${absence.notes}` : ''}\nКлик - редактировать | Delete - удалить | Перетащить - переместить`}
                                 >
                                   {/* Left resize handle */}
                                   {isStart && (
@@ -566,6 +615,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             
                             const dateStr = format(day, "yyyy-MM-dd");
                             const canCreateAbsence = !terminated && !beforeHire;
+                            const inPreview = isInDragPreview(day, operator.id);
                             
                             return (
                               <div 
@@ -573,20 +623,21 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 onDragOver={(e) => canCreateAbsence && handleDragOver(day, operator.id, e)}
                                 onDragLeave={handleDragLeave}
                                 onDrop={(e) => canCreateAbsence && handleDrop(day, operator.id, e)}
-                                onClick={() => canCreateAbsence && setCreatingAbsence({ 
+                                onClick={() => canCreateAbsence && !inPreview && setCreatingAbsence({ 
                                   operatorId: operator.id, 
                                   operatorName: operator.full_name, 
                                   date: dateStr 
                                 })}
                                 className={cn(
                                   "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden",
-                                  canCreateAbsence && "cursor-pointer hover:ring-2 hover:ring-primary/30 hover:bg-primary/5",
+                                  canCreateAbsence && !inPreview && "cursor-pointer hover:ring-2 hover:ring-primary/30 hover:bg-primary/5",
                                   isDropTarget(day, operator.id) && "ring-2 ring-primary bg-primary/10",
-                                  colors 
+                                  inPreview && "ring-2 ring-primary/70 bg-primary/20 z-10",
+                                  !inPreview && colors 
                                     ? cn(colors.bg, colors.text, "border", colors.border) 
-                                    : isWeekend 
+                                    : !inPreview && isWeekend 
                                       ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
-                                      : "bg-gradient-to-b from-muted/20 to-muted/40",
+                                      : !inPreview && "bg-gradient-to-b from-muted/20 to-muted/40",
                                   isToday(day) && cn(
                                     "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
                                     isTodayColumnHovered && "animate-pulse-glow"
@@ -644,6 +695,16 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Drag preview tooltip */}
+      {dragPreview && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 bg-background border border-primary rounded-lg px-4 py-2 shadow-lg">
+          <div className="text-sm font-medium text-primary flex items-center gap-2">
+            <CalendarCheck className="h-4 w-4" />
+            <span>Новый период: {dragPreview.formattedRange}</span>
+          </div>
+        </div>
+      )}
 
       {/* Absence cell edit dialog */}
       {editingCellAbsence && (

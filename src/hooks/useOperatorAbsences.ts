@@ -5,7 +5,7 @@ import { toast } from "sonner";
 export interface OperatorAbsence {
   id: string;
   operator_id: string;
-  absence_type: 'annual_leave' | 'sick_leave' | 'administrative_leave' | 'maternity_leave' | 'unpaid_leave' | 'business_trip' | 'other';
+  absence_type: 'annual_leave' | 'sick_leave' | 'administrative_leave' | 'maternity_leave' | 'unpaid_leave' | 'business_trip' | 'unauthorized_absence' | 'other';
   start_date: string;
   end_date: string;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
@@ -22,6 +22,7 @@ export const ABSENCE_TYPE_LABELS: Record<string, { label: string; color: string;
   maternity_leave: { label: "Декретный отпуск", color: "bg-pink-500", icon: "👶" },
   unpaid_leave: { label: "Без сохранения ЗП", color: "bg-gray-500", icon: "💰" },
   business_trip: { label: "Командировка", color: "bg-purple-500", icon: "✈️" },
+  unauthorized_absence: { label: "Прогул", color: "bg-rose-600", icon: "🚫" },
   other: { label: "Другое", color: "bg-slate-500", icon: "📝" },
 };
 
