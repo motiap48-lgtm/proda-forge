@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall, UserX } from "lucide-react";
+import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall, UserX, Clock } from "lucide-react";
 import { parseDateOnly } from "../utils";
 import { toast } from "sonner";
+import { CompensationBalanceBadge } from "../../CompensationBalanceBadge";
+import { CompensationDialog } from "../../CompensationDialog";
 
 interface OperatorInfoCardProps {
   operator: any;
@@ -14,6 +16,8 @@ interface OperatorInfoCardProps {
 }
 
 export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, onEdit, onManageAbsences }) => {
+  const [compensationDialogOpen, setCompensationDialogOpen] = useState(false);
+  
   const schedule = operator.work_schedules;
   const isCyclic = schedule?.schedule_type === 'cyclic';
   const shifts = schedule?.work_schedule_shifts || [];
@@ -100,6 +104,7 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, on
             Смена {operator.assigned_shift_number}
           </Badge>
         )}
+        <CompensationBalanceBadge operatorId={operator.id} compact />
       </div>
     
     {/* Additional info */}
@@ -149,6 +154,18 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, on
       )}
     </div>
     <div className="flex gap-2">
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="flex-1 h-8 text-xs" 
+        onClick={(e) => {
+          e.stopPropagation();
+          setCompensationDialogOpen(true);
+        }}
+      >
+        <Clock className="h-3 w-3 mr-1.5" />
+        Отработка
+      </Button>
       {operator.phone && (
         <>
           <Button variant="outline" size="sm" className="h-8 px-2" onClick={handleCall} title="Позвонить">
@@ -160,6 +177,14 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, on
         </>
       )}
     </div>
+    
+    {/* Compensation Dialog */}
+    <CompensationDialog
+      open={compensationDialogOpen}
+      onOpenChange={setCompensationDialogOpen}
+      operatorId={operator.id}
+      operatorName={operator.full_name}
+    />
     </div>
   );
 };

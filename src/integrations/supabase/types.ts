@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      absence_compensations: {
+        Row: {
+          absence_date: string
+          absence_hours: number
+          created_at: string
+          created_by: string | null
+          id: string
+          operator_id: string
+          reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          absence_date: string
+          absence_hours?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          operator_id: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          absence_date?: string
+          absence_hours?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          operator_id?: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "absence_compensations_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brigade_assignments: {
         Row: {
           assignment_date: string
@@ -208,6 +252,54 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      compensation_records: {
+        Row: {
+          absence_compensation_id: string
+          compensation_date: string
+          created_at: string
+          created_by: string | null
+          hours_worked: number
+          id: string
+          notes: string | null
+          operator_id: string
+        }
+        Insert: {
+          absence_compensation_id: string
+          compensation_date: string
+          created_at?: string
+          created_by?: string | null
+          hours_worked?: number
+          id?: string
+          notes?: string | null
+          operator_id: string
+        }
+        Update: {
+          absence_compensation_id?: string
+          compensation_date?: string
+          created_at?: string
+          created_by?: string | null
+          hours_worked?: number
+          id?: string
+          notes?: string | null
+          operator_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compensation_records_absence_compensation_id_fkey"
+            columns: ["absence_compensation_id"]
+            isOneToOne: false
+            referencedRelation: "absence_compensations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compensation_records_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contractors: {
         Row: {
