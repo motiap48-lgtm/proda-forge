@@ -26,7 +26,10 @@ interface ShiftRotationCalendarProps {
 }
 
 export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
-  const [period, setPeriod] = useState<PeriodType>("7");
+  const [period, setPeriod] = useState<PeriodType>(() => {
+    const saved = localStorage.getItem("shiftRotationCalendarPeriod");
+    return (saved as PeriodType) || "1";
+  });
   const [comparisonPeriod, setComparisonPeriod] = useState<PeriodType | null>(null);
   const [scheduleFilter, setScheduleFilter] = useState<string>("all");
   const [showOnlyCyclic, setShowOnlyCyclic] = useState(false);
@@ -163,6 +166,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   // Handle period change
   const handlePeriodChange = (newPeriod: PeriodType) => {
     setPeriod(newPeriod);
+    localStorage.setItem("shiftRotationCalendarPeriod", newPeriod);
     if (newPeriod === "custom" && !endDate) {
       setEndDate(addDays(startDate, 6));
     }
