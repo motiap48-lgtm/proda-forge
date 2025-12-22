@@ -5,6 +5,7 @@ import { format, addDays, getDaysInMonth, getDay, isToday } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useUpdateOperator } from "@/hooks/useResourcePlanning";
 import { useAllOperatorAbsences, isDateInAbsence } from "@/hooks/useOperatorAbsences";
+import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -32,6 +33,8 @@ interface ShiftRotationCalendarProps {
 
 export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
   const { data: absences = [] } = useAllOperatorAbsences();
+  const operatorIds = useMemo(() => operators.filter(op => op.is_active).map(op => op.id), [operators]);
+  const { data: scheduleOverrides = [] } = useScheduleOverrides(operatorIds);
   const [period, setPeriod] = useState<PeriodType>(() => {
     const saved = localStorage.getItem("shiftRotationCalendarPeriod");
     return (saved as PeriodType) || "1";
@@ -677,6 +680,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   onEditOperator={onEditOperator}
                   onManageAbsences={setAbsenceOperator}
                   absences={absences}
+                  scheduleOverrides={scheduleOverrides}
                   days={days}
                   months={months}
                   period={period}

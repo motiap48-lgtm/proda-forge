@@ -5,15 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
-import { getShiftForDate, getCycleDayNumber, parseDateOnly, type ShiftColors, type PeriodType } from "../utils";
+import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay, type ShiftColors, type PeriodType } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, useDeleteOperatorAbsence, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
 import { AbsenceCellDialog } from "@/components/resource-planning/AbsenceCellDialog";
 import { CreateAbsenceCellDialog } from "@/components/resource-planning/CreateAbsenceCellDialog";
+import { ScheduleOverrideDialog } from "@/components/resource-planning/ScheduleOverrideDialog";
 import { useAbsenceDragDrop } from "../hooks/useAbsenceDragDrop";
 import { toast } from "sonner";
+import { type ScheduleOverride, getScheduleOverride, OVERRIDE_REASON_LABELS } from "@/hooks/useScheduleOverrides";
 
 interface ScheduleGroupProps {
   scheduleName: string;
@@ -23,6 +25,7 @@ interface ScheduleGroupProps {
   onEditOperator?: (operator: any) => void;
   onManageAbsences?: (operator: any) => void;
   absences?: OperatorAbsence[];
+  scheduleOverrides?: ScheduleOverride[];
   days: Date[];
   months: Date[];
   period: PeriodType;
@@ -57,6 +60,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   onEditOperator,
   onManageAbsences,
   absences = [],
+  scheduleOverrides = [],
   days,
   months,
   period,
@@ -94,6 +98,15 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   // State for creating new absence from empty cell click
   const [creatingAbsence, setCreatingAbsence] = useState<{ operatorId: string; operatorName: string; date: string } | null>(null);
   
+  // State for schedule override dialog
+  const [editingOverride, setEditingOverride] = useState<{
+    operatorId: string;
+    operatorName: string;
+    date: Date;
+    originalIsWorkingDay: boolean;
+    existingOverride?: ScheduleOverride;
+    shifts: { shift_number: number; shift_name: string }[];
+  } | null>(null);
   // Drag and drop functionality with resize support
   const {
     dragPreview,
@@ -500,7 +513,13 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const terminated = isOperatorTerminated(operator, day);
                             const beforeHire = isBeforeHireDate(operator, day);
                             
-                            const shift = getShiftForDate(operator, day);
+                            // Check for schedule override
+                            const override = getScheduleOverride(scheduleOverrides, operator.id, day);
+                            const originalIsWorking = isWorkingDay(operator.work_schedules, day, operator);
+                            const effectiveIsWorking = override ? override.is_working_day : originalIsWorking;
+                            
+                            // Get shift considering override
+                            const shift = effectiveIsWorking ? getShiftForDate(operator, day) : null;
                             const colors = shift ? shiftColorMap.get(shift.shift_name) : null;
                             const netMinutes = shift 
                               ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) 
@@ -509,6 +528,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const mins = netMinutes % 60;
                             const isWeekend = getDay(day) === 0 || getDay(day) === 6;
                             const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
+                            const hasOverride = !!override;
                             
                             // Handle special states
                             if (terminated) {
@@ -616,6 +636,24 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const dateStr = format(day, "yyyy-MM-dd");
                             const canCreateAbsence = !terminated && !beforeHire;
                             const inPreview = isInDragPreview(day, operator.id);
+                            const overrideInfo = override ? OVERRIDE_REASON_LABELS[override.reason || 'other'] : null;
+                            
+                            // Handler for right-click to open schedule override dialog
+                            const handleContextMenu = (e: React.MouseEvent) => {
+                              if (terminated || beforeHire) return;
+                              e.preventDefault();
+                              setEditingOverride({
+                                operatorId: operator.id,
+                                operatorName: operator.full_name,
+                                date: day,
+                                originalIsWorkingDay: originalIsWorking,
+                                existingOverride: override,
+                                shifts: operator.work_schedules?.work_schedule_shifts?.map((s: any) => ({
+                                  shift_number: s.shift_number,
+                                  shift_name: s.shift_name,
+                                })) || [],
+                              });
+                            };
                             
                             return (
                               <div 
@@ -628,27 +666,39 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   operatorName: operator.full_name, 
                                   date: dateStr 
                                 })}
+                                onContextMenu={handleContextMenu}
                                 className={cn(
                                   "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden",
                                   canCreateAbsence && !inPreview && "cursor-pointer hover:ring-2 hover:ring-primary/30 hover:bg-primary/5",
                                   isDropTarget(day, operator.id) && "ring-2 ring-primary bg-primary/10",
                                   inPreview && "ring-2 ring-primary/70 bg-primary/20 z-10",
-                                  !inPreview && colors 
+                                  // Override styling
+                                  hasOverride && !effectiveIsWorking && "bg-gradient-to-b from-amber-100 to-amber-200 dark:from-amber-900/40 dark:to-amber-900/60 border-2 border-dashed border-amber-400",
+                                  hasOverride && effectiveIsWorking && !originalIsWorking && colors 
+                                    ? cn(colors.bg, colors.text, "border-2 border-dashed border-amber-400") 
+                                    : null,
+                                  // Normal styling (when no override or override keeps original state)
+                                  !hasOverride && !inPreview && colors 
                                     ? cn(colors.bg, colors.text, "border", colors.border) 
-                                    : !inPreview && isWeekend 
+                                    : !hasOverride && !inPreview && !effectiveIsWorking && isWeekend 
                                       ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
-                                      : !inPreview && "bg-gradient-to-b from-muted/20 to-muted/40",
+                                      : !hasOverride && !inPreview && !effectiveIsWorking && "bg-gradient-to-b from-muted/20 to-muted/40",
                                   isToday(day) && cn(
                                     "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
                                     isTodayColumnHovered && "animate-pulse-glow"
                                   )
                                 )}
-                                title={canCreateAbsence 
-                                  ? `${cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла. ` : ''}Клик - создать отсутствие`
-                                  : cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
+                                title={`${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла. ` : ''}Клик - отсутствие | ПКМ - изменить график`}
                                 onMouseEnter={() => isToday(day) && onTodayColumnHover(true)}
                                 onMouseLeave={() => isToday(day) && onTodayColumnHover(false)}
                               >
+                                {/* Override indicator */}
+                                {hasOverride && (
+                                  <div className="absolute top-0.5 right-0.5">
+                                    <ArrowRightLeft className="h-2.5 w-2.5 text-amber-600 dark:text-amber-400" />
+                                  </div>
+                                )}
+                                
                                 {shift ? (
                                   <div className="w-full text-center flex flex-col items-center">
                                     <div className="font-medium truncate text-[10px] px-0.5 w-full" title={shift.shift_name}>
@@ -659,7 +709,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   </div>
                                 ) : (
                                   <div className="flex flex-col items-center">
-                                    <span className={cn("text-sm", isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground")}>—</span>
+                                    <span className={cn("text-sm", hasOverride ? "text-amber-600 dark:text-amber-400" : isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground")}>
+                                      {hasOverride ? "⚡" : "—"}
+                                    </span>
                                     {cycleInfo && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
                                   </div>
                                 )}
@@ -724,6 +776,20 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           operatorId={creatingAbsence.operatorId}
           operatorName={creatingAbsence.operatorName}
           initialDate={creatingAbsence.date}
+        />
+      )}
+
+      {/* Schedule override dialog */}
+      {editingOverride && (
+        <ScheduleOverrideDialog
+          open={!!editingOverride}
+          onOpenChange={(open) => !open && setEditingOverride(null)}
+          operatorId={editingOverride.operatorId}
+          operatorName={editingOverride.operatorName}
+          date={editingOverride.date}
+          originalIsWorkingDay={editingOverride.originalIsWorkingDay}
+          existingOverride={editingOverride.existingOverride}
+          shifts={editingOverride.shifts}
         />
       )}
     </div>
