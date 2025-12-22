@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -17,6 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import {
   useAbsenceCompensations,
   useCreateAbsenceCompensation,
@@ -32,25 +34,69 @@ interface CompensationDialogProps {
   onOpenChange: (open: boolean) => void;
   operatorId: string;
   operatorName: string;
-  defaultHoursPerDay?: number;
 }
+
+// Hook to get operator's schedule hours
+const useOperatorScheduleHours = (operatorId: string) => {
+  return useQuery({
+    queryKey: ["operator-schedule-hours", operatorId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("operators")
+        .select(`
+          work_schedule_id,
+          work_schedules (
+            id,
+            name,
+            work_schedule_shifts (
+              net_work_minutes,
+              gross_work_minutes,
+              break_minutes
+            )
+          )
+        `)
+        .eq("id", operatorId)
+        .single();
+
+      if (error) throw error;
+      
+      // Get hours from first shift
+      const shifts = data?.work_schedules?.work_schedule_shifts || [];
+      if (shifts.length > 0) {
+        const netMinutes = shifts[0].net_work_minutes || (shifts[0].gross_work_minutes - shifts[0].break_minutes);
+        return netMinutes / 60;
+      }
+      
+      return 8; // Default fallback
+    },
+    enabled: !!operatorId,
+  });
+};
 
 export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   open,
   onOpenChange,
   operatorId,
   operatorName,
-  defaultHoursPerDay = 8,
 }) => {
+  const { data: scheduleHours = 8 } = useOperatorScheduleHours(operatorId);
+  
   const [showAddAbsence, setShowAddAbsence] = useState(false);
   const [absenceDate, setAbsenceDate] = useState<Date | undefined>(new Date());
-  const [absenceHours, setAbsenceHours] = useState(defaultHoursPerDay.toString());
+  const [absenceHours, setAbsenceHours] = useState("");
   const [absenceReason, setAbsenceReason] = useState("");
   
   const [addingCompensationFor, setAddingCompensationFor] = useState<string | null>(null);
   const [compensationDate, setCompensationDate] = useState<Date | undefined>(new Date());
   const [compensationHours, setCompensationHours] = useState("");
   const [compensationNotes, setCompensationNotes] = useState("");
+
+  // Update absenceHours when scheduleHours is loaded
+  useEffect(() => {
+    if (scheduleHours && !absenceHours) {
+      setAbsenceHours(scheduleHours.toString());
+    }
+  }, [scheduleHours]);
 
   const { data: compensations = [], isLoading } = useAbsenceCompensations([operatorId]);
   const createAbsence = useCreateAbsenceCompensation();
@@ -64,13 +110,13 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
     createAbsence.mutate({
       operator_id: operatorId,
       absence_date: format(absenceDate, "yyyy-MM-dd"),
-      absence_hours: parseFloat(absenceHours) || defaultHoursPerDay,
+      absence_hours: parseFloat(absenceHours) || scheduleHours,
       reason: absenceReason || undefined,
     }, {
       onSuccess: () => {
         setShowAddAbsence(false);
         setAbsenceDate(new Date());
-        setAbsenceHours(defaultHoursPerDay.toString());
+        setAbsenceHours(scheduleHours.toString());
         setAbsenceReason("");
       },
     });
