@@ -1,16 +1,18 @@
-import React, { memo, useMemo, useState } from "react";
+import React, { memo, useMemo, useState, useCallback } from "react";
 import { format, getDay, isToday, isSameMonth } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, type ShiftColors, type PeriodType } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
 import { AbsenceCellDialog } from "@/components/resource-planning/AbsenceCellDialog";
+import { CreateAbsenceCellDialog } from "@/components/resource-planning/CreateAbsenceCellDialog";
+import { useAbsenceDragDrop } from "../hooks/useAbsenceDragDrop";
 
 interface ScheduleGroupProps {
   scheduleName: string;
@@ -87,6 +89,20 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
 
   // State for editing absence from cell click
   const [editingCellAbsence, setEditingCellAbsence] = useState<{ absence: OperatorAbsence; operatorName: string } | null>(null);
+  
+  // State for creating new absence from empty cell click
+  const [creatingAbsence, setCreatingAbsence] = useState<{ operatorId: string; operatorName: string; date: string } | null>(null);
+  
+  // Drag and drop functionality
+  const {
+    handleDragStart,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleDragEnd,
+    isDropTarget,
+    isDragging,
+  } = useAbsenceDragDrop();
 
   return (
     <div>
@@ -485,8 +501,13 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               return (
                                 <div 
                                   key={day.toISOString()} 
+                                  draggable
+                                  onDragStart={(e) => handleDragStart(absence, operator.id, e)}
+                                  onDragEnd={handleDragEnd}
                                   className={cn(
-                                    "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50",
+                                    "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden cursor-grab active:cursor-grabbing",
+                                    "hover:ring-2 hover:ring-primary/50",
+                                    isDragging(absence.id) && "opacity-50 scale-95",
                                     absence.absence_type === 'annual_leave' && "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-900/50 dark:to-blue-900/70 text-blue-700 dark:text-blue-300",
                                     absence.absence_type === 'sick_leave' && "bg-gradient-to-b from-red-200 to-red-300 dark:from-red-900/50 dark:to-red-900/70 text-red-700 dark:text-red-300",
                                     absence.absence_type === 'administrative_leave' && "bg-gradient-to-b from-orange-200 to-orange-300 dark:from-orange-900/50 dark:to-orange-900/70 text-orange-700 dark:text-orange-300",
@@ -496,9 +517,10 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     absence.absence_type === 'other' && "bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 text-slate-600 dark:text-slate-300",
                                     isToday(day) && "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]"
                                   )}
-                                  title={`${absenceInfo.label}${absence.notes ? `: ${absence.notes}` : ''} (нажмите для редактирования)`}
+                                  title={`${absenceInfo.label}${absence.notes ? `: ${absence.notes}` : ''} (клик - редактировать, перетащить - переместить)`}
                                   onClick={() => setEditingCellAbsence({ absence, operatorName: operator.full_name })}
                                 >
+                                  <GripVertical className="h-2.5 w-2.5 absolute top-0.5 right-0.5 opacity-40" />
                                   <AbsenceIcon className="h-3.5 w-3.5 mb-0.5" />
                                   <div className="text-[9px] font-medium truncate w-full px-0.5">
                                     {daysCount > 14 ? absenceInfo.icon : absenceInfo.label.split(' ')[0]}
@@ -507,11 +529,24 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               );
                             }
                             
+                            const dateStr = format(day, "yyyy-MM-dd");
+                            const canCreateAbsence = !terminated && !beforeHire;
+                            
                             return (
                               <div 
                                 key={day.toISOString()} 
+                                onDragOver={(e) => canCreateAbsence && handleDragOver(day, operator.id, e)}
+                                onDragLeave={handleDragLeave}
+                                onDrop={(e) => canCreateAbsence && handleDrop(day, operator.id, e)}
+                                onClick={() => canCreateAbsence && setCreatingAbsence({ 
+                                  operatorId: operator.id, 
+                                  operatorName: operator.full_name, 
+                                  date: dateStr 
+                                })}
                                 className={cn(
-                                  "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative overflow-hidden",
+                                  "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden",
+                                  canCreateAbsence && "cursor-pointer hover:ring-2 hover:ring-primary/30 hover:bg-primary/5",
+                                  isDropTarget(day, operator.id) && "ring-2 ring-primary bg-primary/10",
                                   colors 
                                     ? cn(colors.bg, colors.text, "border", colors.border) 
                                     : isWeekend 
@@ -522,7 +557,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     isTodayColumnHovered && "animate-pulse-glow"
                                   )
                                 )}
-                                title={cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
+                                title={canCreateAbsence 
+                                  ? `${cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла. ` : ''}Клик - создать отсутствие`
+                                  : cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла` : undefined}
                                 onMouseEnter={() => isToday(day) && onTodayColumnHover(true)}
                                 onMouseLeave={() => isToday(day) && onTodayColumnHover(false)}
                               >
@@ -580,6 +617,17 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           onOpenChange={(open) => !open && setEditingCellAbsence(null)}
           absence={editingCellAbsence.absence}
           operatorName={editingCellAbsence.operatorName}
+        />
+      )}
+
+      {/* Create absence dialog from empty cell click */}
+      {creatingAbsence && (
+        <CreateAbsenceCellDialog
+          open={!!creatingAbsence}
+          onOpenChange={(open) => !open && setCreatingAbsence(null)}
+          operatorId={creatingAbsence.operatorId}
+          operatorName={creatingAbsence.operatorName}
+          initialDate={creatingAbsence.date}
         />
       )}
     </div>
