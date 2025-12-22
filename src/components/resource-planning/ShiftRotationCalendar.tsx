@@ -617,7 +617,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         isFullscreen && "fixed inset-0 z-50 rounded-none max-h-screen overflow-auto bg-background"
       )}
     >
-      <CardHeader className="pb-3">
+      <CardHeader 
+        className="pb-3 sticky top-0 z-10 bg-card"
+        style={{ boxShadow: "0 4px 12px -4px hsl(var(--foreground) / 0.1), 0 2px 6px -2px hsl(var(--foreground) / 0.05)" }}
+      >
         <CalendarToolbar
           period={period}
           onPeriodChange={handlePeriodChange}
