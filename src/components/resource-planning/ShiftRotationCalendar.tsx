@@ -150,6 +150,16 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     setCollapsedGroups(new Set());
   };
 
+  // Check if any filters are active
+  const hasActiveFilters = scheduleFilter !== "all" || showOnlyCyclic || rotationFilter !== "all";
+
+  // Reset all filters
+  const resetFilters = () => {
+    setScheduleFilter("all");
+    setShowOnlyCyclic(false);
+    setRotationFilter("all");
+  };
+
   // Handle period change
   const handlePeriodChange = (newPeriod: PeriodType) => {
     setPeriod(newPeriod);
@@ -603,6 +613,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           daysCount={daysCount}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={resetFilters}
         />
       </CardHeader>
       <CardContent className="p-0">
