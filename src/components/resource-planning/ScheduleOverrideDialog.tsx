@@ -8,6 +8,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CalendarCheck, CalendarX, Trash2, RefreshCw } from "lucide-react";
+import { CalendarCheck, CalendarX, Trash2, RefreshCw, AlertTriangle } from "lucide-react";
 import {
   ScheduleOverride,
   OVERRIDE_REASON_LABELS,
@@ -76,6 +86,9 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
   // Default: when making a day OFF - shift cycle to next day
   //          when making a day ON - shift cycle to THIS day (so it becomes day 1)
   const [shiftCycleStart, setShiftCycleStart] = useState(true);
+  
+  // Confirmation dialog state
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const createOverride = useCreateScheduleOverride();
   const deleteOverride = useDeleteScheduleOverride();
@@ -93,7 +106,17 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
     }
   }, [date, isWorkingDay]);
 
-  const handleSave = () => {
+  const handleSaveClick = () => {
+    // Only show confirmation if there's an actual change
+    if (isActualChange) {
+      setShowConfirmation(true);
+    } else {
+      handleConfirmedSave();
+    }
+  };
+
+  const handleConfirmedSave = () => {
+    setShowConfirmation(false);
     createOverride.mutate({
       operator_id: operatorId,
       override_date: format(date, "yyyy-MM-dd"),
@@ -295,11 +318,54 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
           <Button variant="outline" onClick={handleResetToDefault}>
             {existingOverride ? "Вернуть по графику" : "Отмена"}
           </Button>
-          <Button onClick={handleSave} disabled={createOverride.isPending}>
+          <Button onClick={handleSaveClick} disabled={createOverride.isPending}>
             {createOverride.isPending ? "Сохранение..." : "Сохранить"}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Подтверждение изменения графика
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Вы собираетесь изменить график для <strong>{operatorName}</strong> на{" "}
+                <strong>{format(date, "d MMMM yyyy", { locale: ru })}</strong>:
+              </p>
+              <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+                <p>
+                  <span className="text-muted-foreground">По графику:</span>{" "}
+                  <Badge variant="outline" className={originalIsWorkingDay ? "text-emerald-600" : "text-rose-500"}>
+                    {originalIsWorkingDay ? "Рабочий день" : "Выходной"}
+                  </Badge>
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Новый статус:</span>{" "}
+                  <Badge variant="outline" className={isWorkingDay ? "text-emerald-600" : "text-rose-500"}>
+                    {isWorkingDay ? "Рабочий день" : "Выходной"}
+                  </Badge>
+                </p>
+                {showCycleShiftOption && shiftCycleStart && (
+                  <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                    ⚡ Цикл будет пересчитан с {format(newCycleStartDate, "d MMMM", { locale: ru })}
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmedSave}>
+              Подтвердить изменение
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
