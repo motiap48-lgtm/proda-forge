@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -7,17 +7,20 @@ import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarC
 import { parseDateOnly } from "../utils";
 import { toast } from "sonner";
 import { CompensationBalanceBadge } from "../../CompensationBalanceBadge";
-import { CompensationDialog } from "../../CompensationDialog";
 
 interface OperatorInfoCardProps {
   operator: any;
   onEdit?: (operator: any) => void;
   onManageAbsences?: (operator: any) => void;
+  onOpenCompensation?: (operator: any) => void;
 }
 
-export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, onEdit, onManageAbsences }) => {
-  const [compensationDialogOpen, setCompensationDialogOpen] = useState(false);
-  
+export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ 
+  operator, 
+  onEdit, 
+  onManageAbsences,
+  onOpenCompensation 
+}) => {
   const schedule = operator.work_schedules;
   const isCyclic = schedule?.schedule_type === 'cyclic';
   const shifts = schedule?.work_schedule_shifts || [];
@@ -53,6 +56,11 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, on
   const handleManageAbsences = (e: React.MouseEvent) => {
     e.stopPropagation();
     onManageAbsences?.(operator);
+  };
+
+  const handleOpenCompensation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onOpenCompensation?.(operator);
   };
   
   return (
@@ -158,10 +166,7 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, on
         variant="outline" 
         size="sm" 
         className="flex-1 h-8 text-xs" 
-        onClick={(e) => {
-          e.stopPropagation();
-          setCompensationDialogOpen(true);
-        }}
+        onClick={handleOpenCompensation}
       >
         <Clock className="h-3 w-3 mr-1.5" />
         Отработка
@@ -177,14 +182,6 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, on
         </>
       )}
     </div>
-    
-    {/* Compensation Dialog */}
-    <CompensationDialog
-      open={compensationDialogOpen}
-      onOpenChange={setCompensationDialogOpen}
-      operatorId={operator.id}
-      operatorName={operator.full_name}
-    />
     </div>
   );
 };

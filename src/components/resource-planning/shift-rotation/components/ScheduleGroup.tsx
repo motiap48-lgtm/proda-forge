@@ -14,6 +14,7 @@ import { AbsenceCellDialog } from "@/components/resource-planning/AbsenceCellDia
 import { CreateAbsenceCellDialog } from "@/components/resource-planning/CreateAbsenceCellDialog";
 import { ScheduleOverrideDialog } from "@/components/resource-planning/ScheduleOverrideDialog";
 import { BulkScheduleOverrideDialog } from "@/components/resource-planning/BulkScheduleOverrideDialog";
+import { CompensationDialog } from "@/components/resource-planning/CompensationDialog";
 import { useAbsenceDragDrop } from "../hooks/useAbsenceDragDrop";
 import { toast } from "sonner";
 import { type ScheduleOverride, getScheduleOverride, OVERRIDE_REASON_LABELS } from "@/hooks/useScheduleOverrides";
@@ -135,6 +136,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
     startDate: Date;
     endDate: Date;
   } | null>(null);
+  
+  // State for compensation dialog
+  const [compensationOperator, setCompensationOperator] = useState<{ id: string; name: string } | null>(null);
   // Drag and drop functionality with resize support
   const {
     dragPreview,
@@ -413,7 +417,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                         style={{ zIndex: 99999 }}
                         forceMount={undefined}
                       >
-                        <OperatorInfoCard operator={operator} onEdit={onEditOperator} onManageAbsences={onManageAbsences} />
+                        <OperatorInfoCard 
+                          operator={operator} 
+                          onEdit={onEditOperator} 
+                          onManageAbsences={onManageAbsences}
+                          onOpenCompensation={(op) => setCompensationOperator({ id: op.id, name: op.full_name })}
+                        />
                       </HoverCardContent>
                     </HoverCard>
                   );
@@ -998,6 +1007,16 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           operatorName={bulkOverrideDialog.operatorName}
           startDate={bulkOverrideDialog.startDate}
           endDate={bulkOverrideDialog.endDate}
+        />
+      )}
+      
+      {/* Compensation Dialog - rendered outside HoverCard */}
+      {compensationOperator && (
+        <CompensationDialog
+          open={!!compensationOperator}
+          onOpenChange={(open) => !open && setCompensationOperator(null)}
+          operatorId={compensationOperator.id}
+          operatorName={compensationOperator.name}
         />
       )}
     </div>
