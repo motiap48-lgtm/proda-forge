@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   Dialog,
@@ -276,11 +276,11 @@ export const OperatorAbsenceDialog = ({
                         </div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
-                          {format(new Date(absence.start_date), "d MMM yyyy", { locale: ru })}
+                          {format(parseISO(absence.start_date), "d MMM yyyy", { locale: ru })}
                           {absence.start_date !== absence.end_date && (
                             <>
                               {" — "}
-                              {format(new Date(absence.end_date), "d MMM yyyy", { locale: ru })}
+                              {format(parseISO(absence.end_date), "d MMM yyyy", { locale: ru })}
                             </>
                           )}
                         </div>

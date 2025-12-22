@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { format } from "date-fns";
+import { useState, useEffect } from "react";
+import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   Dialog,
@@ -52,6 +52,17 @@ export const CreateAbsenceCellDialog = ({
     notes: "",
   });
 
+  // Синхронизируем formData при изменении initialDate
+  useEffect(() => {
+    if (initialDate) {
+      setFormData(prev => ({
+        ...prev,
+        start_date: initialDate,
+        end_date: initialDate,
+      }));
+    }
+  }, [initialDate]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createAbsence.mutate(
@@ -84,7 +95,7 @@ export const CreateAbsenceCellDialog = ({
             <div className="flex-1">
               <div className="font-medium">{operatorName}</div>
               <div className="text-sm text-muted-foreground">
-                Дата: {format(new Date(initialDate), "d MMMM yyyy", { locale: ru })}
+                Дата: {format(parseISO(initialDate), "d MMMM yyyy", { locale: ru })}
               </div>
             </div>
           </div>
