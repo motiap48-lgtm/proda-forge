@@ -172,12 +172,17 @@ export const OperatorDialog = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate: disable rotation for schedules with single shift
+    const canEnableRotation = scheduleShifts.length > 1 && !isCyclicSchedule;
+    const validatedRotationEnabled = canEnableRotation ? formData.shift_rotation_enabled : false;
+
     const data = {
       ...formData,
       default_work_center_id: formData.default_work_center_id || null,
       work_schedule_id: formData.work_schedule_id || null,
       assigned_shift_number: formData.assigned_shift_number || null,
-      shift_rotation_start_date: formData.shift_rotation_start_date || null,
+      shift_rotation_enabled: validatedRotationEnabled,
+      shift_rotation_start_date: validatedRotationEnabled ? formData.shift_rotation_start_date || null : (isCyclicSchedule ? formData.shift_rotation_start_date || null : null),
       hire_date: formData.hire_date || null,
     };
 
