@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { addDays, getDaysInMonth, differenceInDays, startOfMonth } from "date-fns";
 import { getShiftForDate, getShiftColor, type PeriodType, type ShiftColors } from "../utils";
+import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence } from "@/hooks/useOperatorAbsences";
 
 interface CalendarCalculationsProps {
   operators: any[];
   period: PeriodType;
   startDate: Date;
   endDate?: Date;
+  absences?: OperatorAbsence[];
 }
 
 export const useCalendarCalculations = ({
@@ -14,6 +16,7 @@ export const useCalendarCalculations = ({
   period,
   startDate,
   endDate,
+  absences = [],
 }: CalendarCalculationsProps) => {
   // Calculate days count based on period type
   const daysCount = useMemo(() => {
@@ -102,7 +105,22 @@ export const useCalendarCalculations = ({
     };
   }, [period, daysCount, columnWidth]);
 
-  // Calculate hours for a specific month
+  // Check if operator is available on a specific date (not on leave, not terminated, hired)
+  const isOperatorAvailable = (operator: any, date: Date): boolean => {
+    // Check if terminated
+    if (isOperatorTerminated(operator, date)) return false;
+    
+    // Check if before hire date
+    if (isBeforeHireDate(operator, date)) return false;
+    
+    // Check if on leave
+    const absence = isDateInAbsence(date, absences, operator.id);
+    if (absence) return false;
+    
+    return true;
+  };
+
+  // Calculate hours for a specific month (with absence consideration)
   const calculateMonthHours = (operator: any, month: Date): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     const monthStart = startOfMonth(month);
@@ -110,6 +128,10 @@ export const useCalendarCalculations = ({
     
     for (let i = 0; i < daysInMonth; i++) {
       const day = addDays(monthStart, i);
+      
+      // Skip if operator is not available
+      if (!isOperatorAvailable(operator, day)) continue;
+      
       const shift = getShiftForDate(operator, day);
       if (shift) {
         const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
@@ -123,10 +145,13 @@ export const useCalendarCalculations = ({
     };
   };
 
-  // Calculate total working hours for an operator over the period
+  // Calculate total working hours for an operator over the period (with absence consideration)
   const calculateTotalHours = (operator: any): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     days.forEach(day => {
+      // Skip if operator is not available
+      if (!isOperatorAvailable(operator, day)) return;
+      
       const shift = getShiftForDate(operator, day);
       if (shift) {
         const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
@@ -139,11 +164,14 @@ export const useCalendarCalculations = ({
     };
   };
 
-  // Calculate group total hours
+  // Calculate group total hours (with absence consideration)
   const calculateGroupTotalHours = (ops: any[]): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     ops.forEach(operator => {
       days.forEach(day => {
+        // Skip if operator is not available
+        if (!isOperatorAvailable(operator, day)) return;
+        
         const shift = getShiftForDate(operator, day);
         if (shift) {
           const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
@@ -157,14 +185,28 @@ export const useCalendarCalculations = ({
     };
   };
 
-  // Calculate group statistics
-  const calculateGroupStats = (ops: any[]): { workingDays: number; offDays: number; totalHours: number; totalMinutes: number } => {
+  // Calculate group statistics (with absence consideration)
+  const calculateGroupStats = (ops: any[]): { workingDays: number; offDays: number; absenceDays: number; totalHours: number; totalMinutes: number } => {
     let totalWorkingDays = 0;
     let totalOffDays = 0;
+    let totalAbsenceDays = 0;
     let totalMinutes = 0;
     
     ops.forEach(operator => {
       days.forEach(day => {
+        // Check if operator is on leave
+        const absence = isDateInAbsence(day, absences, operator.id);
+        if (absence) {
+          totalAbsenceDays++;
+          return;
+        }
+        
+        // Check if terminated or not hired yet
+        if (isOperatorTerminated(operator, day) || isBeforeHireDate(operator, day)) {
+          totalOffDays++;
+          return;
+        }
+        
         const shift = getShiftForDate(operator, day);
         if (shift) {
           totalWorkingDays++;
@@ -179,12 +221,13 @@ export const useCalendarCalculations = ({
     return {
       workingDays: totalWorkingDays,
       offDays: totalOffDays,
+      absenceDays: totalAbsenceDays,
       totalHours: Math.floor(totalMinutes / 60),
       totalMinutes: totalMinutes % 60
     };
   };
 
-  // Calculate yearly total for an operator
+  // Calculate yearly total for an operator (with absence consideration)
   const calculateYearlyTotal = (operator: any): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     months.forEach(month => {
@@ -197,7 +240,7 @@ export const useCalendarCalculations = ({
     };
   };
 
-  // Calculate group yearly total
+  // Calculate group yearly total (with absence consideration)
   const calculateGroupYearlyTotal = (ops: any[]): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     ops.forEach(operator => {
@@ -223,5 +266,6 @@ export const useCalendarCalculations = ({
     calculateGroupStats,
     calculateYearlyTotal,
     calculateGroupYearlyTotal,
+    isOperatorAvailable,
   };
 };
