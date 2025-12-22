@@ -494,16 +494,14 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
               className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate bg-background"
             >
               {/* Sticky calendar header */}
-              <div
-                className="sticky top-0 z-[80] relative"
-                style={{
-                  boxShadow: "0 4px 12px -4px hsl(var(--foreground) / 0.15), 0 2px 6px -2px hsl(var(--foreground) / 0.1)",
-                }}
-              >
+              <div className="sticky top-0 z-[80] relative">
                 {/* Grid header with full-width background */}
                 <div
                   className="relative pl-2 pr-0.5 py-2 bg-background h-[var(--sr-header-h)]"
-                  style={calendarGridStyle}
+                  style={{
+                    ...calendarGridStyle,
+                    boxShadow: "0 4px 12px -4px hsl(var(--foreground) / 0.15), 0 2px 6px -2px hsl(var(--foreground) / 0.1)",
+                  }}
                 >
                   {period === "year" ? (
                     <>
