@@ -9,10 +9,12 @@ import { format, addDays, addMonths, subMonths, differenceInDays, startOfWeek, s
 import { ru } from "date-fns/locale";
 import { 
   RefreshCw, FileDown, Printer, Filter, Clock, ChevronsUpDown, ChevronsDownUp, 
-  CalendarDays, ChevronLeft, ChevronRight, FileText, User, Maximize2, Minimize2, X 
+  CalendarDays, ChevronLeft, ChevronRight, FileText, User, Maximize2, Minimize2, X, Users 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PeriodType, ShiftColors } from "../utils";
+
+export type AbsenceStatusFilter = "all" | "on_leave" | "sick" | "available";
 
 interface CalendarToolbarProps {
   period: PeriodType;
@@ -28,6 +30,8 @@ interface CalendarToolbarProps {
   onShowOnlyCyclicChange: (show: boolean) => void;
   rotationFilter: "all" | "enabled" | "disabled";
   onRotationFilterChange: (filter: "all" | "enabled" | "disabled") => void;
+  absenceStatusFilter?: AbsenceStatusFilter;
+  onAbsenceStatusFilterChange?: (filter: AbsenceStatusFilter) => void;
   filteredOperatorsCount: number;
   grandTotal: { hours: number; minutes: number };
   comparisonPeriod: PeriodType | null;
@@ -41,6 +45,7 @@ interface CalendarToolbarProps {
   onExportExcel: () => void;
   onExportPdf: () => void;
   onPrint: () => void;
+  onBulkAbsence?: () => void;
   isStartDatePickerOpen: boolean;
   onStartDatePickerOpenChange: (open: boolean) => void;
   isEndDatePickerOpen: boolean;
@@ -66,6 +71,8 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onShowOnlyCyclicChange,
   rotationFilter,
   onRotationFilterChange,
+  absenceStatusFilter,
+  onAbsenceStatusFilterChange,
   filteredOperatorsCount,
   grandTotal,
   comparisonPeriod,
@@ -79,6 +86,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onExportExcel,
   onExportPdf,
   onPrint,
+  onBulkAbsence,
   isStartDatePickerOpen,
   onStartDatePickerOpenChange,
   isEndDatePickerOpen,
@@ -395,6 +403,41 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             <SelectItem value="disabled">Без ротации смен</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Absence status filter */}
+        {onAbsenceStatusFilterChange && (
+          <Select 
+            value={absenceStatusFilter || "all"} 
+            onValueChange={(v) => onAbsenceStatusFilterChange(v as AbsenceStatusFilter)}
+          >
+            <SelectTrigger className={cn(
+              "w-[180px]",
+              absenceStatusFilter && absenceStatusFilter !== "all" && "border-orange-400 bg-orange-50 dark:bg-orange-900/20"
+            )}>
+              <SelectValue placeholder="Статус сотрудника" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все сотрудники</SelectItem>
+              <SelectItem value="on_leave">🏖️ Сейчас в отпуске</SelectItem>
+              <SelectItem value="sick">🏥 На больничном</SelectItem>
+              <SelectItem value="available">✅ На работе</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Bulk absence button */}
+        {onBulkAbsence && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onBulkAbsence}
+            className="gap-1.5 text-xs"
+            title="Массовое создание отсутствий"
+          >
+            <Users className="h-4 w-4" />
+            Массовое отсутствие
+          </Button>
+        )}
         
         {/* Expand/Collapse all */}
         <div className="flex items-center border rounded-md overflow-hidden">
