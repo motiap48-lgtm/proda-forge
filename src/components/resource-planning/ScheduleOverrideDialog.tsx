@@ -62,19 +62,34 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
     existingOverride?.shift_number?.toString() || ""
   );
   const [notes, setNotes] = useState(existingOverride?.notes || "");
-  const [shiftCycleStart, setShiftCycleStart] = useState(true); // Default to true for day off
+  // Check if this is a cyclic schedule that supports cycle shifting
+  const isCyclicSchedule = scheduleType === "cyclic";
+  
+  // Determine if there's an actual change from original
+  const isActualChange = isWorkingDay !== originalIsWorkingDay;
+  
+  // Show cycle shift option for cyclic schedules when there's an actual change
+  const showCycleShiftOption = isCyclicSchedule && isActualChange;
+  
+  // Default: when making a day OFF - shift cycle to next day
+  //          when making a day ON - shift cycle to THIS day (so it becomes day 1)
+  const [shiftCycleStart, setShiftCycleStart] = useState(true);
 
   const createOverride = useCreateScheduleOverride();
   const deleteOverride = useDeleteScheduleOverride();
 
-  // Calculate the new cycle start date (day after this override)
+  // Calculate the new cycle start date
+  // If making day OFF: cycle starts from next day
+  // If making day ON: cycle starts from THIS day (this becomes day 1)
   const newCycleStartDate = useMemo(() => {
-    return addDays(date, 1);
-  }, [date]);
-
-  // Check if this is a cyclic schedule that supports cycle shifting
-  const isCyclicSchedule = scheduleType === "cyclic";
-  const showCycleShiftOption = isCyclicSchedule && !isWorkingDay;
+    if (isWorkingDay) {
+      // Making this day a working day - this becomes day 1 of cycle
+      return date;
+    } else {
+      // Making this day a day off - next day becomes day 1
+      return addDays(date, 1);
+    }
+  }, [date, isWorkingDay]);
 
   const handleSave = () => {
     createOverride.mutate({
@@ -156,12 +171,9 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
               checked={isWorkingDay}
               onCheckedChange={(checked) => {
                 setIsWorkingDay(checked);
-                // Reset cycle shift option when switching to working day
-                if (checked) {
-                  setShiftCycleStart(false);
-                } else {
-                  setShiftCycleStart(true);
-                }
+                // For cyclic schedules, default to shifting cycle when making an actual change
+                const willBeActualChange = checked !== originalIsWorkingDay;
+                setShiftCycleStart(isCyclicSchedule && willBeActualChange);
               }}
             />
           </div>
@@ -216,11 +228,13 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
                 <Label htmlFor="shift-cycle" className="flex flex-col gap-1 cursor-pointer">
                   <span className="flex items-center gap-2">
                     <RefreshCw className="h-4 w-4 text-blue-600" />
-                    Сдвинуть начало цикла
+                    Пересчитать цикл
                   </span>
                   <span className="text-xs font-normal text-muted-foreground">
-                    Следующий рабочий день ({format(newCycleStartDate, "d MMMM", { locale: ru })}) 
-                    станет первым днём нового цикла
+                    {isWorkingDay 
+                      ? `Этот день (${format(date, "d MMMM", { locale: ru })}) станет первым днём нового цикла`
+                      : `Следующий рабочий день (${format(newCycleStartDate, "d MMMM", { locale: ru })}) станет первым днём нового цикла`
+                    }
                   </span>
                 </Label>
               </div>
