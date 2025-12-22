@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, type ShiftColors, type PeriodType } from "../utils";
+import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
 
 interface ScheduleGroupProps {
   scheduleName: string;
@@ -16,6 +17,8 @@ interface ScheduleGroupProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onEditOperator?: (operator: any) => void;
+  onManageAbsences?: (operator: any) => void;
+  absences?: OperatorAbsence[];
   days: Date[];
   months: Date[];
   period: PeriodType;
@@ -33,7 +36,7 @@ interface ScheduleGroupProps {
   registerVerticalScrollContainer: (key: string) => (el: HTMLDivElement | null) => void;
   handleSyncScroll: (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => void;
   handleSyncVerticalScroll: (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => void;
-  calculateTotalHours: (operator: any) => { hours: number; minutes: number };
+  calculateTotalHours: (operator: any, absences?: OperatorAbsence[]) => { hours: number; minutes: number };
   calculateMonthHours: (operator: any, month: Date) => { hours: number; minutes: number };
   calculateGroupStats: (ops: any[]) => { workingDays: number; offDays: number; totalHours: number; totalMinutes: number };
   calculateYearlyTotal: (operator: any) => { hours: number; minutes: number };
@@ -48,6 +51,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   isCollapsed,
   onToggleCollapse,
   onEditOperator,
+  onManageAbsences,
+  absences = [],
   days,
   months,
   period,
@@ -216,7 +221,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                         </div>
                       </HoverCardTrigger>
                       <HoverCardContent className="w-80 z-[100]" side="right" align="start">
-                        <OperatorInfoCard operator={operator} onEdit={onEditOperator} />
+                        <OperatorInfoCard operator={operator} onEdit={onEditOperator} onManageAbsences={onManageAbsences} />
                       </HoverCardContent>
                     </HoverCard>
                   );
@@ -420,10 +425,15 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                   <>
                     {/* Day view - Operator rows */}
                     {operators.map((operator) => {
-                      const totalHours = calculateTotalHours(operator);
+                      const totalHours = calculateTotalHours(operator, absences);
                       return (
                         <React.Fragment key={operator.id}>
                           {days.map((day) => {
+                            // Check for absences, termination, and hire date
+                            const absence = isDateInAbsence(day, absences, operator.id);
+                            const terminated = isOperatorTerminated(operator, day);
+                            const beforeHire = isBeforeHireDate(operator, day);
+                            
                             const shift = getShiftForDate(operator, day);
                             const colors = shift ? shiftColorMap.get(shift.shift_name) : null;
                             const netMinutes = shift 
@@ -433,6 +443,61 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const mins = netMinutes % 60;
                             const isWeekend = getDay(day) === 0 || getDay(day) === 6;
                             const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
+                            
+                            // Handle special states
+                            if (terminated) {
+                              return (
+                                <div 
+                                  key={day.toISOString()} 
+                                  className="text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800 text-gray-600 dark:text-gray-400"
+                                  title="Уволен"
+                                >
+                                  <UserMinus className="h-3 w-3 opacity-60" />
+                                </div>
+                              );
+                            }
+                            
+                            if (beforeHire) {
+                              return (
+                                <div 
+                                  key={day.toISOString()} 
+                                  className="text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900 text-gray-400 dark:text-gray-500"
+                                  title="До приёма на работу"
+                                >
+                                  <span className="text-[10px]">—</span>
+                                </div>
+                              );
+                            }
+                            
+                            if (absence) {
+                              const absenceInfo = ABSENCE_TYPE_LABELS[absence.absence_type];
+                              const AbsenceIcon = absence.absence_type === 'sick_leave' ? Stethoscope 
+                                : absence.absence_type === 'business_trip' ? Briefcase 
+                                : Plane;
+                              
+                              return (
+                                <div 
+                                  key={day.toISOString()} 
+                                  className={cn(
+                                    "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative overflow-hidden",
+                                    absence.absence_type === 'annual_leave' && "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-900/50 dark:to-blue-900/70 text-blue-700 dark:text-blue-300",
+                                    absence.absence_type === 'sick_leave' && "bg-gradient-to-b from-red-200 to-red-300 dark:from-red-900/50 dark:to-red-900/70 text-red-700 dark:text-red-300",
+                                    absence.absence_type === 'administrative_leave' && "bg-gradient-to-b from-orange-200 to-orange-300 dark:from-orange-900/50 dark:to-orange-900/70 text-orange-700 dark:text-orange-300",
+                                    absence.absence_type === 'maternity_leave' && "bg-gradient-to-b from-pink-200 to-pink-300 dark:from-pink-900/50 dark:to-pink-900/70 text-pink-700 dark:text-pink-300",
+                                    absence.absence_type === 'unpaid_leave' && "bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 text-gray-600 dark:text-gray-300",
+                                    absence.absence_type === 'business_trip' && "bg-gradient-to-b from-purple-200 to-purple-300 dark:from-purple-900/50 dark:to-purple-900/70 text-purple-700 dark:text-purple-300",
+                                    absence.absence_type === 'other' && "bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 text-slate-600 dark:text-slate-300",
+                                    isToday(day) && "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]"
+                                  )}
+                                  title={`${absenceInfo.label}${absence.notes ? `: ${absence.notes}` : ''}`}
+                                >
+                                  <AbsenceIcon className="h-3.5 w-3.5 mb-0.5" />
+                                  <div className="text-[9px] font-medium truncate w-full px-0.5">
+                                    {daysCount > 14 ? absenceInfo.icon : absenceInfo.label.split(' ')[0]}
+                                  </div>
+                                </div>
+                              );
+                            }
                             
                             return (
                               <div 
