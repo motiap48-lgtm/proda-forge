@@ -10,6 +10,11 @@ const SelectGroup = SelectPrimitive.Group;
 
 const SelectValue = SelectPrimitive.Value;
 
+const getFullscreenPortalContainer = (): HTMLElement | undefined => {
+  if (typeof document === "undefined") return undefined;
+  return (document.fullscreenElement as HTMLElement | null) ?? undefined;
+};
+
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
@@ -62,7 +67,7 @@ const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
+  <SelectPrimitive.Portal container={getFullscreenPortalContainer()}>
     <SelectPrimitive.Content
       ref={ref}
       className={cn(

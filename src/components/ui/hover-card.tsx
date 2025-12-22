@@ -7,11 +7,16 @@ const HoverCard = HoverCardPrimitive.Root;
 
 const HoverCardTrigger = HoverCardPrimitive.Trigger;
 
+const getFullscreenPortalContainer = (): HTMLElement | undefined => {
+  if (typeof document === "undefined") return undefined;
+  return (document.fullscreenElement as HTMLElement | null) ?? undefined;
+};
+
 const HoverCardContent = React.forwardRef<
   React.ElementRef<typeof HoverCardPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof HoverCardPrimitive.Content>
 >(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
-  <HoverCardPrimitive.Portal>
+  <HoverCardPrimitive.Portal container={getFullscreenPortalContainer()}>
     <HoverCardPrimitive.Content
       ref={ref}
       align={align}

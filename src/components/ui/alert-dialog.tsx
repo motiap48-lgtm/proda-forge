@@ -8,7 +8,17 @@ const AlertDialog = AlertDialogPrimitive.Root;
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 
-const AlertDialogPortal = AlertDialogPrimitive.Portal;
+const getFullscreenPortalContainer = (): HTMLElement | undefined => {
+  if (typeof document === "undefined") return undefined;
+  return (document.fullscreenElement as HTMLElement | null) ?? undefined;
+};
+
+const AlertDialogPortal = ({
+  container,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Portal>) => (
+  <AlertDialogPrimitive.Portal container={container ?? getFullscreenPortalContainer()} {...props} />
+);
 
 const AlertDialogOverlay = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Overlay>,
