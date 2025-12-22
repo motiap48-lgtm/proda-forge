@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarPlus, Save } from "lucide-react";
+import { CalendarPlus, Save, AlertCircle } from "lucide-react";
 import {
   useCreateOperatorAbsence,
   ABSENCE_TYPE_LABELS,
@@ -33,6 +33,7 @@ interface CreateAbsenceCellDialogProps {
   operatorId: string;
   operatorName: string;
   initialDate: string;
+  initialEndDate?: string; // For range selection
 }
 
 export const CreateAbsenceCellDialog = ({
@@ -41,30 +42,36 @@ export const CreateAbsenceCellDialog = ({
   operatorId,
   operatorName,
   initialDate,
+  initialEndDate,
 }: CreateAbsenceCellDialogProps) => {
   const createAbsence = useCreateOperatorAbsence();
 
   const [formData, setFormData] = useState({
     absence_type: "annual_leave" as OperatorAbsence["absence_type"],
     start_date: initialDate,
-    end_date: initialDate,
+    end_date: initialEndDate || initialDate,
     status: "approved" as OperatorAbsence["status"],
     notes: "",
   });
 
-  // Синхронизируем formData при изменении initialDate
+  // Синхронизируем formData при изменении initialDate/initialEndDate
   useEffect(() => {
     if (initialDate) {
       setFormData(prev => ({
         ...prev,
         start_date: initialDate,
-        end_date: initialDate,
+        end_date: initialEndDate || initialDate,
       }));
     }
-  }, [initialDate]);
+  }, [initialDate, initialEndDate]);
+
+  // Валидация: дата окончания не может быть раньше даты начала
+  const isDateRangeValid = formData.start_date <= formData.end_date;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isDateRangeValid) return;
+    
     createAbsence.mutate(
       {
         operator_id: operatorId,
@@ -78,6 +85,11 @@ export const CreateAbsenceCellDialog = ({
       }
     );
   };
+
+  // Calculate date range display
+  const dateRangeDisplay = formData.start_date === formData.end_date
+    ? format(parseISO(formData.start_date), "d MMMM yyyy", { locale: ru })
+    : `${format(parseISO(formData.start_date), "d MMM", { locale: ru })} — ${format(parseISO(formData.end_date), "d MMM yyyy", { locale: ru })}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,7 +107,7 @@ export const CreateAbsenceCellDialog = ({
             <div className="flex-1">
               <div className="font-medium">{operatorName}</div>
               <div className="text-sm text-muted-foreground">
-                Дата: {format(parseISO(initialDate), "d MMMM yyyy", { locale: ru })}
+                Период: {dateRangeDisplay}
               </div>
             </div>
           </div>
@@ -162,9 +174,18 @@ export const CreateAbsenceCellDialog = ({
                 value={formData.end_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 required
+                className={!isDateRangeValid ? "border-destructive" : ""}
               />
             </div>
           </div>
+
+          {/* Date validation error */}
+          {!isDateRangeValid && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              Дата окончания не может быть раньше даты начала
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Примечание</Label>
@@ -180,7 +201,11 @@ export const CreateAbsenceCellDialog = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Отмена
             </Button>
-            <Button type="submit" disabled={createAbsence.isPending} className="gap-2">
+            <Button 
+              type="submit" 
+              disabled={createAbsence.isPending || !isDateRangeValid} 
+              className="gap-2"
+            >
               <Save className="h-4 w-4" />
               Создать
             </Button>

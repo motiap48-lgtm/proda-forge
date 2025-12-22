@@ -96,8 +96,17 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   // State for editing absence from cell click
   const [editingCellAbsence, setEditingCellAbsence] = useState<{ absence: OperatorAbsence; operatorName: string } | null>(null);
   
-  // State for creating new absence from empty cell click
-  const [creatingAbsence, setCreatingAbsence] = useState<{ operatorId: string; operatorName: string; date: string } | null>(null);
+  // State for creating new absence from empty cell click or drag selection
+  const [creatingAbsence, setCreatingAbsence] = useState<{ operatorId: string; operatorName: string; date: string; endDate?: string } | null>(null);
+  
+  // State for drag selection of date range
+  const [dragSelection, setDragSelection] = useState<{
+    operatorId: string;
+    operatorName: string;
+    startDate: Date;
+    endDate: Date | null;
+  } | null>(null);
+  const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   
   // State for schedule override dialog
   const [editingOverride, setEditingOverride] = useState<{
@@ -149,9 +158,90 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   // Delete absence mutation for keyboard shortcut
   const deleteAbsence = useDeleteOperatorAbsence();
 
+  // Handlers for drag selection of date range
+  const handleDragSelectionStart = useCallback((operatorId: string, operatorName: string, date: Date, e: React.MouseEvent) => {
+    // Only left mouse button, not on context menu
+    if (e.button !== 0) return;
+    e.preventDefault();
+    setDragSelection({
+      operatorId,
+      operatorName,
+      startDate: date,
+      endDate: date,
+    });
+    setIsDraggingSelection(true);
+  }, []);
+
+  const handleDragSelectionMove = useCallback((operatorId: string, date: Date) => {
+    if (!isDraggingSelection || !dragSelection || dragSelection.operatorId !== operatorId) return;
+    setDragSelection(prev => prev ? { ...prev, endDate: date } : null);
+  }, [isDraggingSelection, dragSelection]);
+
+  const handleDragSelectionEnd = useCallback(() => {
+    if (!isDraggingSelection || !dragSelection || !dragSelection.endDate) {
+      setDragSelection(null);
+      setIsDraggingSelection(false);
+      return;
+    }
+
+    // Normalize dates
+    let startDate = dragSelection.startDate;
+    let endDate = dragSelection.endDate;
+    if (endDate < startDate) {
+      const temp = startDate;
+      startDate = endDate;
+      endDate = temp;
+    }
+
+    // Open create absence dialog with date range
+    setCreatingAbsence({
+      operatorId: dragSelection.operatorId,
+      operatorName: dragSelection.operatorName,
+      date: format(startDate, "yyyy-MM-dd"),
+      endDate: format(endDate, "yyyy-MM-dd"),
+    });
+
+    setDragSelection(null);
+    setIsDraggingSelection(false);
+  }, [isDraggingSelection, dragSelection]);
+
+  // Check if date is in current drag selection
+  const isInDragSelection = useCallback((operatorId: string, date: Date): boolean => {
+    if (!dragSelection || dragSelection.operatorId !== operatorId || !dragSelection.endDate) return false;
+    
+    let start = dragSelection.startDate;
+    let end = dragSelection.endDate;
+    if (end < start) {
+      const temp = start;
+      start = end;
+      end = temp;
+    }
+    
+    return date >= start && date <= end;
+  }, [dragSelection]);
+
+  // Global mouseup handler for drag selection
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (isDraggingSelection) {
+        handleDragSelectionEnd();
+      }
+    };
+
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, [isDraggingSelection, handleDragSelectionEnd]);
+
   // Keyboard shortcuts handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cancel drag selection on Escape
+      if (e.key === 'Escape' && isDraggingSelection) {
+        setDragSelection(null);
+        setIsDraggingSelection(false);
+        return;
+      }
+      
       if (!selectedAbsenceId) return;
       
       const selectedAbsence = absences.find(a => a.id === selectedAbsenceId);
@@ -177,7 +267,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedAbsenceId, absences, operators, deleteAbsence, handleAbsenceSelect]);
+  }, [selectedAbsenceId, absences, operators, deleteAbsence, handleAbsenceSelect, isDraggingSelection]);
 
   return (
     <div>
@@ -717,10 +807,13 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               });
                             };
                             
-                            // Check if this day is in range selection
+                            // Check if this day is in range selection (Shift+RightClick)
                             const isInRangeSelection = rangeSelection && 
                               rangeSelection.operatorId === operator.id &&
                               day >= rangeSelection.startDate;
+                            
+                            // Check if this day is in drag selection (mouse drag)
+                            const inDragSelection = isInDragSelection(operator.id, day);
                             
                             return (
                               <div 
@@ -728,43 +821,46 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 onDragOver={(e) => canCreateAbsence && handleDragOver(day, operator.id, e)}
                                 onDragLeave={handleDragLeave}
                                 onDrop={(e) => canCreateAbsence && handleDrop(day, operator.id, e)}
-                                onClick={() => canCreateAbsence && !inPreview && setCreatingAbsence({ 
-                                  operatorId: operator.id, 
-                                  operatorName: operator.full_name, 
-                                  date: dateStr 
-                                })}
+                                // Mouse drag selection for creating absences
+                                onMouseDown={(e) => canCreateAbsence && !inPreview && handleDragSelectionStart(operator.id, operator.full_name, day, e)}
+                                onMouseEnter={() => {
+                                  if (isToday(day)) onTodayColumnHover(true);
+                                  if (isDraggingSelection && canCreateAbsence) handleDragSelectionMove(operator.id, day);
+                                }}
+                                onMouseLeave={() => isToday(day) && onTodayColumnHover(false)}
                                 onContextMenu={handleContextMenu}
                                 className={cn(
-                                  "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden",
-                                  canCreateAbsence && !inPreview && "cursor-pointer hover:ring-2 hover:ring-primary/30 hover:bg-primary/5",
+                                  "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden select-none",
+                                  canCreateAbsence && !inPreview && !isDraggingSelection && "cursor-pointer hover:ring-2 hover:ring-primary/30 hover:bg-primary/5",
+                                  isDraggingSelection && canCreateAbsence && "cursor-crosshair",
                                   isDropTarget(day, operator.id) && "ring-2 ring-primary bg-primary/10",
                                   inPreview && "ring-2 ring-primary/70 bg-primary/20 z-10",
-                                  // Range selection highlighting
-                                  isInRangeSelection && "ring-2 ring-blue-500 bg-blue-100 dark:bg-blue-900/30",
+                                  // Drag selection highlighting (mouse drag)
+                                  inDragSelection && "ring-2 ring-blue-500 bg-blue-200 dark:bg-blue-800/50 z-10",
+                                  // Range selection highlighting (Shift+RightClick)
+                                  isInRangeSelection && !inDragSelection && "ring-2 ring-blue-500 bg-blue-100 dark:bg-blue-900/30",
                                   // Override styling - working day override: shift colors + dashed border
-                                  hasOverride && effectiveIsWorking && colors 
+                                  !inDragSelection && hasOverride && effectiveIsWorking && colors 
                                     ? cn(colors.bg, colors.text, "border-2 border-dashed border-amber-400") 
                                     : null,
                                   // Override styling - day off override: normal weekend/off styling + dashed border
-                                  hasOverride && !effectiveIsWorking && isWeekend 
+                                  !inDragSelection && hasOverride && !effectiveIsWorking && isWeekend 
                                     ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50 border-2 border-dashed border-amber-400"
-                                    : hasOverride && !effectiveIsWorking 
+                                    : !inDragSelection && hasOverride && !effectiveIsWorking 
                                       ? "bg-gradient-to-b from-muted/20 to-muted/40 border-2 border-dashed border-amber-400"
                                       : null,
                                   // Normal styling (when no override)
-                                  !hasOverride && !inPreview && !isInRangeSelection && colors 
+                                  !inDragSelection && !hasOverride && !inPreview && !isInRangeSelection && colors 
                                     ? cn(colors.bg, colors.text, "border", colors.border) 
-                                    : !hasOverride && !inPreview && !isInRangeSelection && !effectiveIsWorking && isWeekend 
+                                    : !inDragSelection && !hasOverride && !inPreview && !isInRangeSelection && !effectiveIsWorking && isWeekend 
                                       ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
-                                      : !hasOverride && !inPreview && !isInRangeSelection && !effectiveIsWorking && "bg-gradient-to-b from-muted/20 to-muted/40",
+                                      : !inDragSelection && !hasOverride && !inPreview && !isInRangeSelection && !effectiveIsWorking && "bg-gradient-to-b from-muted/20 to-muted/40",
                                   isToday(day) && cn(
                                     "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
                                     isTodayColumnHovered && "animate-pulse-glow"
                                   )
                                 )}
-                                title={`${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла. ` : ''}Клик - отсутствие | ПКМ - изменить график | Shift+ПКМ - выбрать диапазон`}
-                                onMouseEnter={() => isToday(day) && onTodayColumnHover(true)}
-                                onMouseLeave={() => isToday(day) && onTodayColumnHover(false)}
+                                title={`${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла. ` : ''}Зажмите и перетащите для выбора диапазона | ПКМ - изменить график`}
                               >
                                 {/* Override indicator */}
                                 {hasOverride && (
@@ -842,7 +938,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
         />
       )}
 
-      {/* Create absence dialog from empty cell click */}
+      {/* Create absence dialog from empty cell click or drag selection */}
       {creatingAbsence && (
         <CreateAbsenceCellDialog
           open={!!creatingAbsence}
@@ -850,6 +946,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           operatorId={creatingAbsence.operatorId}
           operatorName={creatingAbsence.operatorName}
           initialDate={creatingAbsence.date}
+          initialEndDate={creatingAbsence.endDate}
         />
       )}
 
