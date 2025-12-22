@@ -54,8 +54,10 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
   scheduleType,
   currentCycleStartDate,
 }) => {
+  // Initialize with existing override value, or current schedule state (NOT inverted)
+  // User will toggle to change from current state
   const [isWorkingDay, setIsWorkingDay] = useState(
-    existingOverride?.is_working_day ?? !originalIsWorkingDay
+    existingOverride?.is_working_day ?? originalIsWorkingDay
   );
   const [reason, setReason] = useState(existingOverride?.reason || "production_need");
   const [shiftNumber, setShiftNumber] = useState<string>(
