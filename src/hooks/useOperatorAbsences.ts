@@ -148,7 +148,42 @@ export const useDeleteOperatorAbsence = () => {
   });
 };
 
-// Helper to check if a date falls within an absence period
+// Hook to merge duplicate absences for an operator
+export const useMergeOperatorAbsences = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ operatorId, startDate, endDate }: { 
+      operatorId: string; 
+      startDate?: string; 
+      endDate?: string;
+    }) => {
+      const { data, error } = await supabase
+        .rpc('merge_operator_absences', {
+          p_operator_id: operatorId,
+          p_start_date: startDate || null,
+          p_end_date: endDate || null,
+        });
+
+      if (error) throw error;
+      return data as { merged_count: number; remaining_count: number }[];
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
+      const result = data?.[0];
+      if (result && result.merged_count > 0) {
+        toast.success(`Объединено записей: ${result.merged_count}. Осталось: ${result.remaining_count}`);
+      } else {
+        toast.info("Дубликатов не найдено");
+      }
+    },
+    onError: (error) => {
+      console.error("Error merging absences:", error);
+      toast.error("Ошибка при объединении отсутствий");
+    },
+  });
+};
 export const isDateInAbsence = (
   date: Date,
   absences: OperatorAbsence[],

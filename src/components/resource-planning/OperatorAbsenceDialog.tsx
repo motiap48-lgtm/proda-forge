@@ -21,12 +21,13 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle } from "lucide-react";
+import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle, Merge } from "lucide-react";
 import {
   useOperatorAbsences,
   useCreateOperatorAbsence,
   useUpdateOperatorAbsence,
   useDeleteOperatorAbsence,
+  useMergeOperatorAbsences,
   ABSENCE_TYPE_LABELS,
   ABSENCE_STATUS_LABELS,
   type OperatorAbsence,
@@ -58,6 +59,7 @@ export const OperatorAbsenceDialog = ({
   const createAbsence = useCreateOperatorAbsence();
   const updateAbsence = useUpdateOperatorAbsence();
   const deleteAbsence = useDeleteOperatorAbsence();
+  const mergeAbsences = useMergeOperatorAbsences();
 
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState<OperatorAbsence | null>(null);
@@ -250,16 +252,51 @@ export const OperatorAbsenceDialog = ({
         </DialogHeader>
 
         <div className="flex-1 min-h-0 flex flex-col gap-4">
-          {/* Add button */}
+          {/* Action buttons */}
           {!isAddingNew && !editingAbsence && (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setIsAddingNew(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Добавить отсутствие
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setIsAddingNew(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить отсутствие
+              </Button>
+              
+              {absences && absences.length > 1 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      title="Объединить дубликаты"
+                    >
+                      <Merge className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Объединить дубликаты?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Все пересекающиеся или смежные отсутствия одного типа будут объединены в одну запись.
+                        Это действие нельзя отменить.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Отмена</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => mergeAbsences.mutate({ operatorId: operator.id })}
+                        disabled={mergeAbsences.isPending}
+                      >
+                        {mergeAbsences.isPending ? "Объединение..." : "Объединить"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           )}
 
           {/* Form */}

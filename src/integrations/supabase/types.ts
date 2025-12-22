@@ -2100,6 +2100,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      merge_operator_absences: {
+        Args: {
+          p_end_date?: string
+          p_operator_id: string
+          p_start_date?: string
+        }
+        Returns: {
+          merged_count: number
+          remaining_count: number
+        }[]
+      }
     }
     Enums: {
       app_role:
