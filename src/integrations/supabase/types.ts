@@ -821,6 +821,7 @@ export type Database = {
           is_working_day: boolean
           notes: string | null
           operator_id: string
+          original_cycle_start_date: string | null
           override_date: string
           reason: string | null
           shift_number: number | null
@@ -833,6 +834,7 @@ export type Database = {
           is_working_day?: boolean
           notes?: string | null
           operator_id: string
+          original_cycle_start_date?: string | null
           override_date: string
           reason?: string | null
           shift_number?: number | null
@@ -845,6 +847,7 @@ export type Database = {
           is_working_day?: boolean
           notes?: string | null
           operator_id?: string
+          original_cycle_start_date?: string | null
           override_date?: string
           reason?: string | null
           shift_number?: number | null
