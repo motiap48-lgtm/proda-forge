@@ -9,7 +9,7 @@ import { format, addDays, addMonths, subMonths, differenceInDays, startOfWeek, s
 import { ru } from "date-fns/locale";
 import { 
   RefreshCw, FileDown, Printer, Filter, Clock, ChevronsUpDown, ChevronsDownUp, 
-  CalendarDays, ChevronLeft, ChevronRight, FileText, User 
+  CalendarDays, ChevronLeft, ChevronRight, FileText, User, Maximize2, Minimize2 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PeriodType, ShiftColors } from "../utils";
@@ -44,6 +44,8 @@ interface CalendarToolbarProps {
   isEndDatePickerOpen: boolean;
   onEndDatePickerOpenChange: (open: boolean) => void;
   daysCount: number;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
@@ -76,6 +78,8 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   isEndDatePickerOpen,
   onEndDatePickerOpenChange,
   daysCount,
+  isFullscreen,
+  onToggleFullscreen,
 }) => {
   const goToToday = () => {
     onStartDateChange(new Date());
@@ -382,6 +386,23 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             <ChevronsDownUp className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Fullscreen toggle */}
+        {onToggleFullscreen && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleFullscreen}
+            title={isFullscreen ? "Выйти из полноэкранного режима" : "Полноэкранный режим"}
+            className="gap-1.5"
+          >
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </Button>
+        )}
 
         {/* Shift legend */}
         <div className="flex gap-2 border-l pl-3 ml-1">
