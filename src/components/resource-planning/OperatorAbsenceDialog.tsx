@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { parseDateOnly } from "@/components/resource-planning/shift-rotation/utils";
 import {
   Dialog,
   DialogContent,
@@ -293,11 +294,11 @@ export const OperatorAbsenceDialog = ({
                         </div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
-                          {format(parseISO(absence.start_date), "d MMM yyyy", { locale: ru })}
+                          {format(parseDateOnly(absence.start_date) ?? new Date(), "d MMM yyyy", { locale: ru })}
                           {absence.start_date !== absence.end_date && (
                             <>
                               {" — "}
-                              {format(parseISO(absence.end_date), "d MMM yyyy", { locale: ru })}
+                              {format(parseDateOnly(absence.end_date) ?? new Date(), "d MMM yyyy", { locale: ru })}
                             </>
                           )}
                         </div>

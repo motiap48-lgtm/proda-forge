@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from "react";
-import { differenceInDays, addDays, format, isSameDay, isWithinInterval, parseISO } from "date-fns";
+import { differenceInDays, addDays, format, isSameDay, startOfDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useUpdateOperatorAbsence, type OperatorAbsence } from "@/hooks/useOperatorAbsences";
+import { parseDateOnly } from "../utils";
 
 type ResizeEdge = 'start' | 'end' | null;
 
@@ -34,9 +35,9 @@ export const useAbsenceDragDrop = () => {
     }
 
     const absence = dragState.absence;
-    const originalStartDate = new Date(absence.start_date);
-    const originalEndDate = new Date(absence.end_date);
-    const targetDate = dropTarget.date;
+    const originalStartDate = parseDateOnly(absence.start_date) ?? new Date();
+    const originalEndDate = parseDateOnly(absence.end_date) ?? new Date();
+    const targetDate = startOfDay(dropTarget.date);
 
     let newStartDate: Date;
     let newEndDate: Date;
@@ -81,7 +82,7 @@ export const useAbsenceDragDrop = () => {
     setDragState({
       absence,
       operatorId,
-      startDate: new Date(absence.start_date),
+      startDate: parseDateOnly(absence.start_date) ?? new Date(),
       resizeEdge: null,
     });
   }, []);
@@ -94,7 +95,7 @@ export const useAbsenceDragDrop = () => {
     setDragState({
       absence,
       operatorId,
-      startDate: new Date(absence.start_date),
+      startDate: parseDateOnly(absence.start_date) ?? new Date(),
       resizeEdge: edge,
     });
   }, []);
@@ -122,28 +123,29 @@ export const useAbsenceDragDrop = () => {
     }
 
     const absence = dragState.absence;
-    const originalStartDate = new Date(absence.start_date);
-    const originalEndDate = new Date(absence.end_date);
+    const originalStartDate = parseDateOnly(absence.start_date) ?? new Date();
+    const originalEndDate = parseDateOnly(absence.end_date) ?? new Date();
+    const targetDay = startOfDay(targetDate);
 
     if (dragState.resizeEdge === 'start') {
       // Resizing start date
-      if (!isSameDay(targetDate, originalStartDate) && targetDate <= originalEndDate) {
+      if (!isSameDay(targetDay, originalStartDate) && targetDay <= originalEndDate) {
         updateAbsence.mutate({
           id: absence.id,
-          start_date: format(targetDate, "yyyy-MM-dd"),
+          start_date: format(targetDay, "yyyy-MM-dd"),
         });
       }
     } else if (dragState.resizeEdge === 'end') {
       // Resizing end date
-      if (!isSameDay(targetDate, originalEndDate) && targetDate >= originalStartDate) {
+      if (!isSameDay(targetDay, originalEndDate) && targetDay >= originalStartDate) {
         updateAbsence.mutate({
           id: absence.id,
-          end_date: format(targetDate, "yyyy-MM-dd"),
+          end_date: format(targetDay, "yyyy-MM-dd"),
         });
       }
     } else {
       // Moving the entire absence
-      const daysDiff = differenceInDays(targetDate, originalStartDate);
+      const daysDiff = differenceInDays(targetDay, originalStartDate);
 
       if (daysDiff !== 0) {
         const newStartDate = addDays(originalStartDate, daysDiff);

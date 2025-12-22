@@ -100,8 +100,8 @@ export const CreateAbsenceCellDialog = ({
         case 'p':
         case 'з': // Russian 'з' for 'p' position
           e.preventDefault();
-          // Прогул можно выбрать только для прошедших дат
-          if (formData.start_date < format(new Date(), "yyyy-MM-dd")) {
+          // Прогул можно выбрать только до сегодняшнего дня включительно
+          if (formData.end_date <= format(new Date(), "yyyy-MM-dd")) {
             setFormData(prev => ({ ...prev, absence_type: 'unauthorized_absence' }));
           }
           break;
@@ -115,13 +115,13 @@ export const CreateAbsenceCellDialog = ({
   // Валидация: дата окончания не может быть раньше даты начала
   const isDateRangeValid = formData.start_date <= formData.end_date;
 
-  // Проверка: прогул можно установить только для прошедших дат
+  // Проверка: прогул можно установить только до сегодняшнего дня включительно
   const today = format(new Date(), "yyyy-MM-dd");
-  const isUnauthorizedAbsenceValid = 
-    formData.absence_type !== "unauthorized_absence" || formData.end_date < today;
+  const isUnauthorizedAbsenceValid =
+    formData.absence_type !== "unauthorized_absence" || formData.end_date <= today;
 
-  // Фильтруем типы отсутствий - прогул доступен только для прошедших дат
-  const isDateInFuture = formData.start_date >= today;
+  // Для блокировки выбора типа: если выбранный диапазон содержит будущие даты
+  const isDateInFuture = formData.end_date > today;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
