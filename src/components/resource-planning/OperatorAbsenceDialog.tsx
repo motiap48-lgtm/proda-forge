@@ -139,7 +139,7 @@ export const OperatorAbsenceDialog = ({
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[200]" position="popper" sideOffset={4}>
               {Object.entries(ABSENCE_TYPE_LABELS).map(([key, { label, icon }]) => (
                 <SelectItem key={key} value={key}>
                   {icon} {label}
@@ -160,7 +160,7 @@ export const OperatorAbsenceDialog = ({
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[200]" position="popper" sideOffset={4}>
               {Object.entries(ABSENCE_STATUS_LABELS).map(([key, { label }]) => (
                 <SelectItem key={key} value={key}>
                   {label}
