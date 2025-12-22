@@ -100,7 +100,10 @@ export const CreateAbsenceCellDialog = ({
         case 'p':
         case 'з': // Russian 'з' for 'p' position
           e.preventDefault();
-          setFormData(prev => ({ ...prev, absence_type: 'unauthorized_absence' }));
+          // Прогул можно выбрать только для прошедших дат
+          if (formData.start_date < format(new Date(), "yyyy-MM-dd")) {
+            setFormData(prev => ({ ...prev, absence_type: 'unauthorized_absence' }));
+          }
           break;
       }
     };
@@ -111,6 +114,14 @@ export const CreateAbsenceCellDialog = ({
 
   // Валидация: дата окончания не может быть раньше даты начала
   const isDateRangeValid = formData.start_date <= formData.end_date;
+
+  // Проверка: прогул можно установить только для прошедших дат
+  const today = format(new Date(), "yyyy-MM-dd");
+  const isUnauthorizedAbsenceValid = 
+    formData.absence_type !== "unauthorized_absence" || formData.end_date < today;
+
+  // Фильтруем типы отсутствий - прогул доступен только для прошедших дат
+  const isDateInFuture = formData.start_date >= today;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,12 +191,22 @@ export const CreateAbsenceCellDialog = ({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent position="popper" className="z-[200]">
-                  {Object.entries(ABSENCE_TYPE_LABELS).map(([key, { label, icon }]) => (
-                    <SelectItem key={key} value={key}>
-                      {icon} {label}
-                    </SelectItem>
-                  ))}
+              <SelectContent position="popper" className="z-[200]">
+                  {Object.entries(ABSENCE_TYPE_LABELS).map(([key, { label, icon }]) => {
+                    // Прогул недоступен для будущих дат
+                    const isDisabled = key === "unauthorized_absence" && isDateInFuture;
+                    return (
+                      <SelectItem 
+                        key={key} 
+                        value={key} 
+                        disabled={isDisabled}
+                        className={isDisabled ? "opacity-50" : ""}
+                      >
+                        {icon} {label}
+                        {isDisabled && " (только для прошедших дат)"}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -243,6 +264,14 @@ export const CreateAbsenceCellDialog = ({
             </div>
           )}
 
+          {/* Unauthorized absence validation error */}
+          {!isUnauthorizedAbsenceValid && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              Прогул можно установить только для прошедших дат
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Примечание</Label>
             <Textarea
@@ -261,7 +290,7 @@ export const CreateAbsenceCellDialog = ({
             </DialogClose>
             <Button 
               type="submit" 
-              disabled={createAbsence.isPending || !isDateRangeValid} 
+              disabled={createAbsence.isPending || !isDateRangeValid || !isUnauthorizedAbsenceValid} 
               className="gap-2"
             >
               <Save className="h-4 w-4" />
