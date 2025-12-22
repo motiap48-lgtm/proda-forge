@@ -533,14 +533,26 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     setIsFullscreen(!isFullscreen);
   };
 
-  // Listen for fullscreen change events
+  // Listen for fullscreen change events and Escape key
   React.useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        document.exitFullscreen?.();
+      }
+    };
+    
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen]);
 
   return (
     <Card 
