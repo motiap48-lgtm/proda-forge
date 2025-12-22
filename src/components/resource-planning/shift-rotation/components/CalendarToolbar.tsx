@@ -9,7 +9,7 @@ import { format, addDays, addMonths, subMonths, differenceInDays, startOfWeek, s
 import { ru } from "date-fns/locale";
 import { 
   RefreshCw, FileDown, Printer, Filter, Clock, ChevronsUpDown, ChevronsDownUp, 
-  CalendarDays, ChevronLeft, ChevronRight, FileText, User, Maximize2, Minimize2 
+  CalendarDays, ChevronLeft, ChevronRight, FileText, User, Maximize2, Minimize2, X 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PeriodType, ShiftColors } from "../utils";
@@ -48,6 +48,8 @@ interface CalendarToolbarProps {
   daysCount: number;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  onResetFilters?: () => void;
+  hasActiveFilters?: boolean;
 }
 
 export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
@@ -84,6 +86,8 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   daysCount,
   isFullscreen,
   onToggleFullscreen,
+  onResetFilters,
+  hasActiveFilters,
 }) => {
   const goToToday = () => {
     onStartDateChange(new Date());
@@ -345,6 +349,17 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             <User className="h-3 w-3 mr-1" />
             {filteredOperatorsCount}
           </Badge>
+          {hasActiveFilters && onResetFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onResetFilters}
+              title="Сбросить все фильтры"
+              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
         
         <Select value={scheduleFilter} onValueChange={onScheduleFilterChange}>
