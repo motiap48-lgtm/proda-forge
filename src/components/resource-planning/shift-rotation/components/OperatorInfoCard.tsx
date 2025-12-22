@@ -2,14 +2,17 @@ import React from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall } from "lucide-react";
 import { parseDateOnly } from "../utils";
+import { toast } from "sonner";
 
 interface OperatorInfoCardProps {
   operator: any;
+  onEdit?: (operator: any) => void;
 }
 
-export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator }) => {
+export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, onEdit }) => {
   const schedule = operator.work_schedules;
   const isCyclic = schedule?.schedule_type === 'cyclic';
   const shifts = schedule?.work_schedule_shifts || [];
@@ -21,6 +24,26 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator }) 
   
   // For non-cyclic schedules with multiple shifts: show rotation badge
   const showShiftRotationBadge = !isCyclic && hasMultipleShifts && operator.shift_rotation_enabled;
+
+  const handleCopyPhone = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (operator.phone) {
+      navigator.clipboard.writeText(operator.phone);
+      toast.success("Телефон скопирован");
+    }
+  };
+
+  const handleCall = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (operator.phone) {
+      window.location.href = `tel:${operator.phone}`;
+    }
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.(operator);
+  };
   
   return (
     <div className="space-y-3">
@@ -101,6 +124,26 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator }) 
           <Mail className="h-3.5 w-3.5" />
           <span>{operator.email}</span>
         </div>
+      )}
+    </div>
+
+    {/* Quick actions */}
+    <div className="flex gap-2 pt-2 border-t">
+      {onEdit && (
+        <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={handleEdit}>
+          <Pencil className="h-3 w-3 mr-1.5" />
+          Редактировать
+        </Button>
+      )}
+      {operator.phone && (
+        <>
+          <Button variant="outline" size="sm" className="h-8 px-2" onClick={handleCall} title="Позвонить">
+            <PhoneCall className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 px-2" onClick={handleCopyPhone} title="Копировать телефон">
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+        </>
       )}
     </div>
     </div>
