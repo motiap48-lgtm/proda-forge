@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useMemo, useState } from "react";
 import { format, getDay, isToday, isSameMonth } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, type ShiftColors, type PeriodType } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
+import { AbsenceCellDialog } from "@/components/resource-planning/AbsenceCellDialog";
 
 interface ScheduleGroupProps {
   scheduleName: string;
@@ -83,6 +84,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   const scheduleId = schedule?.id;
   const scheduleCycleStartDate = schedule?.cycle_start_date;
   const groupStats = calculateGroupStats(operators);
+
+  // State for editing absence from cell click
+  const [editingCellAbsence, setEditingCellAbsence] = useState<{ absence: OperatorAbsence; operatorName: string } | null>(null);
 
   return (
     <div>
@@ -482,7 +486,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 <div 
                                   key={day.toISOString()} 
                                   className={cn(
-                                    "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative overflow-hidden",
+                                    "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-colors relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50",
                                     absence.absence_type === 'annual_leave' && "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-900/50 dark:to-blue-900/70 text-blue-700 dark:text-blue-300",
                                     absence.absence_type === 'sick_leave' && "bg-gradient-to-b from-red-200 to-red-300 dark:from-red-900/50 dark:to-red-900/70 text-red-700 dark:text-red-300",
                                     absence.absence_type === 'administrative_leave' && "bg-gradient-to-b from-orange-200 to-orange-300 dark:from-orange-900/50 dark:to-orange-900/70 text-orange-700 dark:text-orange-300",
@@ -492,7 +496,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     absence.absence_type === 'other' && "bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 text-slate-600 dark:text-slate-300",
                                     isToday(day) && "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]"
                                   )}
-                                  title={`${absenceInfo.label}${absence.notes ? `: ${absence.notes}` : ''}`}
+                                  title={`${absenceInfo.label}${absence.notes ? `: ${absence.notes}` : ''} (нажмите для редактирования)`}
+                                  onClick={() => setEditingCellAbsence({ absence, operatorName: operator.full_name })}
                                 >
                                   <AbsenceIcon className="h-3.5 w-3.5 mb-0.5" />
                                   <div className="text-[9px] font-medium truncate w-full px-0.5">
@@ -567,6 +572,16 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Absence cell edit dialog */}
+      {editingCellAbsence && (
+        <AbsenceCellDialog
+          open={!!editingCellAbsence}
+          onOpenChange={(open) => !open && setEditingCellAbsence(null)}
+          absence={editingCellAbsence.absence}
+          operatorName={editingCellAbsence.operatorName}
+        />
+      )}
     </div>
   );
 };
