@@ -26,6 +26,8 @@ interface CalendarToolbarProps {
   uniqueSchedules: string[];
   showOnlyCyclic: boolean;
   onShowOnlyCyclicChange: (show: boolean) => void;
+  rotationFilter: "all" | "enabled" | "disabled";
+  onRotationFilterChange: (filter: "all" | "enabled" | "disabled") => void;
   filteredOperatorsCount: number;
   grandTotal: { hours: number; minutes: number };
   comparisonPeriod: PeriodType | null;
@@ -60,6 +62,8 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   uniqueSchedules,
   showOnlyCyclic,
   onShowOnlyCyclicChange,
+  rotationFilter,
+  onRotationFilterChange,
   filteredOperatorsCount,
   grandTotal,
   comparisonPeriod,
@@ -358,6 +362,18 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           <RefreshCw className="h-3 w-3" />
           Только циклические
         </Button>
+
+        {/* Rotation status filter */}
+        <Select value={rotationFilter} onValueChange={(v) => onRotationFilterChange(v as "all" | "enabled" | "disabled")}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Статус ротации" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все операторы</SelectItem>
+            <SelectItem value="enabled">С ротацией смен</SelectItem>
+            <SelectItem value="disabled">Без ротации смен</SelectItem>
+          </SelectContent>
+        </Select>
         
         {/* Expand/Collapse all */}
         <div className="flex items-center border rounded-md overflow-hidden">

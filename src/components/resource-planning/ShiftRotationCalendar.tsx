@@ -30,6 +30,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [comparisonPeriod, setComparisonPeriod] = useState<PeriodType | null>(null);
   const [scheduleFilter, setScheduleFilter] = useState<string>("all");
   const [showOnlyCyclic, setShowOnlyCyclic] = useState(false);
+  const [rotationFilter, setRotationFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
@@ -73,7 +74,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return Array.from(schedules).sort();
   }, [operatorsWithSchedules]);
 
-  // Filter operators by selected schedule and cyclic filter
+  // Filter operators by selected schedule, cyclic filter, and rotation filter
   const filteredOperators = useMemo(() => {
     let result = operatorsWithSchedules;
     if (scheduleFilter !== "all") {
@@ -81,6 +82,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     }
     if (showOnlyCyclic) {
       result = result.filter(op => op.work_schedules?.schedule_type === "cyclic");
+    }
+    if (rotationFilter === "enabled") {
+      result = result.filter(op => op.shift_rotation_enabled === true);
+    } else if (rotationFilter === "disabled") {
+      result = result.filter(op => op.shift_rotation_enabled !== true);
     }
     return result;
   }, [operatorsWithSchedules, scheduleFilter, showOnlyCyclic]);
@@ -575,6 +581,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           uniqueSchedules={uniqueSchedules}
           showOnlyCyclic={showOnlyCyclic}
           onShowOnlyCyclicChange={setShowOnlyCyclic}
+          rotationFilter={rotationFilter}
+          onRotationFilterChange={setRotationFilter}
           filteredOperatorsCount={filteredOperators.length}
           grandTotal={grandTotal}
           comparisonPeriod={comparisonPeriod}
