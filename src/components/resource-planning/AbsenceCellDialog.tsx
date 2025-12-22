@@ -105,9 +105,12 @@ export const AbsenceCellDialog = ({
               <div className="font-medium">{operatorName}</div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-3 w-3" />
-                {format(new Date(absence.start_date), "d MMM", { locale: ru })}
+                {format(parseDateOnly(absence.start_date) ?? new Date(), "d MMM", { locale: ru })}
                 {absence.start_date !== absence.end_date && (
-                  <> — {format(new Date(absence.end_date), "d MMM yyyy", { locale: ru })}</>
+                  <>
+                    {" — "}
+                    {format(parseDateOnly(absence.end_date) ?? new Date(), "d MMM yyyy", { locale: ru })}
+                  </>
                 )}
               </div>
             </div>
@@ -217,9 +220,11 @@ export const AbsenceCellDialog = ({
             </AlertDialog>
 
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Отмена
-              </Button>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Отмена
+                </Button>
+              </DialogClose>
               <Button type="submit" disabled={updateAbsence.isPending} className="gap-2">
                 <Save className="h-4 w-4" />
                 Сохранить

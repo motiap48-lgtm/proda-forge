@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -153,8 +154,8 @@ export const isDateInAbsence = (
   absences: OperatorAbsence[],
   operatorId: string
 ): OperatorAbsence | null => {
-  const dateStr = date.toISOString().split("T")[0];
-  
+  const dateStr = format(date, "yyyy-MM-dd");
+
   for (const absence of absences) {
     if (
       absence.operator_id === operatorId &&
