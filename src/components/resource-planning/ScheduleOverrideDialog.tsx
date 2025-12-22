@@ -102,6 +102,9 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
       shift_cycle_start_date: showCycleShiftOption && shiftCycleStart 
         ? format(newCycleStartDate, "yyyy-MM-dd") 
         : null,
+      current_cycle_start_date: showCycleShiftOption && shiftCycleStart && currentCycleStartDate
+        ? currentCycleStartDate
+        : null,
     }, {
       onSuccess: () => onOpenChange(false),
     });
@@ -109,7 +112,15 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
 
   const handleDelete = () => {
     if (existingOverride) {
-      deleteOverride.mutate(existingOverride.id, {
+      // Check if we need to restore the original cycle start date
+      const originalCycleDate = (existingOverride as any).original_cycle_start_date;
+      deleteOverride.mutate({
+        id: existingOverride.id,
+        restoreCycleStartDate: originalCycleDate ? {
+          operatorId: operatorId,
+          date: originalCycleDate,
+        } : undefined,
+      }, {
         onSuccess: () => onOpenChange(false),
       });
     }
@@ -117,7 +128,15 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
 
   const handleResetToDefault = () => {
     if (existingOverride) {
-      deleteOverride.mutate(existingOverride.id, {
+      // Check if we need to restore the original cycle start date
+      const originalCycleDate = (existingOverride as any).original_cycle_start_date;
+      deleteOverride.mutate({
+        id: existingOverride.id,
+        restoreCycleStartDate: originalCycleDate ? {
+          operatorId: operatorId,
+          date: originalCycleDate,
+        } : undefined,
+      }, {
         onSuccess: () => onOpenChange(false),
       });
     } else {

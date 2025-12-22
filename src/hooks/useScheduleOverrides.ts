@@ -14,6 +14,7 @@ export interface ScheduleOverride {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  original_cycle_start_date: string | null;
 }
 
 export const OVERRIDE_REASON_LABELS: Record<string, { label: string; icon: string }> = {
@@ -64,18 +65,27 @@ export const useCreateScheduleOverride = () => {
       shift_number?: number | null;
       reason?: string | null;
       notes?: string | null;
-      shift_cycle_start_date?: string | null; // New: if provided, update operator's cycle start date
+      shift_cycle_start_date?: string | null; // New cycle start date to set
+      current_cycle_start_date?: string | null; // Current cycle start date (to save as original)
     }) => {
-      const { shift_cycle_start_date, ...overrideData } = override;
+      const { shift_cycle_start_date, current_cycle_start_date, ...overrideData } = override;
       const { data: session } = await supabase.auth.getSession();
+      
+      // If we're shifting the cycle, save the original cycle start date
+      const dataToUpsert: any = {
+        ...overrideData,
+        created_by: session?.session?.user?.id || null,
+      };
+      
+      // Only store original_cycle_start_date if we're actually changing the cycle
+      if (shift_cycle_start_date && current_cycle_start_date) {
+        dataToUpsert.original_cycle_start_date = current_cycle_start_date;
+      }
       
       // Create the override
       const { data, error } = await supabase
         .from("operator_schedule_overrides")
-        .upsert({
-          ...overrideData,
-          created_by: session?.session?.user?.id || null,
-        }, {
+        .upsert(dataToUpsert, {
           onConflict: "operator_id,override_date",
         })
         .select()
