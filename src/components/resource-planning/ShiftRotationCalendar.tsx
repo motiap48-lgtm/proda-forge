@@ -37,7 +37,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
   const [syncingScheduleId, setSyncingScheduleId] = useState<string | null>(null);
   const [isTodayColumnHovered, setIsTodayColumnHovered] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     calendarHeaderPadRightPx,
@@ -522,8 +524,32 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     );
   }
 
+  const toggleFullscreen = () => {
+    if (!isFullscreen) {
+      calendarContainerRef.current?.requestFullscreen?.();
+    } else {
+      document.exitFullscreen?.();
+    }
+    setIsFullscreen(!isFullscreen);
+  };
+
+  // Listen for fullscreen change events
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   return (
-    <Card className={cn(isResizing && "cursor-col-resize select-none")}>
+    <Card 
+      ref={calendarContainerRef}
+      className={cn(
+        isResizing && "cursor-col-resize select-none",
+        isFullscreen && "fixed inset-0 z-50 rounded-none max-h-screen overflow-auto bg-background"
+      )}
+    >
       <CardHeader className="pb-3">
         <CalendarToolbar
           period={period}
@@ -555,11 +581,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           isEndDatePickerOpen={isEndDatePickerOpen}
           onEndDatePickerOpenChange={setIsEndDatePickerOpen}
           daysCount={daysCount}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
         />
       </CardHeader>
       <CardContent className="p-0">
         <div className="px-2 py-4">
-          <div className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-300px)]" style={{ scrollbarGutter: 'stable' }}>
+          <div 
+            className={cn(
+              "overflow-y-auto overflow-x-hidden",
+              isFullscreen ? "max-h-[calc(100vh-180px)]" : "max-h-[calc(100vh-300px)]"
+            )} 
+            style={{ scrollbarGutter: 'stable' }}
+          >
             <div className="flex flex-col gap-3 w-full min-w-0">
               {Array.from(groupedBySchedule.entries()).map(([scheduleName, ops], index) => (
                 <ScheduleGroup
