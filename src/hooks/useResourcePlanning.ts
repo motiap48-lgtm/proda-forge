@@ -237,6 +237,68 @@ export const useDeleteOperator = () => {
   });
 };
 
+// Fix invalid rotation settings for all operators
+export const useFixInvalidRotations = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      // Get all operators with rotation enabled
+      const { data: operators, error: fetchError } = await supabase
+        .from("operators")
+        .select(`
+          id,
+          shift_rotation_enabled,
+          work_schedule_id,
+          work_schedules:work_schedule_id (
+            id,
+            schedule_type,
+            work_schedule_shifts (id)
+          )
+        `)
+        .eq("shift_rotation_enabled", true);
+
+      if (fetchError) throw fetchError;
+
+      // Filter operators with invalid rotation settings
+      const invalidOperators = operators?.filter((op: any) => {
+        const schedule = op.work_schedules;
+        if (!schedule) return true; // No schedule - rotation shouldn't be enabled
+        const shiftsCount = schedule.work_schedule_shifts?.length || 0;
+        const isCyclic = schedule.schedule_type === 'cyclic';
+        // Invalid if cyclic schedule OR only 1 shift
+        return isCyclic || shiftsCount <= 1;
+      }) || [];
+
+      if (invalidOperators.length === 0) {
+        return { fixed: 0 };
+      }
+
+      // Update all invalid operators
+      const ids = invalidOperators.map((op: any) => op.id);
+      const { error: updateError } = await supabase
+        .from("operators")
+        .update({ shift_rotation_enabled: false })
+        .in("id", ids);
+
+      if (updateError) throw updateError;
+
+      return { fixed: invalidOperators.length };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["operators"] });
+      if (data.fixed > 0) {
+        toast.success(`Исправлено ${data.fixed} операторов с некорректными настройками ротации`);
+      } else {
+        toast.info("Все настройки ротации корректны");
+      }
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};
+
 // Brigades
 export const useBrigades = () => {
   return useQuery({
