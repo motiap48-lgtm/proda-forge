@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -65,6 +65,17 @@ export const AbsenceCellDialog = ({
     status: absence.status,
     notes: absence.notes || "",
   });
+
+  // Sync formData when absence prop changes (e.g., after drag-and-drop)
+  useEffect(() => {
+    setFormData({
+      absence_type: absence.absence_type,
+      start_date: absence.start_date,
+      end_date: absence.end_date,
+      status: absence.status,
+      notes: absence.notes || "",
+    });
+  }, [absence.id, absence.absence_type, absence.start_date, absence.end_date, absence.status, absence.notes]);
 
   const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type];
   const statusInfo = ABSENCE_STATUS_LABELS[absence.status];
