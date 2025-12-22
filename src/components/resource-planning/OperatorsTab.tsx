@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X } from "lucide-react";
-import { useOperators, useDeleteOperator } from "@/hooks/useResourcePlanning";
+import { useOperators, useDeleteOperator, useFixInvalidRotations } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
 import { BulkOperatorDialog } from "./BulkOperatorDialog";
 import { ShiftRotationCalendar } from "./ShiftRotationCalendar";
@@ -66,6 +66,7 @@ const getCurrentShiftForOperator = (operator: any) => {
 export const OperatorsTab = () => {
   const { data: operators, isLoading } = useOperators();
   const deleteOperator = useDeleteOperator();
+  const fixInvalidRotations = useFixInvalidRotations();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -367,6 +368,16 @@ export const OperatorsTab = () => {
         </div>
         
         <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => fixInvalidRotations.mutate()}
+            disabled={fixInvalidRotations.isPending}
+            title="Исправить некорректные настройки ротации у всех операторов"
+          >
+            <Wand2 className="h-4 w-4 mr-2" />
+            {fixInvalidRotations.isPending ? "Исправление..." : "Исправить ротации"}
+          </Button>
           <Button 
             variant="outline" 
             size="sm"
