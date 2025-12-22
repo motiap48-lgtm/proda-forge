@@ -1,0 +1,402 @@
+import React, { useState } from "react";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  useAbsenceCompensations,
+  useCreateAbsenceCompensation,
+  useAddCompensationRecord,
+  useUpdateAbsenceCompensation,
+  useDeleteCompensationRecord,
+  COMPENSATION_STATUS_LABELS,
+  AbsenceCompensation,
+} from "@/hooks/useAbsenceCompensations";
+
+interface CompensationDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  operatorId: string;
+  operatorName: string;
+  defaultHoursPerDay?: number;
+}
+
+export const CompensationDialog: React.FC<CompensationDialogProps> = ({
+  open,
+  onOpenChange,
+  operatorId,
+  operatorName,
+  defaultHoursPerDay = 8,
+}) => {
+  const [showAddAbsence, setShowAddAbsence] = useState(false);
+  const [absenceDate, setAbsenceDate] = useState<Date | undefined>(new Date());
+  const [absenceHours, setAbsenceHours] = useState(defaultHoursPerDay.toString());
+  const [absenceReason, setAbsenceReason] = useState("");
+  
+  const [addingCompensationFor, setAddingCompensationFor] = useState<string | null>(null);
+  const [compensationDate, setCompensationDate] = useState<Date | undefined>(new Date());
+  const [compensationHours, setCompensationHours] = useState("");
+  const [compensationNotes, setCompensationNotes] = useState("");
+
+  const { data: compensations = [], isLoading } = useAbsenceCompensations([operatorId]);
+  const createAbsence = useCreateAbsenceCompensation();
+  const addCompensation = useAddCompensationRecord();
+  const updateCompensation = useUpdateAbsenceCompensation();
+  const deleteRecord = useDeleteCompensationRecord();
+
+  const handleAddAbsence = () => {
+    if (!absenceDate) return;
+    
+    createAbsence.mutate({
+      operator_id: operatorId,
+      absence_date: format(absenceDate, "yyyy-MM-dd"),
+      absence_hours: parseFloat(absenceHours) || defaultHoursPerDay,
+      reason: absenceReason || undefined,
+    }, {
+      onSuccess: () => {
+        setShowAddAbsence(false);
+        setAbsenceDate(new Date());
+        setAbsenceHours(defaultHoursPerDay.toString());
+        setAbsenceReason("");
+      },
+    });
+  };
+
+  const handleAddCompensation = (absenceCompensationId: string) => {
+    if (!compensationDate || !compensationHours) return;
+    
+    addCompensation.mutate({
+      absence_compensation_id: absenceCompensationId,
+      operator_id: operatorId,
+      compensation_date: format(compensationDate, "yyyy-MM-dd"),
+      hours_worked: parseFloat(compensationHours),
+      notes: compensationNotes || undefined,
+    }, {
+      onSuccess: () => {
+        setAddingCompensationFor(null);
+        setCompensationDate(new Date());
+        setCompensationHours("");
+        setCompensationNotes("");
+      },
+    });
+  };
+
+  const handleCancelAbsence = (id: string) => {
+    updateCompensation.mutate({
+      id,
+      updates: { status: "cancelled" },
+    });
+  };
+
+  const totalPending = compensations
+    .filter((c) => c.status === "pending" || c.status === "partial")
+    .reduce((sum, c) => {
+      const compensated = c.compensation_records?.reduce(
+        (s, r) => s + Number(r.hours_worked),
+        0
+      ) || 0;
+      return sum + (Number(c.absence_hours) - compensated);
+    }, 0);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Учет отработки - {operatorName}
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Summary */}
+        <div className={`p-3 rounded-lg border ${
+          totalPending > 0
+            ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+            : "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {totalPending > 0 ? (
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+              ) : (
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+              )}
+              <span className="font-medium">
+                {totalPending > 0
+                  ? `К отработке: ${totalPending} ч`
+                  : "Все часы отработаны"}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowAddAbsence(true)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Добавить прогул
+            </Button>
+          </div>
+        </div>
+
+        {/* Add absence form */}
+        {showAddAbsence && (
+          <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+            <h4 className="font-medium">Новый прогул</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Дата прогула</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !absenceDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {absenceDate ? format(absenceDate, "PPP", { locale: ru }) : "Выберите дату"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={absenceDate}
+                      onSelect={setAbsenceDate}
+                      locale={ru}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Часов к отработке</Label>
+                <Input
+                  type="number"
+                  value={absenceHours}
+                  onChange={(e) => setAbsenceHours(e.target.value)}
+                  min="0.5"
+                  step="0.5"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Причина</Label>
+              <Textarea
+                value={absenceReason}
+                onChange={(e) => setAbsenceReason(e.target.value)}
+                placeholder="Причина прогула..."
+                rows={2}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowAddAbsence(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleAddAbsence} disabled={createAbsence.isPending}>
+                Добавить
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* List of compensations */}
+        <ScrollArea className="max-h-[400px]">
+          <div className="space-y-3">
+            {isLoading ? (
+              <p className="text-center text-muted-foreground py-4">Загрузка...</p>
+            ) : compensations.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">Нет записей</p>
+            ) : (
+              compensations.map((comp) => {
+                const compensatedHours = comp.compensation_records?.reduce(
+                  (sum, r) => sum + Number(r.hours_worked),
+                  0
+                ) || 0;
+                const remaining = Number(comp.absence_hours) - compensatedHours;
+                const statusInfo = COMPENSATION_STATUS_LABELS[comp.status];
+
+                return (
+                  <div
+                    key={comp.id}
+                    className={`p-3 border rounded-lg ${
+                      comp.status === "cancelled" ? "opacity-50" : ""
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {format(new Date(comp.absence_date), "d MMMM yyyy", { locale: ru })}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={`${statusInfo.bgColor} ${statusInfo.color}`}
+                          >
+                            {statusInfo.label}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Прогул: {comp.absence_hours}ч | Отработано: {compensatedHours}ч
+                          {remaining > 0 && comp.status !== "cancelled" && (
+                            <span className="text-amber-600 dark:text-amber-400">
+                              {" "}| Осталось: {remaining}ч
+                            </span>
+                          )}
+                        </div>
+                        {comp.reason && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Причина: {comp.reason}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        {comp.status !== "cancelled" && comp.status !== "completed" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setAddingCompensationFor(comp.id)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {comp.status !== "cancelled" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-rose-600"
+                            onClick={() => handleCancelAbsence(comp.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Compensation records */}
+                    {comp.compensation_records && comp.compensation_records.length > 0 && (
+                      <div className="mt-2 pl-4 border-l-2 border-emerald-200 dark:border-emerald-800 space-y-1">
+                        {comp.compensation_records.map((record) => (
+                          <div
+                            key={record.id}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <span>
+                              {format(new Date(record.compensation_date), "d MMM", { locale: ru })}
+                              : {record.hours_worked}ч
+                              {record.notes && (
+                                <span className="text-muted-foreground"> - {record.notes}</span>
+                              )}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-rose-600"
+                              onClick={() =>
+                                deleteRecord.mutate({
+                                  id: record.id,
+                                  absence_compensation_id: comp.id,
+                                })
+                              }
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add compensation form */}
+                    {addingCompensationFor === comp.id && (
+                      <div className="mt-3 p-3 border rounded-lg bg-muted/30 space-y-3">
+                        <h5 className="text-sm font-medium">Добавить отработку</h5>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Дата</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full justify-start"
+                                >
+                                  <CalendarIcon className="mr-2 h-3 w-3" />
+                                  {compensationDate
+                                    ? format(compensationDate, "d MMM", { locale: ru })
+                                    : "Дата"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={compensationDate}
+                                  onSelect={setCompensationDate}
+                                  locale={ru}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Часов</Label>
+                            <Input
+                              type="number"
+                              size={1}
+                              value={compensationHours}
+                              onChange={(e) => setCompensationHours(e.target.value)}
+                              placeholder={remaining.toString()}
+                              min="0.5"
+                              step="0.5"
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Примечание</Label>
+                          <Input
+                            value={compensationNotes}
+                            onChange={(e) => setCompensationNotes(e.target.value)}
+                            placeholder="Необязательно"
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setAddingCompensationFor(null)}
+                          >
+                            Отмена
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddCompensation(comp.id)}
+                            disabled={addCompensation.isPending}
+                          >
+                            Добавить
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+};
