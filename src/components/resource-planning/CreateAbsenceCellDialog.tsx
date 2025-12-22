@@ -101,7 +101,7 @@ export const CreateAbsenceCellDialog = ({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="z-[200]">
                   {Object.entries(ABSENCE_TYPE_LABELS).map(([key, { label, icon }]) => (
                     <SelectItem key={key} value={key}>
                       {icon} {label}
@@ -122,7 +122,7 @@ export const CreateAbsenceCellDialog = ({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="z-[200]">
                   {Object.entries(ABSENCE_STATUS_LABELS).map(([key, { label }]) => (
                     <SelectItem key={key} value={key}>
                       {label}
