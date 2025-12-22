@@ -709,6 +709,53 @@ export type Database = {
         }
         Relationships: []
       }
+      operator_absences: {
+        Row: {
+          absence_type: string
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          notes: string | null
+          operator_id: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          absence_type: string
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          id?: string
+          notes?: string | null
+          operator_id: string
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          absence_type?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          notes?: string | null
+          operator_id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_absences_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operator_assignments: {
         Row: {
           assignment_date: string
@@ -835,6 +882,7 @@ export type Database = {
           position: string | null
           shift_rotation_enabled: boolean | null
           shift_rotation_start_date: string | null
+          termination_date: string | null
           updated_at: string
           work_schedule_id: string | null
         }
@@ -854,6 +902,7 @@ export type Database = {
           position?: string | null
           shift_rotation_enabled?: boolean | null
           shift_rotation_start_date?: string | null
+          termination_date?: string | null
           updated_at?: string
           work_schedule_id?: string | null
         }
@@ -873,6 +922,7 @@ export type Database = {
           position?: string | null
           shift_rotation_enabled?: boolean | null
           shift_rotation_start_date?: string | null
+          termination_date?: string | null
           updated_at?: string
           work_schedule_id?: string | null
         }

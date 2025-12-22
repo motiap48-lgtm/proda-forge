@@ -3,16 +3,17 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall } from "lucide-react";
+import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall, UserX } from "lucide-react";
 import { parseDateOnly } from "../utils";
 import { toast } from "sonner";
 
 interface OperatorInfoCardProps {
   operator: any;
   onEdit?: (operator: any) => void;
+  onManageAbsences?: (operator: any) => void;
 }
 
-export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, onEdit }) => {
+export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, onEdit, onManageAbsences }) => {
   const schedule = operator.work_schedules;
   const isCyclic = schedule?.schedule_type === 'cyclic';
   const shifts = schedule?.work_schedule_shifts || [];
@@ -43,6 +44,11 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, on
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     onEdit?.(operator);
+  };
+
+  const handleManageAbsences = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onManageAbsences?.(operator);
   };
   
   return (
@@ -128,13 +134,21 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ operator, on
     </div>
 
     {/* Quick actions */}
-    <div className="flex gap-2 pt-2 border-t">
+    <div className="flex flex-wrap gap-2 pt-2 border-t">
       {onEdit && (
         <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={handleEdit}>
           <Pencil className="h-3 w-3 mr-1.5" />
           Редактировать
         </Button>
       )}
+      {onManageAbsences && (
+        <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={handleManageAbsences}>
+          <UserX className="h-3 w-3 mr-1.5" />
+          Отсутствия
+        </Button>
+      )}
+    </div>
+    <div className="flex gap-2">
       {operator.phone && (
         <>
           <Button variant="outline" size="sm" className="h-8 px-2" onClick={handleCall} title="Позвонить">

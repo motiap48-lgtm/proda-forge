@@ -4,6 +4,7 @@ import { User } from "lucide-react";
 import { format, addDays, getDaysInMonth, getDay, isToday } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useUpdateOperator } from "@/hooks/useResourcePlanning";
+import { useAllOperatorAbsences, isDateInAbsence } from "@/hooks/useOperatorAbsences";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -19,6 +20,7 @@ import {
   getCycleDayNumber,
   type PeriodType,
 } from "./shift-rotation";
+import { OperatorAbsenceDialog } from "./OperatorAbsenceDialog";
 
 interface ShiftRotationCalendarProps {
   operators: any[];
@@ -26,6 +28,7 @@ interface ShiftRotationCalendarProps {
 }
 
 export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
+  const { data: absences = [] } = useAllOperatorAbsences();
   const [period, setPeriod] = useState<PeriodType>(() => {
     const saved = localStorage.getItem("shiftRotationCalendarPeriod");
     return (saved as PeriodType) || "1";
@@ -42,6 +45,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [syncingScheduleId, setSyncingScheduleId] = useState<string | null>(null);
   const [isTodayColumnHovered, setIsTodayColumnHovered] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [absenceOperator, setAbsenceOperator] = useState<any>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
 
@@ -639,6 +643,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   isCollapsed={collapsedGroups.has(scheduleName)}
                   onToggleCollapse={() => toggleGroupCollapse(scheduleName)}
                   onEditOperator={onEditOperator}
+                  onManageAbsences={setAbsenceOperator}
+                  absences={absences}
                   days={days}
                   months={months}
                   period={period}
@@ -685,6 +691,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           </div>
         </div>
       </CardContent>
+
+      {/* Absence management dialog */}
+      <OperatorAbsenceDialog
+        open={!!absenceOperator}
+        onOpenChange={(open) => !open && setAbsenceOperator(null)}
+        operator={absenceOperator}
+      />
     </Card>
   );
 };
