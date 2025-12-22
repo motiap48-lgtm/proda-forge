@@ -106,6 +106,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
     originalIsWorkingDay: boolean;
     existingOverride?: ScheduleOverride;
     shifts: { shift_number: number; shift_name: string }[];
+    scheduleType?: string;
+    currentCycleStartDate?: string | null;
   } | null>(null);
   // Drag and drop functionality with resize support
   const {
@@ -652,6 +654,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   shift_number: s.shift_number,
                                   shift_name: s.shift_name,
                                 })) || [],
+                                scheduleType: operator.work_schedules?.schedule_type,
+                                currentCycleStartDate: operator.shift_rotation_start_date || operator.work_schedules?.cycle_start_date,
                               });
                             };
                             
@@ -790,6 +794,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           originalIsWorkingDay={editingOverride.originalIsWorkingDay}
           existingOverride={editingOverride.existingOverride}
           shifts={editingOverride.shifts}
+          scheduleType={editingOverride.scheduleType}
+          currentCycleStartDate={editingOverride.currentCycleStartDate}
         />
       )}
     </div>

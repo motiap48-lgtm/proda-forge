@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { format } from "date-fns";
+import React, { useState, useMemo } from "react";
+import { format, addDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   Dialog,
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -20,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CalendarCheck, CalendarX, Trash2 } from "lucide-react";
+import { CalendarCheck, CalendarX, Trash2, RefreshCw } from "lucide-react";
 import {
   ScheduleOverride,
   OVERRIDE_REASON_LABELS,
@@ -37,6 +38,8 @@ interface ScheduleOverrideDialogProps {
   originalIsWorkingDay: boolean;
   existingOverride?: ScheduleOverride;
   shifts?: { shift_number: number; shift_name: string }[];
+  scheduleType?: string;
+  currentCycleStartDate?: string | null;
 }
 
 export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
@@ -48,6 +51,8 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
   originalIsWorkingDay,
   existingOverride,
   shifts = [],
+  scheduleType,
+  currentCycleStartDate,
 }) => {
   const [isWorkingDay, setIsWorkingDay] = useState(
     existingOverride?.is_working_day ?? !originalIsWorkingDay
@@ -57,9 +62,19 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
     existingOverride?.shift_number?.toString() || ""
   );
   const [notes, setNotes] = useState(existingOverride?.notes || "");
+  const [shiftCycleStart, setShiftCycleStart] = useState(true); // Default to true for day off
 
   const createOverride = useCreateScheduleOverride();
   const deleteOverride = useDeleteScheduleOverride();
+
+  // Calculate the new cycle start date (day after this override)
+  const newCycleStartDate = useMemo(() => {
+    return addDays(date, 1);
+  }, [date]);
+
+  // Check if this is a cyclic schedule that supports cycle shifting
+  const isCyclicSchedule = scheduleType === "cyclic";
+  const showCycleShiftOption = isCyclicSchedule && !isWorkingDay;
 
   const handleSave = () => {
     createOverride.mutate({
@@ -69,6 +84,9 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
       shift_number: shiftNumber ? parseInt(shiftNumber) : null,
       reason,
       notes: notes || null,
+      shift_cycle_start_date: showCycleShiftOption && shiftCycleStart 
+        ? format(newCycleStartDate, "yyyy-MM-dd") 
+        : null,
     }, {
       onSuccess: () => onOpenChange(false),
     });
@@ -136,7 +154,15 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
             <Switch
               id="is-working-day"
               checked={isWorkingDay}
-              onCheckedChange={setIsWorkingDay}
+              onCheckedChange={(checked) => {
+                setIsWorkingDay(checked);
+                // Reset cycle shift option when switching to working day
+                if (checked) {
+                  setShiftCycleStart(false);
+                } else {
+                  setShiftCycleStart(true);
+                }
+              }}
             />
           </div>
 
@@ -176,6 +202,35 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Cycle shift option - only for cyclic schedules when setting day off */}
+          {showCycleShiftOption && (
+            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 space-y-2">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="shift-cycle"
+                  checked={shiftCycleStart}
+                  onCheckedChange={(checked) => setShiftCycleStart(checked === true)}
+                  className="mt-0.5"
+                />
+                <Label htmlFor="shift-cycle" className="flex flex-col gap-1 cursor-pointer">
+                  <span className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 text-blue-600" />
+                    Сдвинуть начало цикла
+                  </span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Следующий рабочий день ({format(newCycleStartDate, "d MMMM", { locale: ru })}) 
+                    станет первым днём нового цикла
+                  </span>
+                </Label>
+              </div>
+              {currentCycleStartDate && (
+                <p className="text-xs text-muted-foreground ml-6">
+                  Текущее начало цикла: {format(new Date(currentCycleStartDate), "d MMMM yyyy", { locale: ru })}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Notes */}
           <div className="space-y-2">
