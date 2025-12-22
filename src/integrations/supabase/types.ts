@@ -813,6 +813,53 @@ export type Database = {
           },
         ]
       }
+      operator_schedule_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_working_day: boolean
+          notes: string | null
+          operator_id: string
+          override_date: string
+          reason: string | null
+          shift_number: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_working_day?: boolean
+          notes?: string | null
+          operator_id: string
+          override_date: string
+          reason?: string | null
+          shift_number?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_working_day?: boolean
+          notes?: string | null
+          operator_id?: string
+          override_date?: string
+          reason?: string | null
+          shift_number?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_schedule_overrides_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operator_skills: {
         Row: {
           created_at: string
