@@ -520,11 +520,18 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const originalIsWorking = isWorkingDay(operator.work_schedules, day, operator);
                             const effectiveIsWorking = override ? override.is_working_day : originalIsWorking;
                             
-                            // Get shift considering override
+                            // Get shift - for working days (either original or override)
+                            // Always try to get shift info for override working days
                             const shift = effectiveIsWorking ? getShiftForDate(operator, day) : null;
-                            const colors = shift ? shiftColorMap.get(shift.shift_name) : null;
-                            const netMinutes = shift 
-                              ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) 
+                            
+                            // For overridden working days, we need shift colors even if getShiftForDate returns null
+                            // Get the default shift (first shift) as fallback
+                            const defaultShift = operator.work_schedules?.work_schedule_shifts?.[0];
+                            const effectiveShift = shift || (effectiveIsWorking && !originalIsWorking ? defaultShift : null);
+                            const colors = effectiveShift ? shiftColorMap.get(effectiveShift.shift_name) : null;
+                            
+                            const netMinutes = effectiveShift 
+                              ? (effectiveShift.net_work_minutes ?? (effectiveShift.gross_work_minutes - effectiveShift.break_minutes)) 
                               : 0;
                             const hours = Math.floor(netMinutes / 60);
                             const mins = netMinutes % 60;
@@ -703,10 +710,10 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   </div>
                                 )}
                                 
-                                {shift ? (
+                                {effectiveShift ? (
                                   <div className="w-full text-center flex flex-col items-center">
-                                    <div className="font-medium truncate text-[10px] px-0.5 w-full" title={shift.shift_name}>
-                                      {daysCount > 14 ? shift.shift_name.charAt(0) : shift.shift_name}
+                                    <div className="font-medium truncate text-[10px] px-0.5 w-full" title={effectiveShift.shift_name}>
+                                      {daysCount > 14 ? effectiveShift.shift_name.charAt(0) : effectiveShift.shift_name}
                                     </div>
                                     {daysCount <= 14 && <div className="text-[9px] opacity-80 truncate w-full">{mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}</div>}
                                     {cycleInfo && <div className="text-[8px] opacity-70 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
