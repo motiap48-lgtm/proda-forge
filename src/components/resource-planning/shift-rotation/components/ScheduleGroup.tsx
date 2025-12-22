@@ -13,6 +13,7 @@ import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, useDeleteOpera
 import { AbsenceCellDialog } from "@/components/resource-planning/AbsenceCellDialog";
 import { CreateAbsenceCellDialog } from "@/components/resource-planning/CreateAbsenceCellDialog";
 import { ScheduleOverrideDialog } from "@/components/resource-planning/ScheduleOverrideDialog";
+import { BulkScheduleOverrideDialog } from "@/components/resource-planning/BulkScheduleOverrideDialog";
 import { useAbsenceDragDrop } from "../hooks/useAbsenceDragDrop";
 import { toast } from "sonner";
 import { type ScheduleOverride, getScheduleOverride, OVERRIDE_REASON_LABELS } from "@/hooks/useScheduleOverrides";
@@ -108,6 +109,22 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
     shifts: { shift_number: number; shift_name: string }[];
     scheduleType?: string;
     currentCycleStartDate?: string | null;
+  } | null>(null);
+  
+  // State for bulk schedule override (range selection)
+  const [rangeSelection, setRangeSelection] = useState<{
+    operatorId: string;
+    operatorName: string;
+    startDate: Date;
+    endDate: Date | null;
+  } | null>(null);
+  
+  // State for bulk override dialog
+  const [bulkOverrideDialog, setBulkOverrideDialog] = useState<{
+    operatorId: string;
+    operatorName: string;
+    startDate: Date;
+    endDate: Date;
   } | null>(null);
   // Drag and drop functionality with resize support
   const {
@@ -651,6 +668,33 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const handleContextMenu = (e: React.MouseEvent) => {
                               if (terminated || beforeHire) return;
                               e.preventDefault();
+                              
+                              // If shift is held, start or complete range selection
+                              if (e.shiftKey && rangeSelection && rangeSelection.operatorId === operator.id) {
+                                // Complete range selection - open bulk dialog
+                                setBulkOverrideDialog({
+                                  operatorId: rangeSelection.operatorId,
+                                  operatorName: rangeSelection.operatorName,
+                                  startDate: rangeSelection.startDate,
+                                  endDate: day,
+                                });
+                                setRangeSelection(null);
+                                return;
+                              }
+                              
+                              // Check if shift key is held for range selection start
+                              if (e.shiftKey) {
+                                setRangeSelection({
+                                  operatorId: operator.id,
+                                  operatorName: operator.full_name,
+                                  startDate: day,
+                                  endDate: null,
+                                });
+                                toast.info("Выберите конечную дату (Shift+ПКМ)");
+                                return;
+                              }
+                              
+                              // Normal single day override
                               setEditingOverride({
                                 operatorId: operator.id,
                                 operatorName: operator.full_name,
@@ -665,6 +709,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 currentCycleStartDate: operator.shift_rotation_start_date || operator.work_schedules?.cycle_start_date,
                               });
                             };
+                            
+                            // Check if this day is in range selection
+                            const isInRangeSelection = rangeSelection && 
+                              rangeSelection.operatorId === operator.id &&
+                              day >= rangeSelection.startDate;
                             
                             return (
                               <div 
@@ -683,6 +732,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   canCreateAbsence && !inPreview && "cursor-pointer hover:ring-2 hover:ring-primary/30 hover:bg-primary/5",
                                   isDropTarget(day, operator.id) && "ring-2 ring-primary bg-primary/10",
                                   inPreview && "ring-2 ring-primary/70 bg-primary/20 z-10",
+                                  // Range selection highlighting
+                                  isInRangeSelection && "ring-2 ring-blue-500 bg-blue-100 dark:bg-blue-900/30",
                                   // Override styling - working day override: shift colors + dashed border
                                   hasOverride && effectiveIsWorking && colors 
                                     ? cn(colors.bg, colors.text, "border-2 border-dashed border-amber-400") 
@@ -694,17 +745,17 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                       ? "bg-gradient-to-b from-muted/20 to-muted/40 border-2 border-dashed border-amber-400"
                                       : null,
                                   // Normal styling (when no override)
-                                  !hasOverride && !inPreview && colors 
+                                  !hasOverride && !inPreview && !isInRangeSelection && colors 
                                     ? cn(colors.bg, colors.text, "border", colors.border) 
-                                    : !hasOverride && !inPreview && !effectiveIsWorking && isWeekend 
+                                    : !hasOverride && !inPreview && !isInRangeSelection && !effectiveIsWorking && isWeekend 
                                       ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
-                                      : !hasOverride && !inPreview && !effectiveIsWorking && "bg-gradient-to-b from-muted/20 to-muted/40",
+                                      : !hasOverride && !inPreview && !isInRangeSelection && !effectiveIsWorking && "bg-gradient-to-b from-muted/20 to-muted/40",
                                   isToday(day) && cn(
                                     "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
                                     isTodayColumnHovered && "animate-pulse-glow"
                                   )
                                 )}
-                                title={`${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла. ` : ''}Клик - отсутствие | ПКМ - изменить график`}
+                                title={`${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла. ` : ''}Клик - отсутствие | ПКМ - изменить график | Shift+ПКМ - выбрать диапазон`}
                                 onMouseEnter={() => isToday(day) && onTodayColumnHover(true)}
                                 onMouseLeave={() => isToday(day) && onTodayColumnHover(false)}
                               >
@@ -808,6 +859,18 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           shifts={editingOverride.shifts}
           scheduleType={editingOverride.scheduleType}
           currentCycleStartDate={editingOverride.currentCycleStartDate}
+        />
+      )}
+
+      {/* Bulk schedule override dialog */}
+      {bulkOverrideDialog && (
+        <BulkScheduleOverrideDialog
+          open={!!bulkOverrideDialog}
+          onOpenChange={(open) => !open && setBulkOverrideDialog(null)}
+          operatorId={bulkOverrideDialog.operatorId}
+          operatorName={bulkOverrideDialog.operatorName}
+          startDate={bulkOverrideDialog.startDate}
+          endDate={bulkOverrideDialog.endDate}
         />
       )}
     </div>
