@@ -145,16 +145,41 @@ export const useDeleteScheduleOverride = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (params: { 
+      id: string; 
+      restoreCycleStartDate?: { 
+        operatorId: string; 
+        date: string; 
+      } 
+    }) => {
+      const { id, restoreCycleStartDate } = params;
+      
       const { error } = await supabase
         .from("operator_schedule_overrides")
         .delete()
         .eq("id", id);
 
       if (error) throw error;
+      
+      // Restore the original cycle start date if provided
+      if (restoreCycleStartDate) {
+        const { error: operatorError } = await supabase
+          .from("operators")
+          .update({
+            shift_rotation_start_date: restoreCycleStartDate.date,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", restoreCycleStartDate.operatorId);
+
+        if (operatorError) {
+          console.error("Error restoring operator cycle start date:", operatorError);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schedule-overrides"] });
+      queryClient.invalidateQueries({ queryKey: ["operators"] });
+      queryClient.invalidateQueries({ queryKey: ["resourcePlanning"] });
       toast.success("Изменение графика удалено");
     },
     onError: (error: Error) => {
