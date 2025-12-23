@@ -145,7 +145,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
           </Button>
         </div>
         
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <ScrollArea className="flex-1 -mx-6 px-6 min-h-0" style={{ maxHeight: 'calc(85vh - 200px)' }}>
           <div className="space-y-1 py-2">
             {days.map(day => {
               const dateStr = format(day, "yyyy-MM-dd");
