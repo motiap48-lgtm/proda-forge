@@ -178,11 +178,19 @@ export const useCreateOperatorAbsence = () => {
   });
 };
 
+// Extended update params with optional requiresCompensation flag
+export interface UpdateAbsenceParams extends Partial<OperatorAbsence> {
+  id: string;
+  requiresCompensation?: boolean;
+}
+
 export const useUpdateOperatorAbsence = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<OperatorAbsence> & { id: string }) => {
+    mutationFn: async (params: UpdateAbsenceParams) => {
+      const { id, requiresCompensation, ...updates } = params;
+      
       const { data, error } = await supabase
         .from("operator_absences")
         .update(updates)
@@ -191,12 +199,57 @@ export const useUpdateOperatorAbsence = () => {
         .single();
 
       if (error) throw error;
-      return data;
+
+      // If user manually checked requiresCompensation, create compensation records
+      if (requiresCompensation && updates.status === 'approved' && data) {
+        const scheduleHours = await getOperatorScheduleHours(data.operator_id);
+        
+        // Calculate number of days
+        const startDate = new Date(data.start_date);
+        const endDate = new Date(data.end_date);
+        const days = differenceInCalendarDays(endDate, startDate) + 1;
+        
+        // Check which dates already have compensations
+        const { data: existingCompensations } = await supabase
+          .from("absence_compensations")
+          .select("absence_date")
+          .eq("operator_id", data.operator_id)
+          .gte("absence_date", data.start_date)
+          .lte("absence_date", data.end_date);
+        
+        const existingDates = new Set(existingCompensations?.map(c => c.absence_date) || []);
+        
+        // Create compensation records only for missing dates
+        const compensationRecords = [];
+        for (let i = 0; i < days; i++) {
+          const absenceDate = format(addDays(startDate, i), "yyyy-MM-dd");
+          if (!existingDates.has(absenceDate)) {
+            compensationRecords.push({
+              operator_id: data.operator_id,
+              absence_date: absenceDate,
+              absence_hours: scheduleHours,
+              reason: `${ABSENCE_TYPE_LABELS[data.absence_type]?.label || data.absence_type}${data.notes ? `: ${data.notes}` : ''}`,
+              status: "pending",
+            });
+          }
+        }
+        
+        if (compensationRecords.length > 0) {
+          await supabase.from("absence_compensations").insert(compensationRecords);
+        }
+      }
+
+      return { data, requiresCompensation };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
-      toast.success("Отсутствие обновлено");
+      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      toast.success(result.requiresCompensation 
+        ? "Отсутствие обновлено (добавлены записи для отработки)" 
+        : "Отсутствие обновлено"
+      );
     },
     onError: (error) => {
       console.error("Error updating absence:", error);

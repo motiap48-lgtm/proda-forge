@@ -105,8 +105,13 @@ export const OperatorAbsenceDialog = ({
     if (!isDateRangeValid) return;
 
     if (editingAbsence) {
+      const { requiresCompensation, ...absenceData } = formData;
       updateAbsence.mutate(
-        { id: editingAbsence.id, ...formData },
+        { 
+          id: editingAbsence.id, 
+          ...absenceData,
+          requiresCompensation: !isCompensableAbsenceType(formData.absence_type) && requiresCompensation
+        },
         {
           onSuccess: () => {
             setEditingAbsence(null);
@@ -215,8 +220,8 @@ export const OperatorAbsenceDialog = ({
         </div>
       )}
 
-      {/* Compensation checkbox - show for non-automatically compensable types */}
-      {!editingAbsence && formData.status === 'approved' && (
+      {/* Compensation checkbox - show for both new and editing */}
+      {formData.status === 'approved' && (
         <div className="flex items-center space-x-2 p-3 border rounded-lg bg-muted/30">
           <Checkbox
             id="requiresCompensation"
@@ -239,6 +244,11 @@ export const OperatorAbsenceDialog = ({
             {isCompensableAbsenceType(formData.absence_type) && (
               <p className="text-xs text-muted-foreground">
                 Прогулы всегда требуют отработки
+              </p>
+            )}
+            {editingAbsence && !isCompensableAbsenceType(formData.absence_type) && formData.requiresCompensation && (
+              <p className="text-xs text-amber-600">
+                Будут созданы записи для отработки
               </p>
             )}
           </div>
