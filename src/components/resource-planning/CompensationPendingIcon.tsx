@@ -1,10 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useOperatorCompensationBalance } from "@/hooks/useAbsenceCompensations";
 
 interface CompensationPendingIconProps {
@@ -15,6 +14,7 @@ export const CompensationPendingIcon: React.FC<CompensationPendingIconProps> = (
   operatorId,
 }) => {
   const { data: balance, isLoading } = useOperatorCompensationBalance(operatorId);
+  const [isOpen, setIsOpen] = useState(false);
 
   if (isLoading || !balance) return null;
   
@@ -25,27 +25,38 @@ export const CompensationPendingIcon: React.FC<CompensationPendingIconProps> = (
   const isHighDebt = pendingHours >= 8;
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span 
-            className="flex-shrink-0 cursor-help"
-            title={`Неотработанные часы: ${pendingHours}ч`}
-          >
-            <span className="text-sm">⏳</span>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top">
-          <div className="text-xs space-y-1">
-            <p className={`font-medium ${isHighDebt ? "text-rose-400" : "text-amber-400"}`}>
-              Неотработанные часы: {pendingHours}ч
-            </p>
-            <p className="text-muted-foreground">
-              Пропущено: {balance.totalAbsenceHours}ч / Отработано: {balance.totalCompensatedHours}ч
-            </p>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <span 
+          className="flex-shrink-0 cursor-help"
+          onMouseEnter={(e) => {
+            e.stopPropagation();
+            setIsOpen(true);
+          }}
+          onMouseLeave={(e) => {
+            e.stopPropagation();
+            setIsOpen(false);
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className="text-sm">⏳</span>
+        </span>
+      </PopoverTrigger>
+      <PopoverContent 
+        side="top" 
+        className="w-auto p-2 z-[100000]"
+        onMouseEnter={() => setIsOpen(true)}
+        onMouseLeave={() => setIsOpen(false)}
+      >
+        <div className="text-xs space-y-1">
+          <p className={`font-medium ${isHighDebt ? "text-rose-400" : "text-amber-400"}`}>
+            Неотработанные часы: {pendingHours}ч
+          </p>
+          <p className="text-muted-foreground">
+            Пропущено: {balance.totalAbsenceHours}ч / Отработано: {balance.totalCompensatedHours}ч
+          </p>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };
