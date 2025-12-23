@@ -230,6 +230,7 @@ export type Database = {
           is_working_day: boolean
           name: string
           reduced_hours: number | null
+          reduction_hours: number | null
           updated_at: string
         }
         Insert: {
@@ -241,6 +242,7 @@ export type Database = {
           is_working_day?: boolean
           name: string
           reduced_hours?: number | null
+          reduction_hours?: number | null
           updated_at?: string
         }
         Update: {
@@ -252,6 +254,7 @@ export type Database = {
           is_working_day?: boolean
           name?: string
           reduced_hours?: number | null
+          reduction_hours?: number | null
           updated_at?: string
         }
         Relationships: []

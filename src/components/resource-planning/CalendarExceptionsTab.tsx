@@ -51,7 +51,8 @@ interface ExceptionFormData {
   name: string;
   description: string;
   is_working_day: boolean;
-  reduced_hours: number | null;
+  reduced_hours: number | null; // Legacy: absolute hours
+  reduction_hours: number; // New: hours to reduce from schedule
 }
 
 export const CalendarExceptionsTab = () => {
@@ -80,6 +81,7 @@ export const CalendarExceptionsTab = () => {
     description: "",
     is_working_day: false,
     reduced_hours: null,
+    reduction_hours: 1,
   });
 
   // Get available years from exceptions + current/next years
@@ -149,6 +151,7 @@ export const CalendarExceptionsTab = () => {
       description: exception.description || "",
       is_working_day: exception.is_working_day,
       reduced_hours: exception.reduced_hours || null,
+      reduction_hours: exception.reduction_hours ?? 1,
     });
     setDialogOpen(true);
   };
@@ -196,6 +199,7 @@ export const CalendarExceptionsTab = () => {
       description: "",
       is_working_day: false,
       reduced_hours: null,
+      reduction_hours: 1,
     });
   };
 
@@ -205,7 +209,8 @@ export const CalendarExceptionsTab = () => {
       ...formData, 
       exception_type: type,
       is_working_day: isShortenedDay ? true : formData.is_working_day,
-      reduced_hours: isShortenedDay ? (formData.reduced_hours || 7) : null,
+      reduced_hours: isShortenedDay ? (formData.reduced_hours || null) : null,
+      reduction_hours: isShortenedDay ? (formData.reduction_hours || 1) : 1,
     });
   };
 
@@ -220,6 +225,7 @@ export const CalendarExceptionsTab = () => {
       description: formData.description || null,
       is_working_day: formData.is_working_day,
       reduced_hours: formData.exception_type === "shortened_day" ? formData.reduced_hours : null,
+      reduction_hours: formData.exception_type === "shortened_day" ? formData.reduction_hours : null,
     };
 
     if (editingException) {
@@ -370,9 +376,9 @@ export const CalendarExceptionsTab = () => {
                             <Badge variant="outline">
                               {getExceptionTypeLabel(exception.exception_type)}
                             </Badge>
-                            {exception.exception_type === "shortened_day" && exception.reduced_hours && (
+                            {exception.exception_type === "shortened_day" && (
                               <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-                                {exception.reduced_hours}ч
+                                {exception.reduction_hours ? `-${exception.reduction_hours}ч` : (exception.reduced_hours ? `${exception.reduced_hours}ч` : "-1ч")}
                               </Badge>
                             )}
                           </div>
@@ -484,22 +490,42 @@ export const CalendarExceptionsTab = () => {
             </div>
 
             {formData.exception_type === "shortened_day" && (
-              <div className="space-y-2">
-                <Label htmlFor="reduced_hours">Рабочих часов в сокращённый день *</Label>
-                <Input
-                  id="reduced_hours"
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  max="12"
-                  value={formData.reduced_hours || ""}
-                  onChange={(e) => setFormData({ ...formData, reduced_hours: e.target.value ? parseFloat(e.target.value) : null })}
-                  placeholder="Например: 7"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Укажите количество рабочих часов для сокращённого дня (обычно 7 часов вместо 8)
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reduction_hours">Сокращение (часов) *</Label>
+                  <Input
+                    id="reduction_hours"
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    max="4"
+                    value={formData.reduction_hours}
+                    onChange={(e) => setFormData({ ...formData, reduction_hours: e.target.value ? parseFloat(e.target.value) : 1 })}
+                    placeholder="1"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    На сколько часов сократить рабочий день от нормы графика.<br/>
+                    Например: для графика 12ч при сокращении на 1ч = 11ч, для 8ч = 7ч.
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="reduced_hours">Абсолютное значение (часов) — опционально</Label>
+                  <Input
+                    id="reduced_hours"
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="12"
+                    value={formData.reduced_hours || ""}
+                    onChange={(e) => setFormData({ ...formData, reduced_hours: e.target.value ? parseFloat(e.target.value) : null })}
+                    placeholder="Оставьте пустым для авторасчёта"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Если указано, будет использовано вместо расчёта по графику (для особых случаев).
+                  </p>
+                </div>
               </div>
             )}
 
@@ -522,7 +548,7 @@ export const CalendarExceptionsTab = () => {
                 disabled={
                   !formData.exception_date || 
                   !formData.name || 
-                  (formData.exception_type === "shortened_day" && !formData.reduced_hours) ||
+                  (formData.exception_type === "shortened_day" && !formData.reduction_hours) ||
                   createException.isPending || 
                   updateException.isPending
                 }

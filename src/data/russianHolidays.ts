@@ -6,7 +6,8 @@ export interface HolidayTemplate {
   description?: string;
   exception_type: "holiday" | "shortened_day" | "extra_working_day";
   is_working_day: boolean;
-  reduced_hours?: number;
+  reduced_hours?: number; // Legacy: absolute hours (kept for backward compatibility)
+  reduction_hours?: number; // New: hours to reduce from schedule (default 1)
   // day and month (1-indexed)
   day: number;
   month: number;
@@ -43,28 +44,28 @@ export const fixedHolidays: HolidayTemplate[] = [
   { name: "День народного единства", description: "Праздничный день", exception_type: "holiday", is_working_day: false, day: 4, month: 11 },
   
   // December 31 - often a shortened day or holiday (corporate calendar)
-  { name: "Предновогодний день", description: "Сокращённый рабочий день", exception_type: "shortened_day", is_working_day: true, reduced_hours: 7, day: 31, month: 12 },
+  { name: "Предновогодний день", description: "Сокращённый рабочий день", exception_type: "shortened_day", is_working_day: true, reduction_hours: 1, day: 31, month: 12 },
 ];
 
 // Pre-holiday shortened days (day before the holiday)
 export const shortenedDays: HolidayTemplate[] = [
   // Day before February 23
-  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 23 февраля", exception_type: "shortened_day", is_working_day: true, reduced_hours: 7, day: 22, month: 2 },
+  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 23 февраля", exception_type: "shortened_day", is_working_day: true, reduction_hours: 1, day: 22, month: 2 },
   
   // Day before March 8
-  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 8 марта", exception_type: "shortened_day", is_working_day: true, reduced_hours: 7, day: 7, month: 3 },
+  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 8 марта", exception_type: "shortened_day", is_working_day: true, reduction_hours: 1, day: 7, month: 3 },
   
   // Day before May 1
-  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 1 мая", exception_type: "shortened_day", is_working_day: true, reduced_hours: 7, day: 30, month: 4 },
+  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 1 мая", exception_type: "shortened_day", is_working_day: true, reduction_hours: 1, day: 30, month: 4 },
   
   // Day before May 9
-  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 9 мая", exception_type: "shortened_day", is_working_day: true, reduced_hours: 7, day: 8, month: 5 },
+  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 9 мая", exception_type: "shortened_day", is_working_day: true, reduction_hours: 1, day: 8, month: 5 },
   
   // Day before June 12
-  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 12 июня", exception_type: "shortened_day", is_working_day: true, reduced_hours: 7, day: 11, month: 6 },
+  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 12 июня", exception_type: "shortened_day", is_working_day: true, reduction_hours: 1, day: 11, month: 6 },
   
   // Day before November 4
-  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 4 ноября", exception_type: "shortened_day", is_working_day: true, reduced_hours: 7, day: 3, month: 11 },
+  { name: "Предпраздничный день", description: "Сокращённый рабочий день перед 4 ноября", exception_type: "shortened_day", is_working_day: true, reduction_hours: 1, day: 3, month: 11 },
 ];
 
 // Get all holidays for a specific year
@@ -85,4 +86,5 @@ export const templateToDbFormat = (template: HolidayTemplate & { date: string })
   description: template.description || null,
   is_working_day: template.is_working_day,
   reduced_hours: template.reduced_hours || null,
+  reduction_hours: template.reduction_hours ?? 1, // Default to 1 hour reduction
 });
