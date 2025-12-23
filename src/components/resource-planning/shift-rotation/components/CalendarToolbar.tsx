@@ -61,6 +61,7 @@ interface CalendarToolbarProps {
   onToggleFullscreen?: () => void;
   onResetFilters?: () => void;
   hasActiveFilters?: boolean;
+  activeFiltersCount?: number;
   defaultReductionHours?: number;
 }
 
@@ -107,6 +108,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onToggleFullscreen,
   onResetFilters,
   hasActiveFilters,
+  activeFiltersCount,
   defaultReductionHours,
 }) => {
   const goToToday = () => {
@@ -538,6 +540,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             absenceTypeFilter={absenceTypeFilter}
             onAbsenceTypeFilterChange={onAbsenceTypeFilterChange}
             hasActiveFilters={hasActiveFilters}
+            activeFiltersCount={activeFiltersCount}
             onResetFilters={onResetFilters}
             defaultReductionHours={defaultReductionHours}
           />
