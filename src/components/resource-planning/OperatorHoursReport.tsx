@@ -1,0 +1,545 @@
+import React, { useState, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Calendar, Clock, FileSpreadsheet, Users, TrendingDown, AlertTriangle } from "lucide-react";
+import { format, startOfMonth, endOfMonth, addDays, getDaysInMonth, startOfYear, endOfYear, getYear } from "date-fns";
+import { ru } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { useOperators, useCalendarExceptions } from "@/hooks/useResourcePlanning";
+import { useAllOperatorAbsences, isDateInAbsence, isOperatorTerminated, isBeforeHireDate } from "@/hooks/useOperatorAbsences";
+import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
+import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
+import * as XLSX from "xlsx";
+
+type PeriodType = "month" | "quarter" | "year";
+
+interface OperatorHoursData {
+  operator: any;
+  plannedHours: number;
+  actualHours: number;
+  shortenedDaysCount: number;
+  shortenedDaysReduction: number;
+  holidaysCount: number;
+  holidaysReduction: number;
+  absenceDays: number;
+  workingDays: number;
+}
+
+export const OperatorHoursReport = () => {
+  const { data: operators = [] } = useOperators();
+  const { data: absences = [] } = useAllOperatorAbsences();
+  const { data: calendarExceptions = [] } = useCalendarExceptions();
+  
+  const operatorIds = useMemo(() => operators.filter((op: any) => op.is_active).map((op: any) => op.id), [operators]);
+  const { data: scheduleOverrides = [] } = useScheduleOverrides(operatorIds);
+  
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  
+  const [periodType, setPeriodType] = useState<PeriodType>("month");
+  const [selectedYear, setSelectedYear] = useState(currentYear.toString());
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth.toString());
+  const [selectedQuarter, setSelectedQuarter] = useState(Math.floor(currentMonth / 3).toString());
+  const [scheduleFilter, setScheduleFilter] = useState<string>("all");
+
+  // Get unique schedules for filter
+  const uniqueSchedules = useMemo(() => {
+    const schedules = new Set<string>();
+    operators.forEach((op: any) => {
+      if (op.work_schedules?.name) {
+        schedules.add(op.work_schedules.name);
+      }
+    });
+    return Array.from(schedules).sort();
+  }, [operators]);
+
+  // Calculate date range based on period
+  const dateRange = useMemo(() => {
+    const year = parseInt(selectedYear);
+    
+    if (periodType === "month") {
+      const month = parseInt(selectedMonth);
+      return {
+        start: startOfMonth(new Date(year, month)),
+        end: endOfMonth(new Date(year, month)),
+      };
+    }
+    
+    if (periodType === "quarter") {
+      const quarter = parseInt(selectedQuarter);
+      const startMonth = quarter * 3;
+      return {
+        start: startOfMonth(new Date(year, startMonth)),
+        end: endOfMonth(new Date(year, startMonth + 2)),
+      };
+    }
+    
+    // Year
+    return {
+      start: startOfYear(new Date(year, 0)),
+      end: endOfYear(new Date(year, 0)),
+    };
+  }, [periodType, selectedYear, selectedMonth, selectedQuarter]);
+
+  // Generate days array
+  const days = useMemo(() => {
+    const result: Date[] = [];
+    let current = dateRange.start;
+    while (current <= dateRange.end) {
+      result.push(current);
+      current = addDays(current, 1);
+    }
+    return result;
+  }, [dateRange]);
+
+  // Create exceptions map
+  const exceptionsMap = useMemo(() => {
+    const map = new Map<string, any>();
+    calendarExceptions.forEach((exc: any) => {
+      map.set(exc.exception_date, exc);
+    });
+    return map;
+  }, [calendarExceptions]);
+
+  // Filter operators
+  const filteredOperators = useMemo(() => {
+    let result = operators.filter((op: any) => 
+      op.is_active && op.work_schedules?.work_schedule_shifts?.length > 0
+    );
+    
+    if (scheduleFilter !== "all") {
+      result = result.filter((op: any) => op.work_schedules?.name === scheduleFilter);
+    }
+    
+    return result;
+  }, [operators, scheduleFilter]);
+
+  // Calculate hours for each operator
+  const operatorHoursData: OperatorHoursData[] = useMemo(() => {
+    return filteredOperators.map((operator: any) => {
+      let plannedHours = 0;
+      let actualHours = 0;
+      let shortenedDaysCount = 0;
+      let shortenedDaysReduction = 0;
+      let holidaysCount = 0;
+      let holidaysReduction = 0;
+      let absenceDays = 0;
+      let workingDays = 0;
+
+      const schedule = operator.work_schedules;
+      const shifts = schedule?.work_schedule_shifts || [];
+
+      days.forEach(day => {
+        // Check termination/hire
+        if (isOperatorTerminated(operator, day) || isBeforeHireDate(operator, day)) {
+          return;
+        }
+
+        // Check absence
+        const absence = isDateInAbsence(day, absences, operator.id);
+        if (absence) {
+          absenceDays++;
+          return;
+        }
+
+        const dateStr = format(day, "yyyy-MM-dd");
+        const exception = exceptionsMap.get(dateStr);
+        
+        // Get shift for this day
+        const shift = getShiftForDate(operator, day);
+        const normalNetMinutes = shift 
+          ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes))
+          : 0;
+        const normalHours = normalNetMinutes / 60;
+
+        // Holiday (non-working day)
+        if (exception && !exception.is_working_day) {
+          if (shift) {
+            holidaysCount++;
+            holidaysReduction += normalHours;
+            plannedHours += normalHours;
+          }
+          return;
+        }
+
+        // Shortened day
+        if (exception && exception.exception_type === "shortened_day" && shift) {
+          plannedHours += normalHours;
+          
+          let reducedHours: number;
+          if (exception.reduced_hours != null && exception.reduced_hours > 0) {
+            reducedHours = Math.min(exception.reduced_hours, normalHours);
+          } else {
+            const reductionHours = exception.reduction_hours ?? 1;
+            reducedHours = Math.max(0, normalHours - reductionHours);
+          }
+          
+          actualHours += reducedHours;
+          shortenedDaysCount++;
+          shortenedDaysReduction += normalHours - reducedHours;
+          workingDays++;
+          return;
+        }
+
+        // Normal working day
+        if (shift) {
+          plannedHours += normalHours;
+          actualHours += normalHours;
+          workingDays++;
+        }
+      });
+
+      return {
+        operator,
+        plannedHours,
+        actualHours,
+        shortenedDaysCount,
+        shortenedDaysReduction,
+        holidaysCount,
+        holidaysReduction,
+        absenceDays,
+        workingDays,
+      };
+    });
+  }, [filteredOperators, days, absences, exceptionsMap]);
+
+  // Calculate totals
+  const totals = useMemo(() => {
+    return operatorHoursData.reduce(
+      (acc, data) => ({
+        plannedHours: acc.plannedHours + data.plannedHours,
+        actualHours: acc.actualHours + data.actualHours,
+        shortenedDaysReduction: acc.shortenedDaysReduction + data.shortenedDaysReduction,
+        holidaysReduction: acc.holidaysReduction + data.holidaysReduction,
+        totalReduction: acc.totalReduction + data.shortenedDaysReduction + data.holidaysReduction,
+      }),
+      { plannedHours: 0, actualHours: 0, shortenedDaysReduction: 0, holidaysReduction: 0, totalReduction: 0 }
+    );
+  }, [operatorHoursData]);
+
+  // Export to Excel
+  const handleExport = () => {
+    const exportData = operatorHoursData.map(data => ({
+      "Оператор": data.operator.full_name,
+      "График": data.operator.work_schedules?.name || "-",
+      "Рабочих дней": data.workingDays,
+      "Праздников": data.holidaysCount,
+      "Сокращённых дней": data.shortenedDaysCount,
+      "Отсутствий": data.absenceDays,
+      "Плановые часы": data.plannedHours.toFixed(1),
+      "Фактические часы": data.actualHours.toFixed(1),
+      "Сокращение (праздники)": data.holidaysReduction.toFixed(1),
+      "Сокращение (короткие дни)": data.shortenedDaysReduction.toFixed(1),
+      "Общее сокращение": (data.holidaysReduction + data.shortenedDaysReduction).toFixed(1),
+    }));
+
+    // Add totals row
+    exportData.push({
+      "Оператор": "ИТОГО",
+      "График": "",
+      "Рабочих дней": operatorHoursData.reduce((sum, d) => sum + d.workingDays, 0),
+      "Праздников": operatorHoursData.reduce((sum, d) => sum + d.holidaysCount, 0),
+      "Сокращённых дней": operatorHoursData.reduce((sum, d) => sum + d.shortenedDaysCount, 0),
+      "Отсутствий": operatorHoursData.reduce((sum, d) => sum + d.absenceDays, 0),
+      "Плановые часы": totals.plannedHours.toFixed(1),
+      "Фактические часы": totals.actualHours.toFixed(1),
+      "Сокращение (праздники)": totals.holidaysReduction.toFixed(1),
+      "Сокращение (короткие дни)": totals.shortenedDaysReduction.toFixed(1),
+      "Общее сокращение": totals.totalReduction.toFixed(1),
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    
+    ws["!cols"] = [
+      { wch: 25 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 15 },
+      { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 16 }
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, "Часы работы");
+    
+    const periodLabel = periodType === "month" 
+      ? format(dateRange.start, "MMMM yyyy", { locale: ru })
+      : periodType === "quarter"
+        ? `Q${parseInt(selectedQuarter) + 1} ${selectedYear}`
+        : selectedYear;
+    
+    XLSX.writeFile(wb, `Отчёт_часы_работы_${periodLabel}.xlsx`);
+  };
+
+  const getPeriodLabel = () => {
+    if (periodType === "month") {
+      return format(dateRange.start, "LLLL yyyy", { locale: ru });
+    }
+    if (periodType === "quarter") {
+      return `${parseInt(selectedQuarter) + 1} квартал ${selectedYear}`;
+    }
+    return `${selectedYear} год`;
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Filters */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Отчёт по часам работы операторов
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="space-y-1.5">
+              <Label className="text-sm">Период</Label>
+              <Select value={periodType} onValueChange={(v: PeriodType) => setPeriodType(v)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="month">Месяц</SelectItem>
+                  <SelectItem value="quarter">Квартал</SelectItem>
+                  <SelectItem value="year">Год</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm">Год</Label>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 5 }, (_, i) => currentYear - 2 + i).map(year => (
+                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {periodType === "month" && (
+              <div className="space-y-1.5">
+                <Label className="text-sm">Месяц</Label>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <SelectItem key={i} value={i.toString()}>
+                        {format(new Date(2024, i), "LLLL", { locale: ru })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {periodType === "quarter" && (
+              <div className="space-y-1.5">
+                <Label className="text-sm">Квартал</Label>
+                <Select value={selectedQuarter} onValueChange={setSelectedQuarter}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">1 квартал</SelectItem>
+                    <SelectItem value="1">2 квартал</SelectItem>
+                    <SelectItem value="2">3 квартал</SelectItem>
+                    <SelectItem value="3">4 квартал</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-sm">График</Label>
+              <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все графики</SelectItem>
+                  {uniqueSchedules.map(schedule => (
+                    <SelectItem key={schedule} value={schedule}>{schedule}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button variant="outline" onClick={handleExport}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Экспорт
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <Users className="h-4 w-4" />
+              Операторов
+            </div>
+            <div className="text-2xl font-bold mt-1">{operatorHoursData.length}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <Clock className="h-4 w-4" />
+              Плановые часы
+            </div>
+            <div className="text-2xl font-bold mt-1">{totals.plannedHours.toFixed(0)}ч</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <Calendar className="h-4 w-4" />
+              Фактические часы
+            </div>
+            <div className="text-2xl font-bold mt-1 text-primary">{totals.actualHours.toFixed(0)}ч</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <TrendingDown className="h-4 w-4" />
+              Сокращение часов
+            </div>
+            <div className="text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400">
+              -{totals.totalReduction.toFixed(0)}ч
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Праздники: -{totals.holidaysReduction.toFixed(0)}ч | Сокращ. дни: -{totals.shortenedDaysReduction.toFixed(0)}ч
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{getPeriodLabel()}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[200px]">Оператор</TableHead>
+                  <TableHead>График</TableHead>
+                  <TableHead className="text-center">Раб. дней</TableHead>
+                  <TableHead className="text-center">Праздников</TableHead>
+                  <TableHead className="text-center">Сокращ. дней</TableHead>
+                  <TableHead className="text-center">Отсутствий</TableHead>
+                  <TableHead className="text-right">Плановые</TableHead>
+                  <TableHead className="text-right">Фактические</TableHead>
+                  <TableHead className="text-right">Сокращение</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {operatorHoursData.map(data => {
+                  const totalReduction = data.holidaysReduction + data.shortenedDaysReduction;
+                  return (
+                    <TableRow key={data.operator.id}>
+                      <TableCell className="font-medium">{data.operator.full_name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {data.operator.work_schedules?.name || "-"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">{data.workingDays}</TableCell>
+                      <TableCell className="text-center">
+                        {data.holidaysCount > 0 ? (
+                          <Badge variant="secondary" className="bg-rose-500/10 text-rose-700 dark:text-rose-400">
+                            {data.holidaysCount}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {data.shortenedDaysCount > 0 ? (
+                          <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                            {data.shortenedDaysCount}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {data.absenceDays > 0 ? (
+                          <Badge variant="secondary">{data.absenceDays}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">{data.plannedHours.toFixed(1)}ч</TableCell>
+                      <TableCell className="text-right font-medium">{data.actualHours.toFixed(1)}ч</TableCell>
+                      <TableCell className="text-right">
+                        {totalReduction > 0 ? (
+                          <span className="text-amber-600 dark:text-amber-400">
+                            -{totalReduction.toFixed(1)}ч
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                
+                {/* Totals row */}
+                <TableRow className="bg-muted/50 font-medium">
+                  <TableCell>ИТОГО</TableCell>
+                  <TableCell></TableCell>
+                  <TableCell className="text-center">
+                    {operatorHoursData.reduce((sum, d) => sum + d.workingDays, 0)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {operatorHoursData.reduce((sum, d) => sum + d.holidaysCount, 0)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {operatorHoursData.reduce((sum, d) => sum + d.shortenedDaysCount, 0)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {operatorHoursData.reduce((sum, d) => sum + d.absenceDays, 0)}
+                  </TableCell>
+                  <TableCell className="text-right">{totals.plannedHours.toFixed(1)}ч</TableCell>
+                  <TableCell className="text-right">{totals.actualHours.toFixed(1)}ч</TableCell>
+                  <TableCell className="text-right text-amber-600 dark:text-amber-400">
+                    -{totals.totalReduction.toFixed(1)}ч
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};

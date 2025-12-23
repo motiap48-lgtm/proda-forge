@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Lightbulb,
-  CalendarDays
+  CalendarDays,
+  FileBarChart
 } from "lucide-react";
 import { WorkSchedulesTab } from "@/components/resource-planning/WorkSchedulesTab";
 import { OperatorsTab } from "@/components/resource-planning/OperatorsTab";
@@ -23,6 +24,7 @@ import { BrigadesTab } from "@/components/resource-planning/BrigadesTab";
 import { ShiftTasksTab } from "@/components/resource-planning/ShiftTasksTab";
 import { ResourceGanttChart } from "@/components/resource-planning/ResourceGanttChart";
 import { CalendarExceptionsTab } from "@/components/resource-planning/CalendarExceptionsTab";
+import { OperatorHoursReport } from "@/components/resource-planning/OperatorHoursReport";
 import { cn } from "@/lib/utils";
 
 const ResourcePlanning = () => {
@@ -222,7 +224,7 @@ const ResourcePlanning = () => {
         </Collapsible>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6 mb-6">
+          <TabsList className="grid w-full grid-cols-7 mb-6">
             <TabsTrigger value="shift-tasks" className="flex items-center gap-2">
               <CalendarClock className="h-4 w-4" />
               <span className="hidden sm:inline">ССЗ</span>
@@ -232,6 +234,11 @@ const ResourcePlanning = () => {
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Загрузка</span>
               <span className="sm:hidden">Ганта</span>
+            </TabsTrigger>
+            <TabsTrigger value="hours-report" className="flex items-center gap-2">
+              <FileBarChart className="h-4 w-4" />
+              <span className="hidden sm:inline">Часы</span>
+              <span className="sm:hidden">Часы</span>
             </TabsTrigger>
             <TabsTrigger value="schedules" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -261,6 +268,10 @@ const ResourcePlanning = () => {
 
           <TabsContent value="gantt">
             <ResourceGanttChart />
+          </TabsContent>
+
+          <TabsContent value="hours-report">
+            <OperatorHoursReport />
           </TabsContent>
 
           <TabsContent value="schedules">
