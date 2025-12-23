@@ -42,7 +42,7 @@ interface CalendarToolbarProps {
   onComparisonPeriodChange: (period: PeriodType | null) => void;
   comparisonTotal: { hours: number; minutes: number } | null;
   shiftColorMap: Map<string, ShiftColors>;
-  shiftDetails?: Map<string, { startTime: string; endTime: string }>;
+  shiftDetails?: Map<string, { startTime: string; endTime: string; breakMinutes: number; grossWorkMinutes: number; netWorkMinutes: number }>;
   isAllExpanded: boolean;
   isAllCollapsed: boolean;
   onExpandAll: () => void;

@@ -163,16 +163,29 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
 
   // Generate shift details with time info
   const shiftDetails = useMemo(() => {
-    const details = new Map<string, { startTime: string; endTime: string }>();
+    const details = new Map<string, { 
+      startTime: string; 
+      endTime: string; 
+      breakMinutes: number;
+      grossWorkMinutes: number;
+      netWorkMinutes: number;
+    }>();
     
     filteredOperators.forEach(op => {
       const shifts = op.work_schedules?.work_schedule_shifts;
       if (shifts) {
         shifts.forEach((shift: any) => {
           if (!details.has(shift.shift_name)) {
+            const grossMinutes = shift.gross_work_minutes || 0;
+            const breakMins = shift.break_minutes || 0;
+            const netMinutes = shift.net_work_minutes ?? (grossMinutes - breakMins);
+            
             details.set(shift.shift_name, {
               startTime: shift.start_time?.slice(0, 5) || "00:00",
-              endTime: shift.end_time?.slice(0, 5) || "00:00"
+              endTime: shift.end_time?.slice(0, 5) || "00:00",
+              breakMinutes: breakMins,
+              grossWorkMinutes: grossMinutes,
+              netWorkMinutes: netMinutes
             });
           }
         });
