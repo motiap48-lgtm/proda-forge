@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay, type ShiftColors, type PeriodType } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, useDeleteOperatorAbsence, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
+import { CompensationPendingIcon } from "@/components/resource-planning/CompensationPendingIcon";
 import { AbsenceCellDialog } from "@/components/resource-planning/AbsenceCellDialog";
 import { CreateAbsenceCellDialog } from "@/components/resource-planning/CreateAbsenceCellDialog";
 import { ScheduleOverrideDialog } from "@/components/resource-planning/ScheduleOverrideDialog";
@@ -402,6 +403,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               <span className="text-sm">{absenceInfo.icon}</span>
                             </span>
                           )}
+                          <CompensationPendingIcon operatorId={operator.id} />
                           {hasPersonalCycleDate && (
                             <span title="Персональная дата цикла">
                               <CalendarCheck className="h-3 w-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
