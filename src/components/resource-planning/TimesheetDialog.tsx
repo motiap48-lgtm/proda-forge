@@ -162,8 +162,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                   <div className="w-24 text-sm">
                     {format(day, "EEE, d MMM", { locale: ru })}
                   </div>
-                  <Badge variant="outline" className="w-16 justify-center text-xs">
-                    План: {Math.floor(planned / 60)}ч
+                  <Badge variant="outline" className="min-w-16 justify-center text-xs">
+                    План: {formatMinutes(planned)}
                   </Badge>
                   <div className="flex items-center gap-1.5 flex-1">
                     <Label className="text-xs text-muted-foreground">Факт:</Label>
