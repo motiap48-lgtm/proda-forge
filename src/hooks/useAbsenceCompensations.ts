@@ -254,6 +254,52 @@ export const useUpdateAbsenceCompensation = () => {
   });
 };
 
+// Delete absence compensation completely (when no compensation records exist)
+export const useDeleteAbsenceCompensation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // First check if there are any compensation records
+      const { data: compensation, error: checkError } = await supabase
+        .from("absence_compensations")
+        .select(`*, compensation_records (id)`)
+        .eq("id", id)
+        .single();
+
+      if (checkError) throw checkError;
+
+      // If there are compensation records, just cancel instead of delete
+      if (compensation.compensation_records && compensation.compensation_records.length > 0) {
+        const { error: updateError } = await supabase
+          .from("absence_compensations")
+          .update({ status: "cancelled" })
+          .eq("id", id);
+        
+        if (updateError) throw updateError;
+        return { action: "cancelled" };
+      }
+
+      // If no compensation records, delete completely
+      const { error } = await supabase
+        .from("absence_compensations")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      return { action: "deleted" };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      toast.success(result.action === "deleted" ? "Запись удалена" : "Запись отменена");
+    },
+    onError: (error: any) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+};
+
 // Delete compensation record
 export const useDeleteCompensationRecord = () => {
   const queryClient = useQueryClient();

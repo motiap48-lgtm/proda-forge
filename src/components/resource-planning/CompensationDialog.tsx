@@ -23,7 +23,7 @@ import {
   useAbsenceCompensations,
   useCreateAbsenceCompensation,
   useAddCompensationRecord,
-  useUpdateAbsenceCompensation,
+  useDeleteAbsenceCompensation,
   useDeleteCompensationRecord,
   COMPENSATION_STATUS_LABELS,
   AbsenceCompensation,
@@ -101,7 +101,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   const { data: compensations = [], isLoading } = useAbsenceCompensations([operatorId]);
   const createAbsence = useCreateAbsenceCompensation();
   const addCompensation = useAddCompensationRecord();
-  const updateCompensation = useUpdateAbsenceCompensation();
+  const deleteAbsence = useDeleteAbsenceCompensation();
   const deleteRecord = useDeleteCompensationRecord();
 
   const handleAddAbsence = () => {
@@ -141,11 +141,8 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
     });
   };
 
-  const handleCancelAbsence = (id: string) => {
-    updateCompensation.mutate({
-      id,
-      updates: { status: "cancelled" },
-    });
+  const handleDeleteAbsence = (id: string) => {
+    deleteAbsence.mutate(id);
   };
 
   const totalPending = compensations
@@ -324,7 +321,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                             size="sm"
                             variant="ghost"
                             className="text-muted-foreground hover:text-rose-600"
-                            onClick={() => handleCancelAbsence(comp.id)}
+                            onClick={() => handleDeleteAbsence(comp.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
