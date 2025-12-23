@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { parseDateOnly } from "@/components/resource-planning/shift-rotation/utils";
@@ -22,7 +22,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle, Merge, Clock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle, Merge, Clock, RotateCcw } from "lucide-react";
 import {
   useOperatorAbsences,
   useCreateOperatorAbsence,
@@ -34,6 +35,10 @@ import {
   isCompensableAbsenceType,
   type OperatorAbsence,
 } from "@/hooks/useOperatorAbsences";
+import {
+  useAbsenceCompensations,
+  useDeleteAllOperatorCompensations,
+} from "@/hooks/useAbsenceCompensations";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,10 +63,42 @@ export const OperatorAbsenceDialog = ({
   operator,
 }: OperatorAbsenceDialogProps) => {
   const { data: absences, isLoading } = useOperatorAbsences(operator?.id);
+  const { data: compensations } = useAbsenceCompensations(operator?.id ? [operator.id] : undefined);
   const createAbsence = useCreateOperatorAbsence();
   const updateAbsence = useUpdateOperatorAbsence();
   const deleteAbsence = useDeleteOperatorAbsence();
   const mergeAbsences = useMergeOperatorAbsences();
+  const deleteAllCompensations = useDeleteAllOperatorCompensations();
+
+  // Map absence date ranges to compensation counts
+  const absenceCompensationMap = useMemo(() => {
+    const map = new Map<string, { count: number; pending: number }>();
+    if (!absences || !compensations) return map;
+    
+    absences.forEach(absence => {
+      const startDate = new Date(absence.start_date);
+      const endDate = new Date(absence.end_date);
+      
+      let count = 0;
+      let pending = 0;
+      
+      compensations.forEach(comp => {
+        const compDate = new Date(comp.absence_date);
+        if (compDate >= startDate && compDate <= endDate) {
+          count++;
+          if (comp.status === 'pending' || comp.status === 'partial') {
+            pending++;
+          }
+        }
+      });
+      
+      if (count > 0) {
+        map.set(absence.id, { count, pending });
+      }
+    });
+    
+    return map;
+  }, [absences, compensations]);
 
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState<OperatorAbsence | null>(null);
@@ -341,6 +378,41 @@ export const OperatorAbsenceDialog = ({
                   </AlertDialogContent>
                 </AlertDialog>
               )}
+
+              {/* Delete all compensations button */}
+              {compensations && compensations.length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      title="Удалить все записи отработки"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Удалить все записи отработки?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Все записи отработки ({compensations.length} шт.) для этого оператора будут удалены.
+                        Это действие нельзя отменить.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Отмена</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => deleteAllCompensations.mutate(operator.id)}
+                        disabled={deleteAllCompensations.isPending}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleteAllCompensations.isPending ? "Удаление..." : "Удалить все"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           )}
 
@@ -373,6 +445,30 @@ export const OperatorAbsenceDialog = ({
                           >
                             {statusInfo.label}
                           </Badge>
+                          {/* Compensation indicator */}
+                          {absenceCompensationMap.has(absence.id) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs ${
+                                    absenceCompensationMap.get(absence.id)!.pending > 0 
+                                      ? 'border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-900/20' 
+                                      : 'border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20'
+                                  }`}
+                                >
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  {absenceCompensationMap.get(absence.id)!.count}д
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {absenceCompensationMap.get(absence.id)!.pending > 0 
+                                  ? `Ожидает отработки: ${absenceCompensationMap.get(absence.id)!.pending} дней`
+                                  : 'Полностью отработано'
+                                }
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
