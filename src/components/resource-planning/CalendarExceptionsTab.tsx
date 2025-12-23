@@ -494,43 +494,23 @@ export const CalendarExceptionsTab = () => {
             </div>
 
             {formData.exception_type === "shortened_day" && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="reduction_hours" className="text-xs">Сокращение (ч) *</Label>
-                  <Input
-                    id="reduction_hours"
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    max="4"
-                    value={formData.reduction_hours}
-                    onChange={(e) => setFormData({ ...formData, reduction_hours: e.target.value ? parseFloat(e.target.value) : 1 })}
-                    placeholder="1"
-                    className="h-9"
-                    required
-                  />
-                  <p className="text-[10px] text-muted-foreground leading-tight">
-                    Вычитается из нормы: 12ч−1ч=11ч, 8ч−1ч=7ч
-                  </p>
-                </div>
-                
-                <div className="space-y-1.5">
-                  <Label htmlFor="reduced_hours" className="text-xs">Фикс. часы (опц.)</Label>
-                  <Input
-                    id="reduced_hours"
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="12"
-                    value={formData.reduced_hours || ""}
-                    onChange={(e) => setFormData({ ...formData, reduced_hours: e.target.value ? parseFloat(e.target.value) : null })}
-                    placeholder="Авто"
-                    className="h-9"
-                  />
-                  <p className="text-[10px] text-muted-foreground leading-tight">
-                    Игнорирует "Сокращение", задаёт точное кол-во часов
-                  </p>
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="reduction_hours" className="text-xs">Сокращение (ч) *</Label>
+                <Input
+                  id="reduction_hours"
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  max="4"
+                  value={formData.reduction_hours}
+                  onChange={(e) => setFormData({ ...formData, reduction_hours: e.target.value ? parseFloat(e.target.value) : 1 })}
+                  placeholder="1"
+                  className="h-9"
+                  required
+                />
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  Вычитается из нормы каждого графика: 12ч−1ч=11ч, 10ч40м−1ч=9ч40м, 8ч−1ч=7ч
+                </p>
               </div>
             )}
 
