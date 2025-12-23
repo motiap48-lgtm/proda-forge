@@ -381,6 +381,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                   // For non-cyclic schedules with multiple shifts: show rotation icon
                   const showShiftRotationIcon = !isCyclic && hasMultipleShifts && operator.shift_rotation_enabled;
                   
+                  // Check if operator has active absence today
+                  const today = new Date();
+                  const currentAbsence = isDateInAbsence(today, absences, operator.id);
+                  const absenceInfo = currentAbsence ? ABSENCE_TYPE_LABELS[currentAbsence.absence_type] : null;
+                  
                   return (
                     <HoverCard key={operator.id} openDelay={300}>
                       <HoverCardTrigger asChild>
@@ -392,6 +397,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                           onClick={() => onEditOperator?.(operator)}
                         >
                           <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
+                          {currentAbsence && absenceInfo && (
+                            <span title={absenceInfo.label} className="flex-shrink-0">
+                              <span className="text-sm">{absenceInfo.icon}</span>
+                            </span>
+                          )}
                           {hasPersonalCycleDate && (
                             <span title="Персональная дата цикла">
                               <CalendarCheck className="h-3 w-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
