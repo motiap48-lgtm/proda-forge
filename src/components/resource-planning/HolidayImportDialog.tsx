@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -18,12 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CalendarDays, Download, Clock, CalendarOff, AlertCircle } from "lucide-react";
+import { Download, Clock, CalendarOff, AlertCircle, Search, X, CheckSquare } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { getHolidaysForYear, templateToDbFormat, type HolidayTemplate } from "@/data/russianHolidays";
+import { getHolidaysForYear, templateToDbFormat } from "@/data/russianHolidays";
 import { useBulkCreateCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useCalendarExceptions } from "@/hooks/useResourcePlanning";
 
@@ -37,6 +44,7 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
   const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
   const [selectedHolidays, setSelectedHolidays] = useState<Set<string>>(new Set());
   const [importType, setImportType] = useState<"all" | "holidays" | "shortened">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   
   const { data: existingExceptions = [] } = useCalendarExceptions();
   const bulkCreate = useBulkCreateCalendarExceptions();
@@ -59,6 +67,18 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
     
     return result;
   }, [selectedYear, importType]);
+
+  // Filter holidays by search query
+  const filteredHolidays = useMemo(() => {
+    if (!searchQuery.trim()) return holidays;
+    
+    const query = searchQuery.toLowerCase();
+    return holidays.filter(h => {
+      const date = new Date(h.date);
+      const formattedDate = format(date, "d MMMM yyyy", { locale: ru }).toLowerCase();
+      return h.name.toLowerCase().includes(query) || formattedDate.includes(query);
+    });
+  }, [holidays, searchQuery]);
 
   // Check which holidays already exist
   const existingDates = useMemo(() => {
@@ -102,6 +122,12 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
     setSelectedHolidays(new Set(newDates));
   };
 
+  // Select all holidays (including existing)
+  const selectAll = () => {
+    const allDates = holidays.map(h => h.date);
+    setSelectedHolidays(new Set(allDates));
+  };
+
   // Clear selection
   const clearSelection = () => {
     setSelectedHolidays(new Set());
@@ -118,15 +144,17 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
     await bulkCreate.mutateAsync(toImport);
     onOpenChange(false);
     setSelectedHolidays(new Set());
+    setSearchQuery("");
   };
 
   // Reset on year change
   const handleYearChange = (year: string) => {
     setSelectedYear(year);
     setSelectedHolidays(new Set());
+    setSearchQuery("");
   };
 
-  const getTypeIcon = (type: string, isWorkingDay: boolean) => {
+  const getTypeIcon = (type: string) => {
     if (type === "shortened_day") {
       return <Clock className="h-4 w-4 text-amber-500" />;
     }
@@ -134,6 +162,7 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
   };
 
   const selectedNewCount = Array.from(selectedHolidays).filter(d => !existingDates.has(d)).length;
+  const selectedExistingCount = Array.from(selectedHolidays).filter(d => existingDates.has(d)).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -179,9 +208,22 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
             </Select>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={selectAll}>
+                    <CheckSquare className="h-4 w-4 mr-1" />
+                    Все ({stats.total})
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Выбрать все даты. Уже существующие будут пропущены при импорте.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Button variant="outline" size="sm" onClick={selectAllNew}>
-              Выбрать новые ({stats.newCount})
+              Новые ({stats.newCount})
             </Button>
             <Button variant="ghost" size="sm" onClick={clearSelection}>
               Сбросить
@@ -189,70 +231,100 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
           </div>
         </div>
 
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по названию или дате..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-8"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
         {stats.existingCount > 0 && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
             <AlertCircle className="h-4 w-4" />
             <span>
               {stats.existingCount} из {stats.total} дат уже существуют в календаре и будут пропущены
+              {selectedExistingCount > 0 && (
+                <span className="font-medium"> (выбрано {selectedExistingCount} существующих)</span>
+              )}
             </span>
           </div>
         )}
 
         <ScrollArea className="flex-1 min-h-0 border rounded-md">
           <div className="p-4 space-y-2">
-            {holidays.map(holiday => {
-              const exists = existingDates.has(holiday.date);
-              const isSelected = selectedHolidays.has(holiday.date);
-              const date = new Date(holiday.date);
-              
-              return (
-                <div
-                  key={holiday.date}
-                  className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border transition-colors",
-                    exists 
-                      ? "bg-muted/30 opacity-60 cursor-not-allowed" 
-                      : isSelected 
-                        ? "bg-primary/5 border-primary/30" 
-                        : "hover:bg-muted/50 cursor-pointer"
-                  )}
-                  onClick={() => !exists && toggleHoliday(holiday.date)}
-                >
-                  <Checkbox
-                    checked={isSelected}
-                    disabled={exists}
-                    onCheckedChange={() => !exists && toggleHoliday(holiday.date)}
-                  />
-                  
-                  <div className="flex-shrink-0">
-                    {getTypeIcon(holiday.exception_type, holiday.is_working_day)}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{holiday.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {format(date, "d MMMM yyyy (EEEE)", { locale: ru })}
+            {filteredHolidays.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchQuery ? "Ничего не найдено" : "Нет данных"}
+              </div>
+            ) : (
+              filteredHolidays.map(holiday => {
+                const exists = existingDates.has(holiday.date);
+                const isSelected = selectedHolidays.has(holiday.date);
+                const date = new Date(holiday.date);
+                
+                return (
+                  <div
+                    key={holiday.date}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border transition-colors",
+                      exists 
+                        ? "bg-muted/30 opacity-60 cursor-not-allowed" 
+                        : isSelected 
+                          ? "bg-primary/5 border-primary/30" 
+                          : "hover:bg-muted/50 cursor-pointer"
+                    )}
+                    onClick={() => !exists && toggleHoliday(holiday.date)}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      disabled={exists}
+                      onCheckedChange={() => !exists && toggleHoliday(holiday.date)}
+                    />
+                    
+                    <div className="flex-shrink-0">
+                      {getTypeIcon(holiday.exception_type)}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{holiday.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {format(date, "d MMMM yyyy (EEEE)", { locale: ru })}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {holiday.exception_type === "shortened_day" && holiday.reduced_hours && (
+                        <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                          {holiday.reduced_hours}ч
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs">
+                        {holiday.exception_type === "holiday" ? "Праздник" : "Сокращённый"}
+                      </Badge>
+                      {exists && (
+                        <Badge variant="secondary" className="text-xs">
+                          Уже есть
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {holiday.exception_type === "shortened_day" && holiday.reduced_hours && (
-                      <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
-                        {holiday.reduced_hours}ч
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-xs">
-                      {holiday.exception_type === "holiday" ? "Праздник" : "Сокращённый"}
-                    </Badge>
-                    {exists && (
-                      <Badge variant="secondary" className="text-xs">
-                        Уже есть
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </ScrollArea>
 
