@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle, Merge, Clock } from "lucide-react";
 import {
   useOperatorAbsences,
@@ -70,6 +71,7 @@ export const OperatorAbsenceDialog = ({
     end_date: "",
     status: "approved" as OperatorAbsence["status"],
     notes: "",
+    requiresCompensation: false,
   });
 
   useEffect(() => {
@@ -80,6 +82,7 @@ export const OperatorAbsenceDialog = ({
         end_date: editingAbsence.end_date,
         status: editingAbsence.status,
         notes: editingAbsence.notes || "",
+        requiresCompensation: false, // When editing, user can set this manually if needed
       });
     } else {
       setFormData({
@@ -88,6 +91,7 @@ export const OperatorAbsenceDialog = ({
         end_date: format(new Date(), "yyyy-MM-dd"),
         status: "approved",
         notes: "",
+        requiresCompensation: false,
       });
     }
   }, [editingAbsence, isAddingNew]);
@@ -211,11 +215,33 @@ export const OperatorAbsenceDialog = ({
         </div>
       )}
 
-      {/* Compensation info */}
-      {isCompensableAbsenceType(formData.absence_type) && formData.status === 'approved' && !editingAbsence && (
-        <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
-          <Clock className="h-4 w-4" />
-          Этот тип отсутствия требует отработки
+      {/* Compensation checkbox - show for non-automatically compensable types */}
+      {!editingAbsence && formData.status === 'approved' && (
+        <div className="flex items-center space-x-2 p-3 border rounded-lg bg-muted/30">
+          <Checkbox
+            id="requiresCompensation"
+            checked={isCompensableAbsenceType(formData.absence_type) || formData.requiresCompensation}
+            disabled={isCompensableAbsenceType(formData.absence_type)}
+            onCheckedChange={(checked) => 
+              setFormData({ ...formData, requiresCompensation: checked === true })
+            }
+          />
+          <div className="flex-1">
+            <Label 
+              htmlFor="requiresCompensation" 
+              className={`text-sm font-medium cursor-pointer ${
+                isCompensableAbsenceType(formData.absence_type) ? 'text-muted-foreground' : ''
+              }`}
+            >
+              <Clock className="h-4 w-4 inline mr-1" />
+              Требует отработки
+            </Label>
+            {isCompensableAbsenceType(formData.absence_type) && (
+              <p className="text-xs text-muted-foreground">
+                Прогулы всегда требуют отработки
+              </p>
+            )}
+          </div>
         </div>
       )}
 
