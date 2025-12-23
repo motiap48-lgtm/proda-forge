@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, CalendarDays, Edit, Trash2, X, CalendarOff, CalendarCheck } from "lucide-react";
+import { Plus, Search, CalendarDays, Edit, Trash2, X, CalendarOff, CalendarCheck, Clock } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -50,6 +50,7 @@ interface ExceptionFormData {
   name: string;
   description: string;
   is_working_day: boolean;
+  reduced_hours: number | null;
 }
 
 export const CalendarExceptionsTab = () => {
@@ -63,6 +64,10 @@ export const CalendarExceptionsTab = () => {
   const [editingException, setEditingException] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exceptionToDelete, setExceptionToDelete] = useState<any>(null);
+  
+  // Filters
+  const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [selectedType, setSelectedType] = useState<string>("all");
 
   const [formData, setFormData] = useState<ExceptionFormData>({
     exception_date: null,
@@ -70,12 +75,47 @@ export const CalendarExceptionsTab = () => {
     name: "",
     description: "",
     is_working_day: false,
+    reduced_hours: null,
   });
 
-  const filteredExceptions = exceptions?.filter((e: any) =>
-    e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    format(parseISO(e.exception_date), "d MMMM yyyy", { locale: ru }).toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  // Get available years from exceptions + current/next years
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const yearsSet = new Set<number>([currentYear, currentYear + 1, currentYear + 2]);
+    
+    exceptions?.forEach((e: any) => {
+      const year = new Date(e.exception_date).getFullYear();
+      yearsSet.add(year);
+    });
+    
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [exceptions]);
+
+  const filteredExceptions = useMemo(() => {
+    let result = exceptions || [];
+    
+    // Filter by search query
+    if (searchQuery) {
+      result = result.filter((e: any) =>
+        e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        format(parseISO(e.exception_date), "d MMMM yyyy", { locale: ru }).toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    // Filter by year
+    if (selectedYear !== "all") {
+      result = result.filter((e: any) => 
+        new Date(e.exception_date).getFullYear().toString() === selectedYear
+      );
+    }
+    
+    // Filter by type
+    if (selectedType !== "all") {
+      result = result.filter((e: any) => e.exception_type === selectedType);
+    }
+    
+    return result;
+  }, [exceptions, searchQuery, selectedYear, selectedType]);
 
   const getExceptionTypeLabel = (type: string) => {
     switch (type) {
@@ -86,6 +126,16 @@ export const CalendarExceptionsTab = () => {
     }
   };
 
+  const getExceptionTypeIcon = (type: string, isWorkingDay: boolean) => {
+    if (type === "shortened_day") {
+      return <Clock className="h-4 w-4 text-amber-500" />;
+    }
+    if (isWorkingDay) {
+      return <CalendarCheck className="h-4 w-4 text-green-500" />;
+    }
+    return <CalendarOff className="h-4 w-4 text-rose-500" />;
+  };
+
   const handleEdit = (exception: any) => {
     setEditingException(exception);
     setFormData({
@@ -94,6 +144,7 @@ export const CalendarExceptionsTab = () => {
       name: exception.name,
       description: exception.description || "",
       is_working_day: exception.is_working_day,
+      reduced_hours: exception.reduced_hours || null,
     });
     setDialogOpen(true);
   };
@@ -120,6 +171,17 @@ export const CalendarExceptionsTab = () => {
       name: "",
       description: "",
       is_working_day: false,
+      reduced_hours: null,
+    });
+  };
+
+  const handleTypeChange = (type: string) => {
+    const isShortenedDay = type === "shortened_day";
+    setFormData({ 
+      ...formData, 
+      exception_type: type,
+      is_working_day: isShortenedDay ? true : formData.is_working_day,
+      reduced_hours: isShortenedDay ? (formData.reduced_hours || 7) : null,
     });
   };
 
@@ -133,6 +195,7 @@ export const CalendarExceptionsTab = () => {
       name: formData.name,
       description: formData.description || null,
       is_working_day: formData.is_working_day,
+      reduced_hours: formData.exception_type === "shortened_day" ? formData.reduced_hours : null,
     };
 
     if (editingException) {
@@ -156,30 +219,67 @@ export const CalendarExceptionsTab = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск исключений..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-8"
-          />
-          {searchQuery && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
-              onClick={() => setSearchQuery("")}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Поиск исключений..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-8"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Добавить исключение
+          </Button>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Добавить исключение
-        </Button>
+
+        {/* Filters row */}
+        <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm text-muted-foreground whitespace-nowrap">Год:</Label>
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все годы</SelectItem>
+                {availableYears.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Label className="text-sm text-muted-foreground whitespace-nowrap">Тип:</Label>
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все типы</SelectItem>
+                <SelectItem value="holiday">Праздники</SelectItem>
+                <SelectItem value="shortened_day">Сокращённые дни</SelectItem>
+                <SelectItem value="extra_working_day">Рабочие дни (перенос)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {filteredExceptions.length === 0 ? (
@@ -209,17 +309,13 @@ export const CalendarExceptionsTab = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            {exception.is_working_day ? (
-                              <CalendarCheck className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <CalendarOff className="h-4 w-4 text-rose-500" />
-                            )}
+                            {getExceptionTypeIcon(exception.exception_type, exception.is_working_day)}
                             <span className="font-medium">{exception.name}</span>
                           </div>
                           <div className="text-sm text-muted-foreground mb-2">
                             {format(parseISO(exception.exception_date), "d MMMM yyyy (EEEE)", { locale: ru })}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Badge 
                               variant={exception.is_working_day ? "default" : "destructive"}
                               className={cn(
@@ -233,6 +329,11 @@ export const CalendarExceptionsTab = () => {
                             <Badge variant="outline">
                               {getExceptionTypeLabel(exception.exception_type)}
                             </Badge>
+                            {exception.exception_type === "shortened_day" && exception.reduced_hours && (
+                              <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                                {exception.reduced_hours}ч
+                              </Badge>
+                            )}
                           </div>
                           {exception.description && (
                             <p className="text-sm text-muted-foreground mt-2">{exception.description}</p>
@@ -310,7 +411,7 @@ export const CalendarExceptionsTab = () => {
                 <Label>Тип</Label>
                 <Select
                   value={formData.exception_type}
-                  onValueChange={(value) => setFormData({ ...formData, exception_type: value })}
+                  onValueChange={handleTypeChange}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -328,6 +429,7 @@ export const CalendarExceptionsTab = () => {
                 <Select
                   value={formData.is_working_day ? "working" : "off"}
                   onValueChange={(value) => setFormData({ ...formData, is_working_day: value === "working" })}
+                  disabled={formData.exception_type === "shortened_day"}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -339,6 +441,26 @@ export const CalendarExceptionsTab = () => {
                 </Select>
               </div>
             </div>
+
+            {formData.exception_type === "shortened_day" && (
+              <div className="space-y-2">
+                <Label htmlFor="reduced_hours">Рабочих часов в сокращённый день *</Label>
+                <Input
+                  id="reduced_hours"
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="12"
+                  value={formData.reduced_hours || ""}
+                  onChange={(e) => setFormData({ ...formData, reduced_hours: e.target.value ? parseFloat(e.target.value) : null })}
+                  placeholder="Например: 7"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Укажите количество рабочих часов для сокращённого дня (обычно 7 часов вместо 8)
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="description">Описание</Label>
@@ -356,7 +478,13 @@ export const CalendarExceptionsTab = () => {
               </Button>
               <Button 
                 type="submit" 
-                disabled={!formData.exception_date || !formData.name || createException.isPending || updateException.isPending}
+                disabled={
+                  !formData.exception_date || 
+                  !formData.name || 
+                  (formData.exception_type === "shortened_day" && !formData.reduced_hours) ||
+                  createException.isPending || 
+                  updateException.isPending
+                }
               >
                 {editingException ? "Сохранить" : "Добавить"}
               </Button>
