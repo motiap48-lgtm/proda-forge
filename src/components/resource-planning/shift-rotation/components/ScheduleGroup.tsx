@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay, type ShiftColors, type PeriodType } from "../utils";
@@ -16,9 +17,11 @@ import { CreateAbsenceCellDialog } from "@/components/resource-planning/CreateAb
 import { ScheduleOverrideDialog } from "@/components/resource-planning/ScheduleOverrideDialog";
 import { BulkScheduleOverrideDialog } from "@/components/resource-planning/BulkScheduleOverrideDialog";
 import { CompensationDialog } from "@/components/resource-planning/CompensationDialog";
+import { TimesheetDialog } from "@/components/resource-planning/TimesheetDialog";
 import { useAbsenceDragDrop } from "../hooks/useAbsenceDragDrop";
 import { toast } from "sonner";
 import { type ScheduleOverride, getScheduleOverride, OVERRIDE_REASON_LABELS } from "@/hooks/useScheduleOverrides";
+import { type OperatorTimesheet, createTimesheetMap, getTimesheetForDate } from "@/hooks/useOperatorTimesheets";
 
 interface CalendarException {
   id: string;
@@ -39,6 +42,7 @@ interface ScheduleGroupProps {
   absences?: OperatorAbsence[];
   scheduleOverrides?: ScheduleOverride[];
   calendarExceptions?: CalendarException[];
+  timesheets?: OperatorTimesheet[];
   days: Date[];
   months: Date[];
   period: PeriodType;
@@ -61,6 +65,7 @@ interface ScheduleGroupProps {
   calculateGroupStats: (ops: any[]) => { workingDays: number; offDays: number; absenceDays: number; totalHours: number; totalMinutes: number };
   calculateYearlyTotal: (operator: any) => { hours: number; minutes: number };
   calculateGroupYearlyTotal: (ops: any[]) => { hours: number; minutes: number };
+  getDayMinutes?: (operator: any, day: Date) => number;
   printRef?: React.RefObject<HTMLDivElement>;
   isFirstGroup?: boolean;
 }
@@ -75,6 +80,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   absences = [],
   scheduleOverrides = [],
   calendarExceptions = [],
+  timesheets = [],
   days,
   months,
   period,
@@ -97,6 +103,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   calculateGroupStats,
   calculateYearlyTotal,
   calculateGroupYearlyTotal,
+  getDayMinutes,
   printRef,
   isFirstGroup,
 }) => {
@@ -151,6 +158,36 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   
   // State for compensation dialog
   const [compensationOperator, setCompensationOperator] = useState<{ id: string; name: string } | null>(null);
+  
+  // State for timesheet dialog
+  const [timesheetOperator, setTimesheetOperator] = useState<{ id: string; name: string } | null>(null);
+  
+  // Create timesheet map for fast lookup
+  const timesheetMap = useMemo(() => createTimesheetMap(timesheets), [timesheets]);
+  
+  // Calculate actual worked hours from timesheets
+  const calculateActualHours = useCallback((operatorId: string): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    days.forEach(day => {
+      const ts = getTimesheetForDate(timesheetMap, operatorId, day);
+      if (ts) {
+        totalMinutes += ts.actual_minutes;
+      }
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  }, [days, timesheetMap]);
+  
+  // Check if operator has any timesheet entries
+  const hasTimesheetData = useCallback((operatorId: string): boolean => {
+    return days.some(day => {
+      const ts = getTimesheetForDate(timesheetMap, operatorId, day);
+      return ts && ts.actual_minutes > 0;
+    });
+  }, [days, timesheetMap]);
+  
   // Drag and drop functionality with resize support
   const {
     dragPreview,
@@ -982,10 +1019,61 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               </div>
                             );
                           })}
-                          <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                            <div>{totalHours.hours}ч</div>
-                            {totalHours.minutes > 0 && <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>}
-                          </div>
+                          {/* Total cell with plan/fact - clickable to open timesheet */}
+                          {(() => {
+                            const actualHours = calculateActualHours(operator.id);
+                            const hasActual = hasTimesheetData(operator.id);
+                            const plannedMinutes = totalHours.hours * 60 + totalHours.minutes;
+                            const actualMinutes = actualHours.hours * 60 + actualHours.minutes;
+                            const diff = actualMinutes - plannedMinutes;
+                            
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div 
+                                    className={cn(
+                                      "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs font-medium cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
+                                      hasActual 
+                                        ? diff >= 0 
+                                          ? "bg-gradient-to-b from-green-200 to-green-300 dark:from-green-800 dark:to-green-900 text-green-800 dark:text-green-200"
+                                          : "bg-gradient-to-b from-amber-200 to-amber-300 dark:from-amber-800 dark:to-amber-900 text-amber-800 dark:text-amber-200"
+                                        : "bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200"
+                                    )}
+                                    onClick={() => setTimesheetOperator({ id: operator.id, name: operator.full_name })}
+                                  >
+                                    <div className="flex items-center gap-0.5">
+                                      {hasActual && <ClipboardCheck className="h-3 w-3" />}
+                                      <span>{totalHours.hours}ч</span>
+                                    </div>
+                                    {hasActual ? (
+                                      <div className={cn(
+                                        "text-[9px] font-bold",
+                                        diff >= 0 ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"
+                                      )}>
+                                        ф: {actualHours.hours}ч{actualHours.minutes > 0 ? ` ${actualHours.minutes}м` : ''}
+                                      </div>
+                                    ) : (
+                                      totalHours.minutes > 0 && <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>
+                                    )}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="text-xs">
+                                    <div>План: {totalHours.hours}ч {totalHours.minutes > 0 ? `${totalHours.minutes}м` : ''}</div>
+                                    {hasActual && (
+                                      <>
+                                        <div>Факт: {actualHours.hours}ч {actualHours.minutes > 0 ? `${actualHours.minutes}м` : ''}</div>
+                                        <div className={diff >= 0 ? "text-green-500" : "text-amber-500"}>
+                                          {diff >= 0 ? '+' : ''}{Math.floor(diff / 60)}ч {Math.abs(diff % 60) > 0 ? `${Math.abs(diff % 60)}м` : ''}
+                                        </div>
+                                      </>
+                                    )}
+                                    <div className="text-muted-foreground mt-1">Нажмите для редактирования</div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })()}
                         </React.Fragment>
                       );
                     })}
@@ -1102,6 +1190,22 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           onOpenChange={(open) => !open && setCompensationOperator(null)}
           operatorId={compensationOperator.id}
           operatorName={compensationOperator.name}
+        />
+      )}
+      
+      {/* Timesheet Dialog */}
+      {timesheetOperator && getDayMinutes && (
+        <TimesheetDialog
+          open={!!timesheetOperator}
+          onOpenChange={(open) => !open && setTimesheetOperator(null)}
+          operatorId={timesheetOperator.id}
+          operatorName={timesheetOperator.name}
+          startDate={days[0]}
+          endDate={days[days.length - 1]}
+          plannedMinutesPerDay={(date: Date) => {
+            const op = operators.find(o => o.id === timesheetOperator.id);
+            return op ? getDayMinutes(op, date) : 0;
+          }}
         />
       )}
     </div>
