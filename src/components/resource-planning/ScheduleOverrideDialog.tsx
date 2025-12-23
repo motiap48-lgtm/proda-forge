@@ -71,7 +71,7 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
   );
   const [reason, setReason] = useState(existingOverride?.reason || "production_need");
   const [shiftNumber, setShiftNumber] = useState<string>(
-    existingOverride?.shift_number?.toString() || ""
+    existingOverride?.shift_number?.toString() || "default"
   );
   const [notes, setNotes] = useState(existingOverride?.notes || "");
   // Check if this is a cyclic schedule that supports cycle shifting
@@ -121,7 +121,7 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
       operator_id: operatorId,
       override_date: format(date, "yyyy-MM-dd"),
       is_working_day: isWorkingDay,
-      shift_number: shiftNumber ? parseInt(shiftNumber) : null,
+      shift_number: shiftNumber && shiftNumber !== "default" ? parseInt(shiftNumber) : null,
       reason,
       notes: notes || null,
       shift_cycle_start_date: showCycleShiftOption && shiftCycleStart 
@@ -231,7 +231,7 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
                   <SelectValue placeholder="По умолчанию" />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  <SelectItem value="">По умолчанию</SelectItem>
+                  <SelectItem value="default">По умолчанию</SelectItem>
                   {shifts.map((shift) => (
                     <SelectItem key={shift.shift_number} value={shift.shift_number.toString()}>
                       {shift.shift_name}
