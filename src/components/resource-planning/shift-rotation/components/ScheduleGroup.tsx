@@ -547,6 +547,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                         const showMonth = idx === 0 || !isSameMonth(day, days[idx - 1]);
                         const isWeekend = getDay(day) === 0 || getDay(day) === 6;
                         const isTodayDate = isToday(day);
+                        
+                        // Check for calendar exceptions (holidays, shortened days)
+                        const dayStr = format(day, "yyyy-MM-dd");
+                        const calendarException = calendarExceptions.find(ex => ex.exception_date === dayStr);
+                        const isHoliday = calendarException && calendarException.exception_type === 'holiday' && !calendarException.is_working_day;
+                        const isShortenedDayHeader = calendarException && calendarException.exception_type === 'shortened_day' && calendarException.is_working_day;
 
                         return (
                           <div
@@ -558,22 +564,41 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
                                     isTodayColumnHovered && "animate-pulse-glow",
                                   )
-                                : isWeekend
-                                  ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
-                                  : "bg-gradient-to-b from-muted to-secondary text-muted-foreground",
+                                : isHoliday
+                                  ? "bg-gradient-to-b from-red-300 to-red-400 dark:from-red-700 dark:to-red-800 text-red-900 dark:text-red-100"
+                                  : isShortenedDayHeader
+                                    ? "bg-gradient-to-b from-orange-200 to-orange-300 dark:from-orange-700 dark:to-orange-800 text-orange-800 dark:text-orange-100"
+                                    : isWeekend
+                                      ? "bg-gradient-to-b from-rose-200 to-rose-300 dark:from-rose-800 dark:to-rose-900 text-rose-700 dark:text-rose-200"
+                                      : "bg-gradient-to-b from-muted to-secondary text-muted-foreground",
                             )}
                             onMouseEnter={() => isTodayDate && onTodayColumnHover(true)}
                             onMouseLeave={() => isTodayDate && onTodayColumnHover(false)}
+                            title={calendarException ? calendarException.name : undefined}
                           >
+                            {/* Holiday/Shortened day indicator */}
+                            {(isHoliday || isShortenedDayHeader) && !isTodayDate && (
+                              <div className="absolute top-0.5 right-0.5">
+                                {isHoliday ? (
+                                  <span className="text-[10px]">🎉</span>
+                                ) : (
+                                  <Timer className="h-2.5 w-2.5 text-orange-600 dark:text-orange-300" />
+                                )}
+                              </div>
+                            )}
                             <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
                             <div
                               className={cn(
                                 "text-sm font-semibold",
                                 isTodayDate
                                   ? "text-white"
-                                  : isWeekend
-                                    ? "text-rose-600 dark:text-rose-300"
-                                    : "text-foreground",
+                                  : isHoliday
+                                    ? "text-red-800 dark:text-red-100"
+                                    : isShortenedDayHeader
+                                      ? "text-orange-700 dark:text-orange-200"
+                                      : isWeekend
+                                        ? "text-rose-600 dark:text-rose-300"
+                                        : "text-foreground",
                               )}
                             >
                               {format(day, "d", { locale: ru })}
@@ -689,7 +714,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                    ex.is_working_day
                             );
                             const isShortenedDay = !!shortenedException && effectiveIsWorking;
-                            const reductionHours = shortenedException?.reduction_hours ?? 1;
+                            // Use schedule-specific reduction_hours if available, otherwise use calendar exception value
+                            const scheduleReductionHours = operator.work_schedules?.reduction_hours;
+                            const reductionHours = scheduleReductionHours ?? shortenedException?.reduction_hours ?? 1;
                             
                             // Calculate actual hours for this day (with reduction if shortened)
                             const actualNetMinutes = isShortenedDay 

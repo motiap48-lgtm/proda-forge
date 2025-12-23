@@ -2044,6 +2044,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          reduction_hours: number | null
           schedule_type: string
           updated_at: string
         }
@@ -2057,6 +2058,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          reduction_hours?: number | null
           schedule_type?: string
           updated_at?: string
         }
@@ -2070,6 +2072,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          reduction_hours?: number | null
           schedule_type?: string
           updated_at?: string
         }

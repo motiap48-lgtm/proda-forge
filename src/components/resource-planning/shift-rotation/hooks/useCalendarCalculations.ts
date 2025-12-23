@@ -218,8 +218,9 @@ export const useCalendarCalculations = ({
         };
       }
       
-      // Otherwise calculate based on reduction_hours (default 1 hour)
-      const reductionHours = exception.reduction_hours ?? 1;
+      // Use schedule-specific reduction_hours if available, otherwise use exception value
+      const scheduleReductionHours = operator.work_schedules?.reduction_hours;
+      const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
       const reductionMinutes = reductionHours * 60;
       const actualMinutes = Math.max(0, normalNetMinutes - reductionMinutes);
       return { 
