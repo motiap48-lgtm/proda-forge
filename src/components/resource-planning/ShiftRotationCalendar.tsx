@@ -195,6 +195,18 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return details;
   }, [filteredOperators]);
 
+  // Calculate default reduction hours from calendar exceptions
+  const defaultReductionHours = useMemo(() => {
+    // Find the most common reduction_hours value from shortened days
+    const shortenedDays = calendarExceptions.filter(
+      (ex: any) => ex.exception_type === 'shortened_day' && ex.reduction_hours != null
+    );
+    if (shortenedDays.length > 0) {
+      return shortenedDays[0].reduction_hours || 1;
+    }
+    return 1; // Default to 1 hour
+  }, [calendarExceptions]);
+
   // Group operators by their schedule
   const groupedBySchedule = useMemo(() => {
     const groups = new Map<string, any[]>();
@@ -713,6 +725,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           hasActiveFilters={hasActiveFilters}
           onResetFilters={resetFilters}
           onExportAbsences={() => setShowExportAbsenceDialog(true)}
+          defaultReductionHours={defaultReductionHours}
         />
       </CardHeader>
       <CardContent className="p-0">

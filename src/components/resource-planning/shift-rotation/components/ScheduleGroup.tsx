@@ -932,7 +932,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     isTodayColumnHovered && "animate-pulse-glow"
                                   )
                                 )}
-                                title={`${isShortenedDay ? `⏰ Сокращённый день: ${shortenedException?.name || 'Праздник'} (-${reductionHours}ч)\n` : ''}${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла. ` : ''}Зажмите и перетащите для выбора диапазона | ПКМ - изменить график`}
+                                title={`${isShortenedDay ? `⏰ Сокращённый день: ${shortenedException?.name || 'Праздник'}\n   Сокращение: −${reductionHours} ч\n   Рабочее время: ${hours} ч ${mins > 0 ? mins + ' мин' : ''} (вместо ${Math.floor(netMinutes / 60)} ч)\n` : ''}${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `📅 День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла\n` : ''}Перетащить - выбрать диапазон | ПКМ - изменить график`}
                               >
                                 {/* Shortened day indicator */}
                                 {isShortenedDay && !hasOverride && (
