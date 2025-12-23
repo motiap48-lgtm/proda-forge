@@ -85,6 +85,30 @@ export const CalendarLegend = ({
 }: CalendarLegendProps) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
+  // Build shortened day description with hours for each schedule
+  const getShortenedDayDetails = () => {
+    if (!shiftDetails || shiftDetails.size === 0) {
+      return `Предпраздничный день. Рабочее время сокращается на ${defaultReductionHours} час${defaultReductionHours === 1 ? '' : 'а'}.`;
+    }
+    
+    const lines: string[] = [`Сокращение: −${defaultReductionHours} ч`];
+    
+    shiftDetails.forEach((detail, name) => {
+      const normalHours = Math.floor(detail.netWorkMinutes / 60);
+      const normalMins = detail.netWorkMinutes % 60;
+      const reducedMinutes = detail.netWorkMinutes - (defaultReductionHours * 60);
+      const reducedHours = Math.floor(reducedMinutes / 60);
+      const reducedMins = reducedMinutes % 60;
+      
+      const normalStr = normalMins > 0 ? `${normalHours}ч ${normalMins}м` : `${normalHours}ч`;
+      const reducedStr = reducedMins > 0 ? `${reducedHours}ч ${reducedMins}м` : `${reducedHours}ч`;
+      
+      lines.push(`${name}: ${normalStr} → ${reducedStr}`);
+    });
+    
+    return lines.join('\n');
+  };
+
   const calendarDays: LegendItem[] = [
     {
       color: "bg-red-100 text-red-700 border-red-200",
@@ -96,7 +120,7 @@ export const CalendarLegend = ({
       color: "bg-amber-100 text-amber-700 border-amber-200",
       icon: <Timer className="h-3 w-3" />,
       label: `Сокращённый день (−${defaultReductionHours} ч)`,
-      description: `Предпраздничный день. Рабочее время сокращается на ${defaultReductionHours} час${defaultReductionHours === 1 ? '' : 'а'}.`
+      description: getShortenedDayDetails()
     },
     {
       color: "bg-muted text-muted-foreground",
