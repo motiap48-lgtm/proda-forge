@@ -6,6 +6,7 @@ import { ru } from "date-fns/locale";
 import { useUpdateOperator, useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useAllOperatorAbsences, isDateInAbsence } from "@/hooks/useOperatorAbsences";
 import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
+import { useOperatorTimesheets } from "@/hooks/useOperatorTimesheets";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -151,6 +152,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     calculateGroupStats,
     calculateYearlyTotal,
     calculateGroupYearlyTotal,
+    getDayMinutes,
   } = useCalendarCalculations({
     operators: filteredOperators,
     period,
@@ -160,6 +162,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     scheduleOverrides,
     calendarExceptions,
   });
+
+  // Fetch timesheets for the period
+  const { data: timesheets = [] } = useOperatorTimesheets(
+    days[0] || startDate,
+    days[days.length - 1] || startDate,
+    operatorIds
+  );
 
   // Generate shift details with time info
   const shiftDetails = useMemo(() => {

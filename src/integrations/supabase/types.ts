@@ -1013,6 +1013,56 @@ export type Database = {
           },
         ]
       }
+      operator_timesheets: {
+        Row: {
+          actual_minutes: number
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          operator_id: string
+          overtime_minutes: number
+          planned_minutes: number
+          status: string
+          updated_at: string
+          work_date: string
+        }
+        Insert: {
+          actual_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          operator_id: string
+          overtime_minutes?: number
+          planned_minutes?: number
+          status?: string
+          updated_at?: string
+          work_date: string
+        }
+        Update: {
+          actual_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          operator_id?: string
+          overtime_minutes?: number
+          planned_minutes?: number
+          status?: string
+          updated_at?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_timesheets_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operators: {
         Row: {
           assigned_shift_number: number | null
