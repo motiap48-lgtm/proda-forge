@@ -130,7 +130,7 @@ export const useOperators = () => {
             cycle_days_off,
             cycle_start_date,
             work_schedule_shifts (
-              id, shift_number, shift_name, net_work_minutes, gross_work_minutes, break_minutes
+              id, shift_number, shift_name, start_time, end_time, net_work_minutes, gross_work_minutes, break_minutes
             )
           ),
           operator_skills (
@@ -318,7 +318,7 @@ export const useBrigades = () => {
             cycle_days_off,
             cycle_start_date,
             work_schedule_shifts (
-              id, shift_name, net_work_minutes, gross_work_minutes, break_minutes
+              id, shift_number, shift_name, start_time, end_time, net_work_minutes, gross_work_minutes, break_minutes
             )
           ),
           brigade_members (
