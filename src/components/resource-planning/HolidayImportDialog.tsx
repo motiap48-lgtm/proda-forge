@@ -198,7 +198,7 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
           </div>
         )}
 
-        <ScrollArea className="flex-1 min-h-0 border rounded-md">
+        <ScrollArea className="flex-1 min-h-0 max-h-[400px] border rounded-md">
           <div className="p-4 space-y-2">
             {holidays.map(holiday => {
               const exists = existingDates.has(holiday.date);
