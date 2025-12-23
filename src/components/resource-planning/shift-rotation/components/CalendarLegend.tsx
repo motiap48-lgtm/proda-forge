@@ -60,6 +60,7 @@ interface CalendarLegendProps {
   onAbsenceTypeFilterChange?: (filter: AbsenceTypeFilter) => void;
   hasActiveFilters?: boolean;
   onResetFilters?: () => void;
+  defaultReductionHours?: number; // Default reduction hours for shortened days
 }
 
 const formatMinutesToHoursMinutes = (minutes: number): string => {
@@ -77,7 +78,8 @@ export const CalendarLegend = ({
   absenceTypeFilter,
   onAbsenceTypeFilterChange,
   hasActiveFilters,
-  onResetFilters
+  onResetFilters,
+  defaultReductionHours = 1
 }: CalendarLegendProps) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -91,8 +93,8 @@ export const CalendarLegend = ({
     {
       color: "bg-amber-100 text-amber-700 border-amber-200",
       icon: <Timer className="h-3 w-3" />,
-      label: "Сокращённый день",
-      description: "Предпраздничный день с уменьшенной продолжительностью"
+      label: `Сокращённый день (−${defaultReductionHours} ч)`,
+      description: `Предпраздничный день. Рабочее время сокращается на ${defaultReductionHours} час${defaultReductionHours === 1 ? '' : 'а'}.`
     },
     {
       color: "bg-muted text-muted-foreground",
