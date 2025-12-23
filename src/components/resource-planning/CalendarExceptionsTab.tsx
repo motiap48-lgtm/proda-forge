@@ -495,21 +495,27 @@ export const CalendarExceptionsTab = () => {
 
             {formData.exception_type === "shortened_day" && (
               <div className="space-y-1.5">
-                <Label htmlFor="reduction_hours" className="text-xs">Сокращение (ч) *</Label>
-                <Input
-                  id="reduction_hours"
-                  type="number"
-                  step="0.5"
-                  min="0.5"
-                  max="4"
-                  value={formData.reduction_hours}
-                  onChange={(e) => setFormData({ ...formData, reduction_hours: e.target.value ? parseFloat(e.target.value) : 1 })}
-                  placeholder="1"
-                  className="h-9"
-                  required
-                />
+                <Label htmlFor="reduction_hours" className="text-xs">На сколько часов сократить день *</Label>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={formData.reduction_hours.toString()}
+                    onValueChange={(value) => setFormData({ ...formData, reduction_hours: parseFloat(value) })}
+                  >
+                    <SelectTrigger className="h-9 w-full">
+                      <SelectValue placeholder="Выберите" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">−1 час (стандартно)</SelectItem>
+                      <SelectItem value="2">−2 часа</SelectItem>
+                      <SelectItem value="3">−3 часа</SelectItem>
+                      <SelectItem value="4">−4 часа</SelectItem>
+                      <SelectItem value="5">−5 часов</SelectItem>
+                      <SelectItem value="6">−6 часов</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <p className="text-[10px] text-muted-foreground leading-tight">
-                  Вычитается из нормы каждого графика: 12ч−1ч=11ч, 10ч40м−1ч=9ч40м, 8ч−1ч=7ч
+                  Например: при −4ч для 12-часовой смены → 8ч, для 8-часовой → 4ч
                 </p>
               </div>
             )}
