@@ -116,9 +116,12 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   }, [days, edits, timesheetMap, operatorId, plannedMinutesPerDay]);
   
   const formatMinutes = (m: number) => {
-    const h = Math.floor(m / 60);
-    const mins = m % 60;
-    return mins > 0 ? `${h}ч ${mins}м` : `${h}ч`;
+    const isNegative = m < 0;
+    const absM = Math.abs(m);
+    const h = Math.floor(absM / 60);
+    const mins = absM % 60;
+    const sign = isNegative ? '-' : '';
+    return mins > 0 ? `${sign}${h}ч ${mins}м` : `${sign}${h}ч`;
   };
   
   return (
