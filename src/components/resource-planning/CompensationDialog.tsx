@@ -190,7 +190,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
               onClick={() => setShowAddAbsence(true)}
             >
               <Plus className="h-4 w-4 mr-1" />
-              Добавить прогул
+              Добавить отсутствие
             </Button>
           </div>
         </div>
@@ -198,10 +198,13 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
         {/* Add absence form */}
         {showAddAbsence && (
           <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-            <h4 className="font-medium">Новый прогул</h4>
+            <h4 className="font-medium">Новое отсутствие (с отработкой)</h4>
+            <p className="text-xs text-muted-foreground">
+              Типы с обязательной отработкой: Прогул, Административный, Без сохранения ЗП, Другое
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Дата прогула</Label>
+                <Label>Дата отсутствия</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -241,7 +244,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
               <Textarea
                 value={absenceReason}
                 onChange={(e) => setAbsenceReason(e.target.value)}
-                placeholder="Причина прогула..."
+                placeholder="Причина отсутствия..."
                 rows={2}
               />
             </div>
@@ -293,7 +296,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                           </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground mt-1">
-                          Прогул: {comp.absence_hours}ч | Отработано: {compensatedHours}ч
+                          Отсутствие: {comp.absence_hours}ч | Отработано: {compensatedHours}ч
                           {remaining > 0 && comp.status !== "cancelled" && (
                             <span className="text-amber-600 dark:text-amber-400">
                               {" "}| Осталось: {remaining}ч
@@ -301,8 +304,8 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                           )}
                         </div>
                         {comp.reason && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Причина: {comp.reason}
+                          <p className="text-sm text-muted-foreground mt-1 truncate max-w-md">
+                            {comp.reason}
                           </p>
                         )}
                       </div>
