@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X, FileText } from "lucide-react";
 import { useOperators, useDeleteOperator, useFixInvalidRotations } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
 import { BulkOperatorDialog } from "./BulkOperatorDialog";
 import { ShiftRotationCalendar } from "./ShiftRotationCalendar";
+import { CompensationReportDialog } from "./CompensationReportDialog";
 import { exportOperatorsToExcel, printOperators } from "./OperatorsPrintExport";
 import { differenceInWeeks } from "date-fns";
 import {
@@ -77,6 +78,7 @@ export const OperatorsTab = () => {
   const [editingOperator, setEditingOperator] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [operatorToDelete, setOperatorToDelete] = useState<any>(null);
+  const [compensationReportOpen, setCompensationReportOpen] = useState(false);
 
   // Collect all unique shift names for filter
   const availableShifts = useMemo(() => {
@@ -368,6 +370,14 @@ export const OperatorsTab = () => {
         </div>
         
         <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setCompensationReportOpen(true)}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Отчёт по отработкам
+          </Button>
           <Button 
             variant="outline" 
             size="sm"
@@ -668,6 +678,12 @@ export const OperatorsTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Compensation report dialog */}
+      <CompensationReportDialog
+        open={compensationReportOpen}
+        onOpenChange={setCompensationReportOpen}
+      />
     </div>
   );
 };
