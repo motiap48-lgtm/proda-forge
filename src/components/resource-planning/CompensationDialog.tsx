@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle } from "lucide-react";
+import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +28,7 @@ import {
   COMPENSATION_STATUS_LABELS,
   AbsenceCompensation,
 } from "@/hooks/useAbsenceCompensations";
+import { BulkCompensationDialog } from "./BulkCompensationDialog";
 
 interface CompensationDialogProps {
   open: boolean;
@@ -90,6 +91,8 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   const [compensationDate, setCompensationDate] = useState<Date | undefined>(new Date());
   const [compensationHours, setCompensationHours] = useState("");
   const [compensationNotes, setCompensationNotes] = useState("");
+  
+  const [bulkCompensationFor, setBulkCompensationFor] = useState<AbsenceCompensation | null>(null);
 
   // Update absenceHours when scheduleHours is loaded
   useEffect(() => {
@@ -311,13 +314,24 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                       </div>
                       <div className="flex gap-1">
                         {comp.status !== "cancelled" && comp.status !== "completed" && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setAddingCompensationFor(comp.id)}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setAddingCompensationFor(comp.id)}
+                              title="Добавить одну отработку"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setBulkCompensationFor(comp)}
+                              title="Массовая отработка"
+                            >
+                              <CalendarDays className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                         {comp.status !== "cancelled" && (
                           <Button
@@ -442,6 +456,14 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
             )}
           </div>
         </ScrollArea>
+
+        {/* Bulk compensation dialog */}
+        <BulkCompensationDialog
+          open={!!bulkCompensationFor}
+          onOpenChange={(open) => !open && setBulkCompensationFor(null)}
+          compensation={bulkCompensationFor}
+          operatorId={operatorId}
+        />
       </DialogContent>
     </Dialog>
   );
