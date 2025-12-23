@@ -701,6 +701,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   onManageAbsences={setAbsenceOperator}
                   absences={absences}
                   scheduleOverrides={scheduleOverrides}
+                  calendarExceptions={calendarExceptions}
                   days={days}
                   months={months}
                   period={period}
