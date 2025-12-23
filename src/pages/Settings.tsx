@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users, Calendar, ExternalLink } from "lucide-react";
 import { MaterialCategoriesManagement } from "@/components/settings/MaterialCategoriesManagement";
 import { ContractorsManagement } from "@/components/settings/ContractorsManagement";
 import { CustomersManagement } from "@/components/settings/CustomersManagement";
 import { DistributionStrategySettings } from "@/components/settings/DistributionStrategySettings";
+import { useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import {
   Select,
   SelectContent,
@@ -22,6 +24,7 @@ import {
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { data: calendarExceptions = [] } = useCalendarExceptions();
   const [notifications, setNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -166,6 +169,11 @@ const Settings = () => {
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Производственный календарь
+                {calendarExceptions.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {calendarExceptions.length}
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription>
                 Праздники, сокращённые дни и другие календарные исключения влияют на расчёт рабочего времени
@@ -176,7 +184,9 @@ const Settings = () => {
                 <div className="space-y-0.5">
                   <Label>Календарные исключения</Label>
                   <p className="text-sm text-muted-foreground">
-                    Настройка праздников, выходных и сокращённых рабочих дней
+                    {calendarExceptions.length > 0 
+                      ? `Настроено ${calendarExceptions.length} исключений (праздники, выходные, сокращённые дни)` 
+                      : "Настройка праздников, выходных и сокращённых рабочих дней"}
                   </p>
                 </div>
                 <Button 
