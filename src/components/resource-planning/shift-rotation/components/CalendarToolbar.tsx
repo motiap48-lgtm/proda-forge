@@ -535,6 +535,8 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             onAbsenceStatusFilterChange={onAbsenceStatusFilterChange}
             absenceTypeFilter={absenceTypeFilter}
             onAbsenceTypeFilterChange={onAbsenceTypeFilterChange}
+            hasActiveFilters={hasActiveFilters}
+            onResetFilters={onResetFilters}
           />
         </div>
       </div>
