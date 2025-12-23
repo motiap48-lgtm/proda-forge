@@ -526,7 +526,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
 
         {/* Collapsible Legend */}
         <div className="border-l pl-3 ml-1">
-          <CalendarLegend />
+          <CalendarLegend shiftColorMap={shiftColorMap} />
         </div>
       </div>
     </div>

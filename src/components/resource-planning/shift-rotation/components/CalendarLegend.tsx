@@ -8,9 +8,8 @@ import {
   Baby, 
   Calendar, 
   UserX,
-  Moon
+  Zap
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -18,6 +17,8 @@ import {
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { ShiftColors } from "../utils";
 
 interface LegendItem {
   icon?: React.ReactNode;
@@ -26,7 +27,11 @@ interface LegendItem {
   description?: string;
 }
 
-export const CalendarLegend = () => {
+interface CalendarLegendProps {
+  shiftColorMap?: Map<string, ShiftColors>;
+}
+
+export const CalendarLegend = ({ shiftColorMap }: CalendarLegendProps) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const calendarDays: LegendItem[] = [
@@ -46,6 +51,12 @@ export const CalendarLegend = () => {
       color: "bg-muted text-muted-foreground",
       label: "Выходной",
       description: "Выходной день по графику"
+    },
+    {
+      color: "border-2 border-dashed border-amber-400 bg-amber-50 text-amber-700",
+      icon: <Zap className="h-3 w-3" />,
+      label: "Изменён график",
+      description: "День с ручным изменением графика"
     },
   ];
 
@@ -88,29 +99,18 @@ export const CalendarLegend = () => {
     },
   ];
 
-  const shifts: LegendItem[] = [
-    {
-      color: "bg-blue-100 border-blue-300",
-      label: "Смена 1",
-      description: "Первая (дневная) смена"
-    },
-    {
-      color: "bg-amber-100 border-amber-300",
-      label: "Смена 2",
-      description: "Вторая (вечерняя) смена"
-    },
-    {
-      color: "bg-emerald-100 border-emerald-300",
-      label: "Смена 3",
-      description: "Третья (ночная) смена"
-    },
-    {
-      color: "bg-violet-100 border-violet-300",
-      icon: <Moon className="h-3 w-3" />,
-      label: "Смена 4+",
-      description: "Дополнительные смены"
-    },
-  ];
+  // Generate dynamic shifts from shiftColorMap
+  const dynamicShifts: LegendItem[] = React.useMemo(() => {
+    if (!shiftColorMap || shiftColorMap.size === 0) {
+      return [];
+    }
+
+    return Array.from(shiftColorMap.entries()).map(([name, colors]) => ({
+      color: cn(colors.bg, colors.text, colors.border),
+      label: name,
+      description: `Рабочая смена: ${name}`
+    }));
+  }, [shiftColorMap]);
 
   const LegendSection = ({ title, items }: { title: string; items: LegendItem[] }) => (
     <div className="space-y-2">
@@ -122,7 +122,7 @@ export const CalendarLegend = () => {
             className="flex items-center gap-1.5 text-xs"
             title={item.description}
           >
-            <span className={`inline-flex items-center justify-center w-5 h-5 rounded border ${item.color}`}>
+            <span className={cn("inline-flex items-center justify-center w-5 h-5 rounded border", item.color)}>
               {item.icon || null}
             </span>
             <span className="text-foreground/80">{item.label}</span>
@@ -149,7 +149,9 @@ export const CalendarLegend = () => {
         <div className="p-3 bg-muted/30 rounded-lg border space-y-4">
           <LegendSection title="Дни в календаре" items={calendarDays} />
           <LegendSection title="Типы отсутствий" items={absenceTypes} />
-          <LegendSection title="Смены" items={shifts} />
+          {dynamicShifts.length > 0 && (
+            <LegendSection title="Смены" items={dynamicShifts} />
+          )}
         </div>
       </CollapsibleContent>
     </Collapsible>
