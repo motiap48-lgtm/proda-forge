@@ -65,6 +65,8 @@ export const CalendarExceptionsTab = () => {
   const [editingException, setEditingException] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exceptionToDelete, setExceptionToDelete] = useState<any>(null);
+  const [deleteYearDialogOpen, setDeleteYearDialogOpen] = useState(false);
+  const [yearToDelete, setYearToDelete] = useState<string | null>(null);
   
   // Filters
   const [selectedYear, setSelectedYear] = useState<string>("all");
@@ -161,6 +163,26 @@ export const CalendarExceptionsTab = () => {
       deleteException.mutate(exceptionToDelete.id);
       setDeleteDialogOpen(false);
       setExceptionToDelete(null);
+    }
+  };
+
+  const handleDeleteYear = (year: string) => {
+    setYearToDelete(year);
+    setDeleteYearDialogOpen(true);
+  };
+
+  const confirmDeleteYear = async () => {
+    if (yearToDelete && exceptions) {
+      const exceptionsToDelete = exceptions.filter(
+        (e: any) => new Date(e.exception_date).getFullYear().toString() === yearToDelete
+      );
+      
+      for (const exception of exceptionsToDelete) {
+        await deleteException.mutateAsync(exception.id);
+      }
+      
+      setDeleteYearDialogOpen(false);
+      setYearToDelete(null);
     }
   };
 
@@ -305,11 +327,22 @@ export const CalendarExceptionsTab = () => {
         <div className="space-y-6">
           {Object.keys(groupedExceptions).sort((a, b) => Number(b) - Number(a)).map((year) => (
             <div key={year} className="space-y-3">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <CalendarDays className="h-5 w-5" />
-                {year} год
-                <Badge variant="secondary">{groupedExceptions[year].length}</Badge>
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5" />
+                  {year} год
+                  <Badge variant="secondary">{groupedExceptions[year].length}</Badge>
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => handleDeleteYear(year)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Удалить {year} год
+                </Button>
+              </div>
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {groupedExceptions[year].map((exception: any) => (
                   <Card key={exception.id} className="hover:shadow-md transition-shadow">
@@ -514,6 +547,32 @@ export const CalendarExceptionsTab = () => {
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
               Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Year Confirmation */}
+      <AlertDialog open={deleteYearDialogOpen} onOpenChange={setDeleteYearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить все исключения за {yearToDelete} год?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Будет удалено{" "}
+              {yearToDelete && exceptions
+                ? exceptions.filter((e: any) => new Date(e.exception_date).getFullYear().toString() === yearToDelete).length
+                : 0}{" "}
+              исключений календаря.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteYear} 
+              className="bg-destructive text-destructive-foreground"
+              disabled={deleteException.isPending}
+            >
+              {deleteException.isPending ? "Удаление..." : "Удалить все"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
