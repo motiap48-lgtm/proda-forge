@@ -8,7 +8,8 @@ import {
   Baby, 
   Calendar, 
   UserX,
-  Zap
+  Zap,
+  Clock
 } from "lucide-react";
 import {
   Collapsible,
@@ -19,19 +20,41 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ShiftColors } from "../utils";
+import type { AbsenceStatusFilter, AbsenceTypeFilter } from "./CalendarToolbar";
+
+interface ShiftInfo {
+  name: string;
+  colors: ShiftColors;
+  startTime?: string;
+  endTime?: string;
+}
 
 interface LegendItem {
   icon?: React.ReactNode;
   color?: string;
   label: string;
   description?: string;
+  onClick?: () => void;
+  isActive?: boolean;
 }
 
 interface CalendarLegendProps {
   shiftColorMap?: Map<string, ShiftColors>;
+  shiftDetails?: Map<string, { startTime: string; endTime: string }>;
+  absenceStatusFilter?: AbsenceStatusFilter;
+  onAbsenceStatusFilterChange?: (filter: AbsenceStatusFilter) => void;
+  absenceTypeFilter?: AbsenceTypeFilter;
+  onAbsenceTypeFilterChange?: (filter: AbsenceTypeFilter) => void;
 }
 
-export const CalendarLegend = ({ shiftColorMap }: CalendarLegendProps) => {
+export const CalendarLegend = ({ 
+  shiftColorMap,
+  shiftDetails,
+  absenceStatusFilter,
+  onAbsenceStatusFilterChange,
+  absenceTypeFilter,
+  onAbsenceTypeFilterChange
+}: CalendarLegendProps) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const calendarDays: LegendItem[] = [
@@ -65,62 +88,85 @@ export const CalendarLegend = ({ shiftColorMap }: CalendarLegendProps) => {
       color: "bg-emerald-500",
       icon: <Briefcase className="h-3 w-3 text-white" />,
       label: "Отпуск",
-      description: "Ежегодный оплачиваемый отпуск"
+      description: "Ежегодный оплачиваемый отпуск",
+      isActive: absenceTypeFilter === "annual_leave",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "annual_leave" ? "all" : "annual_leave")
     },
     {
       color: "bg-rose-500",
       icon: <HeartPulse className="h-3 w-3 text-white" />,
       label: "Больничный",
-      description: "Временная нетрудоспособность"
+      description: "Временная нетрудоспособность",
+      isActive: absenceTypeFilter === "sick_leave",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "sick_leave" ? "all" : "sick_leave")
     },
     {
       color: "bg-sky-500",
       icon: <Plane className="h-3 w-3 text-white" />,
       label: "Командировка",
-      description: "Служебная командировка"
+      description: "Служебная командировка",
+      isActive: absenceTypeFilter === "business_trip",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "business_trip" ? "all" : "business_trip")
     },
     {
       color: "bg-violet-500",
       icon: <Baby className="h-3 w-3 text-white" />,
       label: "Декрет",
-      description: "Отпуск по уходу за ребёнком"
+      description: "Отпуск по уходу за ребёнком",
+      isActive: absenceTypeFilter === "maternity_leave",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "maternity_leave" ? "all" : "maternity_leave")
     },
     {
       color: "bg-amber-500",
       icon: <Calendar className="h-3 w-3 text-white" />,
       label: "Адм. отпуск",
-      description: "Административный отпуск"
+      description: "Административный отпуск",
+      isActive: absenceTypeFilter === "administrative_leave",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "administrative_leave" ? "all" : "administrative_leave")
     },
     {
       color: "bg-gray-500",
       icon: <UserX className="h-3 w-3 text-white" />,
       label: "Без сохр. з/п",
-      description: "Отпуск без сохранения заработной платы"
+      description: "Отпуск без сохранения заработной платы",
+      isActive: absenceTypeFilter === "unpaid_leave",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "unpaid_leave" ? "all" : "unpaid_leave")
     },
   ];
 
-  // Generate dynamic shifts from shiftColorMap
+  // Generate dynamic shifts from shiftColorMap with time info
   const dynamicShifts: LegendItem[] = React.useMemo(() => {
     if (!shiftColorMap || shiftColorMap.size === 0) {
       return [];
     }
 
-    return Array.from(shiftColorMap.entries()).map(([name, colors]) => ({
-      color: cn(colors.bg, colors.text, colors.border),
-      label: name,
-      description: `Рабочая смена: ${name}`
-    }));
-  }, [shiftColorMap]);
+    return Array.from(shiftColorMap.entries()).map(([name, colors]) => {
+      const details = shiftDetails?.get(name);
+      const timeRange = details ? `${details.startTime} - ${details.endTime}` : "";
+      
+      return {
+        color: cn(colors.bg, colors.text, colors.border),
+        icon: <Clock className="h-3 w-3" />,
+        label: name,
+        description: timeRange ? `${name}: ${timeRange}` : `Рабочая смена: ${name}`
+      };
+    });
+  }, [shiftColorMap, shiftDetails]);
 
-  const LegendSection = ({ title, items }: { title: string; items: LegendItem[] }) => (
+  const LegendSection = ({ title, items, interactive }: { title: string; items: LegendItem[]; interactive?: boolean }) => (
     <div className="space-y-2">
       <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
       <div className="flex flex-wrap gap-2">
         {items.map((item, index) => (
           <div
             key={index}
-            className="flex items-center gap-1.5 text-xs"
+            className={cn(
+              "flex items-center gap-1.5 text-xs",
+              interactive && item.onClick && "cursor-pointer hover:opacity-80 transition-opacity",
+              item.isActive && "ring-2 ring-primary ring-offset-1 rounded"
+            )}
             title={item.description}
+            onClick={item.onClick}
           >
             <span className={cn("inline-flex items-center justify-center w-5 h-5 rounded border", item.color)}>
               {item.icon || null}
@@ -131,6 +177,44 @@ export const CalendarLegend = ({ shiftColorMap }: CalendarLegendProps) => {
       </div>
     </div>
   );
+
+  // Shift section with time
+  const ShiftSection = () => {
+    if (!shiftColorMap || shiftColorMap.size === 0) return null;
+
+    return (
+      <div className="space-y-2">
+        <h4 className="text-xs font-medium text-muted-foreground">Смены</h4>
+        <div className="flex flex-wrap gap-3">
+          {Array.from(shiftColorMap.entries()).map(([name, colors]) => {
+            const details = shiftDetails?.get(name);
+            const timeRange = details ? `${details.startTime} - ${details.endTime}` : "";
+            
+            return (
+              <div
+                key={name}
+                className="flex items-center gap-2 text-xs"
+                title={timeRange ? `${name}: ${timeRange}` : name}
+              >
+                <span className={cn(
+                  "inline-flex items-center justify-center px-2 py-1 rounded border font-medium",
+                  colors.bg, colors.text, colors.border
+                )}>
+                  {name}
+                </span>
+                {timeRange && (
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {timeRange}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -148,10 +232,12 @@ export const CalendarLegend = ({ shiftColorMap }: CalendarLegendProps) => {
       <CollapsibleContent className="mt-2">
         <div className="p-3 bg-muted/30 rounded-lg border space-y-4">
           <LegendSection title="Дни в календаре" items={calendarDays} />
-          <LegendSection title="Типы отсутствий" items={absenceTypes} />
-          {dynamicShifts.length > 0 && (
-            <LegendSection title="Смены" items={dynamicShifts} />
-          )}
+          <LegendSection 
+            title="Типы отсутствий (клик для фильтра)" 
+            items={absenceTypes} 
+            interactive={!!onAbsenceTypeFilterChange}
+          />
+          <ShiftSection />
         </div>
       </CollapsibleContent>
     </Collapsible>

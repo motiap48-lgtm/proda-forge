@@ -161,6 +161,27 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     calendarExceptions,
   });
 
+  // Generate shift details with time info
+  const shiftDetails = useMemo(() => {
+    const details = new Map<string, { startTime: string; endTime: string }>();
+    
+    filteredOperators.forEach(op => {
+      const shifts = op.work_schedules?.work_schedule_shifts;
+      if (shifts) {
+        shifts.forEach((shift: any) => {
+          if (!details.has(shift.shift_name)) {
+            details.set(shift.shift_name, {
+              startTime: shift.start_time?.slice(0, 5) || "00:00",
+              endTime: shift.end_time?.slice(0, 5) || "00:00"
+            });
+          }
+        });
+      }
+    });
+    
+    return details;
+  }, [filteredOperators]);
+
   // Group operators by their schedule
   const groupedBySchedule = useMemo(() => {
     const groups = new Map<string, any[]>();
@@ -660,6 +681,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           onComparisonPeriodChange={setComparisonPeriod}
           comparisonTotal={comparisonTotal}
           shiftColorMap={shiftColorMap}
+          shiftDetails={shiftDetails}
           isAllExpanded={isAllExpanded}
           isAllCollapsed={isAllCollapsed}
           onExpandAll={expandAll}

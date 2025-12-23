@@ -42,6 +42,7 @@ interface CalendarToolbarProps {
   onComparisonPeriodChange: (period: PeriodType | null) => void;
   comparisonTotal: { hours: number; minutes: number } | null;
   shiftColorMap: Map<string, ShiftColors>;
+  shiftDetails?: Map<string, { startTime: string; endTime: string }>;
   isAllExpanded: boolean;
   isAllCollapsed: boolean;
   onExpandAll: () => void;
@@ -86,6 +87,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onComparisonPeriodChange,
   comparisonTotal,
   shiftColorMap,
+  shiftDetails,
   isAllExpanded,
   isAllCollapsed,
   onExpandAll,
@@ -526,7 +528,14 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
 
         {/* Collapsible Legend */}
         <div className="border-l pl-3 ml-1">
-          <CalendarLegend shiftColorMap={shiftColorMap} />
+          <CalendarLegend 
+            shiftColorMap={shiftColorMap} 
+            shiftDetails={shiftDetails}
+            absenceStatusFilter={absenceStatusFilter}
+            onAbsenceStatusFilterChange={onAbsenceStatusFilterChange}
+            absenceTypeFilter={absenceTypeFilter}
+            onAbsenceTypeFilterChange={onAbsenceTypeFilterChange}
+          />
         </div>
       </div>
     </div>
