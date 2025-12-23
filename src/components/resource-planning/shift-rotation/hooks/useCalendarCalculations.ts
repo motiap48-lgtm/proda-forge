@@ -207,18 +207,9 @@ export const useCalendarCalculations = ({
     
     // If it's a shortened day
     if (exception && exception.exception_type === "shortened_day") {
-      // If absolute value is specified, use it
-      if (exception.reduced_hours != null && exception.reduced_hours > 0) {
-        const reducedMinutes = exception.reduced_hours * 60;
-        const actualMinutes = Math.min(reducedMinutes, normalNetMinutes);
-        return { 
-          minutes: actualMinutes, 
-          isShortenedDay: true, 
-          reductionMinutes: normalNetMinutes - actualMinutes 
-        };
-      }
-      
-      // Use schedule-specific reduction_hours if available, otherwise use exception value
+      // ALWAYS use schedule-specific reduction_hours for relative reduction
+      // The reduced_hours field in calendar_exceptions is for display/reference only (e.g., for 8-hour schedules)
+      // Each schedule has its own reduction_hours that should be applied
       const scheduleReductionHours = operator.work_schedules?.reduction_hours;
       const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
       const reductionMinutes = reductionHours * 60;
