@@ -23,6 +23,8 @@ interface TreeNodeProps {
   searchQuery?: string;
   expandToLevel?: number;
   collapseToLevel?: number;
+  expandTrigger?: number;
+  collapseTrigger?: number;
   allSpecifications: any[];
 }
 
@@ -34,6 +36,8 @@ interface WhereUsedNodeProps {
   searchQuery?: string;
   expandToLevel?: number;
   collapseToLevel?: number;
+  expandTrigger?: number;
+  collapseTrigger?: number;
   allSpecifications: any[];
 }
 
@@ -109,28 +113,28 @@ const checkDescendantsMatch = (
   return false;
 };
 
-const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expandToLevel, collapseToLevel, allSpecifications }: WhereUsedNodeProps) => {
+const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expandToLevel, collapseToLevel, expandTrigger, collapseTrigger, allSpecifications }: WhereUsedNodeProps) => {
   const [isExpanded, setIsExpanded] = useState(level === 0);
-  const lastExpandToLevel = useRef<number | undefined>(undefined);
-  const lastCollapseToLevel = useRef<number | undefined>(undefined);
+  const lastExpandTrigger = useRef<number | undefined>(undefined);
+  const lastCollapseTrigger = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    if (expandToLevel !== undefined && expandToLevel !== lastExpandToLevel.current) {
-      lastExpandToLevel.current = expandToLevel;
+    if (expandTrigger !== undefined && expandTrigger !== lastExpandTrigger.current && expandToLevel !== undefined) {
+      lastExpandTrigger.current = expandTrigger;
       if (level < expandToLevel) {
         setIsExpanded(true);
       }
     }
-  }, [expandToLevel, level]);
+  }, [expandTrigger, expandToLevel, level]);
 
   useEffect(() => {
-    if (collapseToLevel !== undefined && collapseToLevel !== lastCollapseToLevel.current) {
-      lastCollapseToLevel.current = collapseToLevel;
+    if (collapseTrigger !== undefined && collapseTrigger !== lastCollapseTrigger.current && collapseToLevel !== undefined) {
+      lastCollapseTrigger.current = collapseTrigger;
       if (level >= collapseToLevel && level > 0) {
         setIsExpanded(false);
       }
     }
-  }, [collapseToLevel, level]);
+  }, [collapseTrigger, collapseToLevel, level]);
 
   // Find all specifications that use this product as a material
   const parentProducts = useMemo(() => {
@@ -235,6 +239,8 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
             searchQuery={searchQuery}
             expandToLevel={expandToLevel}
             collapseToLevel={collapseToLevel}
+            expandTrigger={expandTrigger}
+            collapseTrigger={collapseTrigger}
             allSpecifications={allSpecifications}
           />
         );
@@ -243,28 +249,28 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
   );
 };
 
-const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQuery = "", expandToLevel, collapseToLevel, allSpecifications }: TreeNodeProps) => {
+const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQuery = "", expandToLevel, collapseToLevel, expandTrigger, collapseTrigger, allSpecifications }: TreeNodeProps) => {
   const [isExpanded, setIsExpanded] = useState(level === 0);
-  const lastExpandToLevel = useRef<number | undefined>(undefined);
-  const lastCollapseToLevel = useRef<number | undefined>(undefined);
+  const lastExpandTrigger = useRef<number | undefined>(undefined);
+  const lastCollapseTrigger = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    if (expandToLevel !== undefined && expandToLevel !== lastExpandToLevel.current) {
-      lastExpandToLevel.current = expandToLevel;
+    if (expandTrigger !== undefined && expandTrigger !== lastExpandTrigger.current && expandToLevel !== undefined) {
+      lastExpandTrigger.current = expandTrigger;
       if (level < expandToLevel) {
         setIsExpanded(true);
       }
     }
-  }, [expandToLevel, level]);
+  }, [expandTrigger, expandToLevel, level]);
 
   useEffect(() => {
-    if (collapseToLevel !== undefined && collapseToLevel !== lastCollapseToLevel.current) {
-      lastCollapseToLevel.current = collapseToLevel;
+    if (collapseTrigger !== undefined && collapseTrigger !== lastCollapseTrigger.current && collapseToLevel !== undefined) {
+      lastCollapseTrigger.current = collapseTrigger;
       if (level >= collapseToLevel && level > 0) {
         setIsExpanded(false);
       }
     }
-  }, [collapseToLevel, level]);
+  }, [collapseTrigger, collapseToLevel, level]);
 
   const specification = allSpecifications?.find(
     (spec) => spec.product_id === productId && spec.is_active
@@ -395,6 +401,8 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
           searchQuery={searchQuery}
           expandToLevel={expandToLevel}
           collapseToLevel={collapseToLevel}
+          expandTrigger={expandTrigger}
+          collapseTrigger={collapseTrigger}
           allSpecifications={allSpecifications}
         />
       ))}
@@ -574,6 +582,8 @@ export const ProductTreeDialog = ({
               searchQuery={searchQuery}
               expandToLevel={effectiveExpandToLevel}
               collapseToLevel={effectiveCollapseToLevel}
+              expandTrigger={expandTrigger}
+              collapseTrigger={collapseTrigger}
               allSpecifications={allSpecifications || []}
             />
           ) : searchQuery && matchingProductsForWhereUsed.length > 0 ? (
@@ -588,6 +598,8 @@ export const ProductTreeDialog = ({
                   searchQuery=""
                   expandToLevel={effectiveExpandToLevel}
                   collapseToLevel={effectiveCollapseToLevel}
+                  expandTrigger={expandTrigger}
+                  collapseTrigger={collapseTrigger}
                   allSpecifications={allSpecifications || []}
                 />
               ))}
@@ -604,6 +616,8 @@ export const ProductTreeDialog = ({
               searchQuery=""
               expandToLevel={effectiveExpandToLevel}
               collapseToLevel={effectiveCollapseToLevel}
+              expandTrigger={expandTrigger}
+              collapseTrigger={collapseTrigger}
               allSpecifications={allSpecifications || []}
             />
           )}
