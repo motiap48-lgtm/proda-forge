@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, addDays, startOfMonth, getDaysInMonth } from "date-fns";
+import { format, addDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Clock, Check, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -124,7 +123,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-lg h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
@@ -145,7 +144,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
           </Button>
         </div>
         
-        <ScrollArea className="flex-1 -mx-6 px-6 min-h-0" style={{ maxHeight: 'calc(85vh - 200px)' }}>
+        <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
           <div className="space-y-1 py-2">
             {days.map(day => {
               const dateStr = format(day, "yyyy-MM-dd");
@@ -196,7 +195,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
         
         <div className="flex items-center justify-between pt-4 border-t">
           <div className="text-sm space-y-1">
