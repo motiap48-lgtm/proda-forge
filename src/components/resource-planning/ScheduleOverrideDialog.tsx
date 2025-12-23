@@ -230,7 +230,7 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
                 <SelectTrigger>
                   <SelectValue placeholder="По умолчанию" />
                 </SelectTrigger>
-                <SelectContent position="popper" className="z-[200]">
+                <SelectContent position="popper">
                   <SelectItem value="">По умолчанию</SelectItem>
                   {shifts.map((shift) => (
                     <SelectItem key={shift.shift_number} value={shift.shift_number.toString()}>
@@ -249,7 +249,7 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper" className="z-[200]">
+              <SelectContent position="popper">
                 {Object.entries(OVERRIDE_REASON_LABELS).map(([key, { label, icon }]) => (
                   <SelectItem key={key} value={key}>
                     {icon} {label}

@@ -424,7 +424,7 @@ export const CalendarExceptionsTab = () => {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="z-[200]">
+                  <SelectContent>
                     <SelectItem value="holiday">Праздник</SelectItem>
                     <SelectItem value="shortened_day">Сокращённый день</SelectItem>
                     <SelectItem value="extra_working_day">Рабочий день (перенос)</SelectItem>
@@ -442,7 +442,7 @@ export const CalendarExceptionsTab = () => {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="z-[200]">
+                  <SelectContent>
                     <SelectItem value="off">Выходной</SelectItem>
                     <SelectItem value="working">Рабочий</SelectItem>
                   </SelectContent>

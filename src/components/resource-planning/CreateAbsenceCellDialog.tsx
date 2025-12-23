@@ -191,7 +191,7 @@ export const CreateAbsenceCellDialog = ({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-              <SelectContent position="popper" className="z-[200]">
+              <SelectContent position="popper">
                   {Object.entries(ABSENCE_TYPE_LABELS).map(([key, { label, icon }]) => {
                     // Прогул недоступен для будущих дат
                     const isDisabled = key === "unauthorized_absence" && isDateInFuture;
@@ -222,7 +222,7 @@ export const CreateAbsenceCellDialog = ({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent position="popper" className="z-[200]">
+                <SelectContent position="popper">
                   {Object.entries(ABSENCE_STATUS_LABELS).map(([key, { label }]) => (
                     <SelectItem key={key} value={key}>
                       {label}
