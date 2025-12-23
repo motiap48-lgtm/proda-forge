@@ -114,9 +114,16 @@ const checkDescendantsMatch = (
 };
 
 const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expandToLevel, collapseToLevel, expandTrigger, collapseTrigger, allSpecifications }: WhereUsedNodeProps) => {
-  const [isExpanded, setIsExpanded] = useState(level === 0);
-  const lastExpandTrigger = useRef<number | undefined>(undefined);
-  const lastCollapseTrigger = useRef<number | undefined>(undefined);
+  // Determine initial expanded state based on expandToLevel if provided
+  const getInitialExpanded = () => {
+    if (level === 0) return true;
+    if (expandTrigger && expandToLevel !== undefined && level < expandToLevel) return true;
+    return false;
+  };
+  
+  const [isExpanded, setIsExpanded] = useState(getInitialExpanded);
+  const lastExpandTrigger = useRef<number | undefined>(expandTrigger);
+  const lastCollapseTrigger = useRef<number | undefined>(collapseTrigger);
 
   useEffect(() => {
     if (expandTrigger !== undefined && expandTrigger !== lastExpandTrigger.current && expandToLevel !== undefined) {
@@ -135,6 +142,13 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
       }
     }
   }, [collapseTrigger, collapseToLevel, level]);
+  
+  // Force expand when expandTrigger changes and level is within range (for newly mounted nodes)
+  useEffect(() => {
+    if (expandTrigger && expandToLevel !== undefined && level < expandToLevel) {
+      setIsExpanded(true);
+    }
+  }, []);
 
   // Find all specifications that use this product as a material
   const parentProducts = useMemo(() => {
@@ -250,9 +264,16 @@ const WhereUsedNode = ({ productId, productData, level, searchQuery = "", expand
 };
 
 const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQuery = "", expandToLevel, collapseToLevel, expandTrigger, collapseTrigger, allSpecifications }: TreeNodeProps) => {
-  const [isExpanded, setIsExpanded] = useState(level === 0);
-  const lastExpandTrigger = useRef<number | undefined>(undefined);
-  const lastCollapseTrigger = useRef<number | undefined>(undefined);
+  // Determine initial expanded state based on expandToLevel if provided
+  const getInitialExpanded = () => {
+    if (level === 0) return true;
+    if (expandTrigger && expandToLevel !== undefined && level < expandToLevel) return true;
+    return false;
+  };
+  
+  const [isExpanded, setIsExpanded] = useState(getInitialExpanded);
+  const lastExpandTrigger = useRef<number | undefined>(expandTrigger);
+  const lastCollapseTrigger = useRef<number | undefined>(collapseTrigger);
 
   useEffect(() => {
     if (expandTrigger !== undefined && expandTrigger !== lastExpandTrigger.current && expandToLevel !== undefined) {
@@ -271,6 +292,13 @@ const TreeNode = ({ productId, productData, quantity, wasteRate, level, searchQu
       }
     }
   }, [collapseTrigger, collapseToLevel, level]);
+  
+  // Force expand when expandTrigger changes and level is within range (for newly mounted nodes)
+  useEffect(() => {
+    if (expandTrigger && expandToLevel !== undefined && level < expandToLevel) {
+      setIsExpanded(true);
+    }
+  }, []);
 
   const specification = allSpecifications?.find(
     (spec) => spec.product_id === productId && spec.is_active
