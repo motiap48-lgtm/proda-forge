@@ -1226,6 +1226,7 @@ export const ScheduleGroup = memo(ScheduleGroupComponent, (prevProps, nextProps)
     prevProps.isResizing === nextProps.isResizing &&
     prevProps.syncingScheduleId === nextProps.syncingScheduleId &&
     prevProps.days.length === nextProps.days.length &&
-    prevProps.operators === nextProps.operators
+    prevProps.operators === nextProps.operators &&
+    prevProps.timesheets === nextProps.timesheets
   );
 });

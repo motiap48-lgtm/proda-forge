@@ -770,6 +770,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   absences={absences}
                   scheduleOverrides={scheduleOverrides}
                   calendarExceptions={calendarExceptions}
+                  timesheets={timesheets}
                   days={days}
                   months={months}
                   period={period}
@@ -792,6 +793,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   calculateGroupStats={calculateGroupStats}
                   calculateYearlyTotal={calculateYearlyTotal}
                   calculateGroupYearlyTotal={calculateGroupYearlyTotal}
+                  getDayMinutes={getDayMinutes}
                   printRef={printRef}
                   isFirstGroup={index === 0}
                 />
