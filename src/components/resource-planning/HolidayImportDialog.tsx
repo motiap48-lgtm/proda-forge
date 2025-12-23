@@ -42,6 +42,8 @@ interface HolidayImportDialogProps {
 export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogProps) => {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
+  const [customYear, setCustomYear] = useState<string>("");
+  const [showCustomYear, setShowCustomYear] = useState(false);
   const [selectedHolidays, setSelectedHolidays] = useState<Set<string>>(new Set());
   const [importType, setImportType] = useState<"all" | "holidays" | "shortened">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,10 +51,20 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
   const { data: existingExceptions = [] } = useCalendarExceptions();
   const bulkCreate = useBulkCreateCalendarExceptions();
 
-  // Get years for selection (current year + 10 years ahead)
+  // Get years for selection (current year + 110 years ahead)
   const availableYears = useMemo(() => {
-    return Array.from({ length: 11 }, (_, i) => currentYear + i);
+    return Array.from({ length: 111 }, (_, i) => currentYear + i);
   }, [currentYear]);
+
+  const handleCustomYearApply = () => {
+    const year = parseInt(customYear);
+    if (!isNaN(year) && year >= 1900 && year <= 2200) {
+      setSelectedYear(year.toString());
+      setShowCustomYear(false);
+      setCustomYear("");
+      setSelectedHolidays(new Set());
+    }
+  };
 
   // Get holidays for selected year
   const holidays = useMemo(() => {
@@ -180,18 +192,57 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
         <div className="flex flex-wrap gap-4 items-end">
           <div className="space-y-2">
             <Label>Год</Label>
-            <Select value={selectedYear} onValueChange={handleYearChange}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {availableYears.map(year => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              {showCustomYear ? (
+                <div className="flex gap-1">
+                  <Input
+                    type="number"
+                    value={customYear}
+                    onChange={(e) => setCustomYear(e.target.value)}
+                    placeholder="Введите год"
+                    className="w-[120px]"
+                    min={1900}
+                    max={2200}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCustomYearApply();
+                      if (e.key === "Escape") {
+                        setShowCustomYear(false);
+                        setCustomYear("");
+                      }
+                    }}
+                  />
+                  <Button size="icon" variant="ghost" onClick={handleCustomYearApply} disabled={!customYear}>
+                    ✓
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => { setShowCustomYear(false); setCustomYear(""); }}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Select value={selectedYear} onValueChange={handleYearChange}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {availableYears.map(year => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowCustomYear(true)}
+                    title="Ввести год вручную"
+                  >
+                    ...
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
