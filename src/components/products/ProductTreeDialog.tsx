@@ -554,7 +554,7 @@ export const ProductTreeDialog = ({
                   Развернуть
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent className="z-[200]">
                 <DropdownMenuItem onClick={() => handleExpandToLevel(1)}>
                   До уровня 1
                 </DropdownMenuItem>
@@ -583,7 +583,7 @@ export const ProductTreeDialog = ({
                   Свернуть
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent className="z-[200]">
                 <DropdownMenuItem onClick={() => handleCollapseToLevel(1)}>
                   До уровня 1
                 </DropdownMenuItem>
