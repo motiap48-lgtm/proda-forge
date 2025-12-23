@@ -59,6 +59,7 @@ interface CalendarLegendProps {
   absenceTypeFilter?: AbsenceTypeFilter;
   onAbsenceTypeFilterChange?: (filter: AbsenceTypeFilter) => void;
   hasActiveFilters?: boolean;
+  activeFiltersCount?: number; // Number of active filters
   onResetFilters?: () => void;
   defaultReductionHours?: number; // Default reduction hours for shortened days
 }
@@ -78,6 +79,7 @@ export const CalendarLegend = ({
   absenceTypeFilter,
   onAbsenceTypeFilterChange,
   hasActiveFilters,
+  activeFiltersCount = 0,
   onResetFilters,
   defaultReductionHours = 1
 }: CalendarLegendProps) => {
@@ -322,9 +324,9 @@ export const CalendarLegend = ({
         >
           <HelpCircle className="h-3.5 w-3.5" />
           Легенда
-          {hasActiveFilters && (
-            <Badge variant="secondary" className="h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-amber-500 text-white">
-              !
+          {hasActiveFilters && activeFiltersCount > 0 && (
+            <Badge variant="secondary" className="h-4 min-w-4 px-1 flex items-center justify-center text-[10px] bg-amber-500 text-white rounded-full">
+              {activeFiltersCount}
             </Badge>
           )}
           {isOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}

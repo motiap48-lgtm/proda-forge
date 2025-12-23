@@ -247,8 +247,18 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     setCollapsedGroups(new Set());
   };
 
-  // Check if any filters are active
+  // Check if any filters are active and count them
   const hasActiveFilters = scheduleFilter !== "all" || showOnlyCyclic || rotationFilter !== "all" || absenceStatusFilter !== "all" || absenceTypeFilter !== "all";
+  
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (scheduleFilter !== "all") count++;
+    if (showOnlyCyclic) count++;
+    if (rotationFilter !== "all") count++;
+    if (absenceStatusFilter !== "all") count++;
+    if (absenceTypeFilter !== "all") count++;
+    return count;
+  }, [scheduleFilter, showOnlyCyclic, rotationFilter, absenceStatusFilter, absenceTypeFilter]);
 
   // Reset all filters
   const resetFilters = () => {
@@ -723,6 +733,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
           hasActiveFilters={hasActiveFilters}
+          activeFiltersCount={activeFiltersCount}
           onResetFilters={resetFilters}
           onExportAbsences={() => setShowExportAbsenceDialog(true)}
           defaultReductionHours={defaultReductionHours}
