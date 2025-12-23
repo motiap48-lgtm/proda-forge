@@ -106,11 +106,18 @@ const getOperatorScheduleHours = async (operatorId: string): Promise<number> => 
   return 8; // Default fallback
 };
 
+// Extended absence type with optional requiresCompensation flag
+export interface CreateAbsenceParams extends Omit<OperatorAbsence, "id" | "created_at" | "updated_at"> {
+  requiresCompensation?: boolean;
+}
+
 export const useCreateOperatorAbsence = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (absence: Omit<OperatorAbsence, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (params: CreateAbsenceParams) => {
+      const { requiresCompensation, ...absence } = params;
+      
       // Create the absence record
       const { data, error } = await supabase
         .from("operator_absences")
@@ -120,8 +127,12 @@ export const useCreateOperatorAbsence = () => {
 
       if (error) throw error;
 
-      // If this is a compensable absence type and approved, create compensation records
-      if (isCompensableAbsenceType(absence.absence_type) && absence.status === 'approved') {
+      // Determine if compensation is needed:
+      // - Either the type is in COMPENSABLE_ABSENCE_TYPES (e.g. unauthorized_absence)
+      // - Or the user manually checked requiresCompensation
+      const needsCompensation = (isCompensableAbsenceType(absence.absence_type) || requiresCompensation) && absence.status === 'approved';
+
+      if (needsCompensation) {
         const scheduleHours = await getOperatorScheduleHours(absence.operator_id);
         
         // Calculate number of days
@@ -147,16 +158,15 @@ export const useCreateOperatorAbsence = () => {
         }
       }
 
-      return data;
+      return { data, requiresCompensation: needsCompensation };
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
       
-      const requiresCompensation = isCompensableAbsenceType(variables.absence_type) && variables.status === 'approved';
-      toast.success(requiresCompensation 
+      toast.success(result.requiresCompensation 
         ? "Отсутствие добавлено (с требованием отработки)" 
         : "Отсутствие добавлено"
       );
