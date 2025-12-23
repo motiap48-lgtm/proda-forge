@@ -148,7 +148,7 @@ export const useCreateAbsenceCompensation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
-      toast.success("Прогул добавлен для отработки");
+      toast.success("Отсутствие добавлено для отработки");
     },
     onError: (error: any) => {
       toast.error(`Ошибка: ${error.message}`);

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle, Merge } from "lucide-react";
+import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle, Merge, Clock } from "lucide-react";
 import {
   useOperatorAbsences,
   useCreateOperatorAbsence,
@@ -30,6 +30,7 @@ import {
   useMergeOperatorAbsences,
   ABSENCE_TYPE_LABELS,
   ABSENCE_STATUS_LABELS,
+  isCompensableAbsenceType,
   type OperatorAbsence,
 } from "@/hooks/useOperatorAbsences";
 import {
@@ -207,6 +208,14 @@ export const OperatorAbsenceDialog = ({
         <div className="flex items-center gap-2 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
           Дата окончания не может быть раньше даты начала
+        </div>
+      )}
+
+      {/* Compensation info */}
+      {isCompensableAbsenceType(formData.absence_type) && formData.status === 'approved' && !editingAbsence && (
+        <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
+          <Clock className="h-4 w-4" />
+          Этот тип отсутствия требует отработки
         </div>
       )}
 
