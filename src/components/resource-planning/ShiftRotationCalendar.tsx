@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { User } from "lucide-react";
 import { format, addDays, getDaysInMonth, getDay, isToday } from "date-fns";
 import { ru } from "date-fns/locale";
-import { useUpdateOperator } from "@/hooks/useResourcePlanning";
+import { useUpdateOperator, useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useAllOperatorAbsences, isDateInAbsence } from "@/hooks/useOperatorAbsences";
 import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ interface ShiftRotationCalendarProps {
 
 export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
   const { data: absences = [] } = useAllOperatorAbsences();
+  const { data: calendarExceptions = [] } = useCalendarExceptions();
   const operatorIds = useMemo(() => operators.filter(op => op.is_active).map(op => op.id), [operators]);
   const { data: scheduleOverrides = [] } = useScheduleOverrides(operatorIds);
   const [period, setPeriod] = useState<PeriodType>(() => {
@@ -157,6 +158,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     endDate,
     absences,
     scheduleOverrides,
+    calendarExceptions,
   });
 
   // Group operators by their schedule

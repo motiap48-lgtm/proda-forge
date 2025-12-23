@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, CalendarDays, Edit, Trash2, X, CalendarOff, CalendarCheck, Clock } from "lucide-react";
+import { Plus, Search, CalendarDays, Edit, Trash2, X, CalendarOff, CalendarCheck, Clock, Download } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { HolidayImportDialog } from "./HolidayImportDialog";
 
 interface ExceptionFormData {
   exception_date: Date | null;
@@ -68,6 +69,7 @@ export const CalendarExceptionsTab = () => {
   // Filters
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   const [formData, setFormData] = useState<ExceptionFormData>({
     exception_date: null,
@@ -240,10 +242,16 @@ export const CalendarExceptionsTab = () => {
               </Button>
             )}
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Добавить исключение
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+              <Download className="h-4 w-4 mr-2" />
+              Импорт праздников РФ
+            </Button>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Добавить исключение
+            </Button>
+          </div>
         </div>
 
         {/* Filters row */}
@@ -510,6 +518,12 @@ export const CalendarExceptionsTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Holiday Import Dialog */}
+      <HolidayImportDialog 
+        open={showImportDialog} 
+        onOpenChange={setShowImportDialog} 
+      />
     </div>
   );
 };

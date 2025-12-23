@@ -750,3 +750,27 @@ export const useDeleteCalendarException = () => {
     },
   });
 };
+
+// Bulk create calendar exceptions
+export const useBulkCreateCalendarExceptions = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (exceptions: any[]) => {
+      const { data, error } = await supabase
+        .from("calendar_exceptions")
+        .insert(exceptions)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["calendar-exceptions"] });
+      toast.success(`Добавлено ${data?.length || 0} исключений`);
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};
