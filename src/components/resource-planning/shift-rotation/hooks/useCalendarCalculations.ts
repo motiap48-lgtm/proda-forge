@@ -12,6 +12,7 @@ export interface CalendarException {
   description?: string | null;
   is_working_day: boolean;
   reduced_hours?: number | null;
+  reduction_hours?: number | null; // New: hours to reduce from schedule
 }
 
 interface CalendarCalculationsProps {
@@ -184,30 +185,56 @@ export const useCalendarCalculations = ({
   };
 
   // Calculate working minutes for a specific day, considering calendar exceptions
-  const calculateDayMinutes = (operator: any, day: Date): number => {
+  const calculateDayMinutes = (operator: any, day: Date): { minutes: number; isShortenedDay: boolean; reductionMinutes: number } => {
     // Skip if operator is not available
-    if (!isOperatorAvailable(operator, day)) return 0;
+    if (!isOperatorAvailable(operator, day)) {
+      return { minutes: 0, isShortenedDay: false, reductionMinutes: 0 };
+    }
     
     const exception = getExceptionForDate(day);
     
     // Check if it's a holiday (non-working day)
     if (exception && !exception.is_working_day) {
-      return 0;
+      return { minutes: 0, isShortenedDay: false, reductionMinutes: 0 };
     }
     
     const shift = getShiftForDateWithOverride(operator, day);
-    if (!shift) return 0;
+    if (!shift) {
+      return { minutes: 0, isShortenedDay: false, reductionMinutes: 0 };
+    }
     
     const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
     
-    // If it's a shortened day, use reduced_hours
-    if (exception && exception.exception_type === "shortened_day" && exception.reduced_hours != null) {
-      const reducedMinutes = exception.reduced_hours * 60;
-      // Return the minimum of reduced hours or normal hours
-      return Math.min(reducedMinutes, normalNetMinutes);
+    // If it's a shortened day
+    if (exception && exception.exception_type === "shortened_day") {
+      // If absolute value is specified, use it
+      if (exception.reduced_hours != null && exception.reduced_hours > 0) {
+        const reducedMinutes = exception.reduced_hours * 60;
+        const actualMinutes = Math.min(reducedMinutes, normalNetMinutes);
+        return { 
+          minutes: actualMinutes, 
+          isShortenedDay: true, 
+          reductionMinutes: normalNetMinutes - actualMinutes 
+        };
+      }
+      
+      // Otherwise calculate based on reduction_hours (default 1 hour)
+      const reductionHours = exception.reduction_hours ?? 1;
+      const reductionMinutes = reductionHours * 60;
+      const actualMinutes = Math.max(0, normalNetMinutes - reductionMinutes);
+      return { 
+        minutes: actualMinutes, 
+        isShortenedDay: true, 
+        reductionMinutes 
+      };
     }
     
-    return normalNetMinutes;
+    return { minutes: normalNetMinutes, isShortenedDay: false, reductionMinutes: 0 };
+  };
+
+  // Simple version that returns just minutes (for backward compatibility)
+  const getDayMinutes = (operator: any, day: Date): number => {
+    return calculateDayMinutes(operator, day).minutes;
   };
 
   // Calculate hours for a specific month (with absence, override, and exception consideration)
@@ -218,7 +245,7 @@ export const useCalendarCalculations = ({
     
     for (let i = 0; i < daysInMonth; i++) {
       const day = addDays(monthStart, i);
-      totalMinutes += calculateDayMinutes(operator, day);
+      totalMinutes += getDayMinutes(operator, day);
     }
     
     return {
@@ -231,7 +258,7 @@ export const useCalendarCalculations = ({
   const calculateTotalHours = (operator: any): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     days.forEach(day => {
-      totalMinutes += calculateDayMinutes(operator, day);
+      totalMinutes += getDayMinutes(operator, day);
     });
     return {
       hours: Math.floor(totalMinutes / 60),
@@ -244,7 +271,7 @@ export const useCalendarCalculations = ({
     let totalMinutes = 0;
     ops.forEach(operator => {
       days.forEach(day => {
-        totalMinutes += calculateDayMinutes(operator, day);
+        totalMinutes += getDayMinutes(operator, day);
       });
     });
     return {
@@ -285,7 +312,7 @@ export const useCalendarCalculations = ({
         const shift = getShiftForDateWithOverride(operator, day);
         if (shift) {
           totalWorkingDays++;
-          totalMinutes += calculateDayMinutes(operator, day);
+          totalMinutes += getDayMinutes(operator, day);
         } else {
           totalOffDays++;
         }
@@ -342,5 +369,8 @@ export const useCalendarCalculations = ({
     calculateGroupYearlyTotal,
     isOperatorAvailable,
     getExceptionForDate,
+    calculateDayMinutes,
+    getDayMinutes,
+    getShiftForDateWithOverride,
   };
 };
