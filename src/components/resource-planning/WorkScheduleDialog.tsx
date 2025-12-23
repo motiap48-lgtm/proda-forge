@@ -88,6 +88,7 @@ export const WorkScheduleDialog = ({
     cycle_days_on: 2,
     cycle_days_off: 2,
     cycle_start_date: null as Date | null,
+    reduction_hours: 1,
     is_active: true,
   });
 
@@ -104,6 +105,7 @@ export const WorkScheduleDialog = ({
         cycle_days_on: schedule.cycle_days_on || 2,
         cycle_days_off: schedule.cycle_days_off || 2,
         cycle_start_date: schedule.cycle_start_date ? parseISO(schedule.cycle_start_date) : null,
+        reduction_hours: schedule.reduction_hours ?? 1,
         is_active: schedule.is_active ?? true,
       });
       
@@ -133,6 +135,7 @@ export const WorkScheduleDialog = ({
         cycle_days_on: 2,
         cycle_days_off: 2,
         cycle_start_date: null,
+        reduction_hours: 1,
         is_active: true,
       });
       setShifts([]);
@@ -453,7 +456,7 @@ export const WorkScheduleDialog = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="cycle_days_on">Рабочих дней</Label>
               <Input
@@ -477,11 +480,32 @@ export const WorkScheduleDialog = ({
                   setFormData({ ...formData, cycle_days_off: parseInt(e.target.value) || 0 })
                 }
               />
-          </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reduction_hours" className="flex items-center gap-1">
+                Сокр. на
+                <span className="text-xs text-muted-foreground">(часов)</span>
+              </Label>
+              <Input
+                id="reduction_hours"
+                type="number"
+                min={0}
+                max={4}
+                step={0.5}
+                value={formData.reduction_hours}
+                onChange={(e) =>
+                  setFormData({ ...formData, reduction_hours: parseFloat(e.target.value) || 1 })
+                }
+                title="На сколько часов сокращается рабочий день в предпраздничные дни"
+              />
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                Сокращение в предпраздничные дни
+              </p>
+            </div>
           
           {/* Show cycle_start_date only for cyclic schedules */}
           {formData.schedule_type === 'cyclic' && (
-            <div className="col-span-2 space-y-2">
+            <div className="col-span-3 space-y-2">
               <Label>Дата начала цикла</Label>
               <Popover>
                 <PopoverTrigger asChild>
