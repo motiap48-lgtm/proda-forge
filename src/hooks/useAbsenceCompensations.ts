@@ -350,3 +350,38 @@ export const useDeleteCompensationRecord = () => {
     },
   });
 };
+
+// Delete all absence compensations for an operator
+export const useDeleteAllOperatorCompensations = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (operatorId: string) => {
+      // First delete all compensation records for this operator
+      const { error: recordsError } = await supabase
+        .from("compensation_records")
+        .delete()
+        .eq("operator_id", operatorId);
+
+      if (recordsError) throw recordsError;
+
+      // Then delete all absence compensations
+      const { error: compensationsError } = await supabase
+        .from("absence_compensations")
+        .delete()
+        .eq("operator_id", operatorId);
+
+      if (compensationsError) throw compensationsError;
+
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      toast.success("Все записи отработки удалены");
+    },
+    onError: (error: any) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+};
