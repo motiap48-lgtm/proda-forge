@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users, Calendar, ExternalLink } from "lucide-react";
 import { MaterialCategoriesManagement } from "@/components/settings/MaterialCategoriesManagement";
 import { ContractorsManagement } from "@/components/settings/ContractorsManagement";
 import { CustomersManagement } from "@/components/settings/CustomersManagement";
@@ -20,10 +21,15 @@ import {
 } from "@/components/ui/select";
 
 const Settings = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState("ru");
+
+  const handleNavigateToCalendarExceptions = () => {
+    navigate("/planning/resources?tab=calendar");
+  };
 
   const handleSaveSettings = () => {
     toast.success("Настройки успешно сохранены");
@@ -150,6 +156,37 @@ const Settings = () => {
                     <SelectItem value="kk">Қазақша</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Calendar Exceptions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Производственный календарь
+              </CardTitle>
+              <CardDescription>
+                Праздники, сокращённые дни и другие календарные исключения влияют на расчёт рабочего времени
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Календарные исключения</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Настройка праздников, выходных и сокращённых рабочих дней
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={handleNavigateToCalendarExceptions}
+                  className="gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Перейти к календарю
+                </Button>
               </div>
             </CardContent>
           </Card>
