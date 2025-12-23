@@ -137,7 +137,7 @@ export const BulkScheduleOverrideDialog: React.FC<BulkScheduleOverrideDialogProp
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper" className="z-[200]">
+              <SelectContent position="popper">
                 {Object.entries(OVERRIDE_REASON_LABELS).map(([key, { label, icon }]) => (
                   <SelectItem key={key} value={key}>
                     {icon} {label}

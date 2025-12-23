@@ -155,7 +155,7 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
               <SelectTrigger className="w-[120px]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="z-[200]">
+              <SelectContent>
                 {availableYears.map(year => (
                   <SelectItem key={year} value={year.toString()}>
                     {year}
@@ -171,7 +171,7 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="z-[200]">
+              <SelectContent>
                 <SelectItem value="all">Все</SelectItem>
                 <SelectItem value="holidays">Только праздники</SelectItem>
                 <SelectItem value="shortened">Только сокращённые</SelectItem>
