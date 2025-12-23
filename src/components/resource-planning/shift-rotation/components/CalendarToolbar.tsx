@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import type { PeriodType, ShiftColors } from "../utils";
 
 export type AbsenceStatusFilter = "all" | "on_leave" | "sick" | "available";
+export type AbsenceTypeFilter = "all" | "annual_leave" | "sick_leave" | "administrative_leave" | "maternity_leave" | "unpaid_leave" | "business_trip" | "unauthorized_absence" | "other";
 
 interface CalendarToolbarProps {
   period: PeriodType;
@@ -32,6 +33,8 @@ interface CalendarToolbarProps {
   onRotationFilterChange: (filter: "all" | "enabled" | "disabled") => void;
   absenceStatusFilter?: AbsenceStatusFilter;
   onAbsenceStatusFilterChange?: (filter: AbsenceStatusFilter) => void;
+  absenceTypeFilter?: AbsenceTypeFilter;
+  onAbsenceTypeFilterChange?: (filter: AbsenceTypeFilter) => void;
   filteredOperatorsCount: number;
   grandTotal: { hours: number; minutes: number };
   comparisonPeriod: PeriodType | null;
@@ -74,6 +77,8 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onRotationFilterChange,
   absenceStatusFilter,
   onAbsenceStatusFilterChange,
+  absenceTypeFilter,
+  onAbsenceTypeFilterChange,
   filteredOperatorsCount,
   grandTotal,
   comparisonPeriod,
@@ -429,6 +434,32 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
               <SelectItem value="on_leave">🏖️ Сейчас в отпуске</SelectItem>
               <SelectItem value="sick">🏥 На больничном</SelectItem>
               <SelectItem value="available">✅ На работе</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Absence type filter */}
+        {onAbsenceTypeFilterChange && (
+          <Select 
+            value={absenceTypeFilter || "all"} 
+            onValueChange={(v) => onAbsenceTypeFilterChange(v as AbsenceTypeFilter)}
+          >
+            <SelectTrigger className={cn(
+              "w-[200px]",
+              absenceTypeFilter && absenceTypeFilter !== "all" && "border-orange-400 bg-orange-50 dark:bg-orange-900/20"
+            )}>
+              <SelectValue placeholder="Тип отсутствия" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все типы отсутствия</SelectItem>
+              <SelectItem value="annual_leave">🏖️ Ежегодный отпуск</SelectItem>
+              <SelectItem value="sick_leave">🏥 Больничный</SelectItem>
+              <SelectItem value="administrative_leave">📋 Административный</SelectItem>
+              <SelectItem value="maternity_leave">👶 Декретный отпуск</SelectItem>
+              <SelectItem value="unpaid_leave">💰 Без сохранения ЗП</SelectItem>
+              <SelectItem value="business_trip">✈️ Командировка</SelectItem>
+              <SelectItem value="unauthorized_absence">🚫 Прогул</SelectItem>
+              <SelectItem value="other">📝 Другое</SelectItem>
             </SelectContent>
           </Select>
         )}

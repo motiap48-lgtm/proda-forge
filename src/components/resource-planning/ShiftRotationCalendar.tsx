@@ -21,6 +21,7 @@ import {
   getCycleDayNumber,
   type PeriodType,
   type AbsenceStatusFilter,
+  type AbsenceTypeFilter,
 } from "./shift-rotation";
 import { OperatorAbsenceDialog } from "./OperatorAbsenceDialog";
 import { BulkAbsenceDialog } from "./BulkAbsenceDialog";
@@ -44,6 +45,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [showOnlyCyclic, setShowOnlyCyclic] = useState(false);
   const [rotationFilter, setRotationFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [absenceStatusFilter, setAbsenceStatusFilter] = useState<AbsenceStatusFilter>("all");
+  const [absenceTypeFilter, setAbsenceTypeFilter] = useState<AbsenceTypeFilter>("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
@@ -90,7 +92,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return Array.from(schedules).sort();
   }, [operatorsWithSchedules]);
 
-  // Filter operators by selected schedule, cyclic filter, rotation filter, and absence status
+  // Filter operators by selected schedule, cyclic filter, rotation filter, absence status, and absence type
   const filteredOperators = useMemo(() => {
     let result = operatorsWithSchedules;
     if (scheduleFilter !== "all") {
@@ -124,8 +126,17 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       });
     }
     
+    // Filter by specific absence type (today)
+    if (absenceTypeFilter !== "all") {
+      const today = new Date();
+      result = result.filter(op => {
+        const absence = isDateInAbsence(today, absences, op.id);
+        return absence && absence.absence_type === absenceTypeFilter;
+      });
+    }
+    
     return result;
-  }, [operatorsWithSchedules, scheduleFilter, showOnlyCyclic, rotationFilter, absenceStatusFilter, absences]);
+  }, [operatorsWithSchedules, scheduleFilter, showOnlyCyclic, rotationFilter, absenceStatusFilter, absenceTypeFilter, absences]);
 
   const {
     daysCount,
@@ -189,7 +200,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   };
 
   // Check if any filters are active
-  const hasActiveFilters = scheduleFilter !== "all" || showOnlyCyclic || rotationFilter !== "all" || absenceStatusFilter !== "all";
+  const hasActiveFilters = scheduleFilter !== "all" || showOnlyCyclic || rotationFilter !== "all" || absenceStatusFilter !== "all" || absenceTypeFilter !== "all";
 
   // Reset all filters
   const resetFilters = () => {
@@ -197,6 +208,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     setShowOnlyCyclic(false);
     setRotationFilter("all");
     setAbsenceStatusFilter("all");
+    setAbsenceTypeFilter("all");
   };
 
   // Handle period change
@@ -638,6 +650,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           onRotationFilterChange={setRotationFilter}
           absenceStatusFilter={absenceStatusFilter}
           onAbsenceStatusFilterChange={setAbsenceStatusFilter}
+          absenceTypeFilter={absenceTypeFilter}
+          onAbsenceTypeFilterChange={setAbsenceTypeFilter}
           filteredOperatorsCount={filteredOperators.length}
           grandTotal={grandTotal}
           comparisonPeriod={comparisonPeriod}
