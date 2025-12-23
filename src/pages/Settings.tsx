@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users, Calendar, ExternalLink } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users, Calendar, ExternalLink, Download, CalendarOff, Clock, CalendarCheck } from "lucide-react";
 import { MaterialCategoriesManagement } from "@/components/settings/MaterialCategoriesManagement";
 import { ContractorsManagement } from "@/components/settings/ContractorsManagement";
 import { CustomersManagement } from "@/components/settings/CustomersManagement";
 import { DistributionStrategySettings } from "@/components/settings/DistributionStrategySettings";
+import { HolidayImportDialog } from "@/components/resource-planning/HolidayImportDialog";
 import { useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import {
   Select,
@@ -29,6 +30,15 @@ const Settings = () => {
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState("ru");
+  const [showImportDialog, setShowImportDialog] = useState(false);
+
+  // Calculate statistics by type
+  const calendarStats = useMemo(() => {
+    const holidays = calendarExceptions.filter((e: any) => e.exception_type === "holiday" && !e.is_working_day).length;
+    const shortenedDays = calendarExceptions.filter((e: any) => e.exception_type === "shortened_day").length;
+    const extraWorkingDays = calendarExceptions.filter((e: any) => e.exception_type === "extra_working_day" || (e.exception_type === "holiday" && e.is_working_day)).length;
+    return { holidays, shortenedDays, extraWorkingDays, total: calendarExceptions.length };
+  }, [calendarExceptions]);
 
   const handleNavigateToCalendarExceptions = () => {
     navigate("/planning/resources?tab=calendar");
@@ -169,9 +179,9 @@ const Settings = () => {
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Производственный календарь
-                {calendarExceptions.length > 0 && (
+                {calendarStats.total > 0 && (
                   <Badge variant="secondary" className="ml-2">
-                    {calendarExceptions.length}
+                    {calendarStats.total}
                   </Badge>
                 )}
               </CardTitle>
@@ -180,26 +190,71 @@ const Settings = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
+              {/* Statistics by type */}
+              {calendarStats.total > 0 && (
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <CalendarOff className="h-4 w-4 text-rose-500" />
+                    <span className="text-muted-foreground">Праздники:</span>
+                    <Badge variant="outline" className="bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30">
+                      {calendarStats.holidays}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4 text-amber-500" />
+                    <span className="text-muted-foreground">Сокращённые:</span>
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                      {calendarStats.shortenedDays}
+                    </Badge>
+                  </div>
+                  {calendarStats.extraWorkingDays > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <CalendarCheck className="h-4 w-4 text-green-500" />
+                      <span className="text-muted-foreground">Рабочие (перенос):</span>
+                      <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30">
+                        {calendarStats.extraWorkingDays}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="space-y-0.5">
                   <Label>Календарные исключения</Label>
                   <p className="text-sm text-muted-foreground">
-                    {calendarExceptions.length > 0 
-                      ? `Настроено ${calendarExceptions.length} исключений (праздники, выходные, сокращённые дни)` 
+                    {calendarStats.total > 0 
+                      ? "Управление праздниками, выходными и сокращёнными днями" 
                       : "Настройка праздников, выходных и сокращённых рабочих дней"}
                   </p>
                 </div>
-                <Button 
-                  variant="outline" 
-                  onClick={handleNavigateToCalendarExceptions}
-                  className="gap-2"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Перейти к календарю
-                </Button>
+                <div className="flex gap-2 flex-wrap">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowImportDialog(true)}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Импорт праздников РФ
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleNavigateToCalendarExceptions}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Открыть календарь
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Holiday Import Dialog */}
+          <HolidayImportDialog 
+            open={showImportDialog} 
+            onOpenChange={setShowImportDialog} 
+          />
 
           {/* Customers */}
           <Card>
