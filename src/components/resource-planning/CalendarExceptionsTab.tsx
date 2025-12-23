@@ -461,7 +461,7 @@ export const CalendarExceptionsTab = () => {
               <div className="space-y-1.5">
                 <Label className="text-xs">Тип</Label>
                 <Select
-                  value={formData.exception_type}
+                  value={formData.exception_type || "holiday"}
                   onValueChange={handleTypeChange}
                 >
                   <SelectTrigger className="h-9">
