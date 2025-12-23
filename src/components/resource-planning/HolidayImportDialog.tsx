@@ -49,9 +49,9 @@ export const HolidayImportDialog = ({ open, onOpenChange }: HolidayImportDialogP
   const { data: existingExceptions = [] } = useCalendarExceptions();
   const bulkCreate = useBulkCreateCalendarExceptions();
 
-  // Get years for selection (current year + 5 years ahead)
+  // Get years for selection (current year + 10 years ahead)
   const availableYears = useMemo(() => {
-    return Array.from({ length: 6 }, (_, i) => currentYear + i);
+    return Array.from({ length: 11 }, (_, i) => currentYear + i);
   }, [currentYear]);
 
   // Get holidays for selected year
