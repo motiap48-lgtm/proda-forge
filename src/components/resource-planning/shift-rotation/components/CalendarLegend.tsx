@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   HelpCircle as OtherIcon,
   X,
-  FilterX
+  FilterX,
+  Coffee
 } from "lucide-react";
 import {
   Collapsible,
@@ -22,6 +23,12 @@ import {
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ShiftColors } from "../utils";
@@ -36,9 +43,17 @@ interface LegendItem {
   isActive?: boolean;
 }
 
+interface ShiftDetail {
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
+  grossWorkMinutes: number;
+  netWorkMinutes: number;
+}
+
 interface CalendarLegendProps {
   shiftColorMap?: Map<string, ShiftColors>;
-  shiftDetails?: Map<string, { startTime: string; endTime: string }>;
+  shiftDetails?: Map<string, ShiftDetail>;
   absenceStatusFilter?: AbsenceStatusFilter;
   onAbsenceStatusFilterChange?: (filter: AbsenceStatusFilter) => void;
   absenceTypeFilter?: AbsenceTypeFilter;
@@ -46,6 +61,13 @@ interface CalendarLegendProps {
   hasActiveFilters?: boolean;
   onResetFilters?: () => void;
 }
+
+const formatMinutesToHoursMinutes = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) return `${hours} ч`;
+  return `${hours} ч ${mins} мин`;
+};
 
 export const CalendarLegend = ({ 
   shiftColorMap,
@@ -178,45 +200,80 @@ export const CalendarLegend = ({
     </div>
   );
 
-  // Shift section with time
+  // Shift section with time and tooltip
   const ShiftSection = () => {
     if (!shiftColorMap || shiftColorMap.size === 0) return null;
 
     return (
       <div className="space-y-2">
-        <h4 className="text-xs font-medium text-muted-foreground">Смены</h4>
+        <h4 className="text-xs font-medium text-muted-foreground">Смены (наведите для подробностей)</h4>
         <div className="flex flex-wrap gap-3">
-          {Array.from(shiftColorMap.entries()).map(([name, colors]) => {
-            const details = shiftDetails?.get(name);
-            const timeRange = details?.startTime && details?.endTime 
-              ? `${details.startTime} – ${details.endTime}` 
-              : null;
-            
-            return (
-              <div
-                key={name}
-                className="flex items-center gap-2 text-xs"
-                title={timeRange ? `${name}: ${timeRange}` : name}
-              >
-                <span className={cn(
-                  "inline-flex items-center justify-center px-2 py-1 rounded border font-medium",
-                  colors.bg, colors.text, colors.border
-                )}>
-                  {name}
-                </span>
-                {timeRange ? (
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {timeRange}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground/50 text-[10px]">
-                    (время не указано)
-                  </span>
-                )}
-              </div>
-            );
-          })}
+          <TooltipProvider delayDuration={100}>
+            {Array.from(shiftColorMap.entries()).map(([name, colors]) => {
+              const details = shiftDetails?.get(name);
+              const timeRange = details?.startTime && details?.endTime 
+                ? `${details.startTime} – ${details.endTime}` 
+                : null;
+              
+              return (
+                <Tooltip key={name}>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 text-xs cursor-help">
+                      <span className={cn(
+                        "inline-flex items-center justify-center px-2 py-1 rounded border font-medium",
+                        colors.bg, colors.text, colors.border
+                      )}>
+                        {name}
+                      </span>
+                      {timeRange ? (
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {timeRange}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/50 text-[10px]">
+                          (время не указано)
+                        </span>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="p-3 max-w-xs">
+                    <div className="space-y-2">
+                      <div className="font-medium text-sm border-b pb-1">{name}</div>
+                      {details ? (
+                        <div className="space-y-1.5 text-xs">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3.5 w-3.5 text-primary" />
+                            <span>Время работы:</span>
+                            <span className="font-medium">{details.startTime} – {details.endTime}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>Продолжительность:</span>
+                            <span className="font-medium">{formatMinutesToHoursMinutes(details.grossWorkMinutes)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Coffee className="h-3.5 w-3.5 text-amber-500" />
+                            <span>Перерыв:</span>
+                            <span className="font-medium">{formatMinutesToHoursMinutes(details.breakMinutes)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 pt-1 border-t">
+                            <Zap className="h-3.5 w-3.5 text-emerald-500" />
+                            <span>Чистое рабочее время:</span>
+                            <span className="font-medium text-emerald-600">{formatMinutesToHoursMinutes(details.netWorkMinutes)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">
+                          Детальная информация о смене недоступна
+                        </div>
+                      )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </TooltipProvider>
         </div>
       </div>
     );
