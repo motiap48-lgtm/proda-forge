@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PeriodType, ShiftColors } from "../utils";
+import { CalendarLegend } from "./CalendarLegend";
 
 export type AbsenceStatusFilter = "all" | "on_leave" | "sick" | "available";
 export type AbsenceTypeFilter = "all" | "annual_leave" | "sick_leave" | "administrative_leave" | "maternity_leave" | "unpaid_leave" | "business_trip" | "unauthorized_absence" | "other";
@@ -523,32 +524,9 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           </Button>
         )}
 
-        {/* Full legend */}
-        <div className="flex flex-wrap gap-2 border-l pl-3 ml-1 items-center">
-          {/* Shift colors */}
-          {Array.from(shiftColorMap.entries()).map(([name, colors]) => (
-            <Badge key={name} variant="outline" className={cn(colors.bg, colors.text, colors.border, "text-[10px] px-1.5 py-0.5")}>
-              {name}
-            </Badge>
-          ))}
-          
-          {/* Day off */}
-          <Badge variant="outline" className="bg-gradient-to-b from-rose-100 to-rose-200 text-rose-600 border-rose-200 text-[10px] px-1.5 py-0.5">
-            Выходной
-          </Badge>
-          
-          {/* Schedule override indicator */}
-          <Badge variant="outline" className="border-2 border-dashed border-amber-400 bg-amber-50 text-amber-700 text-[10px] px-1.5 py-0.5 flex items-center gap-1">
-            <span className="text-amber-500">⚡</span> Изменён график
-          </Badge>
-          
-          {/* Absences */}
-          <Badge variant="outline" className="bg-gradient-to-b from-blue-200 to-blue-300 text-blue-700 border-blue-300 text-[10px] px-1.5 py-0.5">
-            Отпуск
-          </Badge>
-          <Badge variant="outline" className="bg-gradient-to-b from-red-200 to-red-300 text-red-700 border-red-300 text-[10px] px-1.5 py-0.5">
-            Больничный
-          </Badge>
+        {/* Collapsible Legend */}
+        <div className="border-l pl-3 ml-1">
+          <CalendarLegend />
         </div>
       </div>
     </div>
