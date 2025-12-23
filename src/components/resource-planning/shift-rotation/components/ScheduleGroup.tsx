@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay, type ShiftColors, type PeriodType } from "../utils";
@@ -20,6 +20,15 @@ import { useAbsenceDragDrop } from "../hooks/useAbsenceDragDrop";
 import { toast } from "sonner";
 import { type ScheduleOverride, getScheduleOverride, OVERRIDE_REASON_LABELS } from "@/hooks/useScheduleOverrides";
 
+interface CalendarException {
+  id: string;
+  exception_date: string;
+  exception_type: string;
+  is_working_day: boolean;
+  name: string;
+  reduction_hours?: number | null;
+}
+
 interface ScheduleGroupProps {
   scheduleName: string;
   operators: any[];
@@ -29,6 +38,7 @@ interface ScheduleGroupProps {
   onManageAbsences?: (operator: any) => void;
   absences?: OperatorAbsence[];
   scheduleOverrides?: ScheduleOverride[];
+  calendarExceptions?: CalendarException[];
   days: Date[];
   months: Date[];
   period: PeriodType;
@@ -64,6 +74,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   onManageAbsences,
   absences = [],
   scheduleOverrides = [],
+  calendarExceptions = [],
   days,
   months,
   period,
@@ -666,11 +677,26 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const netMinutes = effectiveShift 
                               ? (effectiveShift.net_work_minutes ?? (effectiveShift.gross_work_minutes - effectiveShift.break_minutes)) 
                               : 0;
-                            const hours = Math.floor(netMinutes / 60);
-                            const mins = netMinutes % 60;
                             const isWeekend = getDay(day) === 0 || getDay(day) === 6;
                             const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
                             const hasOverride = !!override;
+                            
+                            // Check for shortened day (calendar exception)
+                            const dateStr = format(day, "yyyy-MM-dd");
+                            const shortenedException = calendarExceptions.find(
+                              ex => ex.exception_date === dateStr && 
+                                   ex.exception_type === 'shortened_day' && 
+                                   ex.is_working_day
+                            );
+                            const isShortenedDay = !!shortenedException && effectiveIsWorking;
+                            const reductionHours = shortenedException?.reduction_hours ?? 1;
+                            
+                            // Calculate actual hours for this day (with reduction if shortened)
+                            const actualNetMinutes = isShortenedDay 
+                              ? Math.max(0, netMinutes - (reductionHours * 60))
+                              : netMinutes;
+                            const hours = Math.floor(actualNetMinutes / 60);
+                            const mins = actualNetMinutes % 60;
                             
                             // Handle special states
                             if (terminated) {
@@ -775,7 +801,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               );
                             }
                             
-                            const dateStr = format(day, "yyyy-MM-dd");
+                            // dateStr already defined above for shortened day check
                             const canCreateAbsence = !terminated && !beforeHire;
                             const inPreview = isInDragPreview(day, operator.id);
                             const overrideInfo = override ? OVERRIDE_REASON_LABELS[override.reason || 'other'] : null;
@@ -879,12 +905,26 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     isTodayColumnHovered && "animate-pulse-glow"
                                   )
                                 )}
-                                title={`${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла. ` : ''}Зажмите и перетащите для выбора диапазона | ПКМ - изменить график`}
+                                title={`${isShortenedDay ? `⏰ Сокращённый день: ${shortenedException?.name || 'Праздник'} (-${reductionHours}ч)\n` : ''}${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла. ` : ''}Зажмите и перетащите для выбора диапазона | ПКМ - изменить график`}
                               >
+                                {/* Shortened day indicator */}
+                                {isShortenedDay && !hasOverride && (
+                                  <div className="absolute top-0.5 left-0.5">
+                                    <Timer className="h-2.5 w-2.5 text-orange-500 dark:text-orange-400" />
+                                  </div>
+                                )}
+                                
                                 {/* Override indicator */}
                                 {hasOverride && (
                                   <div className="absolute top-0.5 right-0.5">
                                     <ArrowRightLeft className="h-2.5 w-2.5 text-amber-600 dark:text-amber-400" />
+                                  </div>
+                                )}
+                                
+                                {/* Shortened day indicator when override exists - show on left */}
+                                {isShortenedDay && hasOverride && (
+                                  <div className="absolute top-0.5 left-0.5">
+                                    <Timer className="h-2.5 w-2.5 text-orange-500 dark:text-orange-400" />
                                   </div>
                                 )}
                                 
@@ -893,7 +933,15 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     <div className="font-medium truncate text-[10px] px-0.5 w-full" title={effectiveShift.shift_name}>
                                       {daysCount > 14 ? effectiveShift.shift_name.charAt(0) : effectiveShift.shift_name}
                                     </div>
-                                    {daysCount <= 14 && <div className="text-[9px] opacity-80 truncate w-full">{mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}</div>}
+                                    {daysCount <= 14 && (
+                                      <div className={cn(
+                                        "text-[9px] opacity-80 truncate w-full",
+                                        isShortenedDay && "text-orange-600 dark:text-orange-400 font-medium"
+                                      )}>
+                                        {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
+                                        {isShortenedDay && <span className="opacity-70"> ↓</span>}
+                                      </div>
+                                    )}
                                     {cycleInfo && <div className="text-[8px] opacity-70 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
                                   </div>
                                 ) : (
