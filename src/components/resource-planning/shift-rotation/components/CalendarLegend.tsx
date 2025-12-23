@@ -9,7 +9,9 @@ import {
   Calendar, 
   UserX,
   Zap,
-  Clock
+  Clock,
+  AlertTriangle,
+  HelpCircle as OtherIcon
 } from "lucide-react";
 import {
   Collapsible,
@@ -21,13 +23,6 @@ import { ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ShiftColors } from "../utils";
 import type { AbsenceStatusFilter, AbsenceTypeFilter } from "./CalendarToolbar";
-
-interface ShiftInfo {
-  name: string;
-  colors: ShiftColors;
-  startTime?: string;
-  endTime?: string;
-}
 
 interface LegendItem {
   icon?: React.ReactNode;
@@ -83,12 +78,13 @@ export const CalendarLegend = ({
     },
   ];
 
+  // All absence types matching AbsenceTypeFilter
   const absenceTypes: LegendItem[] = [
     {
       color: "bg-emerald-500",
       icon: <Briefcase className="h-3 w-3 text-white" />,
       label: "Отпуск",
-      description: "Ежегодный оплачиваемый отпуск",
+      description: "Ежегодный оплачиваемый отпуск (annual_leave)",
       isActive: absenceTypeFilter === "annual_leave",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "annual_leave" ? "all" : "annual_leave")
     },
@@ -96,62 +92,59 @@ export const CalendarLegend = ({
       color: "bg-rose-500",
       icon: <HeartPulse className="h-3 w-3 text-white" />,
       label: "Больничный",
-      description: "Временная нетрудоспособность",
+      description: "Временная нетрудоспособность (sick_leave)",
       isActive: absenceTypeFilter === "sick_leave",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "sick_leave" ? "all" : "sick_leave")
-    },
-    {
-      color: "bg-sky-500",
-      icon: <Plane className="h-3 w-3 text-white" />,
-      label: "Командировка",
-      description: "Служебная командировка",
-      isActive: absenceTypeFilter === "business_trip",
-      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "business_trip" ? "all" : "business_trip")
-    },
-    {
-      color: "bg-violet-500",
-      icon: <Baby className="h-3 w-3 text-white" />,
-      label: "Декрет",
-      description: "Отпуск по уходу за ребёнком",
-      isActive: absenceTypeFilter === "maternity_leave",
-      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "maternity_leave" ? "all" : "maternity_leave")
     },
     {
       color: "bg-amber-500",
       icon: <Calendar className="h-3 w-3 text-white" />,
       label: "Адм. отпуск",
-      description: "Административный отпуск",
+      description: "Административный отпуск (administrative_leave)",
       isActive: absenceTypeFilter === "administrative_leave",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "administrative_leave" ? "all" : "administrative_leave")
+    },
+    {
+      color: "bg-violet-500",
+      icon: <Baby className="h-3 w-3 text-white" />,
+      label: "Декрет",
+      description: "Отпуск по уходу за ребёнком (maternity_leave)",
+      isActive: absenceTypeFilter === "maternity_leave",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "maternity_leave" ? "all" : "maternity_leave")
     },
     {
       color: "bg-gray-500",
       icon: <UserX className="h-3 w-3 text-white" />,
       label: "Без сохр. з/п",
-      description: "Отпуск без сохранения заработной платы",
+      description: "Отпуск без сохранения заработной платы (unpaid_leave)",
       isActive: absenceTypeFilter === "unpaid_leave",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "unpaid_leave" ? "all" : "unpaid_leave")
     },
+    {
+      color: "bg-sky-500",
+      icon: <Plane className="h-3 w-3 text-white" />,
+      label: "Командировка",
+      description: "Служебная командировка (business_trip)",
+      isActive: absenceTypeFilter === "business_trip",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "business_trip" ? "all" : "business_trip")
+    },
+    {
+      color: "bg-red-600",
+      icon: <AlertTriangle className="h-3 w-3 text-white" />,
+      label: "Прогул",
+      description: "Неявка без уважительной причины (unauthorized_absence)",
+      isActive: absenceTypeFilter === "unauthorized_absence",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "unauthorized_absence" ? "all" : "unauthorized_absence")
+    },
+    {
+      color: "bg-slate-400",
+      icon: <OtherIcon className="h-3 w-3 text-white" />,
+      label: "Прочее",
+      description: "Другие причины отсутствия (other)",
+      isActive: absenceTypeFilter === "other",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "other" ? "all" : "other")
+    },
   ];
-
-  // Generate dynamic shifts from shiftColorMap with time info
-  const dynamicShifts: LegendItem[] = React.useMemo(() => {
-    if (!shiftColorMap || shiftColorMap.size === 0) {
-      return [];
-    }
-
-    return Array.from(shiftColorMap.entries()).map(([name, colors]) => {
-      const details = shiftDetails?.get(name);
-      const timeRange = details ? `${details.startTime} - ${details.endTime}` : "";
-      
-      return {
-        color: cn(colors.bg, colors.text, colors.border),
-        icon: <Clock className="h-3 w-3" />,
-        label: name,
-        description: timeRange ? `${name}: ${timeRange}` : `Рабочая смена: ${name}`
-      };
-    });
-  }, [shiftColorMap, shiftDetails]);
 
   const LegendSection = ({ title, items, interactive }: { title: string; items: LegendItem[]; interactive?: boolean }) => (
     <div className="space-y-2">
@@ -178,7 +171,7 @@ export const CalendarLegend = ({
     </div>
   );
 
-  // Shift section with time
+  // Shift section with time - always show time if available
   const ShiftSection = () => {
     if (!shiftColorMap || shiftColorMap.size === 0) return null;
 
@@ -188,7 +181,9 @@ export const CalendarLegend = ({
         <div className="flex flex-wrap gap-3">
           {Array.from(shiftColorMap.entries()).map(([name, colors]) => {
             const details = shiftDetails?.get(name);
-            const timeRange = details ? `${details.startTime} - ${details.endTime}` : "";
+            const timeRange = details?.startTime && details?.endTime 
+              ? `${details.startTime} – ${details.endTime}` 
+              : null;
             
             return (
               <div
@@ -202,10 +197,14 @@ export const CalendarLegend = ({
                 )}>
                   {name}
                 </span>
-                {timeRange && (
+                {timeRange ? (
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {timeRange}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground/50 text-[10px]">
+                    (время не указано)
                   </span>
                 )}
               </div>
