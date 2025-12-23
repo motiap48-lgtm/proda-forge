@@ -11,7 +11,9 @@ import {
   Zap,
   Clock,
   AlertTriangle,
-  HelpCircle as OtherIcon
+  HelpCircle as OtherIcon,
+  X,
+  FilterX
 } from "lucide-react";
 import {
   Collapsible,
@@ -19,6 +21,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ShiftColors } from "../utils";
@@ -40,6 +43,8 @@ interface CalendarLegendProps {
   onAbsenceStatusFilterChange?: (filter: AbsenceStatusFilter) => void;
   absenceTypeFilter?: AbsenceTypeFilter;
   onAbsenceTypeFilterChange?: (filter: AbsenceTypeFilter) => void;
+  hasActiveFilters?: boolean;
+  onResetFilters?: () => void;
 }
 
 export const CalendarLegend = ({ 
@@ -48,7 +53,9 @@ export const CalendarLegend = ({
   absenceStatusFilter,
   onAbsenceStatusFilterChange,
   absenceTypeFilter,
-  onAbsenceTypeFilterChange
+  onAbsenceTypeFilterChange,
+  hasActiveFilters,
+  onResetFilters
 }: CalendarLegendProps) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -171,7 +178,7 @@ export const CalendarLegend = ({
     </div>
   );
 
-  // Shift section with time - always show time if available
+  // Shift section with time
   const ShiftSection = () => {
     if (!shiftColorMap || shiftColorMap.size === 0) return null;
 
@@ -215,6 +222,37 @@ export const CalendarLegend = ({
     );
   };
 
+  // Filter status section
+  const FilterStatusSection = () => {
+    return (
+      <div className="flex items-center justify-between pt-2 border-t">
+        <div className="flex items-center gap-2">
+          {hasActiveFilters ? (
+            <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 border-amber-200">
+              <FilterX className="h-3 w-3 mr-1" />
+              Активные фильтры
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              Нет активных фильтров
+            </Badge>
+          )}
+        </div>
+        {hasActiveFilters && onResetFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onResetFilters}
+            className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+          >
+            <X className="h-3 w-3 mr-1" />
+            Сбросить все фильтры
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
@@ -225,6 +263,11 @@ export const CalendarLegend = ({
         >
           <HelpCircle className="h-3.5 w-3.5" />
           Легенда
+          {hasActiveFilters && (
+            <Badge variant="secondary" className="h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-amber-500 text-white">
+              !
+            </Badge>
+          )}
           {isOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </Button>
       </CollapsibleTrigger>
@@ -237,6 +280,7 @@ export const CalendarLegend = ({
             interactive={!!onAbsenceTypeFilterChange}
           />
           <ShiftSection />
+          <FilterStatusSection />
         </div>
       </CollapsibleContent>
     </Collapsible>
