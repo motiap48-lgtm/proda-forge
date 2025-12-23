@@ -36,10 +36,7 @@ export const ABSENCE_STATUS_LABELS: Record<string, { label: string; color: strin
 
 // Types of absences that require compensation (make-up work)
 export const COMPENSABLE_ABSENCE_TYPES: OperatorAbsence["absence_type"][] = [
-  'unauthorized_absence',  // Прогул
-  'administrative_leave',  // Административный
-  'unpaid_leave',          // Без сохранения ЗП
-  'other',                 // Другое
+  'unauthorized_absence',  // Прогул - только прогулы требуют отработки
 ];
 
 // Helper function to check if absence type requires compensation
