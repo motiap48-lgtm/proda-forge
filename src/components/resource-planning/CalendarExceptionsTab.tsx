@@ -406,79 +406,83 @@ export const CalendarExceptionsTab = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingException ? "Редактировать исключение" : "Новое исключение"}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Дата *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !formData.exception_date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    {formData.exception_date 
-                      ? format(formData.exception_date, "d MMMM yyyy", { locale: ru })
-                      : "Выберите дату"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.exception_date || undefined}
-                    onSelect={(date) => setFormData({ ...formData, exception_date: date || null })}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Дата *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-9",
+                        !formData.exception_date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarDays className="mr-2 h-3.5 w-3.5" />
+                      {formData.exception_date 
+                        ? format(formData.exception_date, "d MMM yyyy", { locale: ru })
+                        : "Выберите"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.exception_date || undefined}
+                      onSelect={(date) => setFormData({ ...formData, exception_date: date || null })}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs">Название *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Новый год"
+                  className="h-9"
+                  required
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Название *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Например: Новый год"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Тип</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Тип</Label>
                 <Select
                   value={formData.exception_type}
                   onValueChange={handleTypeChange}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="holiday">Праздник</SelectItem>
                     <SelectItem value="shortened_day">Сокращённый день</SelectItem>
-                    <SelectItem value="extra_working_day">Рабочий день (перенос)</SelectItem>
+                    <SelectItem value="extra_working_day">Рабочий (перенос)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Статус дня</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Статус дня</Label>
                 <Select
                   value={formData.is_working_day ? "working" : "off"}
                   onValueChange={(value) => setFormData({ ...formData, is_working_day: value === "working" })}
                   disabled={formData.exception_type === "shortened_day"}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -490,9 +494,9 @@ export const CalendarExceptionsTab = () => {
             </div>
 
             {formData.exception_type === "shortened_day" && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="reduction_hours">Сокращение (часов) *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="reduction_hours" className="text-xs">Сокращение (ч) *</Label>
                   <Input
                     id="reduction_hours"
                     type="number"
@@ -502,16 +506,16 @@ export const CalendarExceptionsTab = () => {
                     value={formData.reduction_hours}
                     onChange={(e) => setFormData({ ...formData, reduction_hours: e.target.value ? parseFloat(e.target.value) : 1 })}
                     placeholder="1"
+                    className="h-9"
                     required
                   />
-                  <p className="text-xs text-muted-foreground">
-                    На сколько часов сократить рабочий день от нормы графика.<br/>
-                    Например: для графика 12ч при сокращении на 1ч = 11ч, для 8ч = 7ч.
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Вычитается из нормы: 12ч−1ч=11ч, 8ч−1ч=7ч
                   </p>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="reduced_hours">Абсолютное значение (часов) — опционально</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reduced_hours" className="text-xs">Фикс. часы (опц.)</Label>
                   <Input
                     id="reduced_hours"
                     type="number"
@@ -520,31 +524,34 @@ export const CalendarExceptionsTab = () => {
                     max="12"
                     value={formData.reduced_hours || ""}
                     onChange={(e) => setFormData({ ...formData, reduced_hours: e.target.value ? parseFloat(e.target.value) : null })}
-                    placeholder="Оставьте пустым для авторасчёта"
+                    placeholder="Авто"
+                    className="h-9"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Если указано, будет использовано вместо расчёта по графику (для особых случаев).
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Игнорирует "Сокращение", задаёт точное кол-во часов
                   </p>
                 </div>
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Описание</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="description" className="text-xs">Описание</Label>
               <Input
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Дополнительная информация"
+                className="h-9"
               />
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={handleDialogClose}>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={handleDialogClose}>
                 Отмена
               </Button>
               <Button 
                 type="submit" 
+                size="sm"
                 disabled={
                   !formData.exception_date || 
                   !formData.name || 
