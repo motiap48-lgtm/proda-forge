@@ -16,7 +16,7 @@ import type { PeriodType, ShiftColors } from "../utils";
 import { CalendarLegend } from "./CalendarLegend";
 
 export type AbsenceStatusFilter = "all" | "on_leave" | "sick" | "available";
-export type AbsenceTypeFilter = "all" | "annual_leave" | "sick_leave" | "administrative_leave" | "maternity_leave" | "unpaid_leave" | "business_trip" | "unauthorized_absence" | "other";
+export type AbsenceTypeFilter = "all" | "annual_leave" | "sick_leave" | "administrative_leave_with_compensation" | "administrative_leave_without_compensation" | "maternity_leave" | "unpaid_leave" | "business_trip" | "unauthorized_absence" | "other";
 
 interface CalendarToolbarProps {
   period: PeriodType;
@@ -461,7 +461,8 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
               <SelectItem value="all">Все типы отсутствия</SelectItem>
               <SelectItem value="annual_leave">🏖️ Ежегодный отпуск</SelectItem>
               <SelectItem value="sick_leave">🏥 Больничный</SelectItem>
-              <SelectItem value="administrative_leave">📋 Административный</SelectItem>
+              <SelectItem value="administrative_leave_with_compensation">📋 Админ. (с отработкой)</SelectItem>
+              <SelectItem value="administrative_leave_without_compensation">📋 Админ. (без отработки)</SelectItem>
               <SelectItem value="maternity_leave">👶 Декретный отпуск</SelectItem>
               <SelectItem value="unpaid_leave">💰 Без сохранения ЗП</SelectItem>
               <SelectItem value="business_trip">✈️ Командировка</SelectItem>

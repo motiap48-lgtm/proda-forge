@@ -116,7 +116,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         const absence = isDateInAbsence(today, absences, op.id);
         
         if (absenceStatusFilter === "on_leave") {
-          return absence && ['annual_leave', 'administrative_leave', 'unpaid_leave', 'business_trip', 'maternity_leave'].includes(absence.absence_type);
+          return absence && ['annual_leave', 'administrative_leave_with_compensation', 'administrative_leave_without_compensation', 'unpaid_leave', 'business_trip', 'maternity_leave'].includes(absence.absence_type);
         }
         if (absenceStatusFilter === "sick") {
           return absence && absence.absence_type === 'sick_leave';
