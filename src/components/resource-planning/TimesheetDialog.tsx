@@ -164,28 +164,30 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
             </DialogTitle>
           </DialogHeader>
           
-          <div className="flex items-center justify-between gap-4 py-2 border-b">
-            <div className="text-sm">
-              <span className="text-muted-foreground">Период: </span>
-              <span className="font-medium">
-                {format(startDate, "d MMM", { locale: ru })} — {format(endDate, "d MMM yyyy", { locale: ru })}
-              </span>
-            </div>
-            <div className="flex gap-2">
-              {hasEdits && (
-                <Button variant="ghost" size="sm" onClick={handleResetChanges}>
-                  <Undo2 className="h-4 w-4 mr-1" />
-                  Сбросить
+          <div className="flex flex-col gap-2 py-2 border-b">
+            <div className="flex items-center justify-between">
+              <div className="text-sm">
+                <span className="text-muted-foreground">Период: </span>
+                <span className="font-medium">
+                  {format(startDate, "d MMM", { locale: ru })} — {format(endDate, "d MMM yyyy", { locale: ru })}
+                </span>
+              </div>
+              <div className="flex gap-1 flex-wrap justify-end">
+                {hasEdits && (
+                  <Button variant="ghost" size="sm" onClick={handleResetChanges} className="h-7 px-2 text-xs">
+                    <Undo2 className="h-3 w-3 mr-1" />
+                    Сбросить
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => setShowClearConfirm(true)} className="h-7 px-2 text-xs">
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Обнулить
                 </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={() => setShowClearConfirm(true)}>
-                <RotateCcw className="h-4 w-4 mr-1" />
-                Обнулить факт
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleFillPlan}>
-                <Check className="h-4 w-4 mr-1" />
-                Заполнить по плану
-              </Button>
+                <Button variant="outline" size="sm" onClick={handleFillPlan} className="h-7 px-2 text-xs">
+                  <Check className="h-3 w-3 mr-1" />
+                  По плану
+                </Button>
+              </div>
             </div>
           </div>
           
