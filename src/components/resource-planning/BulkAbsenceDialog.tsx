@@ -187,14 +187,16 @@ export const BulkAbsenceDialog: React.FC<BulkAbsenceDialogProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(ABSENCE_TYPE_LABELS).map(([value, { label, icon }]) => (
-                    <SelectItem key={value} value={value}>
-                      <span className="flex items-center gap-2">
-                        <span>{icon}</span>
-                        {label}
-                      </span>
-                    </SelectItem>
-                  ))}
+                  {Object.entries(ABSENCE_TYPE_LABELS)
+                    .filter(([key]) => key !== 'administrative_leave') // Скрываем устаревший тип
+                    .map(([value, { label, icon }]) => (
+                      <SelectItem key={value} value={value}>
+                        <span className="flex items-center gap-2">
+                          <span>{icon}</span>
+                          {label}
+                        </span>
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
