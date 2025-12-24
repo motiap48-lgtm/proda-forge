@@ -104,7 +104,7 @@ const Settings = () => {
           </Card>
 
           {/* Timesheet Settings */}
-          <Card>
+          <Card className="border-2 border-primary/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ClipboardList className="h-5 w-5" />
@@ -124,8 +124,8 @@ const Settings = () => {
                 </div>
                 <Switch
                   id="restrict-fill-by-plan"
-                  checked={timesheetSettings.restrictFillByPlanToLastDay}
-                  onCheckedChange={(checked) => updateTimesheetSettings({ restrictFillByPlanToLastDay: checked })}
+                  checked={timesheetSettings?.restrictFillByPlanToLastDay ?? false}
+                  onCheckedChange={(checked) => updateTimesheetSettings?.({ restrictFillByPlanToLastDay: checked })}
                 />
               </div>
             </CardContent>
