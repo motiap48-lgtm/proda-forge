@@ -791,7 +791,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               const absenceInfo = ABSENCE_TYPE_LABELS[absence.absence_type];
                               const AbsenceIcon = absence.absence_type === 'sick_leave' ? Stethoscope 
                                 : absence.absence_type === 'business_trip' ? Briefcase 
-                                : (absence.absence_type === 'administrative_leave' || absence.absence_type === 'administrative_leave_with_compensation' || absence.absence_type === 'administrative_leave_without_compensation') ? FileText
+                                : (absence.absence_type === 'administrative_leave_with_compensation' || absence.absence_type === 'administrative_leave_without_compensation') ? FileText
                                 : absence.absence_type === 'unauthorized_absence' ? Ban
                                 : Plane;
                               const { isStart, isEnd } = isAbsenceEdge(absence, day);
@@ -820,7 +820,6 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     isDragging(absence.id) && "opacity-50 scale-95",
                                     absence.absence_type === 'annual_leave' && "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-900/50 dark:to-blue-900/70 text-blue-700 dark:text-blue-300",
                                     absence.absence_type === 'sick_leave' && "bg-gradient-to-b from-red-200 to-red-300 dark:from-red-900/50 dark:to-red-900/70 text-red-700 dark:text-red-300",
-                                    absence.absence_type === 'administrative_leave' && "bg-gradient-to-b from-orange-200 to-orange-300 dark:from-orange-900/50 dark:to-orange-900/70 text-orange-700 dark:text-orange-300",
                                     absence.absence_type === 'administrative_leave_with_compensation' && "bg-gradient-to-b from-orange-300 to-orange-400 dark:from-orange-800/60 dark:to-orange-900/80 text-orange-800 dark:text-orange-200",
                                     absence.absence_type === 'administrative_leave_without_compensation' && "bg-gradient-to-b from-orange-200 to-orange-300 dark:from-orange-900/50 dark:to-orange-900/70 text-orange-700 dark:text-orange-300",
                                     absence.absence_type === 'maternity_leave' && "bg-gradient-to-b from-pink-200 to-pink-300 dark:from-pink-900/50 dark:to-pink-900/70 text-pink-700 dark:text-pink-300",
