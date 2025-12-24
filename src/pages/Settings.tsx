@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users, Calendar, ExternalLink, Download, CalendarOff, Clock, CalendarCheck } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users, Calendar, ExternalLink, Download, CalendarOff, Clock, CalendarCheck, ClipboardList } from "lucide-react";
 import { MaterialCategoriesManagement } from "@/components/settings/MaterialCategoriesManagement";
 import { ContractorsManagement } from "@/components/settings/ContractorsManagement";
 import { CustomersManagement } from "@/components/settings/CustomersManagement";
 import { DistributionStrategySettings } from "@/components/settings/DistributionStrategySettings";
 import { HolidayImportDialog } from "@/components/resource-planning/HolidayImportDialog";
 import { useCalendarExceptions } from "@/hooks/useResourcePlanning";
+import { useTimesheetSettings } from "@/hooks/useTimesheetSettings";
 import {
   Select,
   SelectContent,
@@ -26,6 +27,7 @@ import {
 const Settings = () => {
   const navigate = useNavigate();
   const { data: calendarExceptions = [] } = useCalendarExceptions();
+  const { settings: timesheetSettings, updateSettings: updateTimesheetSettings } = useTimesheetSettings();
   const [notifications, setNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -96,6 +98,34 @@ const Settings = () => {
                   id="email-notifications"
                   checked={emailNotifications}
                   onCheckedChange={setEmailNotifications}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Timesheet Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Табель учёта времени
+              </CardTitle>
+              <CardDescription>
+                Настройки заполнения табеля рабочего времени
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="restrict-fill-by-plan">Ограничить заполнение по плану</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Если включено, кнопка "По плану" будет доступна только в последний день месяца
+                  </p>
+                </div>
+                <Switch
+                  id="restrict-fill-by-plan"
+                  checked={timesheetSettings.restrictFillByPlanToLastDay}
+                  onCheckedChange={(checked) => updateTimesheetSettings({ restrictFillByPlanToLastDay: checked })}
                 />
               </div>
             </CardContent>
