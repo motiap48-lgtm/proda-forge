@@ -120,6 +120,16 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     toast.success(`Заполнено ${selectedDays.size} дней по плану`);
   };
   
+  const clearSelectedDays = () => {
+    const newEdits: Record<string, number> = { ...edits };
+    selectedDays.forEach(dateStr => {
+      newEdits[dateStr] = 0;
+    });
+    setEdits(newEdits);
+    setSelectedDays(new Set());
+    toast.success(`Обнулено ${selectedDays.size} дней`);
+  };
+  
   const handleSave = async () => {
     const entries = Object.entries(edits).map(([dateStr, actualMinutes]) => ({
       operator_id: operatorId,
@@ -291,23 +301,34 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               <div className="flex items-center gap-2 text-xs bg-primary/10 px-2 py-1.5 rounded">
                 <CheckSquare className="h-3 w-3 text-primary shrink-0" />
                 <span className="text-primary font-medium">Выбрано: {selectedDays.size}</span>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="h-6 px-2 text-xs ml-auto"
-                  onClick={fillSelectedByPlan}
-                >
-                  <Check className="h-3 w-3 mr-1" />
-                  По плану
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs"
-                  onClick={() => setSelectedDays(new Set())}
-                >
-                  Отмена
-                </Button>
+                <div className="flex gap-1 ml-auto">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={fillSelectedByPlan}
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    По плану
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={clearSelectedDays}
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Обнулить
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => setSelectedDays(new Set())}
+                  >
+                    Отмена
+                  </Button>
+                </div>
               </div>
             )}
           </div>
