@@ -89,8 +89,11 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   
   const [addingCompensationFor, setAddingCompensationFor] = useState<string | null>(null);
   const [compensationDate, setCompensationDate] = useState<Date | undefined>(new Date());
-  const [compensationHours, setCompensationHours] = useState("");
+  const [compensationHours, setCompensationHours] = useState<string>("");
   const [compensationNotes, setCompensationNotes] = useState("");
+  
+  // Helper to round hours to 2 decimal places
+  const roundHours = (hours: number): number => Math.round(hours * 100) / 100;
   
   const [bulkCompensationFor, setBulkCompensationFor] = useState<AbsenceCompensation | null>(null);
 
@@ -125,14 +128,17 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
     });
   };
 
-  const handleAddCompensation = (absenceCompensationId: string) => {
-    if (!compensationDate || !compensationHours) return;
+  const handleAddCompensation = (absenceCompensationId: string, defaultHours: number) => {
+    if (!compensationDate) return;
+    
+    const hoursToAdd = compensationHours ? parseFloat(compensationHours) : defaultHours;
+    if (!hoursToAdd || hoursToAdd <= 0) return;
     
     addCompensation.mutate({
       absence_compensation_id: absenceCompensationId,
       operator_id: operatorId,
       compensation_date: format(compensationDate, "yyyy-MM-dd"),
-      hours_worked: parseFloat(compensationHours),
+      hours_worked: roundHours(hoursToAdd),
       notes: compensationNotes || undefined,
     }, {
       onSuccess: () => {
@@ -148,7 +154,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
     deleteAbsence.mutate(id);
   };
 
-  const totalPending = compensations
+  const totalPending = roundHours(compensations
     .filter((c) => c.status === "pending" || c.status === "partial")
     .reduce((sum, c) => {
       const compensated = c.compensation_records?.reduce(
@@ -156,7 +162,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
         0
       ) || 0;
       return sum + (Number(c.absence_hours) - compensated);
-    }, 0);
+    }, 0));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -271,11 +277,11 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
               <p className="text-center text-muted-foreground py-4">Нет записей</p>
             ) : (
               compensations.map((comp) => {
-                const compensatedHours = comp.compensation_records?.reduce(
+                const compensatedHours = roundHours(comp.compensation_records?.reduce(
                   (sum, r) => sum + Number(r.hours_worked),
                   0
-                ) || 0;
-                const remaining = Number(comp.absence_hours) - compensatedHours;
+                ) || 0);
+                const remaining = roundHours(Number(comp.absence_hours) - compensatedHours);
                 const statusInfo = COMPENSATION_STATUS_LABELS[comp.status];
 
                 return (
@@ -299,7 +305,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                           </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground mt-1">
-                          Отсутствие: {comp.absence_hours}ч | Отработано: {compensatedHours}ч
+                          Отсутствие: {roundHours(Number(comp.absence_hours))}ч | Отработано: {compensatedHours}ч
                           {remaining > 0 && comp.status !== "cancelled" && (
                             <span className="text-amber-600 dark:text-amber-400">
                               {" "}| Осталось: {remaining}ч
@@ -442,7 +448,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => handleAddCompensation(comp.id)}
+                            onClick={() => handleAddCompensation(comp.id, remaining)}
                             disabled={addCompensation.isPending}
                           >
                             Добавить
