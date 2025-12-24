@@ -280,7 +280,9 @@ export const OperatorAbsenceDialog = ({
             </Label>
             {isCompensableAbsenceType(formData.absence_type) && (
               <p className="text-xs text-muted-foreground">
-                Прогулы всегда требуют отработки
+                {formData.absence_type === 'unauthorized_absence' 
+                  ? 'Прогулы всегда требуют отработки'
+                  : 'Административный с отработкой всегда требует отработки'}
               </p>
             )}
             {editingAbsence && !isCompensableAbsenceType(formData.absence_type) && formData.requiresCompensation && (
