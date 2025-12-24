@@ -1,6 +1,11 @@
 import React, { useState, useMemo } from "react";
-import { format, addDays } from "date-fns";
+import { format, addDays, parse } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -87,6 +92,10 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
   //          when making a day ON - shift cycle to THIS day (so it becomes day 1)
   const [shiftCycleStart, setShiftCycleStart] = useState(true);
   
+  // Manual cycle start date mode
+  const [cycleStartMode, setCycleStartMode] = useState<"auto" | "manual">("auto");
+  const [manualCycleStartDate, setManualCycleStartDate] = useState<Date | undefined>(undefined);
+  
   // Confirmation dialog state
   const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -96,7 +105,7 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
   // Calculate the new cycle start date
   // If making day OFF: cycle starts from next day
   // If making day ON: cycle starts from THIS day (this becomes day 1)
-  const newCycleStartDate = useMemo(() => {
+  const autoCycleStartDate = useMemo(() => {
     if (isWorkingDay) {
       // Making this day a working day - this becomes day 1 of cycle
       return date;
@@ -105,6 +114,11 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
       return addDays(date, 1);
     }
   }, [date, isWorkingDay]);
+
+  // Final cycle start date - use manual if selected and set, otherwise auto
+  const newCycleStartDate = cycleStartMode === "manual" && manualCycleStartDate 
+    ? manualCycleStartDate 
+    : autoCycleStartDate;
 
   const handleSaveClick = () => {
     // Only show confirmation if there's an actual change
@@ -261,12 +275,18 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
 
           {/* Cycle shift option - only for cyclic schedules when setting day off */}
           {showCycleShiftOption && (
-            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 space-y-2">
+            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 space-y-3">
               <div className="flex items-start gap-3">
                 <Checkbox
                   id="shift-cycle"
                   checked={shiftCycleStart}
-                  onCheckedChange={(checked) => setShiftCycleStart(checked === true)}
+                  onCheckedChange={(checked) => {
+                    setShiftCycleStart(checked === true);
+                    if (!checked) {
+                      setCycleStartMode("auto");
+                      setManualCycleStartDate(undefined);
+                    }
+                  }}
                   className="mt-0.5"
                 />
                 <Label htmlFor="shift-cycle" className="flex flex-col gap-1 cursor-pointer">
@@ -274,14 +294,64 @@ export const ScheduleOverrideDialog: React.FC<ScheduleOverrideDialogProps> = ({
                     <RefreshCw className="h-4 w-4 text-blue-600" />
                     Пересчитать цикл
                   </span>
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {isWorkingDay 
-                      ? `Этот день (${format(date, "d MMMM", { locale: ru })}) станет первым днём нового цикла`
-                      : `Следующий рабочий день (${format(newCycleStartDate, "d MMMM", { locale: ru })}) станет первым днём нового цикла`
-                    }
-                  </span>
                 </Label>
               </div>
+              
+              {shiftCycleStart && (
+                <div className="ml-6 space-y-3">
+                  <RadioGroup 
+                    value={cycleStartMode} 
+                    onValueChange={(v) => setCycleStartMode(v as "auto" | "manual")}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="auto" id="cycle-auto" />
+                      <Label htmlFor="cycle-auto" className="text-sm font-normal cursor-pointer">
+                        {isWorkingDay 
+                          ? `Этот день (${format(date, "d MMMM", { locale: ru })})`
+                          : `Следующий день (${format(autoCycleStartDate, "d MMMM", { locale: ru })})`
+                        }
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="manual" id="cycle-manual" />
+                      <Label htmlFor="cycle-manual" className="text-sm font-normal cursor-pointer">
+                        Указать дату вручную
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  
+                  {cycleStartMode === "manual" && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !manualCycleStartDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {manualCycleStartDate 
+                            ? format(manualCycleStartDate, "d MMMM yyyy", { locale: ru })
+                            : "Выберите дату начала цикла"
+                          }
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={manualCycleStartDate}
+                          onSelect={setManualCycleStartDate}
+                          locale={ru}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+              )}
+              
               {currentCycleStartDate && (
                 <p className="text-xs text-muted-foreground ml-6">
                   Текущее начало цикла: {format(new Date(currentCycleStartDate), "d MMMM yyyy", { locale: ru })}
