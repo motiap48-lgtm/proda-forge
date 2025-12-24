@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay, type ShiftColors, type PeriodType } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, useDeleteOperatorAbsence, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
-import { type CompensationRecord } from "@/hooks/useAbsenceCompensations";
+import { type CompensationRecord, useConfirmCompensationRecord } from "@/hooks/useAbsenceCompensations";
 import { CompensationPendingIcon } from "@/components/resource-planning/CompensationPendingIcon";
 import { AbsenceCellDialog } from "@/components/resource-planning/AbsenceCellDialog";
 import { CreateAbsenceCellDialog } from "@/components/resource-planning/CreateAbsenceCellDialog";
@@ -168,12 +168,36 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   // Create timesheet map for fast lookup
   const timesheetMap = useMemo(() => createTimesheetMap(timesheets), [timesheets]);
   
+  // Hook to confirm compensation records
+  const confirmCompensation = useConfirmCompensationRecord();
+  
   // Helper to get compensation records for operator on specific date
   const getCompensationRecordsForDate = useCallback((operatorId: string, date: Date): CompensationRecord[] => {
     const dateStr = format(date, "yyyy-MM-dd");
     const key = `${operatorId}_${dateStr}`;
     return compensationRecordsMap.get(key) || [];
   }, [compensationRecordsMap]);
+  
+  // Handle confirming a pending compensation record
+  const handleConfirmCompensation = useCallback((record: CompensationRecord, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const compDate = new Date(record.compensation_date);
+    compDate.setHours(0, 0, 0, 0);
+    
+    if (compDate > today) {
+      toast.error("Нельзя подтвердить отработку до наступления даты");
+      return;
+    }
+    
+    confirmCompensation.mutate({
+      id: record.id,
+      absence_compensation_id: record.absence_compensation_id
+    });
+  }, [confirmCompensation]);
 
   // Calculate compensation hours for operator across period (only confirmed records count)
   const calculateCompensationHours = useCallback((operatorId: string): { hours: number; minutes: number } => {
@@ -1035,13 +1059,47 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 )}
                                 
                                 {/* Compensation indicator - show hammer icon with color based on status */}
+                                {/* Clickable to confirm pending records */}
                                 {hasCompensation && (
-                                  <div className="absolute bottom-0.5 right-0.5">
-                                    <Hammer className={cn(
-                                      "h-2.5 w-2.5",
-                                      hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
-                                    )} />
-                                  </div>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div 
+                                        className={cn(
+                                          "absolute bottom-0.5 right-0.5 cursor-pointer transition-transform hover:scale-125",
+                                          hasPendingCompensation && !hasConfirmedCompensation && "animate-pulse"
+                                        )}
+                                        onClick={(e) => {
+                                          // Find the first pending record that can be confirmed (date has passed)
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+                                          const confirmableRecord = pendingRecords.find(r => {
+                                            const compDate = new Date(r.compensation_date);
+                                            compDate.setHours(0, 0, 0, 0);
+                                            return compDate <= today;
+                                          });
+                                          if (confirmableRecord) {
+                                            handleConfirmCompensation(confirmableRecord, e);
+                                          } else if (pendingRecords.length > 0) {
+                                            e.stopPropagation();
+                                            toast.info("Дата отработки ещё не наступила");
+                                          }
+                                        }}
+                                      >
+                                        <Hammer className={cn(
+                                          "h-2.5 w-2.5",
+                                          hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
+                                        )} />
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      {hasPendingCompensation && !hasConfirmedCompensation 
+                                        ? "Нажмите для подтверждения отработки"
+                                        : hasConfirmedCompensation && hasPendingCompensation
+                                          ? "Есть подтверждённые и ожидающие отработки"
+                                          : "Отработка подтверждена"
+                                      }
+                                    </TooltipContent>
+                                  </Tooltip>
                                 )}
                                 
                                 {effectiveShift ? (
@@ -1066,21 +1124,51 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   </div>
                                 ) : hasCompensation ? (
                                   // Day with compensation only (no regular shift - e.g., off day with compensation work)
-                                  <div className="w-full text-center flex flex-col items-center">
-                                    <Hammer className={cn(
-                                      "h-3.5 w-3.5",
-                                      hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
-                                    )} />
-                                    {daysCount <= 14 && (
-                                      <div className={cn(
-                                        "text-[9px] font-medium",
-                                        hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
-                                      )}>
-                                        {hasConfirmedCompensation ? `+${Math.round(compensationHoursToday * 100) / 100}ч` : `(~${Math.round(pendingHoursToday * 100) / 100}ч)`}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div 
+                                        className={cn(
+                                          "w-full text-center flex flex-col items-center cursor-pointer transition-transform hover:scale-110",
+                                          hasPendingCompensation && !hasConfirmedCompensation && "animate-pulse"
+                                        )}
+                                        onClick={(e) => {
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+                                          const confirmableRecord = pendingRecords.find(r => {
+                                            const compDate = new Date(r.compensation_date);
+                                            compDate.setHours(0, 0, 0, 0);
+                                            return compDate <= today;
+                                          });
+                                          if (confirmableRecord) {
+                                            handleConfirmCompensation(confirmableRecord, e);
+                                          } else if (pendingRecords.length > 0) {
+                                            e.stopPropagation();
+                                            toast.info("Дата отработки ещё не наступила");
+                                          }
+                                        }}
+                                      >
+                                        <Hammer className={cn(
+                                          "h-3.5 w-3.5",
+                                          hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
+                                        )} />
+                                        {daysCount <= 14 && (
+                                          <div className={cn(
+                                            "text-[9px] font-medium",
+                                            hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
+                                          )}>
+                                            {hasConfirmedCompensation ? `+${Math.round(compensationHoursToday * 100) / 100}ч` : `(~${Math.round(pendingHoursToday * 100) / 100}ч)`}
+                                          </div>
+                                        )}
+                                        {cycleInfo && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
                                       </div>
-                                    )}
-                                    {cycleInfo && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
-                                  </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      {hasPendingCompensation && !hasConfirmedCompensation 
+                                        ? "Нажмите для подтверждения отработки"
+                                        : "Отработка подтверждена"
+                                      }
+                                    </TooltipContent>
+                                  </Tooltip>
                                 ) : (
                                   <div className="flex flex-col items-center">
                                     <span className={cn("text-sm", hasOverride ? "text-amber-600 dark:text-amber-400" : isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground")}>
