@@ -36,10 +36,49 @@ export interface OperatorCompensationBalance {
 }
 
 export const COMPENSATION_STATUS_LABELS = {
-  pending: { label: "Ожидает отработки", color: "text-amber-600", bgColor: "bg-amber-100 dark:bg-amber-900/30" },
+  pending: { label: "Ожидание отработки", color: "text-amber-600", bgColor: "bg-amber-100 dark:bg-amber-900/30" },
   partial: { label: "Частично отработано", color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30" },
   completed: { label: "Отработано", color: "text-emerald-600", bgColor: "bg-emerald-100 dark:bg-emerald-900/30" },
   cancelled: { label: "Отменено", color: "text-gray-500", bgColor: "bg-gray-100 dark:bg-gray-800" },
+};
+
+// Helper function to calculate status based on records and dates
+export const calculateCompensationStatus = (
+  absenceHours: number,
+  compensationRecords: CompensationRecord[] | undefined
+): "pending" | "partial" | "completed" => {
+  if (!compensationRecords || compensationRecords.length === 0) {
+    return "pending";
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const totalConfirmedHours = compensationRecords.reduce(
+    (sum, r) => r.status === "confirmed" ? sum + Number(r.hours_worked) : sum,
+    0
+  );
+
+  // If all absence hours are confirmed -> completed
+  if (totalConfirmedHours >= absenceHours) {
+    return "completed";
+  }
+
+  // Check if any compensation date has passed (needs confirmation or partially worked)
+  const hasPassedDates = compensationRecords.some(r => {
+    if (r.status === "confirmed") return true; // Already confirmed counts
+    const compDate = new Date(r.compensation_date);
+    compDate.setHours(0, 0, 0, 0);
+    return compDate <= today;
+  });
+
+  // If there are passed dates or confirmed hours -> partial
+  if (hasPassedDates || totalConfirmedHours > 0) {
+    return "partial";
+  }
+
+  // All dates are in the future -> pending (awaiting compensation)
+  return "pending";
 };
 
 // Fetch absence compensations for operators
@@ -202,23 +241,15 @@ export const useAddCompensationRecord = () => {
       if (compError) throw compError;
 
       const absComp = compensation as AbsenceCompensation;
-      // Only count CONFIRMED records towards completion status
-      const totalConfirmedHours = absComp.compensation_records?.reduce(
-        (sum, r) => r.status === "confirmed" ? sum + Number(r.hours_worked) : sum,
-        0
-      ) || 0;
-
-      // Status is based on confirmed hours only
-      // "partial" means there are pending records but not fully confirmed yet
-      // "completed" only when confirmed hours >= absence hours
-      let newStatus: string = "pending";
-      const hasPendingRecords = absComp.compensation_records?.some(r => !r.status || r.status === "pending");
       
-      if (totalConfirmedHours >= Number(absComp.absence_hours)) {
-        newStatus = "completed";
-      } else if (totalConfirmedHours > 0 || hasPendingRecords) {
-        newStatus = "partial";
-      }
+      // Calculate status based on new logic:
+      // - pending: records exist but dates haven't passed
+      // - partial: at least one date has passed (awaiting confirmation) or has confirmed hours
+      // - completed: all hours confirmed
+      const newStatus = calculateCompensationStatus(
+        Number(absComp.absence_hours),
+        absComp.compensation_records
+      );
 
       const { error: updateError } = await supabase
         .from("absence_compensations")
@@ -339,19 +370,12 @@ export const useDeleteCompensationRecord = () => {
       if (compError) throw compError;
 
       const absComp = compensation as AbsenceCompensation;
-      // Only count CONFIRMED records
-      const totalConfirmedHours = absComp.compensation_records?.reduce(
-        (sum, r) => r.status === "confirmed" ? sum + Number(r.hours_worked) : sum,
-        0
-      ) || 0;
-      const hasPendingRecords = absComp.compensation_records?.some(r => !r.status || r.status === "pending");
-
-      let newStatus: string = "pending";
-      if (totalConfirmedHours >= Number(absComp.absence_hours)) {
-        newStatus = "completed";
-      } else if (totalConfirmedHours > 0 || hasPendingRecords) {
-        newStatus = "partial";
-      }
+      
+      // Calculate status based on new logic
+      const newStatus = calculateCompensationStatus(
+        Number(absComp.absence_hours),
+        absComp.compensation_records
+      );
 
       await supabase
         .from("absence_compensations")
@@ -411,17 +435,12 @@ export const useConfirmCompensationRecord = () => {
       if (compError) throw compError;
 
       const absComp = compensation as AbsenceCompensation;
-      const totalConfirmedHours = absComp.compensation_records?.reduce(
-        (sum, r) => r.status === "confirmed" ? sum + Number(r.hours_worked) : sum,
-        0
-      ) || 0;
-
-      let newStatus: string = "pending";
-      if (totalConfirmedHours > 0 && totalConfirmedHours < Number(absComp.absence_hours)) {
-        newStatus = "partial";
-      } else if (totalConfirmedHours >= Number(absComp.absence_hours)) {
-        newStatus = "completed";
-      }
+      
+      // Calculate status based on new logic
+      const newStatus = calculateCompensationStatus(
+        Number(absComp.absence_hours),
+        absComp.compensation_records
+      );
 
       await supabase
         .from("absence_compensations")
