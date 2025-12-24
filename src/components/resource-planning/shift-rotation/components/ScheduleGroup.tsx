@@ -773,8 +773,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             
                             // Check for compensation records (отработка) on this day
                             const compensationRecords = getCompensationRecordsForDate(operator.id, day);
+                            // Consider records without status or with status !== 'confirmed' as pending
                             const confirmedRecords = compensationRecords.filter(r => r.status === "confirmed");
-                            const pendingRecords = compensationRecords.filter(r => r.status === "pending");
+                            const pendingRecords = compensationRecords.filter(r => !r.status || r.status === "pending");
                             const hasCompensation = compensationRecords.length > 0;
                             const hasConfirmedCompensation = confirmedRecords.length > 0;
                             const hasPendingCompensation = pendingRecords.length > 0;
@@ -1052,7 +1053,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                       <div className={cn(
                                         "text-[9px] opacity-80 truncate w-full",
                                         isShortenedDay && "text-orange-600 dark:text-orange-400 font-medium",
-                                        hasCompensation && "text-emerald-600 dark:text-emerald-400 font-medium"
+                                        hasConfirmedCompensation && "text-emerald-600 dark:text-emerald-400 font-medium",
+                                        hasPendingCompensation && !hasConfirmedCompensation && "text-amber-500 dark:text-amber-400 font-medium"
                                       )}>
                                         {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
                                       {isShortenedDay && <span className="opacity-70"> ↓</span>}
