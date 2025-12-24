@@ -370,7 +370,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                   <div 
                     key={dateStr} 
                     className={cn(
-                      "flex items-center gap-3 py-1.5 px-2 rounded hover:bg-muted/50",
+                      "flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50",
                       isSelected && "bg-primary/5"
                     )}
                   >
@@ -389,17 +389,20 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       )}
                     </Button>
                     
-                    <div className="w-24 text-sm">
+                    {/* Date column - fixed width */}
+                    <div className="w-[85px] shrink-0 text-sm">
                       {format(day, "EEE, d MMM", { locale: ru })}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Badge variant="outline" className={cn("min-w-16 justify-center text-xs", hasCompensation && "border-amber-400 bg-amber-50")}>
+                    
+                    {/* Plan column - fixed width */}
+                    <div className="w-[100px] shrink-0 flex items-center gap-1">
+                      <Badge variant="outline" className={cn("w-full justify-center text-xs", hasCompensation && "border-amber-400 bg-amber-50")}>
                         План: {formatMinutes(planned)}
                       </Badge>
                       {hasCompensation && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Hammer className="h-3 w-3 text-amber-500" />
+                            <Hammer className="h-3 w-3 text-amber-500 shrink-0" />
                           </TooltipTrigger>
                           <TooltipContent>
                             <p className="text-xs">Включает отработку: {formatMinutes(compensationMinutes)}</p>
@@ -407,13 +410,15 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         </Tooltip>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 flex-1">
-                      <Label className="text-xs text-muted-foreground">Факт:</Label>
+                    
+                    {/* Fact column - fixed width */}
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-xs text-muted-foreground shrink-0">Факт:</Label>
                       <Input
                         type="number"
                         min="0"
                         step="1"
-                        className="w-20 h-8 text-sm"
+                        className="w-[70px] h-8 text-sm"
                         value={Math.round(currentValue)}
                         onChange={(e) => {
                           const rawValue = e.target.value;
@@ -431,9 +436,12 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         }}
                         placeholder="мин"
                       />
-                      <span className="text-xs text-muted-foreground">мин</span>
-                      {/* Fill by plan for single day */}
-                      {planned > 0 && currentValue !== planned && (
+                      <span className="text-xs text-muted-foreground shrink-0">мин</span>
+                    </div>
+                    
+                    {/* Action column - fixed width */}
+                    <div className="w-8 shrink-0 flex justify-center">
+                      {planned > 0 && currentValue !== planned ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -449,18 +457,22 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                             <p className="text-xs">Заполнить по плану ({formatMinutes(planned)})</p>
                           </TooltipContent>
                         </Tooltip>
+                      ) : null}
+                    </div>
+                    
+                    {/* Status column - fixed width */}
+                    <div className="w-10 shrink-0 flex justify-center">
+                      {hasSaved && (
+                        <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                          ✓
+                        </Badge>
+                      )}
+                      {hasEdit && (
+                        <Badge className="text-xs bg-amber-100 text-amber-700">
+                          изм.
+                        </Badge>
                       )}
                     </div>
-                    {hasSaved && (
-                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
-                        ✓
-                      </Badge>
-                    )}
-                    {hasEdit && (
-                      <Badge className="text-xs bg-amber-100 text-amber-700">
-                        изм.
-                      </Badge>
-                    )}
                   </div>
                 );
               })}
