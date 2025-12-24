@@ -200,8 +200,14 @@ export const useUpdateOperatorAbsence = () => {
 
       if (error) throw error;
 
-      // If user manually checked requiresCompensation, create compensation records
-      if (requiresCompensation && updates.status === 'approved' && data) {
+      // Determine if compensation is needed:
+      // - Either the type is in COMPENSABLE_ABSENCE_TYPES (e.g. unauthorized_absence)
+      // - Or the user manually checked requiresCompensation
+      const needsCompensation = updates.status === 'approved' && data && 
+        (isCompensableAbsenceType(data.absence_type as OperatorAbsence["absence_type"]) || requiresCompensation);
+
+      // If compensation is needed, create compensation records
+      if (needsCompensation) {
         const scheduleHours = await getOperatorScheduleHours(data.operator_id);
         
         // Calculate number of days
