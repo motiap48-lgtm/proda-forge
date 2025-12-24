@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays, endOfMonth, isSameDay } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Clock, Check, Save, RotateCcw, Undo2, Hammer } from "lucide-react";
+import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -225,6 +225,23 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 </Tooltip>
               </div>
             </div>
+            {/* Settings indicator */}
+            {settings.restrictFillByPlanToLastDay && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded">
+                <Info className="h-3 w-3 shrink-0" />
+                <span>
+                  Заполнение по плану ограничено последним днём месяца
+                  {!canFillByPlan && (
+                    <span className="text-amber-600 ml-1">
+                      (до {format(lastDayOfMonth, "d MMMM", { locale: ru })})
+                    </span>
+                  )}
+                  {canFillByPlan && (
+                    <span className="text-green-600 ml-1">(доступно сегодня)</span>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
           
           <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
@@ -287,6 +304,24 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         placeholder="мин"
                       />
                       <span className="text-xs text-muted-foreground">мин</span>
+                      {/* Fill by plan for single day */}
+                      {planned > 0 && currentValue !== planned && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => setEdits(prev => ({ ...prev, [dateStr]: planned }))}
+                            >
+                              <ArrowRight className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Заполнить по плану ({formatMinutes(planned)})</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
                     {hasSaved && (
                       <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
