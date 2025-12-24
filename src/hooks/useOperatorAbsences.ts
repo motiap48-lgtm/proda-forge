@@ -269,6 +269,43 @@ export const useDeleteOperatorAbsence = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // First get the absence to know operator_id and dates
+      const { data: absence, error: fetchError } = await supabase
+        .from("operator_absences")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Delete related absence_compensations for this absence period
+      if (absence) {
+        // First delete compensation_records linked to absence_compensations for this operator and date range
+        const { data: compensations } = await supabase
+          .from("absence_compensations")
+          .select("id")
+          .eq("operator_id", absence.operator_id)
+          .gte("absence_date", absence.start_date)
+          .lte("absence_date", absence.end_date);
+
+        if (compensations && compensations.length > 0) {
+          const compensationIds = compensations.map(c => c.id);
+          
+          // Delete compensation records first (due to foreign key)
+          await supabase
+            .from("compensation_records")
+            .delete()
+            .in("absence_compensation_id", compensationIds);
+
+          // Then delete absence compensations
+          await supabase
+            .from("absence_compensations")
+            .delete()
+            .in("id", compensationIds);
+        }
+      }
+
+      // Finally delete the absence itself
       const { error } = await supabase
         .from("operator_absences")
         .delete()
@@ -279,6 +316,8 @@ export const useDeleteOperatorAbsence = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
       toast.success("Отсутствие удалено");
     },
     onError: (error) => {
