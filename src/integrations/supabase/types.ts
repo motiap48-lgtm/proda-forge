@@ -269,6 +269,7 @@ export type Database = {
           id: string
           notes: string | null
           operator_id: string
+          status: string
         }
         Insert: {
           absence_compensation_id: string
@@ -279,6 +280,7 @@ export type Database = {
           id?: string
           notes?: string | null
           operator_id: string
+          status?: string
         }
         Update: {
           absence_compensation_id?: string
@@ -289,6 +291,7 @@ export type Database = {
           id?: string
           notes?: string | null
           operator_id?: string
+          status?: string
         }
         Relationships: [
           {
