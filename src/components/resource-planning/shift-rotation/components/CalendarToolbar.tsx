@@ -517,16 +517,25 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         {/* Fullscreen toggle */}
         {onToggleFullscreen && (
           <Button
-            variant="outline"
+            variant={isFullscreen ? "default" : "outline"}
             size="sm"
             onClick={onToggleFullscreen}
-            title={isFullscreen ? "Выйти из полноэкранного режима" : "Полноэкранный режим"}
-            className="gap-1.5"
+            title={isFullscreen ? "Выйти из полноэкранного режима (Esc)" : "Полноэкранный режим (F11)"}
+            className={cn(
+              "gap-1.5",
+              isFullscreen && "bg-primary text-primary-foreground hover:bg-primary/90"
+            )}
           >
             {isFullscreen ? (
-              <Minimize2 className="h-4 w-4" />
+              <>
+                <Minimize2 className="h-4 w-4" />
+                <span className="text-xs">Выход</span>
+              </>
             ) : (
-              <Maximize2 className="h-4 w-4" />
+              <>
+                <Maximize2 className="h-4 w-4" />
+                <span className="hidden sm:inline text-xs">Полный экран</span>
+              </>
             )}
           </Button>
         )}
