@@ -7,6 +7,7 @@ import { useUpdateOperator, useCalendarExceptions } from "@/hooks/useResourcePla
 import { useAllOperatorAbsences, isDateInAbsence } from "@/hooks/useOperatorAbsences";
 import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { useOperatorTimesheets } from "@/hooks/useOperatorTimesheets";
+import { useAbsenceCompensations, type CompensationRecord } from "@/hooks/useAbsenceCompensations";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -169,6 +170,29 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     days[days.length - 1] || startDate,
     operatorIds
   );
+
+  // Fetch compensation records for the period
+  const { data: compensations = [] } = useAbsenceCompensations(
+    operatorIds,
+    days[0] && days[days.length - 1] 
+      ? { from: days[0], to: days[days.length - 1] }
+      : undefined
+  );
+
+  // Create compensation records map by operator_id + date
+  const compensationRecordsMap = useMemo(() => {
+    const map = new Map<string, CompensationRecord[]>();
+    compensations.forEach(comp => {
+      comp.compensation_records?.forEach(record => {
+        const key = `${record.operator_id}_${record.compensation_date}`;
+        if (!map.has(key)) {
+          map.set(key, []);
+        }
+        map.get(key)!.push(record);
+      });
+    });
+    return map;
+  }, [compensations]);
 
   // Generate shift details with time info
   const shiftDetails = useMemo(() => {
@@ -771,6 +795,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   scheduleOverrides={scheduleOverrides}
                   calendarExceptions={calendarExceptions}
                   timesheets={timesheets}
+                  compensationRecordsMap={compensationRecordsMap}
                   days={days}
                   months={months}
                   period={period}
