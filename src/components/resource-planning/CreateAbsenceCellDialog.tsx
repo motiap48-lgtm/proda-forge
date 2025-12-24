@@ -193,21 +193,23 @@ export const CreateAbsenceCellDialog = ({
                   <SelectValue />
                 </SelectTrigger>
               <SelectContent position="popper">
-                  {Object.entries(ABSENCE_TYPE_LABELS).map(([key, { label, icon }]) => {
-                    // Прогул недоступен для будущих дат
-                    const isDisabled = key === "unauthorized_absence" && isDateInFuture;
-                    return (
-                      <SelectItem 
-                        key={key} 
-                        value={key} 
-                        disabled={isDisabled}
-                        className={isDisabled ? "opacity-50" : ""}
-                      >
-                        {icon} {label}
-                        {isDisabled && " (только для прошедших дат)"}
-                      </SelectItem>
-                    );
-                  })}
+                  {Object.entries(ABSENCE_TYPE_LABELS)
+                    .filter(([key]) => key !== 'administrative_leave') // Скрываем устаревший тип
+                    .map(([key, { label, icon }]) => {
+                      // Прогул недоступен для будущих дат
+                      const isDisabled = key === "unauthorized_absence" && isDateInFuture;
+                      return (
+                        <SelectItem 
+                          key={key} 
+                          value={key} 
+                          disabled={isDisabled}
+                          className={isDisabled ? "opacity-50" : ""}
+                        >
+                          {icon} {label}
+                          {isDisabled && " (только для прошедших дат)"}
+                        </SelectItem>
+                      );
+                    })}
                 </SelectContent>
               </Select>
             </div>
