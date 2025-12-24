@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Bell, Check, Trash2, AlertTriangle, Building2, Clock, ChevronDown, ChevronRight, UserCheck, CalendarClock } from "lucide-react";
+import { Bell, Check, Trash2, AlertTriangle, Building2, Clock, ChevronDown, ChevronRight, UserCheck, CalendarClock, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProductionOrdersWithCustomers } from "@/hooks/useProductionOrdersWithCustomers";
 import { useAllOperatorAbsences, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
 import { useOperators } from "@/hooks/useResourcePlanning";
+import { useAbsenceCompensations, COMPENSATION_STATUS_LABELS } from "@/hooks/useAbsenceCompensations";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow, addDays, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -47,8 +48,10 @@ export const NotificationPopover = () => {
   const { data: orders } = useProductionOrdersWithCustomers();
   const { data: absences = [] } = useAllOperatorAbsences();
   const { data: operators = [] } = useOperators();
+  const { data: compensations = [] } = useAbsenceCompensations();
   const [dismissedOrders, setDismissedOrders] = useState<Set<string>>(new Set());
   const [dismissedReturning, setDismissedReturning] = useState<Set<string>>(new Set());
+  const [dismissedCompensations, setDismissedCompensations] = useState<Set<string>>(new Set());
   const [groupByCustomer, setGroupByCustomer] = useState(true);
   const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set(["no-customer"]));
 
@@ -163,7 +166,53 @@ export const NotificationPopover = () => {
     setDismissedReturning(prev => new Set([...prev, id]));
   };
 
-  const totalNotifications = overdueOrders.length + returningEmployees.length;
+  const dismissCompensation = (id: string) => {
+    setDismissedCompensations(prev => new Set([...prev, id]));
+  };
+
+  // Compensations awaiting confirmation (status = partial means date has passed)
+  const pendingCompensations = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return compensations
+      .filter(comp => {
+        if (dismissedCompensations.has(comp.id)) return false;
+        if (comp.status !== "partial") return false;
+        
+        // Check for records where date has passed but not confirmed
+        const hasUnconfirmedPastRecords = comp.compensation_records?.some(r => {
+          if (r.status === "confirmed") return false;
+          const compDate = new Date(r.compensation_date);
+          compDate.setHours(0, 0, 0, 0);
+          return compDate <= today;
+        });
+        
+        return hasUnconfirmedPastRecords;
+      })
+      .map(comp => {
+        const operator = operators.find(op => op.id === comp.operator_id);
+        const unconfirmedRecords = comp.compensation_records?.filter(r => {
+          if (r.status === "confirmed") return false;
+          const compDate = new Date(r.compensation_date);
+          compDate.setHours(0, 0, 0, 0);
+          return compDate <= today;
+        }) || [];
+        
+        return {
+          id: comp.id,
+          operatorId: comp.operator_id,
+          operatorName: operator?.full_name || "Неизвестный сотрудник",
+          absenceDate: comp.absence_date,
+          absenceHours: comp.absence_hours,
+          reason: comp.reason,
+          unconfirmedRecords,
+        };
+      })
+      .sort((a, b) => new Date(a.absenceDate).getTime() - new Date(b.absenceDate).getTime());
+  }, [compensations, operators, dismissedCompensations]);
+
+  const totalNotifications = overdueOrders.length + returningEmployees.length + pendingCompensations.length;
 
   const getOverdueLabel = (days: number) => {
     if (days === 1) return "1 день";
@@ -196,21 +245,30 @@ export const NotificationPopover = () => {
       <PopoverContent className="w-[420px] p-0" align="end">
         <Tabs defaultValue="overdue" className="w-full">
           <div className="border-b p-2">
-            <TabsList className="w-full">
-              <TabsTrigger value="overdue" className="flex-1 gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                Просроченные
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="overdue" className="gap-1 text-xs px-2">
+                <AlertTriangle className="h-3 w-3" />
+                Просрочка
                 {overdueOrders.length > 0 && (
-                  <Badge variant="destructive" className="text-xs h-5 px-1.5">
+                  <Badge variant="destructive" className="text-xs h-4 px-1 ml-0.5">
                     {overdueOrders.length}
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="returning" className="flex-1 gap-1.5">
-                <UserCheck className="h-3.5 w-3.5" />
-                Возвращение
+              <TabsTrigger value="compensations" className="gap-1 text-xs px-2">
+                <ClipboardCheck className="h-3 w-3" />
+                Отработка
+                {pendingCompensations.length > 0 && (
+                  <Badge variant="secondary" className="text-xs h-4 px-1 ml-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    {pendingCompensations.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="returning" className="gap-1 text-xs px-2">
+                <UserCheck className="h-3 w-3" />
+                Выход
                 {returningEmployees.length > 0 && (
-                  <Badge variant="secondary" className="text-xs h-5 px-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  <Badge variant="secondary" className="text-xs h-4 px-1 ml-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                     {returningEmployees.length}
                   </Badge>
                 )}
@@ -425,6 +483,74 @@ export const NotificationPopover = () => {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="compensations" className="m-0">
+            <div className="flex items-center justify-between border-b p-3">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4 text-blue-600" />
+                <h4 className="font-semibold text-foreground text-sm">Ожидают подтверждения</h4>
+              </div>
+              <span className="text-xs text-muted-foreground">Отработка</span>
+            </div>
+            <ScrollArea className="h-[350px]">
+              {pendingCompensations.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <ClipboardCheck className="mx-auto mb-2 h-8 w-8 opacity-50" />
+                  <p className="text-sm">Нет отработок, ожидающих подтверждения</p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {pendingCompensations.map((comp) => (
+                    <div
+                      key={comp.id}
+                      className="p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigate("/planning/resources")}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-foreground">
+                              {comp.operatorName}
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Отсутствие: {new Date(comp.absenceDate).toLocaleDateString("ru-RU")} ({comp.absenceHours}ч)
+                          </p>
+                          {comp.reason && (
+                            <p className="text-xs text-muted-foreground truncate max-w-[250px]">
+                              {comp.reason}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-1 flex-wrap mt-1">
+                            {comp.unconfirmedRecords.map((record) => (
+                              <Badge
+                                key={record.id}
+                                variant="outline"
+                                className="text-xs text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20"
+                              >
+                                {new Date(record.compensation_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })} • {record.hours_worked}ч
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            dismissCompensation(comp.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </ScrollArea>
