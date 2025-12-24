@@ -175,13 +175,16 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
     return compensationRecordsMap.get(key) || [];
   }, [compensationRecordsMap]);
 
-  // Calculate compensation hours for operator across period
+  // Calculate compensation hours for operator across period (only confirmed records count)
   const calculateCompensationHours = useCallback((operatorId: string): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     days.forEach(day => {
       const records = getCompensationRecordsForDate(operatorId, day);
       records.forEach(record => {
-        totalMinutes += Math.round(record.hours_worked * 60);
+        // Only count confirmed records
+        if (record.status === "confirmed") {
+          totalMinutes += Math.round(record.hours_worked * 60);
+        }
       });
     });
     return {
@@ -770,8 +773,13 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             
                             // Check for compensation records (отработка) on this day
                             const compensationRecords = getCompensationRecordsForDate(operator.id, day);
+                            const confirmedRecords = compensationRecords.filter(r => r.status === "confirmed");
+                            const pendingRecords = compensationRecords.filter(r => r.status === "pending");
                             const hasCompensation = compensationRecords.length > 0;
-                            const compensationHoursToday = compensationRecords.reduce((sum, r) => sum + r.hours_worked, 0);
+                            const hasConfirmedCompensation = confirmedRecords.length > 0;
+                            const hasPendingCompensation = pendingRecords.length > 0;
+                            const compensationHoursToday = confirmedRecords.reduce((sum, r) => sum + r.hours_worked, 0);
+                            const pendingHoursToday = pendingRecords.reduce((sum, r) => sum + r.hours_worked, 0);
                             
                             // Check for shortened day (calendar exception)
                             const dateStr = format(day, "yyyy-MM-dd");
@@ -1025,10 +1033,13 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   </div>
                                 )}
                                 
-                                {/* Compensation indicator - show hammer icon */}
+                                {/* Compensation indicator - show hammer icon with color based on status */}
                                 {hasCompensation && (
                                   <div className="absolute bottom-0.5 right-0.5">
-                                    <Hammer className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
+                                    <Hammer className={cn(
+                                      "h-2.5 w-2.5",
+                                      hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
+                                    )} />
                                   </div>
                                 )}
                                 
@@ -1044,8 +1055,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                         hasCompensation && "text-emerald-600 dark:text-emerald-400 font-medium"
                                       )}>
                                         {mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`}
-                                        {isShortenedDay && <span className="opacity-70"> ↓</span>}
-                                        {hasCompensation && <span className="opacity-70"> +{compensationHoursToday}ч</span>}
+                                      {isShortenedDay && <span className="opacity-70"> ↓</span>}
+                                        {hasConfirmedCompensation && <span className="text-emerald-600 dark:text-emerald-400"> +{Math.round(compensationHoursToday * 100) / 100}ч</span>}
+                                        {hasPendingCompensation && <span className="text-amber-500 dark:text-amber-400"> (~{Math.round(pendingHoursToday * 100) / 100}ч)</span>}
                                       </div>
                                     )}
                                     {cycleInfo && <div className="text-[8px] opacity-70 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
@@ -1053,10 +1065,16 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 ) : hasCompensation ? (
                                   // Day with compensation only (no regular shift - e.g., off day with compensation work)
                                   <div className="w-full text-center flex flex-col items-center">
-                                    <Hammer className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    <Hammer className={cn(
+                                      "h-3.5 w-3.5",
+                                      hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
+                                    )} />
                                     {daysCount <= 14 && (
-                                      <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">
-                                        +{compensationHoursToday}ч
+                                      <div className={cn(
+                                        "text-[9px] font-medium",
+                                        hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
+                                      )}>
+                                        {hasConfirmedCompensation ? `+${Math.round(compensationHoursToday * 100) / 100}ч` : `(~${Math.round(pendingHoursToday * 100) / 100}ч)`}
                                       </div>
                                     )}
                                     {cycleInfo && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}

@@ -24,6 +24,7 @@ export interface CompensationRecord {
   notes: string | null;
   created_at: string;
   created_by: string | null;
+  status: "pending" | "confirmed";
 }
 
 export interface OperatorCompensationBalance {
@@ -95,8 +96,15 @@ export const useOperatorCompensationBalance = (operatorId: string) => {
       absenceCompensations.forEach((comp) => {
         totalAbsenceHours += Number(comp.absence_hours);
         
+        // Only count confirmed compensation records
         const compensatedHours = comp.compensation_records?.reduce(
-          (sum, record) => sum + Number(record.hours_worked),
+          (sum, record) => {
+            // Only count confirmed records in the balance
+            if (record.status === "confirmed") {
+              return sum + Number(record.hours_worked);
+            }
+            return sum;
+          },
           0
         ) || 0;
         
@@ -168,7 +176,7 @@ export const useAddCompensationRecord = () => {
       hours_worked: number;
       notes?: string;
     }) => {
-      // Add compensation record
+      // Add compensation record with pending status
       const { data: record, error: recordError } = await supabase
         .from("compensation_records")
         .insert({
@@ -177,6 +185,7 @@ export const useAddCompensationRecord = () => {
           compensation_date: data.compensation_date,
           hours_worked: data.hours_worked,
           notes: data.notes || null,
+          status: "pending", // New records start as pending
         })
         .select()
         .single();
@@ -344,6 +353,78 @@ export const useDeleteCompensationRecord = () => {
       queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
       toast.success("Запись отработки удалена");
+    },
+    onError: (error: any) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+};
+
+// Confirm compensation record (can only confirm if date has passed)
+export const useConfirmCompensationRecord = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { id: string; absence_compensation_id: string }) => {
+      // First get the record to check the date
+      const { data: record, error: fetchError } = await supabase
+        .from("compensation_records")
+        .select("*")
+        .eq("id", data.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const compensationDate = new Date(record.compensation_date);
+      compensationDate.setHours(0, 0, 0, 0);
+
+      if (compensationDate > today) {
+        throw new Error("Нельзя подтвердить отработку до наступления даты");
+      }
+
+      // Update status to confirmed
+      const { error: updateError } = await supabase
+        .from("compensation_records")
+        .update({ status: "confirmed" })
+        .eq("id", data.id);
+
+      if (updateError) throw updateError;
+
+      // Recalculate absence compensation status based on confirmed records only
+      const { data: compensation, error: compError } = await supabase
+        .from("absence_compensations")
+        .select(`*, compensation_records (*)`)
+        .eq("id", data.absence_compensation_id)
+        .single();
+
+      if (compError) throw compError;
+
+      const absComp = compensation as AbsenceCompensation;
+      const totalConfirmedHours = absComp.compensation_records?.reduce(
+        (sum, r) => r.status === "confirmed" ? sum + Number(r.hours_worked) : sum,
+        0
+      ) || 0;
+
+      let newStatus: string = "pending";
+      if (totalConfirmedHours > 0 && totalConfirmedHours < Number(absComp.absence_hours)) {
+        newStatus = "partial";
+      } else if (totalConfirmedHours >= Number(absComp.absence_hours)) {
+        newStatus = "completed";
+      }
+
+      await supabase
+        .from("absence_compensations")
+        .update({ status: newStatus })
+        .eq("id", data.absence_compensation_id);
+
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      toast.success("Отработка подтверждена");
     },
     onError: (error: any) => {
       toast.error(`Ошибка: ${error.message}`);

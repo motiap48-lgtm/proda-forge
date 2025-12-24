@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays } from "lucide-react";
+import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ import {
   useAddCompensationRecord,
   useDeleteAbsenceCompensation,
   useDeleteCompensationRecord,
+  useConfirmCompensationRecord,
   COMPENSATION_STATUS_LABELS,
   AbsenceCompensation,
 } from "@/hooks/useAbsenceCompensations";
@@ -109,6 +110,16 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   const addCompensation = useAddCompensationRecord();
   const deleteAbsence = useDeleteAbsenceCompensation();
   const deleteRecord = useDeleteCompensationRecord();
+  const confirmRecord = useConfirmCompensationRecord();
+
+  // Check if a record can be confirmed (date has passed)
+  const canConfirmRecord = (compensationDate: string): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const recordDate = new Date(compensationDate);
+    recordDate.setHours(0, 0, 0, 0);
+    return recordDate <= today;
+  };
 
   const handleAddAbsence = () => {
     if (!absenceDate) return;
@@ -355,33 +366,73 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                     {/* Compensation records */}
                     {comp.compensation_records && comp.compensation_records.length > 0 && (
                       <div className="mt-2 pl-4 border-l-2 border-emerald-200 dark:border-emerald-800 space-y-1">
-                        {comp.compensation_records.map((record) => (
-                          <div
-                            key={record.id}
-                            className="flex items-center justify-between text-sm"
-                          >
-                            <span>
-                              {format(new Date(record.compensation_date), "d MMM", { locale: ru })}
-                              : {record.hours_worked}ч
-                              {record.notes && (
-                                <span className="text-muted-foreground"> - {record.notes}</span>
-                              )}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-rose-600"
-                              onClick={() =>
-                                deleteRecord.mutate({
-                                  id: record.id,
-                                  absence_compensation_id: comp.id,
-                                })
-                              }
+                        {comp.compensation_records.map((record) => {
+                          const isConfirmed = record.status === "confirmed";
+                          const canConfirm = canConfirmRecord(record.compensation_date);
+                          
+                          return (
+                            <div
+                              key={record.id}
+                              className="flex items-center justify-between text-sm"
                             >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
+                              <div className="flex items-center gap-2">
+                                {isConfirmed ? (
+                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                                ) : (
+                                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                                )}
+                                <span className={!isConfirmed ? "text-muted-foreground" : ""}>
+                                  {format(new Date(record.compensation_date), "d MMM", { locale: ru })}
+                                  : {record.hours_worked}ч
+                                  {!isConfirmed && (
+                                    <span className="text-amber-600 ml-1">(ожидает)</span>
+                                  )}
+                                  {record.notes && (
+                                    <span className="text-muted-foreground"> - {record.notes}</span>
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex gap-1">
+                                {!isConfirmed && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className={`h-6 w-6 p-0 ${
+                                      canConfirm 
+                                        ? "text-emerald-600 hover:text-emerald-700" 
+                                        : "text-muted-foreground cursor-not-allowed"
+                                    }`}
+                                    onClick={() => {
+                                      if (canConfirm) {
+                                        confirmRecord.mutate({
+                                          id: record.id,
+                                          absence_compensation_id: comp.id,
+                                        });
+                                      }
+                                    }}
+                                    disabled={!canConfirm}
+                                    title={canConfirm ? "Подтвердить отработку" : "Можно подтвердить только после наступления даты"}
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 text-muted-foreground hover:text-rose-600"
+                                  onClick={() =>
+                                    deleteRecord.mutate({
+                                      id: record.id,
+                                      absence_compensation_id: comp.id,
+                                    })
+                                  }
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
