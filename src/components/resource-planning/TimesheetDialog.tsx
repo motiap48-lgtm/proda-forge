@@ -79,8 +79,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     const entries = Object.entries(edits).map(([dateStr, actualMinutes]) => ({
       operator_id: operatorId,
       work_date: dateStr,
-      planned_minutes: plannedMinutesPerDay(new Date(dateStr)),
-      actual_minutes: actualMinutes,
+      planned_minutes: Math.round(plannedMinutesPerDay(new Date(dateStr))),
+      actual_minutes: Math.round(actualMinutes),
     }));
     
     if (entries.length === 0) {
