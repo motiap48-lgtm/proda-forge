@@ -21,7 +21,9 @@ export const CompensationPendingIcon: React.FC<CompensationPendingIconProps> = (
   // Don't show if no pending hours
   if (balance.pendingHours <= 0) return null;
 
-  const pendingHours = balance.pendingHours;
+  const pendingHours = Math.round(balance.pendingHours * 100) / 100;
+  const totalAbsenceHours = Math.round(balance.totalAbsenceHours * 100) / 100;
+  const totalCompensatedHours = Math.round(balance.totalCompensatedHours * 100) / 100;
   const isHighDebt = pendingHours >= 8;
 
   return (
@@ -53,7 +55,7 @@ export const CompensationPendingIcon: React.FC<CompensationPendingIconProps> = (
             Неотработанные часы: {pendingHours}ч
           </p>
           <p className="text-muted-foreground">
-            Пропущено: {balance.totalAbsenceHours}ч / Отработано: {balance.totalCompensatedHours}ч
+            Пропущено: {totalAbsenceHours}ч / Отработано: {totalCompensatedHours}ч
           </p>
         </div>
       </PopoverContent>
