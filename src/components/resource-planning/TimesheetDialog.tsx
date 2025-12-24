@@ -21,8 +21,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Clock, Check, Save, RotateCcw, Undo2 } from "lucide-react";
+import { Clock, Check, Save, RotateCcw, Undo2, Hammer } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { 
   useOperatorTimesheets, 
   useBulkUpsertTimesheets,
@@ -38,6 +40,7 @@ interface TimesheetDialogProps {
   startDate: Date;
   endDate: Date;
   plannedMinutesPerDay: (date: Date) => number;
+  compensationMinutesPerDay?: (date: Date) => number;
 }
 
 export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
@@ -48,6 +51,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   startDate,
   endDate,
   plannedMinutesPerDay,
+  compensationMinutesPerDay,
 }) => {
   const { data: timesheets = [], isLoading } = useOperatorTimesheets(startDate, endDate, [operatorId]);
   const bulkUpsert = useBulkUpsertTimesheets();
@@ -145,8 +149,9 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   }, [days, edits, timesheetMap, operatorId, plannedMinutesPerDay]);
   
   const formatMinutes = (m: number) => {
-    const isNegative = m < 0;
-    const absM = Math.abs(m);
+    const rounded = Math.round(m);
+    const isNegative = rounded < 0;
+    const absM = Math.abs(rounded);
     const h = Math.floor(absM / 60);
     const mins = absM % 60;
     const sign = isNegative ? '-' : '';
@@ -196,6 +201,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               {days.map(day => {
                 const dateStr = format(day, "yyyy-MM-dd");
                 const planned = plannedMinutesPerDay(day);
+                const compensationMinutes = compensationMinutesPerDay?.(day) || 0;
+                const hasCompensation = compensationMinutes > 0;
                 const ts = getTimesheetForDate(timesheetMap, operatorId, day);
                 const currentValue = edits[dateStr] ?? ts?.actual_minutes ?? 0;
                 const hasEdit = edits[dateStr] !== undefined;
@@ -209,9 +216,21 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     <div className="w-24 text-sm">
                       {format(day, "EEE, d MMM", { locale: ru })}
                     </div>
-                    <Badge variant="outline" className="min-w-16 justify-center text-xs">
-                      План: {formatMinutes(planned)}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline" className={cn("min-w-16 justify-center text-xs", hasCompensation && "border-amber-400 bg-amber-50")}>
+                        План: {formatMinutes(planned)}
+                      </Badge>
+                      {hasCompensation && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Hammer className="h-3 w-3 text-amber-500" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Включает отработку: {formatMinutes(compensationMinutes)}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1.5 flex-1">
                       <Label className="text-xs text-muted-foreground">Факт:</Label>
                       <Input

@@ -1472,6 +1472,15 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             
             return baseMinutes;
           }}
+          compensationMinutesPerDay={(date: Date) => {
+            const dateStr = format(date, "yyyy-MM-dd");
+            const key = `${timesheetOperator.id}_${dateStr}`;
+            const records = compensationRecordsMap?.get(key);
+            if (records && records.length > 0) {
+              return records.reduce((sum, r) => sum + (r.hours_worked || 0) * 60, 0);
+            }
+            return 0;
+          }}
         />
       )}
       
