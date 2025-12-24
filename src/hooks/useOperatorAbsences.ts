@@ -6,7 +6,7 @@ import { toast } from "sonner";
 export interface OperatorAbsence {
   id: string;
   operator_id: string;
-  absence_type: 'annual_leave' | 'sick_leave' | 'administrative_leave' | 'administrative_leave_with_compensation' | 'administrative_leave_without_compensation' | 'maternity_leave' | 'unpaid_leave' | 'business_trip' | 'unauthorized_absence' | 'other';
+  absence_type: 'annual_leave' | 'sick_leave' | 'administrative_leave_with_compensation' | 'administrative_leave_without_compensation' | 'maternity_leave' | 'unpaid_leave' | 'business_trip' | 'unauthorized_absence' | 'other';
   start_date: string;
   end_date: string;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
@@ -19,7 +19,6 @@ export interface OperatorAbsence {
 export const ABSENCE_TYPE_LABELS: Record<string, { label: string; color: string; icon: string }> = {
   annual_leave: { label: "Ежегодный отпуск", color: "bg-blue-500", icon: "🏖️" },
   sick_leave: { label: "Больничный", color: "bg-red-500", icon: "🏥" },
-  administrative_leave: { label: "Административный", color: "bg-orange-500", icon: "📋" },
   administrative_leave_with_compensation: { label: "Административный (с отработкой)", color: "bg-orange-600", icon: "📋" },
   administrative_leave_without_compensation: { label: "Административный (без отработки)", color: "bg-orange-400", icon: "📋" },
   maternity_leave: { label: "Декретный отпуск", color: "bg-pink-500", icon: "👶" },

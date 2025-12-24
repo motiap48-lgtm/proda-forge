@@ -96,7 +96,7 @@ export const CreateAbsenceCellDialog = ({
         case 'a':
         case 'ф': // Russian 'ф' for 'a' position
           e.preventDefault();
-          setFormData(prev => ({ ...prev, absence_type: 'administrative_leave' }));
+          setFormData(prev => ({ ...prev, absence_type: 'administrative_leave_without_compensation' }));
           break;
         case 'p':
         case 'з': // Russian 'з' for 'p' position
@@ -176,7 +176,7 @@ export const CreateAbsenceCellDialog = ({
             <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">V</kbd> Отпуск</span>
             <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">B</kbd> Больничный</span>
             <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">K</kbd> Командировка</span>
-            <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">A</kbd> Административный</span>
+            <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">A</kbd> Админ. (без отраб.)</span>
             <span><kbd className="px-1 py-0.5 bg-background rounded text-[9px] border">P</kbd> Прогул</span>
           </div>
 

@@ -154,12 +154,20 @@ export const CalendarLegend = ({
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "sick_leave" ? "all" : "sick_leave")
     },
     {
-      color: "bg-amber-500",
+      color: "bg-amber-600",
       icon: <Calendar className="h-3 w-3 text-white" />,
-      label: "Адм. отпуск",
-      description: "Административный отпуск (administrative_leave)",
-      isActive: absenceTypeFilter === "administrative_leave",
-      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "administrative_leave" ? "all" : "administrative_leave")
+      label: "Адм. (с отраб.)",
+      description: "Административный с отработкой (administrative_leave_with_compensation)",
+      isActive: absenceTypeFilter === "administrative_leave_with_compensation",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "administrative_leave_with_compensation" ? "all" : "administrative_leave_with_compensation")
+    },
+    {
+      color: "bg-amber-400",
+      icon: <Calendar className="h-3 w-3 text-white" />,
+      label: "Адм. (без отраб.)",
+      description: "Административный без отработки (administrative_leave_without_compensation)",
+      isActive: absenceTypeFilter === "administrative_leave_without_compensation",
+      onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "administrative_leave_without_compensation" ? "all" : "administrative_leave_without_compensation")
     },
     {
       color: "bg-violet-500",
