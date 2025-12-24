@@ -236,12 +236,22 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       <Input
                         type="number"
                         min="0"
-                        step="30"
+                        step="1"
                         className="w-20 h-8 text-sm"
                         value={Math.round(currentValue)}
                         onChange={(e) => {
-                          const val = parseInt(e.target.value) || 0;
-                          setEdits(prev => ({ ...prev, [dateStr]: val }));
+                          const rawValue = e.target.value;
+                          // Only allow integers
+                          if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                            const val = parseInt(rawValue) || 0;
+                            setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          // Block decimal point and minus sign
+                          if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === 'e') {
+                            e.preventDefault();
+                          }
                         }}
                         placeholder="мин"
                       />
