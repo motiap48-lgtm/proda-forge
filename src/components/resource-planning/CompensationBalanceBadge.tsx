@@ -25,7 +25,9 @@ export const CompensationBalanceBadge: React.FC<CompensationBalanceBadgeProps> =
   // Don't show if no pending hours
   if (balance.pendingHours <= 0) return null;
 
-  const pendingHours = balance.pendingHours;
+  const pendingHours = Math.round(balance.pendingHours * 100) / 100;
+  const totalAbsenceHours = Math.round(balance.totalAbsenceHours * 100) / 100;
+  const totalCompensatedHours = Math.round(balance.totalCompensatedHours * 100) / 100;
   const isHighDebt = pendingHours >= 8; // 8+ hours is considered high
 
   if (compact) {
@@ -48,8 +50,8 @@ export const CompensationBalanceBadge: React.FC<CompensationBalanceBadgeProps> =
           <TooltipContent>
             <div className="text-xs space-y-1">
               <p className="font-medium">Баланс отработки</p>
-              <p>Всего пропущено: {balance.totalAbsenceHours}ч</p>
-              <p>Отработано: {balance.totalCompensatedHours}ч</p>
+              <p>Всего пропущено: {totalAbsenceHours}ч</p>
+              <p>Отработано: {totalCompensatedHours}ч</p>
               <p className={isHighDebt ? "text-rose-400" : "text-amber-400"}>
                 Осталось: {pendingHours}ч
               </p>
@@ -79,7 +81,7 @@ export const CompensationBalanceBadge: React.FC<CompensationBalanceBadgeProps> =
         </span>
       </div>
       <div className="mt-1 text-xs text-muted-foreground">
-        Пропущено {balance.totalAbsenceHours}ч, отработано {balance.totalCompensatedHours}ч
+        Пропущено {totalAbsenceHours}ч, отработано {totalCompensatedHours}ч
       </div>
     </div>
   );
