@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay, type ShiftColors, type PeriodType } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, useDeleteOperatorAbsence, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
-import { type CompensationRecord, useConfirmCompensationRecord } from "@/hooks/useAbsenceCompensations";
+import { type CompensationRecord, useConfirmCompensationRecord, useUnconfirmCompensationRecord } from "@/hooks/useAbsenceCompensations";
 import { CompensationPendingIcon } from "@/components/resource-planning/CompensationPendingIcon";
 import { AbsenceCellDialog } from "@/components/resource-planning/AbsenceCellDialog";
 import { CreateAbsenceCellDialog } from "@/components/resource-planning/CreateAbsenceCellDialog";
@@ -168,8 +168,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   // Create timesheet map for fast lookup
   const timesheetMap = useMemo(() => createTimesheetMap(timesheets), [timesheets]);
   
-  // Hook to confirm compensation records
+  // Hooks for compensation record operations
   const confirmCompensation = useConfirmCompensationRecord();
+  const unconfirmCompensation = useUnconfirmCompensationRecord();
+  
+  // State for unconfirm dialog
+  const [unconfirmDialog, setUnconfirmDialog] = useState<{ record: CompensationRecord; operatorName: string } | null>(null);
   
   // State to track recently confirmed records for animation
   const [confirmedAnimations, setConfirmedAnimations] = useState<Set<string>>(new Set());
@@ -213,6 +217,23 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
       absence_compensation_id: record.absence_compensation_id
     });
   }, [confirmCompensation]);
+  
+  // Handle unconfirming a confirmed compensation record (with dialog)
+  const handleUnconfirmCompensation = useCallback((record: CompensationRecord, operatorName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setUnconfirmDialog({ record, operatorName });
+  }, []);
+  
+  // Execute unconfirm after dialog confirmation
+  const executeUnconfirm = useCallback(() => {
+    if (!unconfirmDialog) return;
+    unconfirmCompensation.mutate({
+      id: unconfirmDialog.record.id,
+      absence_compensation_id: unconfirmDialog.record.absence_compensation_id
+    });
+    setUnconfirmDialog(null);
+  }, [unconfirmDialog, unconfirmCompensation]);
 
   // Calculate compensation hours for operator across period (only confirmed records count)
   const calculateCompensationHours = useCallback((operatorId: string): { hours: number; minutes: number } => {
@@ -1074,28 +1095,32 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 )}
                                 
                                 {/* Compensation indicator - show hammer icon with color based on status */}
-                                {/* Clickable to confirm pending records - uses onMouseDown to prevent cell click */}
+                                {/* Clickable to confirm/unconfirm - small clickable area */}
                                 {hasCompensation && (() => {
                                   const isAnimating = compensationRecords.some(r => confirmedAnimations.has(r.id));
+                                  const confirmedRecords = compensationRecords.filter(r => r.status === "confirmed");
                                   return (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <div 
                                           className={cn(
-                                            "absolute bottom-0.5 right-0.5 cursor-pointer transition-all duration-300 z-10",
-                                            hasPendingCompensation && !hasConfirmedCompensation && "animate-pulse hover:scale-150",
-                                            !hasPendingCompensation && "hover:scale-125",
-                                            isAnimating && "scale-150 animate-bounce"
+                                            "absolute bottom-0 right-0 p-0.5 cursor-pointer transition-all duration-300 z-20",
+                                            hasPendingCompensation && !hasConfirmedCompensation && "animate-pulse",
+                                            isAnimating && "scale-125 animate-bounce"
                                           )}
                                           onMouseDown={(e) => {
-                                            // Prevent cell click handler from firing
                                             e.stopPropagation();
                                             e.preventDefault();
                                           }}
                                           onClick={(e) => {
-                                            // Stop propagation to prevent opening absence dialog
                                             e.stopPropagation();
                                             e.preventDefault();
+                                            
+                                            // If there are confirmed records and user clicks - offer to unconfirm
+                                            if (hasConfirmedCompensation && confirmedRecords.length > 0 && pendingRecords.length === 0) {
+                                              handleUnconfirmCompensation(confirmedRecords[0], operator.full_name, e);
+                                              return;
+                                            }
                                             
                                             // Find the first pending record that can be confirmed (date has passed)
                                             const today = new Date();
@@ -1109,13 +1134,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                               handleConfirmCompensation(confirmableRecord, e);
                                             } else if (pendingRecords.length > 0) {
                                               toast.info("Дата отработки ещё не наступила");
-                                            } else if (hasConfirmedCompensation) {
-                                              toast.success("Отработка уже подтверждена ✓");
                                             }
                                           }}
                                         >
                                           <Hammer className={cn(
-                                            "h-2.5 w-2.5 transition-colors duration-300",
+                                            "h-2.5 w-2.5 transition-colors duration-300 hover:scale-150",
                                             isAnimating ? "text-emerald-500 dark:text-emerald-300" : 
                                               hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : 
                                               "text-amber-500 dark:text-amber-400"
@@ -1133,7 +1156,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           ? "Нажмите для подтверждения отработки"
                                           : hasConfirmedCompensation && hasPendingCompensation
                                             ? "Есть подтверждённые и ожидающие отработки"
-                                            : "Отработка подтверждена ✓"
+                                            : "Отработка подтверждена ✓ (нажмите для отмены)"
                                         }
                                       </TooltipContent>
                                     </Tooltip>
@@ -1164,14 +1187,14 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   // Day with compensation only (no regular shift - e.g., off day with compensation work)
                                   (() => {
                                     const isAnimating = compensationRecords.some(r => confirmedAnimations.has(r.id));
+                                    const confirmedRecords = compensationRecords.filter(r => r.status === "confirmed");
                                     return (
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <div 
                                             className={cn(
-                                              "w-full text-center flex flex-col items-center cursor-pointer transition-all duration-300 relative z-10",
-                                              hasPendingCompensation && !hasConfirmedCompensation && "animate-pulse hover:scale-110",
-                                              !hasPendingCompensation && "hover:scale-105",
+                                              "p-1 cursor-pointer transition-all duration-300 relative z-20",
+                                              hasPendingCompensation && !hasConfirmedCompensation && "animate-pulse",
                                               isAnimating && "scale-110 animate-bounce"
                                             )}
                                             onMouseDown={(e) => {
@@ -1181,6 +1204,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               e.preventDefault();
+                                              
+                                              // If there are confirmed records and user clicks - offer to unconfirm
+                                              if (hasConfirmedCompensation && confirmedRecords.length > 0 && pendingRecords.length === 0) {
+                                                handleUnconfirmCompensation(confirmedRecords[0], operator.full_name, e);
+                                                return;
+                                              }
                                               
                                               const today = new Date();
                                               today.setHours(0, 0, 0, 0);
@@ -1193,13 +1222,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                                 handleConfirmCompensation(confirmableRecord, e);
                                               } else if (pendingRecords.length > 0) {
                                                 toast.info("Дата отработки ещё не наступила");
-                                              } else if (hasConfirmedCompensation) {
-                                                toast.success("Отработка уже подтверждена ✓");
                                               }
                                             }}
                                           >
                                             <Hammer className={cn(
-                                              "h-3.5 w-3.5 transition-colors duration-300",
+                                              "h-3.5 w-3.5 transition-colors duration-300 hover:scale-125",
                                               isAnimating ? "text-emerald-500 dark:text-emerald-300" :
                                                 hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : 
                                                 "text-amber-500 dark:text-amber-400"
@@ -1210,23 +1237,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                                 <Check className="h-2 w-2 text-white" />
                                               </div>
                                             )}
-                                            {daysCount <= 14 && (
-                                              <div className={cn(
-                                                "text-[9px] font-medium transition-colors duration-300",
-                                                isAnimating ? "text-emerald-500 dark:text-emerald-300" :
-                                                  hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : 
-                                                  "text-amber-500 dark:text-amber-400"
-                                              )}>
-                                                {hasConfirmedCompensation ? `+${Math.round(compensationHoursToday * 100) / 100}ч` : `(~${Math.round(pendingHoursToday * 100) / 100}ч)`}
-                                              </div>
-                                            )}
-                                            {cycleInfo && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
                                           </div>
                                         </TooltipTrigger>
                                         <TooltipContent side="top" className="text-xs">
                                           {hasPendingCompensation && !hasConfirmedCompensation 
                                             ? "Нажмите для подтверждения отработки"
-                                            : "Отработка подтверждена ✓"
+                                            : "Отработка подтверждена ✓ (нажмите для отмены)"
                                           }
                                         </TooltipContent>
                                       </Tooltip>
@@ -1444,6 +1460,32 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           }}
         />
       )}
+      
+      {/* Unconfirm Compensation Dialog */}
+      <AlertDialog open={!!unconfirmDialog} onOpenChange={(open) => !open && setUnconfirmDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Отменить подтверждение отработки?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {unconfirmDialog && (
+                <>
+                  Вы уверены, что хотите отменить подтверждение отработки для{" "}
+                  <strong>{unconfirmDialog.operatorName}</strong> за{" "}
+                  <strong>{format(new Date(unconfirmDialog.record.compensation_date), "d MMMM yyyy", { locale: ru })}</strong>?
+                  <br /><br />
+                  Статус записи вернётся в "Ожидание подтверждения".
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={executeUnconfirm} className="bg-amber-600 hover:bg-amber-700">
+              Отменить подтверждение
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
