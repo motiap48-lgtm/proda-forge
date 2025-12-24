@@ -202,15 +202,22 @@ export const useAddCompensationRecord = () => {
       if (compError) throw compError;
 
       const absComp = compensation as AbsenceCompensation;
-      const totalCompensated = absComp.compensation_records?.reduce(
-        (sum, r) => sum + Number(r.hours_worked),
+      // Only count CONFIRMED records towards completion status
+      const totalConfirmedHours = absComp.compensation_records?.reduce(
+        (sum, r) => r.status === "confirmed" ? sum + Number(r.hours_worked) : sum,
         0
       ) || 0;
 
-      // Update status based on compensation
-      let newStatus: string = "partial";
-      if (totalCompensated >= Number(absComp.absence_hours)) {
+      // Status is based on confirmed hours only
+      // "partial" means there are pending records but not fully confirmed yet
+      // "completed" only when confirmed hours >= absence hours
+      let newStatus: string = "pending";
+      const hasPendingRecords = absComp.compensation_records?.some(r => !r.status || r.status === "pending");
+      
+      if (totalConfirmedHours >= Number(absComp.absence_hours)) {
         newStatus = "completed";
+      } else if (totalConfirmedHours > 0 || hasPendingRecords) {
+        newStatus = "partial";
       }
 
       const { error: updateError } = await supabase
@@ -332,16 +339,18 @@ export const useDeleteCompensationRecord = () => {
       if (compError) throw compError;
 
       const absComp = compensation as AbsenceCompensation;
-      const totalCompensated = absComp.compensation_records?.reduce(
-        (sum, r) => sum + Number(r.hours_worked),
+      // Only count CONFIRMED records
+      const totalConfirmedHours = absComp.compensation_records?.reduce(
+        (sum, r) => r.status === "confirmed" ? sum + Number(r.hours_worked) : sum,
         0
       ) || 0;
+      const hasPendingRecords = absComp.compensation_records?.some(r => !r.status || r.status === "pending");
 
       let newStatus: string = "pending";
-      if (totalCompensated > 0 && totalCompensated < Number(absComp.absence_hours)) {
-        newStatus = "partial";
-      } else if (totalCompensated >= Number(absComp.absence_hours)) {
+      if (totalConfirmedHours >= Number(absComp.absence_hours)) {
         newStatus = "completed";
+      } else if (totalConfirmedHours > 0 || hasPendingRecords) {
+        newStatus = "partial";
       }
 
       await supabase
