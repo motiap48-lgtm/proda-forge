@@ -460,6 +460,54 @@ export const useConfirmCompensationRecord = () => {
   });
 };
 
+// Unconfirm (revert) compensation record
+export const useUnconfirmCompensationRecord = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { id: string; absence_compensation_id: string }) => {
+      // Update status back to pending
+      const { error: updateError } = await supabase
+        .from("compensation_records")
+        .update({ status: "pending" })
+        .eq("id", data.id);
+
+      if (updateError) throw updateError;
+
+      // Recalculate absence compensation status
+      const { data: compensation, error: compError } = await supabase
+        .from("absence_compensations")
+        .select(`*, compensation_records (*)`)
+        .eq("id", data.absence_compensation_id)
+        .single();
+
+      if (compError) throw compError;
+
+      const absComp = compensation as AbsenceCompensation;
+      
+      const newStatus = calculateCompensationStatus(
+        Number(absComp.absence_hours),
+        absComp.compensation_records
+      );
+
+      await supabase
+        .from("absence_compensations")
+        .update({ status: newStatus })
+        .eq("id", data.absence_compensation_id);
+
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      toast.success("Подтверждение отработки отменено");
+    },
+    onError: (error: any) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+};
+
 // Delete all absence compensations for an operator
 export const useDeleteAllOperatorCompensations = () => {
   const queryClient = useQueryClient();
