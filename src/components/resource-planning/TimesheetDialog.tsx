@@ -5,13 +5,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Clock, Check, Save, RotateCcw } from "lucide-react";
+import { Clock, Check, Save, RotateCcw, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { 
   useOperatorTimesheets, 
@@ -57,6 +67,9 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   // Local state for edits
   const [edits, setEdits] = useState<Record<string, number>>({});
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  
+  const hasEdits = Object.keys(edits).length > 0;
   
   const handleSave = async () => {
     const entries = Object.entries(edits).map(([dateStr, actualMinutes]) => ({
@@ -100,6 +113,13 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       newEdits[dateStr] = 0;
     });
     setEdits(newEdits);
+    setShowClearConfirm(false);
+    toast.success("Все фактические значения обнулены");
+  };
+  
+  const handleResetChanges = () => {
+    setEdits({});
+    toast.info("Изменения сброшены");
   };
   
   // Calculate totals
@@ -134,115 +154,141 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   };
   
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Табель: {operatorName}
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="flex items-center justify-between gap-4 py-2 border-b">
-          <div className="text-sm">
-            <span className="text-muted-foreground">Период: </span>
-            <span className="font-medium">
-              {format(startDate, "d MMM", { locale: ru })} — {format(endDate, "d MMM yyyy", { locale: ru })}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleClearAll}>
-              <RotateCcw className="h-4 w-4 mr-1" />
-              Обнулить факт
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleFillPlan}>
-              <Check className="h-4 w-4 mr-1" />
-              Заполнить по плану
-            </Button>
-          </div>
-        </div>
-        
-        <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
-          <div className="space-y-1 py-2">
-            {days.map(day => {
-              const dateStr = format(day, "yyyy-MM-dd");
-              const planned = plannedMinutesPerDay(day);
-              const ts = getTimesheetForDate(timesheetMap, operatorId, day);
-              const currentValue = edits[dateStr] ?? ts?.actual_minutes ?? 0;
-              const hasEdit = edits[dateStr] !== undefined;
-              const hasSaved = ts && !hasEdit;
-              
-              return (
-                <div 
-                  key={dateStr} 
-                  className="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-muted/50"
-                >
-                  <div className="w-24 text-sm">
-                    {format(day, "EEE, d MMM", { locale: ru })}
-                  </div>
-                  <Badge variant="outline" className="min-w-16 justify-center text-xs">
-                    План: {formatMinutes(planned)}
-                  </Badge>
-                  <div className="flex items-center gap-1.5 flex-1">
-                    <Label className="text-xs text-muted-foreground">Факт:</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="30"
-                      className="w-20 h-8 text-sm"
-                      value={Math.round(currentValue)}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value) || 0;
-                        setEdits(prev => ({ ...prev, [dateStr]: val }));
-                      }}
-                      placeholder="мин"
-                    />
-                    <span className="text-xs text-muted-foreground">мин</span>
-                  </div>
-                  {hasSaved && (
-                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
-                      ✓
-                    </Badge>
-                  )}
-                  {hasEdit && (
-                    <Badge className="text-xs bg-amber-100 text-amber-700">
-                      изм.
-                    </Badge>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        
-        <div className="flex items-center justify-between pt-4 border-t">
-          <div className="text-sm space-y-1">
-            <div>
-              <span className="text-muted-foreground">План: </span>
-              <span className="font-medium">{formatMinutes(totals.planned)}</span>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Табель: {operatorName}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex items-center justify-between gap-4 py-2 border-b">
+            <div className="text-sm">
+              <span className="text-muted-foreground">Период: </span>
+              <span className="font-medium">
+                {format(startDate, "d MMM", { locale: ru })} — {format(endDate, "d MMM yyyy", { locale: ru })}
+              </span>
             </div>
-            <div>
-              <span className="text-muted-foreground">Факт: </span>
-              <span className="font-bold text-primary">{formatMinutes(totals.actual)}</span>
-              {totals.actual !== totals.planned && (
-                <span className={`ml-2 text-xs ${totals.actual >= totals.planned ? 'text-green-600' : 'text-amber-600'}`}>
-                  ({totals.actual >= totals.planned ? '+' : ''}{formatMinutes(totals.actual - totals.planned)})
-                </span>
+            <div className="flex gap-2">
+              {hasEdits && (
+                <Button variant="ghost" size="sm" onClick={handleResetChanges}>
+                  <Undo2 className="h-4 w-4 mr-1" />
+                  Сбросить
+                </Button>
               )}
+              <Button variant="outline" size="sm" onClick={() => setShowClearConfirm(true)}>
+                <RotateCcw className="h-4 w-4 mr-1" />
+                Обнулить факт
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleFillPlan}>
+                <Check className="h-4 w-4 mr-1" />
+                Заполнить по плану
+              </Button>
             </div>
           </div>
           
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleSave} disabled={bulkUpsert.isPending || Object.keys(edits).length === 0}>
-              <Save className="h-4 w-4 mr-1" />
-              Сохранить
-            </Button>
+          <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
+            <div className="space-y-1 py-2">
+              {days.map(day => {
+                const dateStr = format(day, "yyyy-MM-dd");
+                const planned = plannedMinutesPerDay(day);
+                const ts = getTimesheetForDate(timesheetMap, operatorId, day);
+                const currentValue = edits[dateStr] ?? ts?.actual_minutes ?? 0;
+                const hasEdit = edits[dateStr] !== undefined;
+                const hasSaved = ts && !hasEdit;
+                
+                return (
+                  <div 
+                    key={dateStr} 
+                    className="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-muted/50"
+                  >
+                    <div className="w-24 text-sm">
+                      {format(day, "EEE, d MMM", { locale: ru })}
+                    </div>
+                    <Badge variant="outline" className="min-w-16 justify-center text-xs">
+                      План: {formatMinutes(planned)}
+                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-1">
+                      <Label className="text-xs text-muted-foreground">Факт:</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="30"
+                        className="w-20 h-8 text-sm"
+                        value={Math.round(currentValue)}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          setEdits(prev => ({ ...prev, [dateStr]: val }));
+                        }}
+                        placeholder="мин"
+                      />
+                      <span className="text-xs text-muted-foreground">мин</span>
+                    </div>
+                    {hasSaved && (
+                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                        ✓
+                      </Badge>
+                    )}
+                    {hasEdit && (
+                      <Badge className="text-xs bg-amber-100 text-amber-700">
+                        изм.
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+          
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="text-sm space-y-1">
+              <div>
+                <span className="text-muted-foreground">План: </span>
+                <span className="font-medium">{formatMinutes(totals.planned)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Факт: </span>
+                <span className="font-bold text-primary">{formatMinutes(totals.actual)}</span>
+                {totals.actual !== totals.planned && (
+                  <span className={`ml-2 text-xs ${totals.actual >= totals.planned ? 'text-green-600' : 'text-amber-600'}`}>
+                    ({totals.actual >= totals.planned ? '+' : ''}{formatMinutes(totals.actual - totals.planned)})
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleSave} disabled={bulkUpsert.isPending || !hasEdits}>
+                <Save className="h-4 w-4 mr-1" />
+                Сохранить
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Обнулить все фактические значения?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Все фактические значения за период будут установлены в 0. 
+              Для сохранения изменений нужно будет нажать кнопку "Сохранить".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearAll}>
+              Обнулить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
