@@ -195,11 +195,13 @@ export const OperatorAbsenceDialog = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper" sideOffset={4}>
-              {Object.entries(ABSENCE_TYPE_LABELS).map(([key, { label, icon }]) => (
-                <SelectItem key={key} value={key}>
-                  {icon} {label}
-                </SelectItem>
-              ))}
+              {Object.entries(ABSENCE_TYPE_LABELS)
+                .filter(([key]) => key !== 'administrative_leave') // Скрываем устаревший тип
+                .map(([key, { label, icon }]) => (
+                  <SelectItem key={key} value={key}>
+                    {icon} {label}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
