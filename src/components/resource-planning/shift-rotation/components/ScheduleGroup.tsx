@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck, Hammer } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck, Hammer, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay, type ShiftColors, type PeriodType } from "../utils";
@@ -171,6 +171,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   // Hook to confirm compensation records
   const confirmCompensation = useConfirmCompensationRecord();
   
+  // State to track recently confirmed records for animation
+  const [confirmedAnimations, setConfirmedAnimations] = useState<Set<string>>(new Set());
+  
   // Helper to get compensation records for operator on specific date
   const getCompensationRecordsForDate = useCallback((operatorId: string, date: Date): CompensationRecord[] => {
     const dateStr = format(date, "yyyy-MM-dd");
@@ -189,9 +192,21 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
     compDate.setHours(0, 0, 0, 0);
     
     if (compDate > today) {
-      toast.error("Нельзя подтвердить отработку до наступления даты");
+      toast.info("Дата отработки ещё не наступила");
       return;
     }
+    
+    // Add animation
+    setConfirmedAnimations(prev => new Set([...prev, record.id]));
+    
+    // Remove animation after delay
+    setTimeout(() => {
+      setConfirmedAnimations(prev => {
+        const next = new Set(prev);
+        next.delete(record.id);
+        return next;
+      });
+    }, 1500);
     
     confirmCompensation.mutate({
       id: record.id,
@@ -1059,48 +1074,71 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 )}
                                 
                                 {/* Compensation indicator - show hammer icon with color based on status */}
-                                {/* Clickable to confirm pending records */}
-                                {hasCompensation && (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div 
-                                        className={cn(
-                                          "absolute bottom-0.5 right-0.5 cursor-pointer transition-transform hover:scale-125",
-                                          hasPendingCompensation && !hasConfirmedCompensation && "animate-pulse"
-                                        )}
-                                        onClick={(e) => {
-                                          // Find the first pending record that can be confirmed (date has passed)
-                                          const today = new Date();
-                                          today.setHours(0, 0, 0, 0);
-                                          const confirmableRecord = pendingRecords.find(r => {
-                                            const compDate = new Date(r.compensation_date);
-                                            compDate.setHours(0, 0, 0, 0);
-                                            return compDate <= today;
-                                          });
-                                          if (confirmableRecord) {
-                                            handleConfirmCompensation(confirmableRecord, e);
-                                          } else if (pendingRecords.length > 0) {
+                                {/* Clickable to confirm pending records - uses onMouseDown to prevent cell click */}
+                                {hasCompensation && (() => {
+                                  const isAnimating = compensationRecords.some(r => confirmedAnimations.has(r.id));
+                                  return (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div 
+                                          className={cn(
+                                            "absolute bottom-0.5 right-0.5 cursor-pointer transition-all duration-300 z-10",
+                                            hasPendingCompensation && !hasConfirmedCompensation && "animate-pulse hover:scale-150",
+                                            !hasPendingCompensation && "hover:scale-125",
+                                            isAnimating && "scale-150 animate-bounce"
+                                          )}
+                                          onMouseDown={(e) => {
+                                            // Prevent cell click handler from firing
                                             e.stopPropagation();
-                                            toast.info("Дата отработки ещё не наступила");
-                                          }
-                                        }}
-                                      >
-                                        <Hammer className={cn(
-                                          "h-2.5 w-2.5",
-                                          hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
-                                        )} />
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="text-xs">
-                                      {hasPendingCompensation && !hasConfirmedCompensation 
-                                        ? "Нажмите для подтверждения отработки"
-                                        : hasConfirmedCompensation && hasPendingCompensation
-                                          ? "Есть подтверждённые и ожидающие отработки"
-                                          : "Отработка подтверждена"
-                                      }
-                                    </TooltipContent>
-                                  </Tooltip>
-                                )}
+                                            e.preventDefault();
+                                          }}
+                                          onClick={(e) => {
+                                            // Stop propagation to prevent opening absence dialog
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            
+                                            // Find the first pending record that can be confirmed (date has passed)
+                                            const today = new Date();
+                                            today.setHours(0, 0, 0, 0);
+                                            const confirmableRecord = pendingRecords.find(r => {
+                                              const compDate = new Date(r.compensation_date);
+                                              compDate.setHours(0, 0, 0, 0);
+                                              return compDate <= today;
+                                            });
+                                            if (confirmableRecord) {
+                                              handleConfirmCompensation(confirmableRecord, e);
+                                            } else if (pendingRecords.length > 0) {
+                                              toast.info("Дата отработки ещё не наступила");
+                                            } else if (hasConfirmedCompensation) {
+                                              toast.success("Отработка уже подтверждена ✓");
+                                            }
+                                          }}
+                                        >
+                                          <Hammer className={cn(
+                                            "h-2.5 w-2.5 transition-colors duration-300",
+                                            isAnimating ? "text-emerald-500 dark:text-emerald-300" : 
+                                              hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : 
+                                              "text-amber-500 dark:text-amber-400"
+                                          )} />
+                                          {/* Success checkmark animation */}
+                                          {isAnimating && (
+                                            <div className="absolute -top-1 -right-1 bg-emerald-500 rounded-full p-0.5 animate-scale-in">
+                                              <Check className="h-2 w-2 text-white" />
+                                            </div>
+                                          )}
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs">
+                                        {hasPendingCompensation && !hasConfirmedCompensation 
+                                          ? "Нажмите для подтверждения отработки"
+                                          : hasConfirmedCompensation && hasPendingCompensation
+                                            ? "Есть подтверждённые и ожидающие отработки"
+                                            : "Отработка подтверждена ✓"
+                                        }
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  );
+                                })()}
                                 
                                 {effectiveShift ? (
                                   <div className="w-full text-center flex flex-col items-center">
@@ -1124,51 +1162,76 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   </div>
                                 ) : hasCompensation ? (
                                   // Day with compensation only (no regular shift - e.g., off day with compensation work)
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div 
-                                        className={cn(
-                                          "w-full text-center flex flex-col items-center cursor-pointer transition-transform hover:scale-110",
-                                          hasPendingCompensation && !hasConfirmedCompensation && "animate-pulse"
-                                        )}
-                                        onClick={(e) => {
-                                          const today = new Date();
-                                          today.setHours(0, 0, 0, 0);
-                                          const confirmableRecord = pendingRecords.find(r => {
-                                            const compDate = new Date(r.compensation_date);
-                                            compDate.setHours(0, 0, 0, 0);
-                                            return compDate <= today;
-                                          });
-                                          if (confirmableRecord) {
-                                            handleConfirmCompensation(confirmableRecord, e);
-                                          } else if (pendingRecords.length > 0) {
-                                            e.stopPropagation();
-                                            toast.info("Дата отработки ещё не наступила");
-                                          }
-                                        }}
-                                      >
-                                        <Hammer className={cn(
-                                          "h-3.5 w-3.5",
-                                          hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
-                                        )} />
-                                        {daysCount <= 14 && (
-                                          <div className={cn(
-                                            "text-[9px] font-medium",
-                                            hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
-                                          )}>
-                                            {hasConfirmedCompensation ? `+${Math.round(compensationHoursToday * 100) / 100}ч` : `(~${Math.round(pendingHoursToday * 100) / 100}ч)`}
+                                  (() => {
+                                    const isAnimating = compensationRecords.some(r => confirmedAnimations.has(r.id));
+                                    return (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div 
+                                            className={cn(
+                                              "w-full text-center flex flex-col items-center cursor-pointer transition-all duration-300 relative z-10",
+                                              hasPendingCompensation && !hasConfirmedCompensation && "animate-pulse hover:scale-110",
+                                              !hasPendingCompensation && "hover:scale-105",
+                                              isAnimating && "scale-110 animate-bounce"
+                                            )}
+                                            onMouseDown={(e) => {
+                                              e.stopPropagation();
+                                              e.preventDefault();
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              e.preventDefault();
+                                              
+                                              const today = new Date();
+                                              today.setHours(0, 0, 0, 0);
+                                              const confirmableRecord = pendingRecords.find(r => {
+                                                const compDate = new Date(r.compensation_date);
+                                                compDate.setHours(0, 0, 0, 0);
+                                                return compDate <= today;
+                                              });
+                                              if (confirmableRecord) {
+                                                handleConfirmCompensation(confirmableRecord, e);
+                                              } else if (pendingRecords.length > 0) {
+                                                toast.info("Дата отработки ещё не наступила");
+                                              } else if (hasConfirmedCompensation) {
+                                                toast.success("Отработка уже подтверждена ✓");
+                                              }
+                                            }}
+                                          >
+                                            <Hammer className={cn(
+                                              "h-3.5 w-3.5 transition-colors duration-300",
+                                              isAnimating ? "text-emerald-500 dark:text-emerald-300" :
+                                                hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : 
+                                                "text-amber-500 dark:text-amber-400"
+                                            )} />
+                                            {/* Success checkmark animation */}
+                                            {isAnimating && (
+                                              <div className="absolute -top-1 -right-1 bg-emerald-500 rounded-full p-0.5 animate-scale-in">
+                                                <Check className="h-2 w-2 text-white" />
+                                              </div>
+                                            )}
+                                            {daysCount <= 14 && (
+                                              <div className={cn(
+                                                "text-[9px] font-medium transition-colors duration-300",
+                                                isAnimating ? "text-emerald-500 dark:text-emerald-300" :
+                                                  hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : 
+                                                  "text-amber-500 dark:text-amber-400"
+                                              )}>
+                                                {hasConfirmedCompensation ? `+${Math.round(compensationHoursToday * 100) / 100}ч` : `(~${Math.round(pendingHoursToday * 100) / 100}ч)`}
+                                              </div>
+                                            )}
+                                            {cycleInfo && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
                                           </div>
-                                        )}
-                                        {cycleInfo && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="text-xs">
-                                      {hasPendingCompensation && !hasConfirmedCompensation 
-                                        ? "Нажмите для подтверждения отработки"
-                                        : "Отработка подтверждена"
-                                      }
-                                    </TooltipContent>
-                                  </Tooltip>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="text-xs">
+                                          {hasPendingCompensation && !hasConfirmedCompensation 
+                                            ? "Нажмите для подтверждения отработки"
+                                            : "Отработка подтверждена ✓"
+                                          }
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    );
+                                  })()
                                 ) : (
                                   <div className="flex flex-col items-center">
                                     <span className={cn("text-sm", hasOverride ? "text-amber-600 dark:text-amber-400" : isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground")}>
