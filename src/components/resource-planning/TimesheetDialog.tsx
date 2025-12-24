@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { format, addDays } from "date-fns";
+import { format, addDays, endOfMonth, isSameDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Clock, Check, Save, RotateCcw, Undo2, Hammer } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -31,6 +31,7 @@ import {
   createTimesheetMap,
   getTimesheetForDate 
 } from "@/hooks/useOperatorTimesheets";
+import { getTimesheetSettings } from "@/hooks/useTimesheetSettings";
 
 interface TimesheetDialogProps {
   open: boolean;
@@ -98,11 +99,24 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     }
   };
   
+  // Check if "Fill by plan" should be restricted
+  const settings = getTimesheetSettings();
+  const today = new Date();
+  const lastDayOfMonth = endOfMonth(endDate);
+  const isLastDayOfMonth = isSameDay(today, lastDayOfMonth);
+  const canFillByPlan = !settings.restrictFillByPlanToLastDay || isLastDayOfMonth;
+  
   const handleFillPlan = () => {
+    if (!canFillByPlan) {
+      toast.error("Заполнение по плану доступно только в последний день месяца");
+      return;
+    }
+    
     const newEdits: Record<string, number> = {};
     days.forEach(day => {
       const dateStr = format(day, "yyyy-MM-dd");
       const planned = plannedMinutesPerDay(day);
+      // plannedMinutesPerDay already includes compensation hours for those days
       if (planned > 0) {
         newEdits[dateStr] = planned;
       }
@@ -188,10 +202,27 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                   <RotateCcw className="h-3 w-3 mr-1" />
                   Обнулить
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleFillPlan} className="h-7 px-2 text-xs">
-                  <Check className="h-3 w-3 mr-1" />
-                  По плану
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleFillPlan} 
+                        className="h-7 px-2 text-xs"
+                        disabled={!canFillByPlan}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        По плану
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!canFillByPlan && (
+                    <TooltipContent>
+                      <p className="text-xs">Заполнение по плану доступно только в последний день месяца</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
               </div>
             </div>
           </div>
