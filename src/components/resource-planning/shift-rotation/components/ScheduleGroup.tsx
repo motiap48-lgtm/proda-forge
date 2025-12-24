@@ -13,6 +13,7 @@ import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay, type S
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, useDeleteOperatorAbsence, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
 import { type CompensationRecord, useConfirmCompensationRecord, useUnconfirmCompensationRecord } from "@/hooks/useAbsenceCompensations";
 import { CompensationPendingIcon } from "@/components/resource-planning/CompensationPendingIcon";
+import { OperatorTotalTooltip } from "./OperatorTotalTooltip";
 import { AbsenceCellDialog } from "@/components/resource-planning/AbsenceCellDialog";
 import { CreateAbsenceCellDialog } from "@/components/resource-planning/CreateAbsenceCellDialog";
 import { ScheduleOverrideDialog } from "@/components/resource-planning/ScheduleOverrideDialog";
@@ -1306,22 +1307,19 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     )}
                                   </div>
                                 </TooltipTrigger>
-                                <TooltipContent>
-                                  <div className="text-xs">
-                                    <div>План: {totalHours.hours}ч {totalHours.minutes > 0 ? `${totalHours.minutes}м` : ''}</div>
-                                    {hasCompensationTotal && (
-                                      <div className="text-emerald-500">Отработка: +{compensationHours.hours}ч {compensationHours.minutes > 0 ? `${compensationHours.minutes}м` : ''}</div>
-                                    )}
-                                    {hasActual && (
-                                      <>
-                                        <div>Факт: {actualHours.hours}ч {actualHours.minutes > 0 ? `${actualHours.minutes}м` : ''}</div>
-                                        <div className={diff >= 0 ? "text-green-500" : "text-amber-500"}>
-                                          {diff >= 0 ? '+' : ''}{Math.floor(diff / 60)}ч {Math.abs(diff % 60) > 0 ? `${Math.abs(diff % 60)}м` : ''}
-                                        </div>
-                                      </>
-                                    )}
-                                    <div className="text-muted-foreground mt-1">Нажмите для редактирования</div>
-                                  </div>
+                                <TooltipContent side="top" className="p-3">
+                                  <OperatorTotalTooltip
+                                    operatorId={operator.id}
+                                    operatorName={operator.full_name}
+                                    planHours={totalHours.hours}
+                                    planMinutes={totalHours.minutes}
+                                    days={days}
+                                    absences={absences}
+                                    timesheetMap={timesheetMap}
+                                    compensationRecordsMap={compensationRecordsMap}
+                                    getDayMinutes={getDayMinutes}
+                                    operator={operator}
+                                  />
                                 </TooltipContent>
                               </Tooltip>
                             );
