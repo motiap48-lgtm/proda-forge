@@ -1319,6 +1319,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     compensationRecordsMap={compensationRecordsMap}
                                     getDayMinutes={getDayMinutes}
                                     operator={operator}
+                                    calendarExceptions={calendarExceptions}
                                   />
                                 </TooltipContent>
                               </Tooltip>

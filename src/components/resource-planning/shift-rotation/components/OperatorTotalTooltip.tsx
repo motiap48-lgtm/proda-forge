@@ -1,9 +1,19 @@
 import React from "react";
-import { format } from "date-fns";
+import { format, getDay } from "date-fns";
 import { ru } from "date-fns/locale";
-import { ABSENCE_TYPE_LABELS, type OperatorAbsence, isDateInAbsence } from "@/hooks/useOperatorAbsences";
+import { ABSENCE_TYPE_LABELS, type OperatorAbsence, isDateInAbsence, isOperatorTerminated, isBeforeHireDate } from "@/hooks/useOperatorAbsences";
 import { type OperatorTimesheet, getTimesheetForDate } from "@/hooks/useOperatorTimesheets";
 import { type CompensationRecord } from "@/hooks/useAbsenceCompensations";
+import { getShiftForDate, isWorkingDay } from "../utils";
+
+interface CalendarException {
+  id: string;
+  exception_date: string;
+  exception_type: string;
+  is_working_day: boolean;
+  name: string;
+  reduction_hours?: number | null;
+}
 
 interface OperatorTotalTooltipProps {
   operatorId: string;
@@ -16,6 +26,7 @@ interface OperatorTotalTooltipProps {
   compensationRecordsMap: Map<string, CompensationRecord[]>;
   getDayMinutes?: (operator: any, day: Date) => number;
   operator: any;
+  calendarExceptions?: CalendarException[];
 }
 
 interface AbsenceGroup {
@@ -37,16 +48,88 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   compensationRecordsMap,
   getDayMinutes,
   operator,
+  calendarExceptions = [],
 }) => {
+  // Create exceptions map for quick lookup
+  const exceptionsMap = React.useMemo(() => {
+    const map = new Map<string, CalendarException>();
+    calendarExceptions.forEach(exc => {
+      map.set(exc.exception_date, exc);
+    });
+    return map;
+  }, [calendarExceptions]);
+
+  // Calculate FULL plan (without subtracting absences) - this is what should have been worked
+  const fullPlan = React.useMemo(() => {
+    let totalMinutes = 0;
+    const schedule = operator.work_schedules;
+    
+    days.forEach(day => {
+      // Skip if terminated or not hired
+      if (isOperatorTerminated(operator, day)) return;
+      if (isBeforeHireDate(operator, day)) return;
+      
+      // Check for holiday
+      const dateStr = format(day, "yyyy-MM-dd");
+      const exception = exceptionsMap.get(dateStr);
+      if (exception && !exception.is_working_day) return;
+      
+      // Get shift for this day
+      const shift = getShiftForDate(operator, day);
+      if (!shift) return;
+      
+      const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+      
+      // Apply shortened day reduction if applicable
+      if (exception && exception.exception_type === "shortened_day") {
+        const scheduleReductionHours = schedule?.reduction_hours;
+        const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
+        const reductionMinutes = reductionHours * 60;
+        totalMinutes += Math.max(0, normalNetMinutes - reductionMinutes);
+      } else {
+        totalMinutes += normalNetMinutes;
+      }
+    });
+    
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60,
+      totalMinutes,
+    };
+  }, [days, operator, exceptionsMap]);
+  
   // Calculate absence hours grouped by type
   const absenceGroups = React.useMemo(() => {
     const groups = new Map<string, AbsenceGroup>();
+    const schedule = operator.work_schedules;
     
     days.forEach(day => {
+      // Skip if terminated or not hired
+      if (isOperatorTerminated(operator, day)) return;
+      if (isBeforeHireDate(operator, day)) return;
+      
       const absence = isDateInAbsence(day, absences, operatorId);
       if (absence) {
         const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type];
-        const dayMinutes = getDayMinutes ? getDayMinutes(operator, day) : 480; // Default 8h
+        
+        // Calculate what would have been worked this day
+        const dateStr = format(day, "yyyy-MM-dd");
+        const exception = exceptionsMap.get(dateStr);
+        
+        // If it's a holiday anyway, don't count
+        if (exception && !exception.is_working_day) return;
+        
+        const shift = getShiftForDate(operator, day);
+        if (!shift) return; // It was a day off anyway
+        
+        let dayMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+        
+        // Apply shortened day reduction
+        if (exception && exception.exception_type === "shortened_day") {
+          const scheduleReductionHours = schedule?.reduction_hours;
+          const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
+          dayMinutes = Math.max(0, dayMinutes - reductionHours * 60);
+        }
         
         if (!groups.has(absence.absence_type)) {
           groups.set(absence.absence_type, {
@@ -65,10 +148,11 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     });
     
     return Array.from(groups.values());
-  }, [days, absences, operatorId, getDayMinutes, operator]);
+  }, [days, absences, operatorId, operator, exceptionsMap]);
   
   // Calculate total absence hours
   const totalAbsenceHours = absenceGroups.reduce((sum, g) => sum + g.hours, 0);
+  const totalAbsenceMinutes = Math.round(totalAbsenceHours * 60);
   
   // Calculate compensation hours (confirmed only)
   const compensationData = React.useMemo(() => {
@@ -120,20 +204,28 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operatorId, timesheetMap]);
   
-  // Calculate plan with compensation (what should be worked)
-  const planTotalMinutes = planHours * 60 + planMinutes;
-  const planWithCompensation = planTotalMinutes + compensationData.totalConfirmedMinutes;
+  // Calculate expected work = full plan - absences + confirmed compensation
+  const expectedMinutes = fullPlan.totalMinutes - totalAbsenceMinutes + compensationData.totalConfirmedMinutes;
   
   // Calculate difference (overtime or undertime)
   const difference = actualData.hasData 
-    ? actualData.totalMinutes - planWithCompensation 
+    ? actualData.totalMinutes - expectedMinutes
     : null;
+  
+  // Remaining to compensate
+  const remainingToCompensate = totalAbsenceMinutes - compensationData.totalConfirmedMinutes - compensationData.totalPendingMinutes;
   
   const formatTime = (hours: number, minutes: number) => {
     if (minutes > 0) {
       return `${hours}ч ${minutes}м`;
     }
     return `${hours}ч`;
+  };
+  
+  const formatMinutesAsTime = (totalMin: number) => {
+    const h = Math.floor(Math.abs(totalMin) / 60);
+    const m = Math.abs(totalMin) % 60;
+    return m > 0 ? `${h}ч ${m}м` : `${h}ч`;
   };
   
   const formatDiff = (diffMinutes: number) => {
@@ -144,11 +236,11 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   };
 
   return (
-    <div className="space-y-2 min-w-[200px]">
-      {/* Plan */}
+    <div className="space-y-2 min-w-[220px] text-xs">
+      {/* Full Plan */}
       <div className="flex justify-between items-center">
         <span className="text-muted-foreground">План:</span>
-        <span className="font-medium">{formatTime(planHours, planMinutes)}</span>
+        <span className="font-medium">{formatTime(fullPlan.hours, fullPlan.minutes)}</span>
       </div>
       
       {/* Absences by type */}
@@ -157,8 +249,8 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
           {absenceGroups.map(group => (
             <div key={group.type} className="flex justify-between items-center text-rose-500">
               <span className="flex items-center gap-1">
-                <span className="text-xs">{group.icon}</span>
-                <span className="text-xs">{group.label} ({group.days}д):</span>
+                <span>{group.icon}</span>
+                <span>{group.label} ({group.days}д):</span>
               </span>
               <span className="font-medium">-{Math.round(group.hours * 10) / 10}ч</span>
             </div>
@@ -169,7 +261,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       {/* Compensation */}
       {(compensationData.confirmedHours > 0 || compensationData.confirmedMinutes > 0 || 
         compensationData.pendingHours > 0 || compensationData.pendingMinutes > 0) && (
-        <div className="border-t border-border/50 pt-2">
+        <div className="border-t border-border/50 pt-2 space-y-1">
           {(compensationData.confirmedHours > 0 || compensationData.confirmedMinutes > 0) && (
             <div className="flex justify-between items-center text-emerald-500">
               <span>Отработано:</span>
@@ -180,7 +272,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
           )}
           {(compensationData.pendingHours > 0 || compensationData.pendingMinutes > 0) && (
             <div className="flex justify-between items-center text-amber-500">
-              <span>Ожидает отработки:</span>
+              <span>Планируется отработка:</span>
               <span className="font-medium">
                 ~{formatTime(compensationData.pendingHours, compensationData.pendingMinutes)}
               </span>
@@ -202,21 +294,19 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       {/* Difference */}
       {difference !== null && (
         <div className="border-t border-border/50 pt-2">
-          <div className={`flex justify-between items-center ${difference >= 0 ? "text-green-500" : "text-amber-500"}`}>
+          <div className={`flex justify-between items-center font-bold ${difference >= 0 ? "text-green-500" : "text-amber-500"}`}>
             <span>{difference >= 0 ? "Переработка:" : "Недоработка:"}</span>
-            <span className="font-bold">{formatDiff(difference)}</span>
+            <span>{formatDiff(difference)}</span>
           </div>
         </div>
       )}
       
-      {/* Pending balance (if no actual data) */}
-      {!actualData.hasData && totalAbsenceHours > 0 && (
+      {/* Remaining to compensate (if no actual data and has absences) */}
+      {!actualData.hasData && remainingToCompensate > 0 && (
         <div className="border-t border-border/50 pt-2">
-          <div className="flex justify-between items-center text-amber-500">
-            <span>К отработке:</span>
-            <span className="font-bold">
-              {Math.round((totalAbsenceHours - compensationData.totalConfirmedMinutes / 60) * 10) / 10}ч
-            </span>
+          <div className="flex justify-between items-center text-rose-500 font-medium">
+            <span>Осталось к отработке:</span>
+            <span>{formatMinutesAsTime(remainingToCompensate)}</span>
           </div>
         </div>
       )}
