@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays, endOfMonth, isSameDay } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info } from "lucide-react";
+import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info, CheckSquare, Square } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -73,8 +73,52 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   // Local state for edits
   const [edits, setEdits] = useState<Record<string, number>>({});
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set());
   
   const hasEdits = Object.keys(edits).length > 0;
+  const hasSelection = selectedDays.size > 0;
+  
+  // Days with plan > 0
+  const selectableDays = useMemo(() => 
+    days.filter(day => plannedMinutesPerDay(day) > 0).map(day => format(day, "yyyy-MM-dd")),
+    [days, plannedMinutesPerDay]
+  );
+  
+  const allSelected = selectableDays.length > 0 && selectableDays.every(d => selectedDays.has(d));
+  
+  const toggleDay = (dateStr: string) => {
+    setSelectedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(dateStr)) {
+        next.delete(dateStr);
+      } else {
+        next.add(dateStr);
+      }
+      return next;
+    });
+  };
+  
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedDays(new Set());
+    } else {
+      setSelectedDays(new Set(selectableDays));
+    }
+  };
+  
+  const fillSelectedByPlan = () => {
+    const newEdits: Record<string, number> = { ...edits };
+    selectedDays.forEach(dateStr => {
+      const day = new Date(dateStr);
+      const planned = plannedMinutesPerDay(day);
+      if (planned > 0) {
+        newEdits[dateStr] = planned;
+      }
+    });
+    setEdits(newEdits);
+    setSelectedDays(new Set());
+    toast.success(`Заполнено ${selectedDays.size} дней по плану`);
+  };
   
   const handleSave = async () => {
     const entries = Object.entries(edits).map(([dateStr, actualMinutes]) => ({
@@ -242,10 +286,53 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 </span>
               </div>
             )}
+            {/* Selection controls */}
+            {hasSelection && (
+              <div className="flex items-center gap-2 text-xs bg-primary/10 px-2 py-1.5 rounded">
+                <CheckSquare className="h-3 w-3 text-primary shrink-0" />
+                <span className="text-primary font-medium">Выбрано: {selectedDays.size}</span>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-6 px-2 text-xs ml-auto"
+                  onClick={fillSelectedByPlan}
+                >
+                  <Check className="h-3 w-3 mr-1" />
+                  По плану
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setSelectedDays(new Set())}
+                >
+                  Отмена
+                </Button>
+              </div>
+            )}
           </div>
           
           <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
             <div className="space-y-1 py-2">
+              {/* Select all row */}
+              <div className="flex items-center gap-3 py-1 px-2 border-b mb-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={toggleAll}
+                >
+                  {allSelected ? (
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Square className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {allSelected ? "Снять выделение" : "Выбрать все рабочие дни"}
+                </span>
+              </div>
+              
               {days.map(day => {
                 const dateStr = format(day, "yyyy-MM-dd");
                 const planned = plannedMinutesPerDay(day);
@@ -255,12 +342,32 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 const currentValue = edits[dateStr] ?? ts?.actual_minutes ?? 0;
                 const hasEdit = edits[dateStr] !== undefined;
                 const hasSaved = ts && !hasEdit;
+                const isSelected = selectedDays.has(dateStr);
+                const canSelect = planned > 0;
                 
                 return (
                   <div 
                     key={dateStr} 
-                    className="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-muted/50"
+                    className={cn(
+                      "flex items-center gap-3 py-1.5 px-2 rounded hover:bg-muted/50",
+                      isSelected && "bg-primary/5"
+                    )}
                   >
+                    {/* Checkbox */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 shrink-0"
+                      onClick={() => canSelect && toggleDay(dateStr)}
+                      disabled={!canSelect}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Square className={cn("h-4 w-4", canSelect ? "text-muted-foreground" : "text-muted-foreground/30")} />
+                      )}
+                    </Button>
+                    
                     <div className="w-24 text-sm">
                       {format(day, "EEE, d MMM", { locale: ru })}
                     </div>
