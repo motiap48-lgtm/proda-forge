@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Clock, Check, Save } from "lucide-react";
+import { Clock, Check, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { 
   useOperatorTimesheets, 
@@ -93,6 +93,15 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     setEdits(newEdits);
   };
   
+  const handleClearAll = () => {
+    const newEdits: Record<string, number> = {};
+    days.forEach(day => {
+      const dateStr = format(day, "yyyy-MM-dd");
+      newEdits[dateStr] = 0;
+    });
+    setEdits(newEdits);
+  };
+  
   // Calculate totals
   const totals = useMemo(() => {
     let planned = 0;
@@ -141,10 +150,16 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               {format(startDate, "d MMM", { locale: ru })} — {format(endDate, "d MMM yyyy", { locale: ru })}
             </span>
           </div>
-          <Button variant="outline" size="sm" onClick={handleFillPlan}>
-            <Check className="h-4 w-4 mr-1" />
-            Заполнить по плану
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleClearAll}>
+              <RotateCcw className="h-4 w-4 mr-1" />
+              Обнулить факт
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleFillPlan}>
+              <Check className="h-4 w-4 mr-1" />
+              Заполнить по плану
+            </Button>
+          </div>
         </div>
         
         <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
