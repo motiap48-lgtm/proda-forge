@@ -81,43 +81,58 @@ export const ShiftTasksTab = () => {
   return (
     <div className="space-y-4">
       {/* Header with filters */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigateWeek(-1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                {format(weekStart, "d MMM", { locale: ru })} - {format(weekEnd, "d MMM yyyy", { locale: ru })}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-                locale={ru}
-              />
-            </PopoverContent>
-          </Popover>
+      <div className="space-y-3">
+        {/* Navigation row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => navigateWeek(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-1 sm:gap-2 px-2 sm:px-3 h-8 sm:h-9 text-xs sm:text-sm">
+                  <CalendarIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">
+                    {format(weekStart, "d MMM", { locale: ru })} - {format(weekEnd, "d MMM yyyy", { locale: ru })}
+                  </span>
+                  <span className="xs:hidden">
+                    {format(weekStart, "d", { locale: ru })} - {format(weekEnd, "d MMM", { locale: ru })}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  locale={ru}
+                />
+              </PopoverContent>
+            </Popover>
 
-          <Button variant="outline" size="icon" onClick={() => navigateWeek(1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => navigateWeek(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
 
-          <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date())}>
-            Сегодня
+            <Button variant="outline" size="sm" className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm" onClick={() => setSelectedDate(new Date())}>
+              <span className="hidden sm:inline">Сегодня</span>
+              <span className="sm:hidden">Сег.</span>
+            </Button>
+          </div>
+
+          <Button onClick={() => setDialogOpen(true)} size="sm" className="h-8 sm:h-9 gap-1 sm:gap-2 px-2 sm:px-3">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Назначение</span>
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Filters row */}
+        <div className="flex items-center gap-2 flex-wrap">
           <Select value={selectedWorkCenter} onValueChange={setSelectedWorkCenter}>
-            <SelectTrigger className="w-[200px]">
-              <Factory className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Все участки" />
+            <SelectTrigger className="w-[130px] sm:w-[180px] h-8 sm:h-9 text-xs sm:text-sm">
+              <Factory className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <SelectValue placeholder="Участки" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все участки</SelectItem>
@@ -128,9 +143,9 @@ export const ShiftTasksTab = () => {
           </Select>
 
           <Select value={selectedShift} onValueChange={setSelectedShift}>
-            <SelectTrigger className="w-[140px]">
-              <Clock className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Все смены" />
+            <SelectTrigger className="w-[110px] sm:w-[140px] h-8 sm:h-9 text-xs sm:text-sm">
+              <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <SelectValue placeholder="Смены" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все смены</SelectItem>
@@ -138,16 +153,11 @@ export const ShiftTasksTab = () => {
               <SelectItem value="2">Смена 2</SelectItem>
             </SelectContent>
           </Select>
-
-          <Button onClick={() => setDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Назначение
-          </Button>
         </div>
       </div>
 
       {/* Week view */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1 sm:gap-2">
         {weekDays.map((day) => {
           const isToday = format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
           const isSelected = format(day, "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd");
@@ -164,62 +174,72 @@ export const ShiftTasksTab = () => {
               )}
               onClick={() => setSelectedDate(day)}
             >
-              <CardHeader className="p-3 pb-2">
-                <CardTitle className="text-sm font-medium flex items-center justify-between">
+              <CardHeader className="p-1.5 sm:p-3 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium flex flex-col sm:flex-row items-center sm:justify-between gap-0.5">
                   <span className={cn(
-                    "capitalize",
+                    "capitalize text-[10px] sm:text-sm",
                     isToday && "text-primary font-bold"
                   )}>
-                    {format(day, "EEE", { locale: ru })}
+                    {format(day, "EEEEEE", { locale: ru })}
                   </span>
                   <span className={cn(
-                    "text-lg",
+                    "text-sm sm:text-lg",
                     isToday && "text-primary font-bold"
                   )}>
                     {format(day, "d")}
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-3 pt-0 min-h-[100px]">
+              <CardContent className="p-1.5 sm:p-3 pt-0 min-h-[60px] sm:min-h-[100px]">
                 {totalAssignments > 0 ? (
-                  <div className="space-y-1.5">
-                    {operators.slice(0, 2).map((a) => (
-                      <div 
-                        key={a.id}
-                        className={cn(
-                          "text-xs p-1.5 rounded border truncate",
-                          getStatusColor(a.status)
-                        )}
-                      >
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{(a as any).operators?.full_name || "Оператор"}</span>
-                        </div>
-                      </div>
-                    ))}
-                    {brigades.slice(0, 2).map((a) => (
-                      <div 
-                        key={a.id}
-                        className={cn(
-                          "text-xs p-1.5 rounded border truncate",
-                          getStatusColor(a.status)
-                        )}
-                      >
-                        <div className="flex items-center gap-1">
-                          <UsersIcon className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{(a as any).brigades?.name || "Бригада"}</span>
-                        </div>
-                      </div>
-                    ))}
-                    {totalAssignments > 4 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{totalAssignments - 4} ещё
+                  <div className="space-y-1">
+                    {/* On mobile, show just count badge */}
+                    <div className="sm:hidden">
+                      <Badge variant="secondary" className="text-[10px] w-full justify-center">
+                        {totalAssignments}
                       </Badge>
-                    )}
+                    </div>
+                    {/* On desktop, show details */}
+                    <div className="hidden sm:block space-y-1.5">
+                      {operators.slice(0, 2).map((a) => (
+                        <div 
+                          key={a.id}
+                          className={cn(
+                            "text-xs p-1.5 rounded border truncate",
+                            getStatusColor(a.status)
+                          )}
+                        >
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{(a as any).operators?.full_name || "Оператор"}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {brigades.slice(0, 2).map((a) => (
+                        <div 
+                          key={a.id}
+                          className={cn(
+                            "text-xs p-1.5 rounded border truncate",
+                            getStatusColor(a.status)
+                          )}
+                        >
+                          <div className="flex items-center gap-1">
+                            <UsersIcon className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{(a as any).brigades?.name || "Бригада"}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {totalAssignments > 4 && (
+                        <Badge variant="secondary" className="text-xs">
+                          +{totalAssignments - 4} ещё
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground text-center py-4">
-                    Нет назначений
+                  <p className="text-[10px] sm:text-xs text-muted-foreground text-center py-2 sm:py-4">
+                    <span className="hidden sm:inline">Нет назначений</span>
+                    <span className="sm:hidden">Нет</span>
                   </p>
                 )}
               </CardContent>
@@ -230,10 +250,11 @@ export const ShiftTasksTab = () => {
 
       {/* Selected day details */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5" />
-            Назначения на {format(selectedDate, "d MMMM yyyy", { locale: ru })}
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">Назначения на {format(selectedDate, "d MMMM yyyy", { locale: ru })}</span>
+            <span className="sm:hidden">{format(selectedDate, "d MMMM yyyy", { locale: ru })}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
