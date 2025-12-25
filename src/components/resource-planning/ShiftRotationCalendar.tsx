@@ -8,6 +8,7 @@ import { useAllOperatorAbsences, isDateInAbsence } from "@/hooks/useOperatorAbse
 import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { useOperatorTimesheets } from "@/hooks/useOperatorTimesheets";
 import { useAbsenceCompensations, type CompensationRecord } from "@/hooks/useAbsenceCompensations";
+import { useOvertimeEntries, createOvertimeMap, type OvertimeEntry } from "@/hooks/useOvertimeEntries";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -178,6 +179,16 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       ? { from: days[0], to: days[days.length - 1] }
       : undefined
   );
+
+  // Fetch overtime entries for the period
+  const { data: overtimeEntries = [] } = useOvertimeEntries(
+    days[0] || startDate,
+    days[days.length - 1] || startDate,
+    operatorIds
+  );
+
+  // Create overtime map for fast lookup
+  const overtimeMap = useMemo(() => createOvertimeMap(overtimeEntries), [overtimeEntries]);
 
   // Create compensation records map by operator_id + date
   const compensationRecordsMap = useMemo(() => {
@@ -796,6 +807,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   calendarExceptions={calendarExceptions}
                   timesheets={timesheets}
                   compensationRecordsMap={compensationRecordsMap}
+                  overtimeMap={overtimeMap}
                   days={days}
                   months={months}
                   period={period}

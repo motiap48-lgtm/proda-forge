@@ -4,6 +4,7 @@ import { ru } from "date-fns/locale";
 import { ABSENCE_TYPE_LABELS, type OperatorAbsence, isDateInAbsence, isOperatorTerminated, isBeforeHireDate } from "@/hooks/useOperatorAbsences";
 import { type OperatorTimesheet, getTimesheetForDate } from "@/hooks/useOperatorTimesheets";
 import { type CompensationRecord } from "@/hooks/useAbsenceCompensations";
+import { type OvertimeEntry } from "@/hooks/useOvertimeEntries";
 import { getShiftForDate, isWorkingDay } from "../utils";
 
 interface CalendarException {
@@ -24,6 +25,7 @@ interface OperatorTotalTooltipProps {
   absences: OperatorAbsence[];
   timesheetMap: Map<string, OperatorTimesheet>;
   compensationRecordsMap: Map<string, CompensationRecord[]>;
+  overtimeMap?: Map<string, OvertimeEntry[]>;
   getDayMinutes?: (operator: any, day: Date) => number;
   operator: any;
   calendarExceptions?: CalendarException[];
@@ -46,6 +48,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   absences,
   timesheetMap,
   compensationRecordsMap,
+  overtimeMap = new Map(),
   getDayMinutes,
   operator,
   calendarExceptions = [],
@@ -183,6 +186,35 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operatorId, compensationRecordsMap]);
   
+  // Calculate overtime hours (approved only)
+  const overtimeData = React.useMemo(() => {
+    let approvedMinutes = 0;
+    let pendingMinutes = 0;
+    
+    days.forEach(day => {
+      const dateStr = format(day, "yyyy-MM-dd");
+      const key = `${operatorId}_${dateStr}`;
+      const entries = overtimeMap.get(key) || [];
+      
+      entries.forEach(entry => {
+        if (entry.status === "approved") {
+          approvedMinutes += entry.duration_minutes || 0;
+        } else if (entry.status === "pending") {
+          pendingMinutes += entry.duration_minutes || 0;
+        }
+      });
+    });
+    
+    return {
+      approvedHours: Math.floor(approvedMinutes / 60),
+      approvedMinutes: approvedMinutes % 60,
+      pendingHours: Math.floor(pendingMinutes / 60),
+      pendingMinutes: pendingMinutes % 60,
+      totalApprovedMinutes: approvedMinutes,
+      totalPendingMinutes: pendingMinutes,
+    };
+  }, [days, operatorId, overtimeMap]);
+  
   // Calculate actual hours from timesheets
   const actualData = React.useMemo(() => {
     let totalMinutes = 0;
@@ -204,8 +236,8 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operatorId, timesheetMap]);
   
-  // Calculate expected work = full plan - absences + confirmed compensation
-  const expectedMinutes = fullPlan.totalMinutes - totalAbsenceMinutes + compensationData.totalConfirmedMinutes;
+  // Calculate expected work = full plan - absences + confirmed compensation + approved overtime
+  const expectedMinutes = fullPlan.totalMinutes - totalAbsenceMinutes + compensationData.totalConfirmedMinutes + overtimeData.totalApprovedMinutes;
   
   // Calculate difference (overtime or undertime)
   const difference = actualData.hasData 
@@ -281,7 +313,29 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
         </div>
       )}
       
-      {/* Actual */}
+      {/* Overtime */}
+      {(overtimeData.approvedHours > 0 || overtimeData.approvedMinutes > 0 || 
+        overtimeData.pendingHours > 0 || overtimeData.pendingMinutes > 0) && (
+        <div className="border-t border-border/50 pt-2 space-y-1">
+          {(overtimeData.approvedHours > 0 || overtimeData.approvedMinutes > 0) && (
+            <div className="flex justify-between items-center text-purple-500">
+              <span>⏱️ Переработка:</span>
+              <span className="font-medium">
+                +{formatTime(overtimeData.approvedHours, overtimeData.approvedMinutes)}
+              </span>
+            </div>
+          )}
+          {(overtimeData.pendingHours > 0 || overtimeData.pendingMinutes > 0) && (
+            <div className="flex justify-between items-center text-purple-400">
+              <span>Ожидает подтверждения:</span>
+              <span className="font-medium">
+                ~{formatTime(overtimeData.pendingHours, overtimeData.pendingMinutes)}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      
       {actualData.hasData && (
         <div className="border-t border-border/50 pt-2">
           <div className="flex justify-between items-center">
