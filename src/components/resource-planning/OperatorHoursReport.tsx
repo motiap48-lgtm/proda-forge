@@ -298,18 +298,19 @@ export const OperatorHoursReport = () => {
     <div className="space-y-4">
       {/* Filters */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Отчёт по часам работы операторов
+        <CardHeader className="pb-3 p-3 sm:p-6">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">Отчёт по часам работы операторов</span>
+            <span className="sm:hidden">Часы работы</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4 items-end">
+        <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-4 items-end">
             <div className="space-y-1.5">
-              <Label className="text-sm">Период</Label>
+              <Label className="text-xs sm:text-sm">Период</Label>
               <Select value={periodType} onValueChange={(v: PeriodType) => setPeriodType(v)}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px] h-8 sm:h-9 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -321,9 +322,9 @@ export const OperatorHoursReport = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-sm">Год</Label>
+              <Label className="text-xs sm:text-sm">Год</Label>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[100px]">
+                <SelectTrigger className="w-full sm:w-[100px] h-8 sm:h-9 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -336,9 +337,9 @@ export const OperatorHoursReport = () => {
 
             {periodType === "month" && (
               <div className="space-y-1.5">
-                <Label className="text-sm">Месяц</Label>
+                <Label className="text-xs sm:text-sm">Месяц</Label>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-full sm:w-[140px] h-8 sm:h-9 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -354,9 +355,9 @@ export const OperatorHoursReport = () => {
 
             {periodType === "quarter" && (
               <div className="space-y-1.5">
-                <Label className="text-sm">Квартал</Label>
+                <Label className="text-xs sm:text-sm">Квартал</Label>
                 <Select value={selectedQuarter} onValueChange={setSelectedQuarter}>
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="w-full sm:w-[120px] h-8 sm:h-9 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -370,9 +371,9 @@ export const OperatorHoursReport = () => {
             )}
 
             <div className="space-y-1.5">
-              <Label className="text-sm">График</Label>
+              <Label className="text-xs sm:text-sm">График</Label>
               <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-9 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -384,56 +385,61 @@ export const OperatorHoursReport = () => {
               </Select>
             </div>
 
-            <Button variant="outline" onClick={handleExport}>
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Экспорт
+            <Button variant="outline" onClick={handleExport} className="h-8 sm:h-9 text-xs sm:text-sm col-span-2 sm:col-span-1">
+              <FileSpreadsheet className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Экспорт</span>
+              <span className="sm:hidden">Excel</span>
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Users className="h-4 w-4" />
-              Операторов
+          <CardContent className="pt-3 sm:pt-4 p-3 sm:p-6">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground text-xs sm:text-sm">
+              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Операторов</span>
+              <span className="sm:hidden">Опер.</span>
             </div>
-            <div className="text-2xl font-bold mt-1">{operatorHoursData.length}</div>
+            <div className="text-xl sm:text-2xl font-bold mt-1">{operatorHoursData.length}</div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Clock className="h-4 w-4" />
-              Плановые часы
+          <CardContent className="pt-3 sm:pt-4 p-3 sm:p-6">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground text-xs sm:text-sm">
+              <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Плановые часы</span>
+              <span className="sm:hidden">План</span>
             </div>
-            <div className="text-2xl font-bold mt-1">{totals.plannedHours.toFixed(0)}ч</div>
+            <div className="text-xl sm:text-2xl font-bold mt-1">{totals.plannedHours.toFixed(0)}ч</div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Calendar className="h-4 w-4" />
-              Фактические часы
+          <CardContent className="pt-3 sm:pt-4 p-3 sm:p-6">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground text-xs sm:text-sm">
+              <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Фактические часы</span>
+              <span className="sm:hidden">Факт</span>
             </div>
-            <div className="text-2xl font-bold mt-1 text-primary">{totals.actualHours.toFixed(0)}ч</div>
+            <div className="text-xl sm:text-2xl font-bold mt-1 text-primary">{totals.actualHours.toFixed(0)}ч</div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <TrendingDown className="h-4 w-4" />
-              Сокращение часов
+          <CardContent className="pt-3 sm:pt-4 p-3 sm:p-6">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground text-xs sm:text-sm">
+              <TrendingDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Сокращение</span>
+              <span className="sm:hidden">Сокр.</span>
             </div>
-            <div className="text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400">
+            <div className="text-xl sm:text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400">
               -{totals.totalReduction.toFixed(0)}ч
             </div>
-            <div className="text-xs text-muted-foreground mt-0.5">
+            <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">
               Праздники: -{totals.holidaysReduction.toFixed(0)}ч | Сокращ. дни: -{totals.shortenedDaysReduction.toFixed(0)}ч
             </div>
           </CardContent>

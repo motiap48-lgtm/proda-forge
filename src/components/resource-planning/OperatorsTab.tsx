@@ -281,15 +281,16 @@ export const OperatorsTab = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1 flex-wrap">
-          <div className="relative flex-1 max-w-md">
+      <div className="space-y-3">
+        {/* Search and Add row */}
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Поиск операторов..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-8"
+              className="pl-10 pr-8 h-8 sm:h-9 text-sm"
             />
             {searchQuery && (
               <Button
@@ -302,9 +303,24 @@ export const OperatorsTab = () => {
               </Button>
             )}
           </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBulkDialogOpen(true)} className="h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Добавить несколько</span>
+            </Button>
+            <Button onClick={() => setDialogOpen(true)} className="h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Добавить оператора</span>
+              <span className="sm:hidden">Добавить</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Filters row */}
+        <div className="flex flex-wrap gap-2">
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Тип сотрудника" />
+            <SelectTrigger className="w-[120px] sm:w-[180px] h-8 sm:h-9 text-xs sm:text-sm">
+              <SelectValue placeholder="Тип" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все типы</SelectItem>
@@ -316,8 +332,8 @@ export const OperatorsTab = () => {
             </SelectContent>
           </Select>
           <Select value={shiftFilter} onValueChange={setShiftFilter}>
-            <SelectTrigger className="w-[200px]">
-              <Clock className="h-4 w-4 mr-2" />
+            <SelectTrigger className="w-[130px] sm:w-[200px] h-8 sm:h-9 text-xs sm:text-sm">
+              <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
               <SelectValue placeholder="Смена" />
             </SelectTrigger>
             <SelectContent>
@@ -330,106 +346,100 @@ export const OperatorsTab = () => {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setBulkDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Добавить несколько
-          </Button>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Добавить оператора
-          </Button>
-        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="h-4 w-4" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+        <div className="space-y-0.5 sm:space-y-1">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground flex-wrap">
+            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>Всего: <span className="font-medium text-foreground">{totalOperators}</span></span>
             <span>•</span>
             <span>Активных: <span className="font-medium text-foreground">{activeOperators}</span></span>
             {hasActiveFilters && (
               <>
                 <span>•</span>
-                <span>Отфильтровано: <span className="font-medium text-foreground">{filteredOperators.length}</span></span>
+                <span>Фильтр: <span className="font-medium text-foreground">{filteredOperators.length}</span></span>
               </>
             )}
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             {hasActiveFilters ? (
               <span>
-                Доступное время (фильтр): <span className="font-medium text-primary">{filteredAvailableTime}</span>
-                <span className="text-xs ml-2">(всего: {totalAvailableTime})</span>
+                Время: <span className="font-medium text-primary">{filteredAvailableTime}</span>
+                <span className="text-[10px] sm:text-xs ml-1 sm:ml-2">(всего: {totalAvailableTime})</span>
               </span>
             ) : (
-              <span>Общее доступное время: <span className="font-medium text-primary">{totalAvailableTime}</span></span>
+              <span>Время: <span className="font-medium text-primary">{totalAvailableTime}</span></span>
             )}
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
           <Button 
             variant="outline" 
             size="sm"
+            className="h-7 sm:h-8 text-xs px-2"
             onClick={() => setCompensationReportOpen(true)}
           >
-            <FileText className="h-4 w-4 mr-2" />
-            Отчёт по отработкам
+            <FileText className="h-3.5 w-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">Отработки</span>
           </Button>
           <Button 
             variant="outline" 
             size="sm"
+            className="h-7 sm:h-8 text-xs px-2"
             onClick={() => fixInvalidRotations.mutate()}
             disabled={fixInvalidRotations.isPending}
             title="Исправить некорректные настройки ротации у всех операторов"
           >
-            <Wand2 className="h-4 w-4 mr-2" />
-            {fixInvalidRotations.isPending ? "Исправление..." : "Исправить ротации"}
+            <Wand2 className="h-3.5 w-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">{fixInvalidRotations.isPending ? "..." : "Ротации"}</span>
           </Button>
           <Button 
             variant="outline" 
             size="sm"
+            className="h-7 sm:h-8 text-xs px-2"
             onClick={() => exportOperatorsToExcel(filteredOperators, {
               shiftFilter: getShiftFilterLabel(),
               totalAvailableTime: hasActiveFilters ? filteredAvailableTime : totalAvailableTime
             })}
             disabled={filteredOperators.length === 0}
           >
-            <FileDown className="h-4 w-4 mr-2" />
-            Excel
+            <FileDown className="h-3.5 w-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">Excel</span>
           </Button>
           <Button 
             variant="outline" 
             size="sm"
+            className="h-7 sm:h-8 text-xs px-2"
             onClick={() => printOperators(filteredOperators, {
               shiftFilter: getShiftFilterLabel(),
               totalAvailableTime: hasActiveFilters ? filteredAvailableTime : totalAvailableTime
             })}
             disabled={filteredOperators.length === 0}
           >
-            <Printer className="h-4 w-4 mr-2" />
-            Печать
+            <Printer className="h-3.5 w-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">Печать</span>
           </Button>
         </div>
       </div>
 
       {/* View mode tabs */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center">
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
-          <TabsList>
-            <TabsTrigger value="cards" className="gap-2">
-              <LayoutGrid className="h-4 w-4" />
-              Карточки
+          <TabsList className="h-8 sm:h-9">
+            <TabsTrigger value="cards" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+              <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Карточки</span>
             </TabsTrigger>
-            <TabsTrigger value="grouped" className="gap-2">
-              <List className="h-4 w-4" />
-              По сменам
+            <TabsTrigger value="grouped" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+              <List className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">По сменам</span>
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Ротация
+            <TabsTrigger value="calendar" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+              <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Ротация</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
