@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Factory, Loader2, Edit, Trash2, Wrench, X, Filter, LayoutGrid, Layers, BarChart3, Package } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
+import { Plus, Factory, Loader2, Edit, Trash2, Wrench, Filter, LayoutGrid, Layers, BarChart3, Package, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useWorkCenters, useDeleteWorkCenter } from "@/hooks/useWorkCenters";
 import { useEquipment } from "@/hooks/useEquipment";
@@ -573,25 +574,12 @@ const WorkCenters = () => {
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Поиск по номеру, названию или цеху..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-10"
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                    onClick={() => setSearchQuery("")}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+              <SearchInput
+                placeholder="Поиск по номеру, названию или цеху..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+                containerClassName="flex-1"
+              />
               
               {/* Group Toggle */}
               <Button

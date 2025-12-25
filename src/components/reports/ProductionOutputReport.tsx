@@ -3,6 +3,7 @@ import { useProductionOutputReport, DailyOutput, DailyOutputItem, OutputReportMo
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -29,8 +30,6 @@ import {
   FileSpreadsheet, 
   Printer, 
   ChevronDown, 
-  Search, 
-  X,
   Package,
   Calendar,
   Layers,
@@ -659,25 +658,12 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
             <CardContent>
               {/* Filters row */}
               <div className="flex flex-col gap-4 mb-4 sm:flex-row">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Поиск по продукту, участку или операции..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-10"
-                  />
-                  {searchQuery && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                      onClick={() => setSearchQuery("")}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                <SearchInput
+                  placeholder="Поиск по продукту, участку или операции..."
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  containerClassName="flex-1"
+                />
 
                 <Select value={reportMode} onValueChange={(v) => setReportMode(v as OutputReportMode)}>
                   <SelectTrigger className="w-[200px]">

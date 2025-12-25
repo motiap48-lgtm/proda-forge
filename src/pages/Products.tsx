@@ -4,9 +4,10 @@ import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Package, Pencil, Trash2, GitBranch, Info, ArrowRight, ChevronDown, X, FileText, AlertCircle, Tag } from "lucide-react";
+import { Plus, Package, Pencil, Trash2, GitBranch, Info, ArrowRight, ChevronDown, FileText, AlertCircle, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -226,25 +227,12 @@ const Products = () => {
         </Collapsible>
 
         <div className="flex flex-col gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Поиск по названию или коду..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10"
-            />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                onClick={() => setSearchQuery("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+          <SearchInput
+            placeholder="Поиск по названию или коду..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+            containerClassName="flex-1"
+          />
           
           <Collapsible open={codeFilterOpen} onOpenChange={setCodeFilterOpen}>
             <div className="border rounded-lg p-3">

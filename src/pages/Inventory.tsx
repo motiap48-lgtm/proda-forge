@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Package, AlertTriangle, TrendingUp } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
+import { Plus, Package, AlertTriangle, TrendingUp } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -99,15 +100,12 @@ const Inventory = () => {
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Поиск по наименованию или коду..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+              <SearchInput
+                placeholder="Поиск по наименованию или коду..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+                containerClassName="flex-1"
+              />
               <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
                 <SelectTrigger className="w-full md:w-[250px]">
                   <SelectValue placeholder="Выберите склад" />

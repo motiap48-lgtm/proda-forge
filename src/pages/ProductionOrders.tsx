@@ -3,10 +3,11 @@ import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle, Calendar, AlertTriangle, Wrench, Users, Building2 } from "lucide-react";
+import { Plus, Download, Loader2, GitBranch, ArrowUp, Trash2, CheckSquare, Square, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUpIcon, MoreHorizontal, Play, Pause, XCircle, CheckCircle, Calendar, AlertTriangle, Wrench, Users, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProductionOrdersWithCustomers } from "@/hooks/useProductionOrdersWithCustomers";
 import { useActiveCustomers } from "@/hooks/useCustomers";
@@ -560,15 +561,12 @@ const ProductionOrdersContent = () => {
         <Card className="mb-4 sm:mb-6">
           <CardContent className="p-4 sm:p-6">
             <div className="flex flex-col gap-3 sm:gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Поиск по номеру или продукту..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+              <SearchInput
+                placeholder="Поиск по номеру или продукту..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+                containerClassName="flex-1"
+              />
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant={statusFilter === "all" ? "default" : "outline"}

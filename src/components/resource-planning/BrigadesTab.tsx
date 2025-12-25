@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, UsersRound, Edit, Trash2, Wand2, Factory, Calendar, User, Crown } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
+import { Plus, UsersRound, Edit, Trash2, Wand2, Factory, Calendar, User, Crown } from "lucide-react";
 import { useBrigades, useDeleteBrigade } from "@/hooks/useResourcePlanning";
 import { BrigadeDialog } from "./BrigadeDialog";
 import {
@@ -86,15 +87,12 @@ export const BrigadesTab = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск бригад..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+        <SearchInput
+          placeholder="Поиск бригад..."
+          value={searchQuery}
+          onChange={setSearchQuery}
+          containerClassName="flex-1 max-w-md"
+        />
         <Button onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Создать бригаду

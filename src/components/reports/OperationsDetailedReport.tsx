@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -32,8 +33,6 @@ import {
   ChevronDown,
   ChevronsDown,
   ChevronsUp,
-  Search,
-  X,
   FileSpreadsheet,
   Printer,
   Factory,
@@ -478,25 +477,12 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
 
       {/* Controls */}
       <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск по операции, изделию, заказу..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-9"
-          />
-          {searchQuery && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
-              onClick={() => setSearchQuery("")}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
+        <SearchInput
+          placeholder="Поиск по операции, изделию, заказу..."
+          value={searchQuery}
+          onChange={setSearchQuery}
+          containerClassName="flex-1 min-w-[200px] max-w-sm"
+        />
         
         {/* Department filter */}
         {departments.length > 0 && (
