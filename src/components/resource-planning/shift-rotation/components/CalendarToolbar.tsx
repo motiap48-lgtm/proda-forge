@@ -217,9 +217,9 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
               <span className="flex items-center gap-2">
                 <Settings2 className="h-3.5 w-3.5" />
                 Настройки и фильтры
-                {(hasActiveFilters || activeFiltersCount) && (
+                {hasActiveFilters && activeFiltersCount && activeFiltersCount > 0 && (
                   <Badge variant="secondary" className="h-4 text-[10px] px-1">
-                    {activeFiltersCount || 0}
+                    {activeFiltersCount}
                   </Badge>
                 )}
               </span>
