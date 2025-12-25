@@ -25,6 +25,7 @@ import { useAbsenceDragDrop } from "../hooks/useAbsenceDragDrop";
 import { toast } from "sonner";
 import { type ScheduleOverride, getScheduleOverride, OVERRIDE_REASON_LABELS } from "@/hooks/useScheduleOverrides";
 import { type OperatorTimesheet, createTimesheetMap, getTimesheetForDate } from "@/hooks/useOperatorTimesheets";
+import { type OvertimeEntry, getOvertimeMinutesFromMap } from "@/hooks/useOvertimeEntries";
 
 interface CalendarException {
   id: string;
@@ -47,6 +48,7 @@ interface ScheduleGroupProps {
   calendarExceptions?: CalendarException[];
   timesheets?: OperatorTimesheet[];
   compensationRecordsMap?: Map<string, CompensationRecord[]>;
+  overtimeMap?: Map<string, OvertimeEntry[]>;
   days: Date[];
   months: Date[];
   period: PeriodType;
@@ -86,6 +88,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   calendarExceptions = [],
   timesheets = [],
   compensationRecordsMap = new Map(),
+  overtimeMap = new Map(),
   days,
   months,
   period,
@@ -281,6 +284,31 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
       return ts && ts.actual_minutes > 0;
     });
   }, [days, timesheetMap]);
+  
+  // Helper to get overtime entries for operator on specific date
+  const getOvertimeForDate = useCallback((operatorId: string, date: Date): OvertimeEntry[] => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const key = `${operatorId}_${dateStr}`;
+    return overtimeMap.get(key) || [];
+  }, [overtimeMap]);
+  
+  // Calculate overtime hours for operator across period (only approved entries count)
+  const calculateOvertimeHours = useCallback((operatorId: string): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    days.forEach(day => {
+      const entries = getOvertimeForDate(operatorId, day);
+      entries.forEach(entry => {
+        // Only count approved entries
+        if (entry.status === "approved") {
+          totalMinutes += entry.duration_minutes || 0;
+        }
+      });
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  }, [days, getOvertimeForDate]);
   
   // Drag and drop functionality with resize support
   const {
@@ -872,6 +900,16 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const compensationHoursToday = confirmedRecords.reduce((sum, r) => sum + r.hours_worked, 0);
                             const pendingHoursToday = pendingRecords.reduce((sum, r) => sum + r.hours_worked, 0);
                             
+                            // Check for overtime entries on this day
+                            const overtimeRecords = getOvertimeForDate(operator.id, day);
+                            const approvedOvertimeRecords = overtimeRecords.filter(r => r.status === "approved");
+                            const pendingOvertimeRecords = overtimeRecords.filter(r => r.status === "pending");
+                            const hasOvertime = overtimeRecords.length > 0;
+                            const hasApprovedOvertime = approvedOvertimeRecords.length > 0;
+                            const hasPendingOvertime = pendingOvertimeRecords.length > 0;
+                            const approvedOvertimeMinutes = approvedOvertimeRecords.reduce((sum, r) => sum + (r.duration_minutes || 0), 0);
+                            const pendingOvertimeMinutes = pendingOvertimeRecords.reduce((sum, r) => sum + (r.duration_minutes || 0), 0);
+                            
                             // Check for shortened day (calendar exception)
                             const dateStr = format(day, "yyyy-MM-dd");
                             const shortenedException = calendarExceptions.find(
@@ -1096,12 +1134,14 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                       : !inDragSelection && !hasOverride && !inPreview && !isInRangeSelection && !effectiveIsWorking && "bg-gradient-to-b from-muted/20 to-muted/40",
                                   // Compensation day styling - add emerald ring
                                   hasCompensation && "ring-2 ring-emerald-400 dark:ring-emerald-600",
+                                  // Overtime styling - add purple ring (different from compensation)
+                                  hasOvertime && !hasCompensation && "ring-2 ring-purple-400 dark:ring-purple-600",
                                   isToday(day) && cn(
                                     "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
                                     isTodayColumnHovered && "animate-pulse-glow"
                                   )
                                 )}
-                                title={`${hasCompensation ? `🔨 Отработка: ${compensationHoursToday}ч\n` : ''}${isShortenedDay ? `⏰ ${shortenedException?.name || 'Сокращённый день'}\n   Итого: ${hours} ч ${mins > 0 ? mins + ' мин' : ''}\n` : ''}${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `📅 День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла\n` : ''}Перетащить - выбрать диапазон | ПКМ - изменить график`}
+                                title={`${hasCompensation ? `🔨 Отработка: ${compensationHoursToday}ч\n` : ''}${hasOvertime ? `⏱️ Переработка: ${Math.floor(approvedOvertimeMinutes / 60)}ч ${approvedOvertimeMinutes % 60}м ${hasPendingOvertime ? `(ожидает: ${Math.floor(pendingOvertimeMinutes / 60)}ч ${pendingOvertimeMinutes % 60}м)` : ''}\n` : ''}${isShortenedDay ? `⏰ ${shortenedException?.name || 'Сокращённый день'}\n   Итого: ${hours} ч ${mins > 0 ? mins + ' мин' : ''}\n` : ''}${hasOverride ? `⚡ Изменено: ${overrideInfo?.label || 'Изменение графика'}${override?.notes ? ` - ${override.notes}` : ''}\n` : ''}${cycleInfo ? `📅 День ${cycleInfo.dayInCycle}/${cycleInfo.cycleLength} цикла\n` : ''}Перетащить - выбрать диапазон | ПКМ - изменить график`}
                               >
                                 {/* Shortened day indicator */}
                                 {isShortenedDay && !hasOverride && (
@@ -1122,6 +1162,29 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   <div className="absolute top-0.5 left-0.5">
                                     <Timer className="h-2.5 w-2.5 text-orange-500 dark:text-orange-400" />
                                   </div>
+                                )}
+                                
+                                {/* Overtime indicator - show clock icon with color based on status */}
+                                {hasOvertime && !hasCompensation && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div 
+                                        className={cn(
+                                          "absolute bottom-0 right-0 p-0.5 transition-all z-20",
+                                          hasPendingOvertime && !hasApprovedOvertime && "animate-pulse"
+                                        )}
+                                      >
+                                        <Clock className={cn(
+                                          "h-2.5 w-2.5 transition-colors",
+                                          hasApprovedOvertime ? "text-purple-600 dark:text-purple-400" : "text-purple-400 dark:text-purple-500"
+                                        )} />
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      Переработка: {Math.floor(approvedOvertimeMinutes / 60)}ч {approvedOvertimeMinutes % 60}м
+                                      {hasPendingOvertime && <span className="text-amber-500"> (ожидает: {Math.floor(pendingOvertimeMinutes / 60)}ч)</span>}
+                                    </TooltipContent>
+                                  </Tooltip>
                                 )}
                                 
                                 {/* Compensation indicator - show hammer icon with color based on status */}
@@ -1295,11 +1358,14 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const hasActual = hasTimesheetData(operator.id);
                             const compensationHours = calculateCompensationHours(operator.id);
                             const hasCompensationTotal = compensationHours.hours > 0 || compensationHours.minutes > 0;
+                            const overtimeHours = calculateOvertimeHours(operator.id);
+                            const hasOvertimeTotal = overtimeHours.hours > 0 || overtimeHours.minutes > 0;
                             const plannedMinutes = totalHours.hours * 60 + totalHours.minutes;
                             const compensationMinutes = compensationHours.hours * 60 + compensationHours.minutes;
-                            const totalWithCompensation = plannedMinutes + compensationMinutes;
+                            const overtimeMinutes = overtimeHours.hours * 60 + overtimeHours.minutes;
+                            const totalWithExtra = plannedMinutes + compensationMinutes + overtimeMinutes;
                             const actualMinutes = actualHours.hours * 60 + actualHours.minutes;
-                            const diff = actualMinutes - totalWithCompensation;
+                            const diff = actualMinutes - totalWithExtra;
                             
                             return (
                               <Tooltip>
@@ -1318,7 +1384,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     <div className="flex items-center gap-0.5">
                                       {hasActual && <ClipboardCheck className="h-3 w-3" />}
                                       {hasCompensationTotal && <Hammer className="h-3 w-3" />}
-                                      <span>{Math.floor(totalWithCompensation / 60)}ч</span>
+                                      {hasOvertimeTotal && <Clock className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
+                                      <span>{Math.floor(totalWithExtra / 60)}ч</span>
                                     </div>
                                     {hasActual ? (
                                       <div className={cn(
@@ -1326,6 +1393,10 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                         diff >= 0 ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"
                                       )}>
                                         ф: {actualHours.hours}ч{actualHours.minutes > 0 ? ` ${actualHours.minutes}м` : ''}
+                                      </div>
+                                    ) : hasOvertimeTotal ? (
+                                      <div className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">
+                                        +{overtimeHours.hours}ч перераб
                                       </div>
                                     ) : hasCompensationTotal ? (
                                       <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">
@@ -1346,6 +1417,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     absences={absences}
                                     timesheetMap={timesheetMap}
                                     compensationRecordsMap={compensationRecordsMap}
+                                    overtimeMap={overtimeMap}
                                     getDayMinutes={getDayMinutes}
                                     operator={operator}
                                     calendarExceptions={calendarExceptions}
