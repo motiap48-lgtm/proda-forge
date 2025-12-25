@@ -156,24 +156,29 @@ export const useChangelog = () => {
 
       if (error) {
         console.error("Error fetching changelog:", error);
-        return defaultChangelog.map((c, i) => ({ 
-          ...c, 
-          id: `default-${i}`, 
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          created_by: null
-        })) as ChangelogEntry[];
+        return [];
       }
 
-      // If no entries in DB, return defaults
+      // If no entries in DB, auto-seed default entries
       if (!data || data.length === 0) {
-        return defaultChangelog.map((c, i) => ({ 
-          ...c, 
-          id: `default-${i}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+        console.log("No changelog entries found, auto-seeding defaults...");
+        
+        const entries = defaultChangelog.map(c => ({
+          ...c,
           created_by: null
-        })) as ChangelogEntry[];
+        }));
+
+        const { data: insertedData, error: insertError } = await supabase
+          .from("changelog_entries")
+          .insert(entries)
+          .select();
+
+        if (insertError) {
+          console.error("Error auto-seeding changelog:", insertError);
+          return [];
+        }
+
+        return (insertedData || []) as ChangelogEntry[];
       }
 
       return data as ChangelogEntry[];
@@ -250,38 +255,13 @@ export const useChangelog = () => {
     }
   });
 
-  const seedDefaultEntries = useMutation({
-    mutationFn: async () => {
-      const entries = defaultChangelog.map(c => ({
-        ...c,
-        created_by: user?.id
-      }));
-
-      const { error } = await supabase
-        .from("changelog_entries")
-        .insert(entries);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["changelog"] });
-      toast.success("Записи по умолчанию добавлены");
-    },
-    onError: (error) => {
-      console.error("Error seeding default entries:", error);
-      toast.error("Ошибка при добавлении записей");
-    }
-  });
-
   return {
     changelog,
     isLoading,
     refetch,
     createEntry,
     updateEntry,
-    deleteEntry,
-    seedDefaultEntries,
-    isFromDatabase: changelog.length > 0 && !changelog[0]?.id?.startsWith('default-')
+    deleteEntry
   };
 };
 

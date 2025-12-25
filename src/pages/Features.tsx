@@ -344,7 +344,7 @@ const Features = () => {
   const { userRoles } = useAuth();
   const isAdmin = userRoles.includes('admin');
   
-  const { changelog, isLoading: changelogLoading, createEntry, updateEntry, deleteEntry, seedDefaultEntries, isFromDatabase } = useChangelog();
+  const { changelog, isLoading: changelogLoading, createEntry, updateEntry, deleteEntry } = useChangelog();
   const { getStatus, updateStatus } = useFeatureStatuses();
   const { getCommentsCount } = useFeatureComments();
   
@@ -790,43 +790,27 @@ const Features = () => {
                     <CardTitle className="flex items-center gap-2 text-sm sm:text-base lg:text-lg">
                       <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       История изменений
-                      {isFromDatabase && (
-                        <Badge variant="outline" className="gap-1 text-[10px] sm:text-xs">
-                          <Database className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                          БД
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className="gap-1 text-[10px] sm:text-xs">
+                        <Database className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                        Авто
+                      </Badge>
                     </CardTitle>
                     <CardDescription className="text-xs sm:text-sm mt-1">
-                      Журнал обновлений и изменений системы
+                      Журнал обновлений — автоматически сохраняется в базе данных
                     </CardDescription>
                   </div>
                   {isAdmin && (
-                    <div className="flex gap-2">
-                      {!isFromDatabase && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => seedDefaultEntries.mutate()}
-                          disabled={seedDefaultEntries.isPending}
-                          className="text-xs sm:text-sm"
-                        >
-                          <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Сохранить в БД</span>
-                        </Button>
-                      )}
-                      <Button 
-                        size="sm"
-                        onClick={() => {
-                          setEditingEntry(null);
-                          setChangelogDialogOpen(true);
-                        }}
-                        className="text-xs sm:text-sm"
-                      >
-                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Добавить</span>
-                      </Button>
-                    </div>
+                    <Button 
+                      size="sm"
+                      onClick={() => {
+                        setEditingEntry(null);
+                        setChangelogDialogOpen(true);
+                      }}
+                      className="text-xs sm:text-sm"
+                    >
+                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Добавить</span>
+                    </Button>
                   )}
                 </div>
               </CardHeader>
