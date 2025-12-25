@@ -20,7 +20,8 @@ import {
   ChevronsDown,
   ChevronsUp,
   FileSpreadsheet,
-  Search
+  Search,
+  X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -727,8 +728,17 @@ const MRPPlanning = () => {
                         placeholder="Поиск по названию или коду..."
                         value={productionSearch}
                         onChange={(e) => setProductionSearch(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 pr-10"
                       />
+                      {productionSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setProductionSearch('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground mb-2">Фильтр по статусу:</p>
