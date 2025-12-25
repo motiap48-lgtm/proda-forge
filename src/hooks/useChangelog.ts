@@ -108,10 +108,24 @@ const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' 
   }
 ];
 
-// Get latest version from changelog
+// Get latest version from changelog (by semantic version comparison)
 export const getLatestVersion = (changelog: ChangelogEntry[]): string => {
-  if (!changelog || changelog.length === 0) return "0.9.5";
-  return changelog[0]?.version || "0.9.5";
+  if (!changelog || changelog.length === 0) return "0.9.6";
+  
+  // Sort by semantic version to get the highest
+  const sorted = [...changelog].sort((a, b) => {
+    const aParts = a.version.split('.').map(Number);
+    const bParts = b.version.split('.').map(Number);
+    
+    for (let i = 0; i < 3; i++) {
+      if ((bParts[i] || 0) !== (aParts[i] || 0)) {
+        return (bParts[i] || 0) - (aParts[i] || 0);
+      }
+    }
+    return 0;
+  });
+  
+  return sorted[0]?.version || "0.9.6";
 };
 
 export type VersionIncrementType = 'patch' | 'minor' | 'major';
@@ -152,7 +166,8 @@ export const useChangelog = () => {
       const { data, error } = await supabase
         .from("changelog_entries")
         .select("*")
-        .order("date", { ascending: false });
+        .order("date", { ascending: false })
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Error fetching changelog:", error);
