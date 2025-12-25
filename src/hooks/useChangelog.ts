@@ -28,7 +28,7 @@ const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' 
   {
     version: "0.9.5",
     title: "Улучшения страницы функциональности",
-    date: "2024-12-25",
+    date: "2025-12-25",
     changes: [
       "Добавлена возможность отмечать функции как избранные",
       "Реализован поиск по функциям",
@@ -40,7 +40,7 @@ const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' 
   {
     version: "0.9.4",
     title: "Мобильная адаптация календаря",
-    date: "2024-12-24",
+    date: "2025-12-24",
     changes: [
       "Исправлено отображение календаря ротации на мобильных устройствах",
       "Оптимизирована ширина колонок для маленьких экранов",
@@ -51,7 +51,7 @@ const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' 
   {
     version: "0.9.3",
     title: "Beta-режим и страница функциональности",
-    date: "2024-12-23",
+    date: "2025-12-23",
     changes: [
       "Добавлен индикатор Beta версии рядом с логотипом",
       "Создана страница отслеживания функциональности",
@@ -62,7 +62,7 @@ const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' 
   {
     version: "0.9.2",
     title: "Улучшения ресурсного планирования",
-    date: "2024-12-20",
+    date: "2025-12-20",
     changes: [
       "Добавлена поддержка drag-and-drop для отсутствий",
       "Реализовано выделение диапазона дат",
@@ -74,7 +74,7 @@ const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' 
   {
     version: "0.9.1",
     title: "Компенсации и табель",
-    date: "2024-12-15",
+    date: "2025-12-15",
     changes: [
       "Добавлен модуль компенсаций отсутствий",
       "Реализован расширенный табель рабочего времени",
@@ -85,7 +85,7 @@ const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' 
   {
     version: "0.9.0",
     title: "Графики и бригады",
-    date: "2024-12-10",
+    date: "2025-12-10",
     changes: [
       "Реализовано управление рабочими графиками",
       "Добавлена поддержка сменных графиков",
@@ -97,7 +97,7 @@ const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' 
   {
     version: "0.8.5",
     title: "Отчёты производства",
-    date: "2024-12-05",
+    date: "2025-12-05",
     changes: [
       "Добавлен план-факт отчёт по участкам",
       "Реализован отчёт по клиентам",
@@ -107,6 +107,12 @@ const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' 
     is_published: true
   }
 ];
+
+// Get latest version from changelog
+export const getLatestVersion = (changelog: ChangelogEntry[]): string => {
+  if (!changelog || changelog.length === 0) return "0.9.5";
+  return changelog[0]?.version || "0.9.5";
+};
 
 export const useChangelog = () => {
   const queryClient = useQueryClient();

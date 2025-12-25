@@ -14,11 +14,14 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { NotificationPopover } from "@/components/notifications/NotificationPopover";
 import { useBetaSettings } from "@/hooks/useBetaSettings";
+import { useChangelog, getLatestVersion } from "@/hooks/useChangelog";
 
 export const Header = () => {
   const { user, userRoles, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { settings: betaSettings } = useBetaSettings();
+  const { changelog } = useChangelog();
+  const latestVersion = getLatestVersion(changelog);
 
   const getRoleLabel = (role: string) => {
     const roleLabels: Record<string, string> = {
@@ -50,17 +53,17 @@ export const Header = () => {
             <div className="hidden sm:block">
               <div className="flex items-center gap-2">
                 <h1 className="text-lg sm:text-xl font-bold text-foreground">ERP Vostok Auto</h1>
-                {betaSettings.showBetaBadge && (
+              {betaSettings.showBetaBadge && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-                    Beta
+                    Beta v{latestVersion}
                   </Badge>
                 )}
               </div>
               <p className="text-xs text-muted-foreground">Управление производством</p>
             </div>
-            {betaSettings.showBetaBadge && (
+          {betaSettings.showBetaBadge && (
               <Badge variant="outline" className="sm:hidden text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-                Beta
+                Beta v{latestVersion}
               </Badge>
             )}
           </div>
@@ -89,7 +92,7 @@ export const Header = () => {
               <h1 className="text-lg sm:text-xl font-bold text-foreground">ERP Vostok Auto</h1>
               {betaSettings.showBetaBadge && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-                  Beta
+                  Beta v{latestVersion}
                 </Badge>
               )}
             </div>
@@ -97,7 +100,7 @@ export const Header = () => {
           </div>
           {betaSettings.showBetaBadge && (
             <Badge variant="outline" className="sm:hidden text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-              Beta
+              Beta v{latestVersion}
             </Badge>
           )}
         </div>
