@@ -1367,35 +1367,47 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const actualMinutes = actualHours.hours * 60 + actualHours.minutes;
                             const diff = actualMinutes - totalWithExtra;
                             
+                            // Determine cell color based on state
+                            const getCellColorClass = () => {
+                              if (hasOvertimeTotal) {
+                                // Purple for overtime
+                                return "bg-gradient-to-b from-purple-200 to-purple-300 dark:from-purple-800 dark:to-purple-900 text-purple-800 dark:text-purple-200";
+                              }
+                              if (hasActual) {
+                                return diff >= 0 
+                                  ? "bg-gradient-to-b from-green-200 to-green-300 dark:from-green-800 dark:to-green-900 text-green-800 dark:text-green-200"
+                                  : "bg-gradient-to-b from-amber-200 to-amber-300 dark:from-amber-800 dark:to-amber-900 text-amber-800 dark:text-amber-200";
+                              }
+                              return "bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200";
+                            };
+                            
                             return (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div 
                                     className={cn(
                                       "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs font-medium cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
-                                      hasActual 
-                                        ? diff >= 0 
-                                          ? "bg-gradient-to-b from-green-200 to-green-300 dark:from-green-800 dark:to-green-900 text-green-800 dark:text-green-200"
-                                          : "bg-gradient-to-b from-amber-200 to-amber-300 dark:from-amber-800 dark:to-amber-900 text-amber-800 dark:text-amber-200"
-                                        : "bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200"
+                                      getCellColorClass()
                                     )}
                                     onClick={() => setTimesheetOperator({ id: operator.id, name: operator.full_name })}
                                   >
                                     <div className="flex items-center gap-0.5">
                                       {hasActual && <ClipboardCheck className="h-3 w-3" />}
                                       {hasCompensationTotal && <Hammer className="h-3 w-3" />}
-                                      {hasOvertimeTotal && <Clock className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
+                                      {hasOvertimeTotal && <Clock className="h-3 w-3" />}
                                       <span>{Math.floor(totalWithExtra / 60)}ч</span>
                                     </div>
                                     {hasActual ? (
                                       <div className={cn(
                                         "text-[9px] font-bold",
-                                        diff >= 0 ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"
+                                        hasOvertimeTotal 
+                                          ? "text-purple-700 dark:text-purple-300"
+                                          : diff >= 0 ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"
                                       )}>
                                         ф: {actualHours.hours}ч{actualHours.minutes > 0 ? ` ${actualHours.minutes}м` : ''}
                                       </div>
                                     ) : hasOvertimeTotal ? (
-                                      <div className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">
+                                      <div className="text-[9px] text-purple-700 dark:text-purple-300 font-medium">
                                         +{overtimeHours.hours}ч перераб
                                       </div>
                                     ) : hasCompensationTotal ? (
