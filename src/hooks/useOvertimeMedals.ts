@@ -59,6 +59,15 @@ export function useUpdateOvertimeMedalSettings() {
     mutationFn: async (isEnabled: boolean) => {
       const { data: { user } } = await supabase.auth.getUser();
       
+      // First get the settings ID
+      const { data: settings, error: fetchError } = await supabase
+        .from('overtime_medals_settings')
+        .select('id')
+        .limit(1)
+        .single();
+
+      if (fetchError) throw fetchError;
+      
       const { data, error } = await supabase
         .from('overtime_medals_settings')
         .update({ 
@@ -66,6 +75,7 @@ export function useUpdateOvertimeMedalSettings() {
           updated_at: new Date().toISOString(),
           updated_by: user?.id 
         })
+        .eq('id', settings.id)
         .select()
         .single();
 
