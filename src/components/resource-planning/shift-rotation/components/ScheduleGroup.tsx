@@ -21,11 +21,13 @@ import { ScheduleOverrideDialog } from "@/components/resource-planning/ScheduleO
 import { BulkScheduleOverrideDialog } from "@/components/resource-planning/BulkScheduleOverrideDialog";
 import { CompensationDialog } from "@/components/resource-planning/CompensationDialog";
 import { TimesheetDialog } from "@/components/resource-planning/TimesheetDialog";
+import { OvertimeMedalBadge } from "@/components/resource-planning/OvertimeMedalBadge";
 import { useAbsenceDragDrop } from "../hooks/useAbsenceDragDrop";
 import { toast } from "sonner";
 import { type ScheduleOverride, getScheduleOverride, OVERRIDE_REASON_LABELS } from "@/hooks/useScheduleOverrides";
 import { type OperatorTimesheet, createTimesheetMap, getTimesheetForDate } from "@/hooks/useOperatorTimesheets";
 import { type OvertimeEntry, getOvertimeMinutesFromMap } from "@/hooks/useOvertimeEntries";
+import { type OperatorOvertimeRanking, getOperatorMedal } from "@/hooks/useOvertimeMedals";
 
 interface CalendarException {
   id: string;
@@ -49,6 +51,8 @@ interface ScheduleGroupProps {
   timesheets?: OperatorTimesheet[];
   compensationRecordsMap?: Map<string, CompensationRecord[]>;
   overtimeMap?: Map<string, OvertimeEntry[]>;
+  overtimeRankings?: OperatorOvertimeRanking[];
+  medalsEnabled?: boolean;
   days: Date[];
   months: Date[];
   period: PeriodType;
@@ -90,6 +94,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   timesheets = [],
   compensationRecordsMap = new Map(),
   overtimeMap = new Map(),
+  overtimeRankings = [],
+  medalsEnabled = false,
   days,
   months,
   period,
@@ -580,6 +586,13 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                           onClick={() => onEditOperator?.(operator)}
                         >
                           <span className={cn("font-medium truncate flex-1", isMobile ? "text-xs" : "text-sm")}>{operator.full_name}</span>
+                          {medalsEnabled && (
+                            <OvertimeMedalBadge 
+                              medalType={getOperatorMedal(overtimeRankings, operator.id)}
+                              totalMinutes={overtimeRankings?.find(r => r.operatorId === operator.id)?.totalMinutes}
+                              size="sm"
+                            />
+                          )}
                           {currentAbsence && absenceInfo && (
                             <span title={absenceInfo.label} className="flex-shrink-0">
                               <span className="text-sm">{absenceInfo.icon}</span>
