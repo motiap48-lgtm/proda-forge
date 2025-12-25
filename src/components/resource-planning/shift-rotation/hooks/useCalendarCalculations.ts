@@ -260,12 +260,49 @@ export const useCalendarCalculations = ({
     };
   };
 
-  // Calculate total working hours for an operator over the period
+  // Calculate total working hours for an operator over the period (subtracts absences)
   const calculateTotalHours = (operator: any): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     days.forEach(day => {
       totalMinutes += getDayMinutes(operator, day);
     });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  };
+
+  // Calculate FULL plan hours (without subtracting absences) - what should be worked according to schedule
+  const calculateFullPlanHours = (operator: any): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    const schedule = operator.work_schedules;
+    
+    days.forEach(day => {
+      // Skip if terminated or not hired
+      if (isOperatorTerminated(operator, day)) return;
+      if (isBeforeHireDate(operator, day)) return;
+      
+      // Check for holiday (non-working calendar exception)
+      const exception = getExceptionForDate(day);
+      if (exception && !exception.is_working_day) return;
+      
+      // Get shift for this day (considering overrides)
+      const shift = getShiftForDateWithOverride(operator, day);
+      if (!shift) return;
+      
+      const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+      
+      // Apply shortened day reduction if applicable
+      if (exception && exception.exception_type === "shortened_day") {
+        const scheduleReductionHours = schedule?.reduction_hours;
+        const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
+        const reductionMinutes = reductionHours * 60;
+        totalMinutes += Math.max(0, normalNetMinutes - reductionMinutes);
+      } else {
+        totalMinutes += normalNetMinutes;
+      }
+    });
+    
     return {
       hours: Math.floor(totalMinutes / 60),
       minutes: totalMinutes % 60
@@ -369,6 +406,7 @@ export const useCalendarCalculations = ({
     calendarGridStyle,
     calculateMonthHours,
     calculateTotalHours,
+    calculateFullPlanHours,
     calculateGroupTotalHours,
     calculateGroupStats,
     calculateYearlyTotal,
