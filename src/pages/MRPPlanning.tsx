@@ -232,8 +232,8 @@ const MRPPlanning = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex-1 min-w-[180px]">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
                 <Label htmlFor="horizon">Горизонт планирования (дней)</Label>
                 <Input
                   id="horizon"
@@ -243,7 +243,7 @@ const MRPPlanning = () => {
                   className="mt-1"
                 />
               </div>
-              <div className="flex-1 min-w-[180px]">
+              <div>
                 <Label htmlFor="startDate">Дата начала</Label>
                 <Input 
                   id="startDate" 
@@ -253,23 +253,26 @@ const MRPPlanning = () => {
                   className="mt-1" 
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 sm:pt-6">
                 <Switch 
                   id="includeChildOrders" 
                   checked={includeChildOrders}
                   onCheckedChange={setIncludeChildOrders}
                 />
                 <Label htmlFor="includeChildOrders" className="cursor-pointer text-sm">
-                  Включить дочерние заказы
+                  Дочерние заказы
                 </Label>
               </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-4">
               <Button 
-                className="bg-gradient-to-r from-primary to-primary-glow"
+                className="bg-gradient-to-r from-primary to-primary-glow flex-1 sm:flex-none"
                 onClick={handleCalculate}
                 disabled={isLoading || saveMutation.isPending}
               >
                 <Calculator className="mr-2 h-4 w-4" />
-                {isLoading || saveMutation.isPending ? "Расчет..." : "Выполнить расчет"}
+                <span className="hidden sm:inline">{isLoading || saveMutation.isPending ? "Расчет..." : "Выполнить расчет"}</span>
+                <span className="sm:hidden">{isLoading || saveMutation.isPending ? "..." : "Расчет"}</span>
               </Button>
               <MRPHistoryDialog />
               {mrpResult && (purchaseRequirements.length > 0 || productionRequirements.length > 0) && (
@@ -885,55 +888,57 @@ const MRPPlanning = () => {
           {/* Work Center Reports Tab */}
           <TabsContent value="workcenters" className="space-y-4">
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Warehouse className="h-5 w-5 text-purple-600" />
-                      Рапорты по участкам (рабочим центрам)
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <Warehouse className="h-5 w-5 text-purple-600 shrink-0" />
+                      <span className="hidden sm:inline">Рапорты по участкам (рабочим центрам)</span>
+                      <span className="sm:hidden">Рапорты по участкам</span>
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">
                       Производственные задания по участкам
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {workCenterReports.length > 0 && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const allIds = workCenterReports.map(r => r.work_center_id);
-                            setExpandedWorkCenters(new Set(allIds));
-                          }}
-                        >
-                          <ChevronsDown className="h-4 w-4 mr-1" />
-                          Развернуть
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setExpandedWorkCenters(new Set())}
-                        >
-                          <ChevronsUp className="h-4 w-4 mr-1" />
-                          Свернуть
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => printMRPReport({
-                            type: "workcenter",
-                            allWorkCenterReports: workCenterReports,
-                            planningHorizon,
-                            startDate
-                          })}
-                        >
-                          <Printer className="h-4 w-4 mr-1" />
-                          Печать
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                  {workCenterReports.length > 0 && (
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2 sm:px-3"
+                        onClick={() => {
+                          const allIds = workCenterReports.map(r => r.work_center_id);
+                          setExpandedWorkCenters(new Set(allIds));
+                        }}
+                      >
+                        <ChevronsDown className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Развернуть</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2 sm:px-3"
+                        onClick={() => setExpandedWorkCenters(new Set())}
+                      >
+                        <ChevronsUp className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Свернуть</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2 sm:px-3"
+                        onClick={() => printMRPReport({
+                          type: "workcenter",
+                          allWorkCenterReports: workCenterReports,
+                          planningHorizon,
+                          startDate
+                        })}
+                      >
+                        <Printer className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Печать</span>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -979,14 +984,14 @@ const MRPPlanning = () => {
                       return Object.entries(departmentGroups).map(([department, reports]) => (
                         <div key={department} className="space-y-3">
                           {/* Заголовок подразделения */}
-                          <div className="flex items-center gap-3 border-b-2 border-primary/30 pb-2">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <Factory className="h-5 w-5 text-primary" />
+                          <div className="flex items-center gap-2 sm:gap-3 border-b-2 border-primary/30 pb-2">
+                            <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 shrink-0">
+                              <Factory className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                             </div>
-                            <div>
-                              <h3 className="text-lg font-bold text-foreground">{department}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                Участков: {reports.length} | Всего позиций: {reports.reduce((s, r) => s + r.total_items, 0)}
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-base sm:text-lg font-bold text-foreground truncate">{department}</h3>
+                              <p className="text-xs sm:text-sm text-muted-foreground">
+                                Участков: {reports.length} | Позиций: {reports.reduce((s, r) => s + r.total_items, 0)}
                               </p>
                             </div>
                           </div>
@@ -1013,28 +1018,29 @@ const MRPPlanning = () => {
                                 >
                                   <Card className="border-2 border-l-4 border-l-primary">
                                     <CollapsibleTrigger asChild>
-                                      <CardHeader className="bg-muted/50 py-3 cursor-pointer hover:bg-muted/70 transition-colors">
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-3">
-                                            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
-                                            <div>
-                                              <CardTitle className="text-base flex items-center gap-2">
-                                                <Warehouse className="h-4 w-4" />
-                                                {report.work_center_name}
+                                      <CardHeader className="bg-muted/50 py-2 sm:py-3 px-3 sm:px-6 cursor-pointer hover:bg-muted/70 transition-colors">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ${isExpanded ? '' : '-rotate-90'}`} />
+                                            <div className="min-w-0 flex-1">
+                                              <CardTitle className="text-sm sm:text-base flex items-center gap-1.5 sm:gap-2">
+                                                <Warehouse className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                                                <span className="truncate">{report.work_center_name}</span>
                                               </CardTitle>
-                                              <CardDescription className="text-xs">
+                                              <CardDescription className="text-xs truncate">
                                                 Код: {report.work_center_code} | Позиций: {report.total_items}
                                               </CardDescription>
                                             </div>
                                           </div>
-                                          <div className="flex items-center gap-3">
+                                          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                                             <div className="text-right">
-                                              <p className="text-xl font-bold text-primary">{report.total_quantity.toFixed(0)}</p>
+                                              <p className="text-lg sm:text-xl font-bold text-primary">{report.total_quantity.toFixed(0)}</p>
                                               <p className="text-xs text-muted-foreground">ед.</p>
                                             </div>
                                             <Button
                                               variant="ghost"
                                               size="icon"
+                                              className="h-8 w-8"
                                               onClick={(e) => {
                                                 e.stopPropagation();
                                                 printMRPReport({
@@ -1058,16 +1064,16 @@ const MRPPlanning = () => {
                                           {report.items.map((item, idx) => (
                                             <div 
                                               key={`${item.product_id}-${idx}`}
-                                              className="flex items-center justify-between p-2 bg-muted/30 rounded-md text-sm"
+                                              className="flex items-center justify-between p-2 bg-muted/30 rounded-md text-sm gap-2"
                                             >
-                                              <div className="flex items-center gap-2">
-                                                {getProductTypeBadge(item.product_type)}
-                                                <div>
-                                                  <p className="font-medium">{item.product_name}</p>
-                                                  <p className="text-xs text-muted-foreground">{item.product_code}</p>
+                                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                <div className="shrink-0">{getProductTypeBadge(item.product_type)}</div>
+                                                <div className="min-w-0">
+                                                  <p className="font-medium truncate">{item.product_name}</p>
+                                                  <p className="text-xs text-muted-foreground truncate">{item.product_code}</p>
                                                 </div>
                                               </div>
-                                              <div className="text-right">
+                                              <div className="text-right shrink-0">
                                                 <p className="font-bold">{item.quantity.toFixed(2)}</p>
                                                 <p className="text-xs text-muted-foreground">{item.unit}</p>
                                               </div>
