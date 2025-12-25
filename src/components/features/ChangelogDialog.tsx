@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ChangelogEntry, ChangelogFormData, getNextVersion, getLatestVersion } from "@/hooks/useChangelog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChangelogEntry, ChangelogFormData, getNextVersion, getLatestVersion, VersionIncrementType } from "@/hooks/useChangelog";
 import { format } from "date-fns";
 
 interface ChangelogDialogProps {
@@ -30,6 +31,7 @@ export const ChangelogDialog = ({
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [changesText, setChangesText] = useState("");
   const [isPublished, setIsPublished] = useState(true);
+  const [incrementType, setIncrementType] = useState<VersionIncrementType>("patch");
 
   useEffect(() => {
     if (entry) {
@@ -41,7 +43,7 @@ export const ChangelogDialog = ({
     } else {
       // Auto-generate next version
       const latestVersion = getLatestVersion(changelog);
-      const nextVersion = getNextVersion(latestVersion);
+      const nextVersion = getNextVersion(latestVersion, incrementType);
       setVersion(nextVersion);
       setTitle("");
       setDate(format(new Date(), "yyyy-MM-dd"));
@@ -49,6 +51,15 @@ export const ChangelogDialog = ({
       setIsPublished(true);
     }
   }, [entry, open, changelog]);
+
+  // Update version when increment type changes (only for new entries)
+  useEffect(() => {
+    if (!entry && open) {
+      const latestVersion = getLatestVersion(changelog);
+      const nextVersion = getNextVersion(latestVersion, incrementType);
+      setVersion(nextVersion);
+    }
+  }, [incrementType, entry, open, changelog]);
 
   const handleSubmit = () => {
     const changes = changesText
@@ -75,6 +86,37 @@ export const ChangelogDialog = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {!entry && (
+            <div className="space-y-2">
+              <Label>Тип инкремента версии</Label>
+              <Select value={incrementType} onValueChange={(v) => setIncrementType(v as VersionIncrementType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="patch">
+                    <div className="flex flex-col items-start">
+                      <span>Patch</span>
+                      <span className="text-xs text-muted-foreground">0.9.5 → 0.9.6 (исправления)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="minor">
+                    <div className="flex flex-col items-start">
+                      <span>Minor</span>
+                      <span className="text-xs text-muted-foreground">0.9.5 → 0.10.0 (новые функции)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="major">
+                    <div className="flex flex-col items-start">
+                      <span>Major</span>
+                      <span className="text-xs text-muted-foreground">0.9.5 → 1.0.0 (крупные изменения)</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="version">Версия</Label>

@@ -9,7 +9,7 @@ import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 
 export const UpdatesNotificationDialog = () => {
-  const { unseenEntries, markAsSeen, hasUnseenUpdates } = useUnseenChangelog();
+  const { unseenEntries, markAsSeen, trackView, hasUnseenUpdates } = useUnseenChangelog();
   const [open, setOpen] = useState(false);
   const [hasShown, setHasShown] = useState(false);
 
@@ -19,6 +19,12 @@ export const UpdatesNotificationDialog = () => {
       const timer = setTimeout(() => {
         setOpen(true);
         setHasShown(true);
+        // Track views for analytics
+        unseenEntries
+          .filter(e => !e.id.startsWith('default-'))
+          .forEach(e => {
+            trackView.mutate({ changelogId: e.id, source: 'notification' });
+          });
       }, 1500); // Delay to not interrupt initial load
 
       return () => clearTimeout(timer);

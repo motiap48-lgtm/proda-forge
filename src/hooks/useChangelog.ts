@@ -114,14 +114,31 @@ export const getLatestVersion = (changelog: ChangelogEntry[]): string => {
   return changelog[0]?.version || "0.9.5";
 };
 
-// Calculate next version automatically
-export const getNextVersion = (currentVersion: string): string => {
+export type VersionIncrementType = 'patch' | 'minor' | 'major';
+
+// Calculate next version automatically based on increment type
+export const getNextVersion = (currentVersion: string, incrementType: VersionIncrementType = 'patch'): string => {
   const parts = currentVersion.split('.').map(Number);
   if (parts.length !== 3 || parts.some(isNaN)) {
     return "0.9.6";
   }
-  // Increment patch version
-  parts[2] += 1;
+  
+  switch (incrementType) {
+    case 'major':
+      parts[0] += 1;
+      parts[1] = 0;
+      parts[2] = 0;
+      break;
+    case 'minor':
+      parts[1] += 1;
+      parts[2] = 0;
+      break;
+    case 'patch':
+    default:
+      parts[2] += 1;
+      break;
+  }
+  
   return parts.join('.');
 };
 
@@ -268,8 +285,17 @@ export const useChangelog = () => {
   };
 };
 
+export interface ChangelogViewStats {
+  changelog_id: string;
+  version: string;
+  title: string;
+  total_views: number;
+  unique_viewers: number;
+}
+
 export const useUnseenChangelog = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const { data: unseenEntries = [], isLoading } = useQuery({
     queryKey: ["unseen-changelog", user?.id],
@@ -316,10 +342,75 @@ export const useUnseenChangelog = () => {
     }
   });
 
+  // Track changelog view for analytics
+  const trackView = useMutation({
+    mutationFn: async ({ changelogId, source = 'dialog' }: { changelogId: string; source?: string }) => {
+      if (!user?.id) return;
+
+      const { error } = await supabase
+        .from("changelog_views")
+        .insert({
+          changelog_id: changelogId,
+          user_id: user.id,
+          view_source: source
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["changelog-view-stats"] });
+    }
+  });
+
   return {
     unseenEntries,
     isLoading,
     markAsSeen,
+    trackView,
     hasUnseenUpdates: unseenEntries.length > 0
+  };
+};
+
+// Hook for changelog view analytics
+export const useChangelogViewStats = () => {
+  const { data: viewStats = [], isLoading } = useQuery({
+    queryKey: ["changelog-view-stats"],
+    queryFn: async () => {
+      // Get all views with changelog info
+      const { data: views, error: viewsError } = await supabase
+        .from("changelog_views")
+        .select("changelog_id, user_id");
+
+      if (viewsError || !views) return [];
+
+      // Get changelog entries
+      const { data: entries, error: entriesError } = await supabase
+        .from("changelog_entries")
+        .select("id, version, title")
+        .order("date", { ascending: false });
+
+      if (entriesError || !entries) return [];
+
+      // Calculate stats
+      const stats: ChangelogViewStats[] = entries.map(entry => {
+        const entryViews = views.filter(v => v.changelog_id === entry.id);
+        const uniqueViewers = new Set(entryViews.map(v => v.user_id)).size;
+        
+        return {
+          changelog_id: entry.id,
+          version: entry.version,
+          title: entry.title,
+          total_views: entryViews.length,
+          unique_viewers: uniqueViewers
+        };
+      });
+
+      return stats;
+    }
+  });
+
+  return {
+    viewStats,
+    isLoading
   };
 };
