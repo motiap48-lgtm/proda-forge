@@ -211,7 +211,7 @@ export const OvertimeEntryDialog = ({
   );
 
   const isApproved = entry?.status === 'approved';
-  const canEdit = !isApproved || isAdmin;
+  const canEdit = !isApproved; // Редактирование только после снятия подтверждения
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -346,37 +346,17 @@ export const OvertimeEntryDialog = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-row justify-between gap-2 pt-4 border-t">
-          {/* Left side - Delete button */}
-          <div className="flex gap-2">
-            {entry && onDelete && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  onOpenChange(false);
-                  onDelete(entry);
-                }}
-                disabled={isSubmitting}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 className="h-4 w-4 mr-1.5" />
-                Удалить
-              </Button>
-            )}
-          </div>
-          
-          {/* Right side - Action buttons */}
-          <div className="flex gap-2">
+        <DialogFooter className="flex-col gap-3 pt-4 border-t">
+          {/* Main action buttons */}
+          <div className="flex flex-wrap gap-2 justify-end w-full">
             {/* For pending entries */}
             {entry && entry.status === 'pending' && (
               <>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={handleCancel}
                   disabled={isSubmitting}
-                  className="text-muted-foreground hover:text-foreground"
                 >
                   Отменить запись
                 </Button>
@@ -402,39 +382,45 @@ export const OvertimeEntryDialog = ({
               </Button>
             )}
             
-            {/* For approved entries */}
-            {entry?.status === 'approved' && (
-              <>
-                {isAdmin ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRevokeApproval}
-                      disabled={isSubmitting}
-                    >
-                      <RotateCcw className="h-4 w-4 mr-1.5" />
-                      Снять подтверждение
-                    </Button>
-                    <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
-                      Сохранить
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-                    Закрыть
-                  </Button>
-                )}
-              </>
+            {/* For approved entries - admin can revoke */}
+            {entry?.status === 'approved' && isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRevokeApproval}
+                disabled={isSubmitting}
+              >
+                <RotateCcw className="h-4 w-4 mr-1.5" />
+                Снять подтверждение
+              </Button>
             )}
             
-            {/* For cancelled entries */}
-            {entry?.status === 'cancelled' && (
+            {/* Close button for approved (non-admin) or cancelled */}
+            {((entry?.status === 'approved' && !isAdmin) || entry?.status === 'cancelled') && (
               <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
                 Закрыть
               </Button>
             )}
           </div>
+          
+          {/* Delete button - separate row */}
+          {entry && onDelete && (
+            <div className="flex justify-start w-full">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  onDelete(entry);
+                }}
+                disabled={isSubmitting}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                Удалить
+              </Button>
+            </div>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
