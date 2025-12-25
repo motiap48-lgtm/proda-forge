@@ -1336,6 +1336,65 @@ export type Database = {
           },
         ]
       }
+      overtime_medals_settings: {
+        Row: {
+          id: string
+          is_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      overtime_monthly_medals: {
+        Row: {
+          created_at: string
+          id: string
+          medal_type: string
+          month: number
+          operator_id: string
+          total_overtime_minutes: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          medal_type: string
+          month: number
+          operator_id: string
+          total_overtime_minutes?: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          medal_type?: string
+          month?: number
+          operator_id?: string
+          total_overtime_minutes?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overtime_monthly_medals_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_calendar: {
         Row: {
           calendar_date: string

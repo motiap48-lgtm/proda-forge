@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users, Calendar, ExternalLink, Download, CalendarOff, Clock, CalendarCheck, ClipboardList, FlaskConical, ListChecks } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users, Calendar, ExternalLink, Download, CalendarOff, Clock, CalendarCheck, ClipboardList, FlaskConical, ListChecks, Medal } from "lucide-react";
 import { MaterialCategoriesManagement } from "@/components/settings/MaterialCategoriesManagement";
 import { ContractorsManagement } from "@/components/settings/ContractorsManagement";
 import { CustomersManagement } from "@/components/settings/CustomersManagement";
@@ -17,6 +17,7 @@ import { HolidayImportDialog } from "@/components/resource-planning/HolidayImpor
 import { useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useTimesheetSettings } from "@/hooks/useTimesheetSettings";
 import { useBetaSettings } from "@/hooks/useBetaSettings";
+import { useOvertimeMedalSettings, useUpdateOvertimeMedalSettings } from "@/hooks/useOvertimeMedals";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,8 @@ const Settings = () => {
   const { data: calendarExceptions = [] } = useCalendarExceptions();
   const { settings: timesheetSettings, updateSettings: updateTimesheetSettings } = useTimesheetSettings();
   const { settings: betaSettings, updateSettings: updateBetaSettings } = useBetaSettings();
+  const { data: medalSettings } = useOvertimeMedalSettings();
+  const updateMedalSettings = useUpdateOvertimeMedalSettings();
   const [notifications, setNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -201,7 +204,58 @@ const Settings = () => {
             </CardContent>
           </Card>
 
-          {/* Distribution Strategy Settings */}
+          {/* Overtime Medals Settings */}
+          <Card className="border-2 border-amber-500/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Medal className="h-5 w-5 text-amber-500" />
+                Медали за переработки
+                <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                  Геймификация
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Система переходящих медалей для сотрудников с наибольшим количеством сверхурочных часов
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="enable-medals">Включить систему медалей</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Показывать 🥇🥈🥉 рядом с именами топ-3 сотрудников по переработкам
+                  </p>
+                </div>
+                <Switch
+                  id="enable-medals"
+                  checked={medalSettings?.is_enabled ?? false}
+                  onCheckedChange={(checked) => {
+                    updateMedalSettings.mutate(checked, {
+                      onSuccess: () => {
+                        toast.success(checked ? "Система медалей включена" : "Система медалей отключена");
+                      },
+                      onError: () => {
+                        toast.error("Не удалось обновить настройки");
+                      },
+                    });
+                  }}
+                />
+              </div>
+              {medalSettings?.is_enabled && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <p className="text-sm font-medium">Как это работает:</p>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>🥇 Золото — сотрудник с наибольшим количеством переработок за месяц</li>
+                    <li>🥈 Серебро — второе место по переработкам</li>
+                    <li>🥉 Бронза — третье место по переработкам</li>
+                    <li>Медали обновляются автоматически при изменении данных</li>
+                    <li>В конце года подводится рейтинг по количеству медалей</li>
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

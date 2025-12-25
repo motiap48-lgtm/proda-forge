@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { User } from "lucide-react";
-import { format, addDays, getDaysInMonth, getDay, isToday } from "date-fns";
+import { format, addDays, getDaysInMonth, getDay, isToday, getMonth, getYear } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useUpdateOperator, useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useAllOperatorAbsences, isDateInAbsence } from "@/hooks/useOperatorAbsences";
@@ -9,6 +9,7 @@ import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { useOperatorTimesheets } from "@/hooks/useOperatorTimesheets";
 import { useAbsenceCompensations, type CompensationRecord } from "@/hooks/useAbsenceCompensations";
 import { useOvertimeEntries, createOvertimeMap, type OvertimeEntry } from "@/hooks/useOvertimeEntries";
+import { useOvertimeMedalSettings, useCurrentOvertimeRankings } from "@/hooks/useOvertimeMedals";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -38,6 +39,7 @@ interface ShiftRotationCalendarProps {
 export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotationCalendarProps) => {
   const { data: absences = [] } = useAllOperatorAbsences();
   const { data: calendarExceptions = [] } = useCalendarExceptions();
+  const { data: medalSettings } = useOvertimeMedalSettings();
   const operatorIds = useMemo(() => operators.filter(op => op.is_active).map(op => op.id), [operators]);
   const { data: scheduleOverrides = [] } = useScheduleOverrides(operatorIds);
   const [period, setPeriod] = useState<PeriodType>(() => {
@@ -63,6 +65,15 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [showExportAbsenceDialog, setShowExportAbsenceDialog] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
+
+  // Overtime medals
+  const currentYear = getYear(startDate);
+  const currentMonth = getMonth(startDate);
+  const { data: overtimeRankings = [] } = useCurrentOvertimeRankings(
+    currentYear, 
+    currentMonth, 
+    medalSettings?.is_enabled ?? false
+  );
 
   const {
     calendarHeaderPadRightPx,
@@ -809,6 +820,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   timesheets={timesheets}
                   compensationRecordsMap={compensationRecordsMap}
                   overtimeMap={overtimeMap}
+                  overtimeRankings={overtimeRankings}
+                  medalsEnabled={medalSettings?.is_enabled ?? false}
                   days={days}
                   months={months}
                   period={period}
