@@ -16,7 +16,8 @@ import {
   AlertCircle,
   Lightbulb,
   CalendarDays,
-  FileBarChart
+  FileBarChart,
+  Timer
 } from "lucide-react";
 import { WorkSchedulesTab } from "@/components/resource-planning/WorkSchedulesTab";
 import { OperatorsTab } from "@/components/resource-planning/OperatorsTab";
@@ -25,6 +26,7 @@ import { ShiftTasksTab } from "@/components/resource-planning/ShiftTasksTab";
 import { ResourceGanttChart } from "@/components/resource-planning/ResourceGanttChart";
 import { CalendarExceptionsTab } from "@/components/resource-planning/CalendarExceptionsTab";
 import { OperatorHoursReport } from "@/components/resource-planning/OperatorHoursReport";
+import { OvertimeEntriesTab } from "@/components/resource-planning/OvertimeEntriesTab";
 import { cn } from "@/lib/utils";
 
 const ResourcePlanning = () => {
@@ -225,7 +227,7 @@ const ResourcePlanning = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
-            <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-7">
+            <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-8">
               <TabsTrigger value="shift-tasks" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
                 <CalendarClock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="text-xs sm:text-sm">ССЗ</span>
@@ -238,6 +240,11 @@ const ResourcePlanning = () => {
               <TabsTrigger value="hours-report" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
                 <FileBarChart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="text-xs sm:text-sm">Часы</span>
+              </TabsTrigger>
+              <TabsTrigger value="overtime" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
+                <Timer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm hidden sm:inline">Переработки</span>
+                <span className="text-xs sm:hidden">Сверх.</span>
               </TabsTrigger>
               <TabsTrigger value="schedules" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
                 <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -272,6 +279,10 @@ const ResourcePlanning = () => {
 
           <TabsContent value="hours-report">
             <OperatorHoursReport />
+          </TabsContent>
+
+          <TabsContent value="overtime">
+            <OvertimeEntriesTab />
           </TabsContent>
 
           <TabsContent value="schedules">

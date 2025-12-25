@@ -1260,6 +1260,82 @@ export type Database = {
           },
         ]
       }
+      overtime_entries: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          duration_minutes: number | null
+          end_time: string
+          id: string
+          operator_id: string
+          start_time: string
+          status: string
+          timesheet_id: string | null
+          updated_at: string
+          work_date: string
+          work_order_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          duration_minutes?: number | null
+          end_time: string
+          id?: string
+          operator_id: string
+          start_time: string
+          status?: string
+          timesheet_id?: string | null
+          updated_at?: string
+          work_date: string
+          work_order_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          duration_minutes?: number | null
+          end_time?: string
+          id?: string
+          operator_id?: string
+          start_time?: string
+          status?: string
+          timesheet_id?: string | null
+          updated_at?: string
+          work_date?: string
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overtime_entries_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overtime_entries_timesheet_id_fkey"
+            columns: ["timesheet_id"]
+            isOneToOne: false
+            referencedRelation: "operator_timesheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overtime_entries_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_calendar: {
         Row: {
           calendar_date: string
