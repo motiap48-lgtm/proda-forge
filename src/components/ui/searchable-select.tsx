@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +31,7 @@ interface SearchableSelectProps {
   emptyText?: string;
   disabled?: boolean;
   className?: string;
+  clearable?: boolean;
 }
 
 export function SearchableSelect({
@@ -42,10 +43,16 @@ export function SearchableSelect({
   emptyText = "Ничего не найдено",
   disabled = false,
   className,
+  clearable = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
 
   const selectedOption = options.find((option) => option.value === value);
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onValueChange("");
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -64,7 +71,15 @@ export function SearchableSelect({
           <span className="truncate">
             {selectedOption ? selectedOption.label : placeholder}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <div className="flex items-center gap-1 ml-2 shrink-0">
+            {clearable && value && (
+              <X 
+                className="h-4 w-4 opacity-50 hover:opacity-100" 
+                onClick={handleClear}
+              />
+            )}
+            <ChevronsUpDown className="h-4 w-4 opacity-50" />
+          </div>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">

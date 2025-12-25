@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Clock, AlertCircle, FileText, CheckCircle2, X } from "lucide-react";
 import { format, parse } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -205,16 +206,18 @@ export const OvertimeEntryDialog = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Оператор</Label>
-                <Select value={operatorId} onValueChange={onOperatorChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите оператора..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {operators.map((op) => (
-                      <SelectItem key={op.id} value={op.id}>{op.full_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={operators.map((op) => ({
+                    value: op.id,
+                    label: op.full_name,
+                  }))}
+                  value={operatorId}
+                  onValueChange={(val) => val && onOperatorChange(val)}
+                  placeholder="Выберите оператора..."
+                  searchPlaceholder="Поиск по имени..."
+                  emptyText="Оператор не найден"
+                  clearable={false}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Дата</Label>
