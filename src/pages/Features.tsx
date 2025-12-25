@@ -30,13 +30,22 @@ import {
   Search,
   Filter,
   History,
-  Sparkles
+  Sparkles,
+  Plus,
+  Edit2,
+  Trash2,
+  Database,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-type FeatureStatus = "done" | "in-progress" | "planned";
+import { useChangelog, ChangelogEntry, ChangelogFormData } from "@/hooks/useChangelog";
+import { useFeatureStatuses, FeatureStatus } from "@/hooks/useFeatureStatuses";
+import { ChangelogDialog } from "@/components/features/ChangelogDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Feature {
   id: string;
@@ -52,90 +61,6 @@ interface FeatureModule {
   path?: string;
   features: Feature[];
 }
-
-interface ChangelogEntry {
-  date: string;
-  version: string;
-  title: string;
-  changes: string[];
-}
-
-const changelog: ChangelogEntry[] = [
-  {
-    date: "2024-12-25",
-    version: "0.9.5",
-    title: "Улучшения страницы функциональности",
-    changes: [
-      "Добавлена возможность отмечать функции как избранные",
-      "Реализован поиск по функциям",
-      "Добавлена фильтрация по статусу",
-      "Добавлен changelog - история изменений системы"
-    ]
-  },
-  {
-    date: "2024-12-24",
-    version: "0.9.4",
-    title: "Мобильная адаптация календаря",
-    changes: [
-      "Исправлено отображение календаря ротации на мобильных устройствах",
-      "Оптимизирована ширина колонок для маленьких экранов",
-      "Улучшена компактность отображения данных"
-    ]
-  },
-  {
-    date: "2024-12-23",
-    version: "0.9.3",
-    title: "Beta-режим и страница функциональности",
-    changes: [
-      "Добавлен индикатор Beta версии рядом с логотипом",
-      "Создана страница отслеживания функциональности",
-      "Добавлены настройки Beta-режима"
-    ]
-  },
-  {
-    date: "2024-12-20",
-    version: "0.9.2",
-    title: "Улучшения ресурсного планирования",
-    changes: [
-      "Добавлена поддержка drag-and-drop для отсутствий",
-      "Реализовано выделение диапазона дат",
-      "Улучшена синхронизация скролла в календаре",
-      "Добавлена кнопка 'Сегодня' для быстрой навигации"
-    ]
-  },
-  {
-    date: "2024-12-15",
-    version: "0.9.1",
-    title: "Компенсации и табель",
-    changes: [
-      "Добавлен модуль компенсаций отсутствий",
-      "Реализован расширенный табель рабочего времени",
-      "Добавлены отчёты по часам операторов"
-    ]
-  },
-  {
-    date: "2024-12-10",
-    version: "0.9.0",
-    title: "Графики и бригады",
-    changes: [
-      "Реализовано управление рабочими графиками",
-      "Добавлена поддержка сменных графиков",
-      "Создан модуль управления бригадами",
-      "Добавлен календарь ротации смен"
-    ]
-  },
-  {
-    date: "2024-12-05",
-    version: "0.8.5",
-    title: "Отчёты производства",
-    changes: [
-      "Добавлен план-факт отчёт по участкам",
-      "Реализован отчёт по клиентам",
-      "Добавлен экспорт отчётов в Excel",
-      "Улучшены печатные формы"
-    ]
-  }
-];
 
 const featureModules: FeatureModule[] = [
   {
@@ -408,6 +333,12 @@ const getStatusBadge = (status: FeatureStatus) => {
 };
 
 const Features = () => {
+  const { userRoles } = useAuth();
+  const isAdmin = userRoles.includes('admin');
+  
+  const { changelog, isLoading: changelogLoading, createEntry, updateEntry, deleteEntry, seedDefaultEntries, isFromDatabase } = useChangelog();
+  const { getStatus, updateStatus } = useFeatureStatuses();
+  
   const [activeTab, setActiveTab] = useState("features");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<FeatureStatus | "all">("all");
@@ -419,6 +350,9 @@ const Features = () => {
       return [];
     }
   });
+
+  const [changelogDialogOpen, setChangelogDialogOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<ChangelogEntry | null>(null);
 
   useEffect(() => {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
@@ -432,17 +366,48 @@ const Features = () => {
     );
   };
 
+  const handleSaveChangelog = (data: ChangelogFormData) => {
+    if (editingEntry && !editingEntry.id.startsWith('default-')) {
+      updateEntry.mutate({ id: editingEntry.id, data }, {
+        onSuccess: () => {
+          setChangelogDialogOpen(false);
+          setEditingEntry(null);
+        }
+      });
+    } else {
+      createEntry.mutate(data, {
+        onSuccess: () => {
+          setChangelogDialogOpen(false);
+          setEditingEntry(null);
+        }
+      });
+    }
+  };
+
+  const handleDeleteChangelog = (id: string) => {
+    deleteEntry.mutate(id);
+  };
+
+  const handleStatusChange = (featureId: string, newStatus: FeatureStatus) => {
+    updateStatus.mutate({ featureId, status: newStatus });
+  };
+
+  // Apply database statuses to features
+  const getFeatureStatus = (feature: Feature): FeatureStatus => {
+    return getStatus(feature.id, feature.status);
+  };
+
   const totalFeatures = featureModules.reduce((acc, m) => acc + m.features.length, 0);
   const doneFeatures = featureModules.reduce(
-    (acc, m) => acc + m.features.filter(f => f.status === "done").length, 
+    (acc, m) => acc + m.features.filter(f => getFeatureStatus(f) === "done").length, 
     0
   );
   const inProgressFeatures = featureModules.reduce(
-    (acc, m) => acc + m.features.filter(f => f.status === "in-progress").length, 
+    (acc, m) => acc + m.features.filter(f => getFeatureStatus(f) === "in-progress").length, 
     0
   );
   const plannedFeatures = featureModules.reduce(
-    (acc, m) => acc + m.features.filter(f => f.status === "planned").length, 
+    (acc, m) => acc + m.features.filter(f => getFeatureStatus(f) === "planned").length, 
     0
   );
 
@@ -455,7 +420,8 @@ const Features = () => {
       const matchesSearch = searchQuery === "" || 
         feature.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         feature.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === "all" || feature.status === statusFilter;
+      const featureStatus = getFeatureStatus(feature);
+      const matchesStatus = statusFilter === "all" || featureStatus === statusFilter;
       return matchesSearch && matchesStatus;
     })
   })).filter(module => module.features.length > 0);
@@ -571,7 +537,7 @@ const Features = () => {
             <div className="grid gap-4 sm:gap-6">
               {filteredModules.map((module) => {
                 const Icon = module.icon;
-                const moduleDone = module.features.filter(f => f.status === "done").length;
+                const moduleDone = module.features.filter(f => getFeatureStatus(f) === "done").length;
                 const moduleTotal = module.features.length;
                 
                 return (
@@ -596,36 +562,70 @@ const Features = () => {
                     </CardHeader>
                     <CardContent className="pt-0">
                       <div className="grid gap-2">
-                        {module.features.map((feature) => (
-                          <div 
-                            key={feature.id}
-                            className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                          >
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 flex-shrink-0"
-                                onClick={() => toggleFavorite(feature.id)}
-                              >
-                                <Star 
-                                  className={`h-4 w-4 ${favorites.includes(feature.id) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} 
-                                />
-                              </Button>
-                              <div className="min-w-0">
-                                <div className="font-medium text-sm text-foreground truncate">
-                                  {feature.name}
-                                </div>
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {feature.description}
+                        {module.features.map((feature) => {
+                          const currentStatus = getFeatureStatus(feature);
+                          return (
+                            <div 
+                              key={feature.id}
+                              className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                            >
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 flex-shrink-0"
+                                  onClick={() => toggleFavorite(feature.id)}
+                                >
+                                  <Star 
+                                    className={`h-4 w-4 ${favorites.includes(feature.id) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} 
+                                  />
+                                </Button>
+                                <div className="min-w-0">
+                                  <div className="font-medium text-sm text-foreground truncate">
+                                    {feature.name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {feature.description}
+                                  </div>
                                 </div>
                               </div>
+                              <div className="ml-3 flex-shrink-0 flex items-center gap-2">
+                                {isAdmin ? (
+                                  <Select 
+                                    value={currentStatus} 
+                                    onValueChange={(v) => handleStatusChange(feature.id, v as FeatureStatus)}
+                                  >
+                                    <SelectTrigger className="h-8 w-[130px]">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="done">
+                                        <div className="flex items-center gap-2">
+                                          <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                          Готово
+                                        </div>
+                                      </SelectItem>
+                                      <SelectItem value="in-progress">
+                                        <div className="flex items-center gap-2">
+                                          <Clock className="h-3 w-3 text-amber-600" />
+                                          В работе
+                                        </div>
+                                      </SelectItem>
+                                      <SelectItem value="planned">
+                                        <div className="flex items-center gap-2">
+                                          <AlertCircle className="h-3 w-3 text-blue-600" />
+                                          Планируется
+                                        </div>
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  getStatusBadge(currentStatus)
+                                )}
+                              </div>
                             </div>
-                            <div className="ml-3 flex-shrink-0">
-                              {getStatusBadge(feature.status)}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </CardContent>
                   </Card>
@@ -662,6 +662,7 @@ const Features = () => {
                   <div className="grid gap-2">
                     {favoriteFeatures.map((feature) => {
                       const Icon = feature.moduleIcon;
+                      const currentStatus = getFeatureStatus(feature);
                       return (
                         <div 
                           key={feature.id}
@@ -687,7 +688,7 @@ const Features = () => {
                             </div>
                           </div>
                           <div className="ml-3 flex-shrink-0">
-                            {getStatusBadge(feature.status)}
+                            {getStatusBadge(currentStatus)}
                           </div>
                         </div>
                       );
@@ -711,21 +712,56 @@ const Features = () => {
           <TabsContent value="changelog" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="h-5 w-5 text-primary" />
-                  История изменений
-                </CardTitle>
-                <CardDescription>
-                  Журнал обновлений и изменений системы
-                </CardDescription>
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <History className="h-5 w-5 text-primary" />
+                      История изменений
+                      {isFromDatabase && (
+                        <Badge variant="outline" className="gap-1 text-xs">
+                          <Database className="h-3 w-3" />
+                          БД
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      Журнал обновлений и изменений системы
+                    </CardDescription>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-2">
+                      {!isFromDatabase && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => seedDefaultEntries.mutate()}
+                          disabled={seedDefaultEntries.isPending}
+                        >
+                          <Database className="h-4 w-4 mr-2" />
+                          Сохранить в БД
+                        </Button>
+                      )}
+                      <Button 
+                        size="sm"
+                        onClick={() => {
+                          setEditingEntry(null);
+                          setChangelogDialogOpen(true);
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Добавить
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[600px] pr-4">
                   <div className="relative">
                     <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
                     <div className="space-y-6">
-                      {changelog.map((entry, idx) => (
-                        <div key={idx} className="relative pl-8">
+                      {changelog.map((entry) => (
+                        <div key={entry.id} className="relative pl-8">
                           <div className="absolute left-0 top-1.5 h-6 w-6 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
                             <Sparkles className="h-3 w-3 text-primary" />
                           </div>
@@ -741,6 +777,52 @@ const Features = () => {
                                   year: 'numeric'
                                 })}
                               </span>
+                              {!entry.is_published && (
+                                <Badge variant="secondary" className="gap-1 text-xs">
+                                  <EyeOff className="h-3 w-3" />
+                                  Скрыто
+                                </Badge>
+                              )}
+                              {isAdmin && !entry.id.startsWith('default-') && (
+                                <div className="flex gap-1 ml-auto">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => {
+                                      setEditingEntry(entry);
+                                      setChangelogDialogOpen(true);
+                                    }}
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-destructive"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Удалить запись?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Это действие нельзя отменить. Запись будет удалена навсегда.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Отмена</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteChangelog(entry.id)}>
+                                          Удалить
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              )}
                             </div>
                             <h3 className="font-semibold text-foreground">{entry.title}</h3>
                             <ul className="space-y-1">
@@ -767,6 +849,14 @@ const Features = () => {
           <p className="mt-1">ERP Vostok Auto — система управления производством</p>
         </div>
       </main>
+
+      <ChangelogDialog
+        open={changelogDialogOpen}
+        onOpenChange={setChangelogDialogOpen}
+        entry={editingEntry}
+        onSave={handleSaveChangelog}
+        isLoading={createEntry.isPending || updateEntry.isPending}
+      />
     </div>
   );
 };

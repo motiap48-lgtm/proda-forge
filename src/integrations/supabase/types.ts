@@ -259,6 +259,42 @@ export type Database = {
         }
         Relationships: []
       }
+      changelog_entries: {
+        Row: {
+          changes: string[]
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          is_published: boolean
+          title: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          changes?: string[]
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          is_published?: boolean
+          title: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          changes?: string[]
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          is_published?: boolean
+          title?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       compensation_records: {
         Row: {
           absence_compensation_id: string
@@ -508,6 +544,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      feature_statuses: {
+        Row: {
+          id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       inventory: {
         Row: {
@@ -1914,6 +1971,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_seen_changelog: {
+        Row: {
+          changelog_id: string
+          id: string
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          changelog_id: string
+          id?: string
+          seen_at?: string
+          user_id: string
+        }
+        Update: {
+          changelog_id?: string
+          id?: string
+          seen_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_seen_changelog_changelog_id_fkey"
+            columns: ["changelog_id"]
+            isOneToOne: false
+            referencedRelation: "changelog_entries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       warehouses: {
         Row: {
