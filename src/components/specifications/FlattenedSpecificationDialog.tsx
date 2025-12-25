@@ -3,11 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Printer, Layers, FileSpreadsheet, Search, X, Copy, ArrowUpDown, ArrowUp, ArrowDown, Filter, Check } from "lucide-react";
+import { Printer, Layers, FileSpreadsheet, Copy, ArrowUpDown, ArrowUp, ArrowDown, Filter, Check, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSpecifications } from "@/hooks/useSpecifications";
@@ -635,25 +636,12 @@ export const FlattenedSpecificationDialog = ({
 
             {/* Поиск и фильтр по родителю */}
             <div className="flex gap-3 pt-2 border-t">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Поиск по наименованию или коду..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-10"
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                    onClick={() => setSearchQuery("")}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+              <SearchInput
+                placeholder="Поиск по наименованию или коду..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+                containerClassName="flex-1"
+              />
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-[200px] justify-between h-10">

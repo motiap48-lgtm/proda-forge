@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, PackageOpen, FileText } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
+import { Plus, PackageOpen, FileText } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -75,15 +76,11 @@ const MaterialIssues = () => {
         {/* Search */}
         <Card className="mb-4 sm:mb-6">
           <CardContent className="p-4 sm:p-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Поиск по номеру документа или заказу..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <SearchInput
+              placeholder="Поиск по номеру документа или заказу..."
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
           </CardContent>
         </Card>
 

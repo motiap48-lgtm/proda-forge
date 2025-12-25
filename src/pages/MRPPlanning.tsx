@@ -20,10 +20,9 @@ import {
   ChevronsDown,
   ChevronsUp,
   FileSpreadsheet,
-  Search,
-  X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -496,15 +495,12 @@ const MRPPlanning = () => {
                 {/* Search and Alphabetical Filter */}
                 {purchaseRequirements.length > 0 && (
                   <div className="mb-4 space-y-3">
-                    <div className="relative max-w-md">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Поиск по названию или коду материала..."
-                        value={purchaseSearch}
-                        onChange={(e) => setPurchaseSearch(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
+                    <SearchInput
+                      placeholder="Поиск по названию или коду материала..."
+                      value={purchaseSearch}
+                      onChange={setPurchaseSearch}
+                      containerClassName="max-w-md"
+                    />
                     <div className="flex flex-wrap gap-4">
                       <div>
                         <p className="text-sm text-muted-foreground mb-2">Фильтр по статусу:</p>
@@ -722,24 +718,12 @@ const MRPPlanning = () => {
                 {/* Search for production requirements */}
                 {productionRequirements.length > 0 && (
                   <div className="mb-4 space-y-3">
-                    <div className="relative max-w-md">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Поиск по названию или коду..."
-                        value={productionSearch}
-                        onChange={(e) => setProductionSearch(e.target.value)}
-                        className="pl-10 pr-10"
-                      />
-                      {productionSearch && (
-                        <button
-                          type="button"
-                          onClick={() => setProductionSearch('')}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
+                    <SearchInput
+                      placeholder="Поиск по названию или коду..."
+                      value={productionSearch}
+                      onChange={setProductionSearch}
+                      containerClassName="max-w-md"
+                    />
                     <div>
                       <p className="text-sm text-muted-foreground mb-2">Фильтр по статусу:</p>
                       <div className="flex flex-wrap gap-1">
@@ -954,15 +938,12 @@ const MRPPlanning = () => {
                 {/* Search for work centers */}
                 {workCenterReports.length > 0 && (
                   <div className="mb-4">
-                    <div className="relative max-w-md">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Поиск по названию участка или продукции..."
-                        value={workCenterSearch}
-                        onChange={(e) => setWorkCenterSearch(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
+                    <SearchInput
+                      placeholder="Поиск по названию участка или продукции..."
+                      value={workCenterSearch}
+                      onChange={setWorkCenterSearch}
+                      containerClassName="max-w-md"
+                    />
                   </div>
                 )}
                 {isLoading ? (
