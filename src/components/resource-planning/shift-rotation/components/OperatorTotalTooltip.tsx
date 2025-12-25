@@ -236,12 +236,15 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operatorId, timesheetMap]);
   
-  // Calculate expected work = full plan - absences + confirmed compensation + approved overtime
-  const expectedMinutes = fullPlan.totalMinutes - totalAbsenceMinutes + compensationData.totalConfirmedMinutes + overtimeData.totalApprovedMinutes;
+  // Calculate expected work = full plan - absences + confirmed compensation (without overtime - overtime is extra work)
+  const expectedMinutes = fullPlan.totalMinutes - totalAbsenceMinutes + compensationData.totalConfirmedMinutes;
   
-  // Calculate difference (overtime or undertime)
+  // Actual total = timesheet data + approved overtime
+  const actualTotalMinutes = actualData.totalMinutes + overtimeData.totalApprovedMinutes;
+  
+  // Calculate difference (overtime or undertime) = actual total - expected
   const difference = actualData.hasData 
-    ? actualData.totalMinutes - expectedMinutes
+    ? actualTotalMinutes - expectedMinutes
     : null;
   
   // Remaining to compensate
@@ -340,7 +343,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
         <div className="border-t border-border/50 pt-2">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Факт:</span>
-            <span className="font-medium">{formatTime(actualData.hours, actualData.minutes)}</span>
+            <span className="font-medium">{formatMinutesAsTime(actualTotalMinutes)}</span>
           </div>
         </div>
       )}
