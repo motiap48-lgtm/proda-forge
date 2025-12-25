@@ -67,6 +67,7 @@ interface ScheduleGroupProps {
   handleSyncScroll: (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => void;
   handleSyncVerticalScroll: (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => void;
   calculateTotalHours: (operator: any, absences?: OperatorAbsence[]) => { hours: number; minutes: number };
+  calculateFullPlanHours: (operator: any) => { hours: number; minutes: number };
   calculateMonthHours: (operator: any, month: Date) => { hours: number; minutes: number };
   calculateGroupStats: (ops: any[]) => { workingDays: number; offDays: number; absenceDays: number; totalHours: number; totalMinutes: number };
   calculateYearlyTotal: (operator: any) => { hours: number; minutes: number };
@@ -107,6 +108,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   handleSyncScroll,
   handleSyncVerticalScroll,
   calculateTotalHours,
+  calculateFullPlanHours,
   calculateMonthHours,
   calculateGroupStats,
   calculateYearlyTotal,
@@ -1360,12 +1362,20 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const hasCompensationTotal = compensationHours.hours > 0 || compensationHours.minutes > 0;
                             const overtimeHours = calculateOvertimeHours(operator.id);
                             const hasOvertimeTotal = overtimeHours.hours > 0 || overtimeHours.minutes > 0;
-                            const plannedMinutes = totalHours.hours * 60 + totalHours.minutes;
+                            
+                            // Full plan - without subtracting absences (what should be worked by schedule)
+                            const fullPlanHours = calculateFullPlanHours(operator);
+                            const fullPlanMinutes = fullPlanHours.hours * 60 + fullPlanHours.minutes;
+                            
                             const compensationMinutes = compensationHours.hours * 60 + compensationHours.minutes;
                             const overtimeMinutes = overtimeHours.hours * 60 + overtimeHours.minutes;
-                            const totalWithExtra = plannedMinutes + compensationMinutes + overtimeMinutes;
                             const actualMinutes = actualHours.hours * 60 + actualHours.minutes;
-                            const diff = actualMinutes - totalWithExtra;
+                            
+                            // Fact = actual from timesheets + approved overtime
+                            const factMinutes = actualMinutes + overtimeMinutes;
+                            
+                            // Difference from full plan
+                            const diff = factMinutes - fullPlanMinutes;
                             
                             // Determine cell color based on state
                             const getCellColorClass = () => {
@@ -1398,11 +1408,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           <ClipboardCheck className="h-3 w-3" />
                                           {hasOvertimeTotal && <Clock className="h-3 w-3" />}
                                           {/* Факт = фактические часы + подтвержденные переработки */}
-                                          <span>{Math.floor((actualMinutes + overtimeMinutes) / 60)}ч{(actualMinutes + overtimeMinutes) % 60 > 0 ? ` ${(actualMinutes + overtimeMinutes) % 60}м` : ''}</span>
+                                          <span>{Math.floor(factMinutes / 60)}ч{factMinutes % 60 > 0 ? ` ${factMinutes % 60}м` : ''}</span>
                                         </div>
                                         <div className="text-[9px] opacity-80">
-                                          {/* План = плановые часы (без переработок) */}
-                                          ф: {totalHours.hours}ч{totalHours.minutes > 0 ? ` ${totalHours.minutes}м` : ''}
+                                          {/* План = полный план по графику */}
+                                          ф: {fullPlanHours.hours}ч{fullPlanHours.minutes > 0 ? ` ${fullPlanHours.minutes}м` : ''}
                                         </div>
                                       </>
                                     ) : (
@@ -1410,7 +1420,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                         <div className="flex items-center gap-0.5">
                                           {hasCompensationTotal && <Hammer className="h-3 w-3" />}
                                           {hasOvertimeTotal && <Clock className="h-3 w-3" />}
-                                          <span>{Math.floor(totalWithExtra / 60)}ч{totalWithExtra % 60 > 0 ? ` ${totalWithExtra % 60}м` : ''}</span>
+                                          {/* Без данных табеля показываем план + переработки */}
+                                          <span>{fullPlanHours.hours}ч{fullPlanHours.minutes > 0 ? ` ${fullPlanHours.minutes}м` : ''}</span>
                                         </div>
                                         {hasOvertimeTotal ? (
                                           <div className="text-[9px] text-purple-700 dark:text-purple-300 font-medium">
@@ -1421,7 +1432,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                             +{compensationHours.hours}ч{compensationHours.minutes > 0 ? ` ${compensationHours.minutes}м` : ''} отр
                                           </div>
                                         ) : (
-                                          totalHours.minutes > 0 && <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>
+                                          fullPlanHours.minutes > 0 && <div className="text-[10px] opacity-80">{fullPlanHours.minutes}м</div>
                                         )}
                                       </>
                                     )}

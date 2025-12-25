@@ -150,6 +150,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     calendarGridStyle,
     calculateMonthHours,
     calculateTotalHours,
+    calculateFullPlanHours,
     calculateGroupTotalHours,
     calculateGroupStats,
     calculateYearlyTotal,
@@ -826,6 +827,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   handleSyncScroll={handleSyncScroll}
                   handleSyncVerticalScroll={handleSyncVerticalScroll}
                   calculateTotalHours={calculateTotalHours}
+                  calculateFullPlanHours={calculateFullPlanHours}
                   calculateMonthHours={calculateMonthHours}
                   calculateGroupStats={calculateGroupStats}
                   calculateYearlyTotal={calculateYearlyTotal}
