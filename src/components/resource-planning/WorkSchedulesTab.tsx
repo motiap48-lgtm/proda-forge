@@ -78,14 +78,14 @@ export const WorkSchedulesTab = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Поиск графиков..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-8"
+            className="pl-10 pr-8 h-8 sm:h-9 text-sm"
           />
           {searchQuery && (
             <Button
@@ -98,9 +98,10 @@ export const WorkSchedulesTab = () => {
             </Button>
           )}
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setDialogOpen(true)} className="h-8 sm:h-9 text-xs sm:text-sm">
           <Plus className="h-4 w-4 mr-2" />
-          Добавить график
+          <span className="hidden sm:inline">Добавить график</span>
+          <span className="sm:hidden">Добавить</span>
         </Button>
       </div>
 

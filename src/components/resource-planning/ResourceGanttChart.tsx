@@ -114,54 +114,68 @@ export const ResourceGanttChart = () => {
   return (
     <div className="space-y-4">
       {/* Header controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigateDate(-1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                {viewMode === "week" 
-                  ? `${format(startDate, "d MMM", { locale: ru })} - ${format(endDate, "d MMM yyyy", { locale: ru })}`
-                  : format(startDate, "d MMMM yyyy", { locale: ru })
-                }
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={startDate}
-                onSelect={(date) => date && setStartDate(viewMode === "week" 
-                  ? startOfWeek(date, { weekStartsOn: 1 }) 
-                  : date
-                )}
-                locale={ru}
-              />
-            </PopoverContent>
-          </Popover>
+      <div className="space-y-3">
+        {/* Navigation row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => navigateDate(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-1 sm:gap-2 px-2 sm:px-3 h-8 sm:h-9 text-xs sm:text-sm">
+                  <CalendarIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">
+                    {viewMode === "week" 
+                      ? `${format(startDate, "d MMM", { locale: ru })} - ${format(endDate, "d MMM yyyy", { locale: ru })}`
+                      : format(startDate, "d MMMM yyyy", { locale: ru })
+                    }
+                  </span>
+                  <span className="sm:hidden">
+                    {viewMode === "week" 
+                      ? `${format(startDate, "d", { locale: ru })} - ${format(endDate, "d MMM", { locale: ru })}`
+                      : format(startDate, "d MMM", { locale: ru })
+                    }
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(date) => date && setStartDate(viewMode === "week" 
+                    ? startOfWeek(date, { weekStartsOn: 1 }) 
+                    : date
+                  )}
+                  locale={ru}
+                />
+              </PopoverContent>
+            </Popover>
 
-          <Button variant="outline" size="icon" onClick={() => navigateDate(1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => navigateDate(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setStartDate(viewMode === "week" 
-              ? startOfWeek(new Date(), { weekStartsOn: 1 })
-              : new Date()
-            )}
-          >
-            Сегодня
-          </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
+              onClick={() => setStartDate(viewMode === "week" 
+                ? startOfWeek(new Date(), { weekStartsOn: 1 })
+                : new Date()
+              )}
+            >
+              <span className="hidden sm:inline">Сегодня</span>
+              <span className="sm:hidden">Сег.</span>
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Filters row */}
+        <div className="flex items-center gap-2 flex-wrap">
           <Select value={viewMode} onValueChange={(v) => setViewMode(v as "day" | "week")}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-[90px] sm:w-[120px] h-8 sm:h-9 text-xs sm:text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -171,20 +185,22 @@ export const ResourceGanttChart = () => {
           </Select>
 
           <Select value={resourceType} onValueChange={(v) => setResourceType(v as "operators" | "brigades")}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[120px] sm:w-[140px] h-8 sm:h-9 text-xs sm:text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="operators">
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Операторы
+                  <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Операторы</span>
+                  <span className="sm:hidden">Опер.</span>
                 </div>
               </SelectItem>
               <SelectItem value="brigades">
                 <div className="flex items-center gap-2">
-                  <UsersIcon className="h-4 w-4" />
-                  Бригады
+                  <UsersIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Бригады</span>
+                  <span className="sm:hidden">Бриг.</span>
                 </div>
               </SelectItem>
             </SelectContent>
@@ -194,18 +210,19 @@ export const ResourceGanttChart = () => {
 
       {/* Gantt Chart */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Загрузка {resourceType === "operators" ? "операторов" : "бригад"}
+        <CardHeader className="pb-2 p-3 sm:p-6">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">Загрузка {resourceType === "operators" ? "операторов" : "бригад"}</span>
+            <span className="sm:hidden">Загрузка</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <div className="min-w-[800px]">
+            <div className="min-w-[600px] sm:min-w-[800px]">
               {/* Timeline header */}
               <div className="flex border-b">
-                <div className="w-[200px] flex-shrink-0 p-3 font-medium bg-muted/50">
+                <div className="w-[120px] sm:w-[200px] flex-shrink-0 p-2 sm:p-3 font-medium bg-muted/50 text-xs sm:text-sm">
                   {resourceType === "operators" ? "Оператор" : "Бригада"}
                 </div>
                 <div className="flex-1">
@@ -259,15 +276,15 @@ export const ResourceGanttChart = () => {
 
                   return (
                     <div key={resource.id} className="flex border-b hover:bg-muted/30">
-                      <div className="w-[200px] flex-shrink-0 p-3 flex items-center gap-2 bg-muted/20">
+                      <div className="w-[120px] sm:w-[200px] flex-shrink-0 p-2 sm:p-3 flex items-center gap-1 sm:gap-2 bg-muted/20">
                         {resource.type === "operator" ? (
-                          <User className="h-4 w-4 text-muted-foreground" />
+                          <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                         ) : (
-                          <UsersIcon className="h-4 w-4 text-muted-foreground" />
+                          <UsersIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                         )}
-                        <div className="truncate">
-                          <div className="font-medium text-sm truncate">{resource.name}</div>
-                          <div className="text-xs text-muted-foreground">{resource.code}</div>
+                        <div className="truncate min-w-0">
+                          <div className="font-medium text-xs sm:text-sm truncate">{resource.name}</div>
+                          <div className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{resource.code}</div>
                         </div>
                       </div>
                       <div className="flex-1 relative" style={{ height: ROW_HEIGHT }}>
@@ -383,21 +400,21 @@ export const ResourceGanttChart = () => {
       </Card>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-primary" />
+      <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-primary" />
           <span>Запланировано</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-blue-500" />
+        <div className="flex items-center gap-1 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-blue-500" />
           <span>В работе</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-green-500" />
+        <div className="flex items-center gap-1 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-green-500" />
           <span>Завершено</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-red-500" />
+        <div className="flex items-center gap-1 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-red-500" />
           <span>Отменено</span>
         </div>
       </div>
