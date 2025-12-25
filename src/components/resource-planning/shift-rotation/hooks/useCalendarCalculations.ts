@@ -3,6 +3,7 @@ import { addDays, getDaysInMonth, differenceInDays, startOfMonth, format } from 
 import { getShiftForDate, getShiftColor, type PeriodType, type ShiftColors } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence } from "@/hooks/useOperatorAbsences";
 import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface CalendarException {
   id: string;
@@ -34,6 +35,8 @@ export const useCalendarCalculations = ({
   scheduleOverrides = [],
   calendarExceptions = [],
 }: CalendarCalculationsProps) => {
+  const isMobile = useIsMobile();
+
   // Calculate days count based on period type
   const daysCount = useMemo(() => {
     if (period === "month") {
@@ -105,23 +108,34 @@ export const useCalendarCalculations = ({
     return map;
   }, [operators]);
 
-  // Fixed column widths for calendar cells
+  // Fixed column widths for calendar cells - responsive for mobile
   const columnWidth = useMemo(() => {
+    if (isMobile) {
+      // Mobile: much smaller columns
+      if (period === "year") return 40;
+      return 36; // Fixed small width for mobile
+    }
+    // Desktop
     if (period === "year") return 70;
     if (daysCount <= 7) return 90;
     if (daysCount <= 14) return 75;
     if (daysCount <= 31) return 65;
     return 55;
-  }, [period, daysCount]);
+  }, [period, daysCount, isMobile]);
 
-  // Calendar grid style
+  // Total column width - responsive
+  const totalColumnWidth = useMemo(() => {
+    return isMobile ? 40 : 70;
+  }, [isMobile]);
+
+  // Calendar grid style - responsive
   const calendarGridStyle = useMemo<React.CSSProperties>(() => {
     const colCount = period === "year" ? 12 : daysCount;
     const minColWidth = columnWidth;
-    const gapPx = 4;
-    const totalColPx = 70;
-    // Padding: pl-2 = 8px, pr-0.5 = 2px = 10px total
-    const paddingPx = 10;
+    const gapPx = isMobile ? 2 : 4;
+    const totalColPx = totalColumnWidth;
+    // Padding: pl-2 = 8px, pr-0.5 = 2px = 10px total (reduce for mobile)
+    const paddingPx = isMobile ? 6 : 10;
 
     // Total min-width = (columns * width) + total column + (gaps between all columns) + padding
     const totalMinWidth = colCount * minColWidth + totalColPx + (colCount) * gapPx + paddingPx;
@@ -134,7 +148,7 @@ export const useCalendarCalculations = ({
       width: "100%",
       minWidth: `${totalMinWidth}px`,
     };
-  }, [period, daysCount, columnWidth]);
+  }, [period, daysCount, columnWidth, totalColumnWidth, isMobile]);
 
   // Check if operator is available on a specific date (not on leave, not terminated, hired)
   const isOperatorAvailable = (operator: any, date: Date): boolean => {
