@@ -62,7 +62,7 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
-    date: "2025-01-25",
+    date: "2024-12-25",
     version: "0.9.5",
     title: "Улучшения страницы функциональности",
     changes: [
@@ -73,7 +73,7 @@ const changelog: ChangelogEntry[] = [
     ]
   },
   {
-    date: "2025-01-24",
+    date: "2024-12-24",
     version: "0.9.4",
     title: "Мобильная адаптация календаря",
     changes: [
@@ -83,7 +83,7 @@ const changelog: ChangelogEntry[] = [
     ]
   },
   {
-    date: "2025-01-23",
+    date: "2024-12-23",
     version: "0.9.3",
     title: "Beta-режим и страница функциональности",
     changes: [
@@ -93,7 +93,7 @@ const changelog: ChangelogEntry[] = [
     ]
   },
   {
-    date: "2025-01-20",
+    date: "2024-12-20",
     version: "0.9.2",
     title: "Улучшения ресурсного планирования",
     changes: [
@@ -104,7 +104,7 @@ const changelog: ChangelogEntry[] = [
     ]
   },
   {
-    date: "2025-01-15",
+    date: "2024-12-15",
     version: "0.9.1",
     title: "Компенсации и табель",
     changes: [
@@ -114,7 +114,7 @@ const changelog: ChangelogEntry[] = [
     ]
   },
   {
-    date: "2025-01-10",
+    date: "2024-12-10",
     version: "0.9.0",
     title: "Графики и бригады",
     changes: [
@@ -125,7 +125,7 @@ const changelog: ChangelogEntry[] = [
     ]
   },
   {
-    date: "2025-01-05",
+    date: "2024-12-05",
     version: "0.8.5",
     title: "Отчёты производства",
     changes: [
