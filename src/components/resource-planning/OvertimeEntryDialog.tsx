@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Clock, AlertCircle, FileText, CheckCircle2, X, Trash2 } from "lucide-react";
+import { Clock, AlertCircle, FileText, CheckCircle2, X, Trash2, RotateCcw } from "lucide-react";
 import { format, parse } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -30,6 +30,7 @@ import {
   OvertimeEntry,
 } from "@/hooks/useOvertimeEntries";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface OvertimeEntryDialogProps {
   open: boolean;
@@ -62,6 +63,8 @@ export const OvertimeEntryDialog = ({
   const updateEntry = useUpdateOvertimeEntry();
   const approveEntry = useApproveOvertimeEntry();
   const { data: productionOrders = [] } = useProductionOrders();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
 
   const [startTime, setStartTime] = useState(scheduledEndTime);
   const [endTime, setEndTime] = useState("21:00");
@@ -186,11 +189,29 @@ export const OvertimeEntryDialog = ({
     }
   };
 
+  const handleRevokeApproval = async () => {
+    if (!entry) return;
+    
+    setIsSubmitting(true);
+    try {
+      await updateEntry.mutateAsync({
+        id: entry.id,
+        status: 'pending',
+      });
+      toast.success("Подтверждение отменено, переработку можно редактировать");
+    } catch (error: any) {
+      toast.error(error.message || "Ошибка отмены подтверждения");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const activeOrders = productionOrders.filter(
     (o: any) => o.status === 'in_progress' || o.status === 'planned'
   );
 
   const isApproved = entry?.status === 'approved';
+  const canEdit = !isApproved || isAdmin;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -257,7 +278,7 @@ export const OvertimeEntryDialog = ({
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                disabled={isApproved}
+                disabled={!canEdit}
               />
             </div>
             <div className="space-y-2">
@@ -266,7 +287,7 @@ export const OvertimeEntryDialog = ({
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                disabled={isApproved}
+                disabled={!canEdit}
               />
             </div>
           </div>
@@ -287,7 +308,7 @@ export const OvertimeEntryDialog = ({
             <Select 
               value={workOrderId || "__none__"} 
               onValueChange={(val) => setWorkOrderId(val === "__none__" ? "" : val)} 
-              disabled={isApproved}
+              disabled={!canEdit}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Выберите заказ..." />
@@ -314,7 +335,7 @@ export const OvertimeEntryDialog = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Опишите, какие работы выполнялись во время переработки..."
               rows={3}
-              disabled={isApproved}
+              disabled={!canEdit}
             />
             {!description.trim() && entry && (
               <div className="flex items-center gap-1.5 text-amber-600 text-sm">
@@ -374,9 +395,29 @@ export const OvertimeEntryDialog = ({
             )}
             
             {entry?.status === 'approved' && (
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Закрыть
-              </Button>
+              <>
+                {isAdmin && (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={handleRevokeApproval}
+                      disabled={isSubmitting}
+                      className="text-amber-600 hover:text-amber-700"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Отменить подтверждение
+                    </Button>
+                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                      Сохранить
+                    </Button>
+                  </>
+                )}
+                {!isAdmin && (
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    Закрыть
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </DialogFooter>
