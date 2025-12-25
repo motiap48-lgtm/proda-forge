@@ -114,6 +114,17 @@ export const getLatestVersion = (changelog: ChangelogEntry[]): string => {
   return changelog[0]?.version || "0.9.5";
 };
 
+// Calculate next version automatically
+export const getNextVersion = (currentVersion: string): string => {
+  const parts = currentVersion.split('.').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) {
+    return "0.9.6";
+  }
+  // Increment patch version
+  parts[2] += 1;
+  return parts.join('.');
+};
+
 export const useChangelog = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();

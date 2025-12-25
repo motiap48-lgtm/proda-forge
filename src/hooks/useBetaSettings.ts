@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 interface BetaSettings {
   showBetaBadge: boolean;
   showFeaturesPage: boolean;
+  showVersionInBadge: boolean;
 }
 
 const BETA_SETTINGS_KEY = 'eva-beta-settings';
@@ -10,6 +11,7 @@ const BETA_SETTINGS_KEY = 'eva-beta-settings';
 const defaultSettings: BetaSettings = {
   showBetaBadge: true,
   showFeaturesPage: true,
+  showVersionInBadge: true,
 };
 
 export const useBetaSettings = () => {

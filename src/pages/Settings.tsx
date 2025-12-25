@@ -94,6 +94,19 @@ const Settings = () => {
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
+                  <Label htmlFor="show-version-badge">Показывать версию в бейдже</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Отображать номер версии рядом с "Beta"
+                  </p>
+                </div>
+                <Switch
+                  id="show-version-badge"
+                  checked={betaSettings.showVersionInBadge}
+                  onCheckedChange={(checked) => updateBetaSettings({ showVersionInBadge: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
                   <Label htmlFor="show-features-page">Страница функциональности</Label>
                   <p className="text-sm text-muted-foreground">
                     Показывать страницу со списком всех функций системы
