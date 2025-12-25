@@ -722,7 +722,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       )}
     >
       <CardHeader 
-        className="pb-3 sticky top-0 z-10 bg-card"
+        className="pb-2 sm:pb-3 sticky top-0 z-10 bg-card px-3 sm:px-6"
         style={{ boxShadow: "0 4px 12px -4px hsl(var(--foreground) / 0.1), 0 2px 6px -2px hsl(var(--foreground) / 0.05)" }}
       >
         <CalendarToolbar
@@ -773,11 +773,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         />
       </CardHeader>
       <CardContent className="p-0">
-        <div className="px-2 py-4">
+        <div className="px-2 py-2 sm:py-4">
           <div 
             className={cn(
-              "overflow-y-auto overflow-x-hidden",
-              isFullscreen ? "max-h-[calc(100vh-180px)]" : "max-h-[calc(100vh-300px)]"
+              "overflow-y-auto overflow-x-auto",
+              isFullscreen ? "max-h-[calc(100vh-180px)]" : "max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-300px)]"
             )} 
             style={{ scrollbarGutter: 'stable' }}
           >

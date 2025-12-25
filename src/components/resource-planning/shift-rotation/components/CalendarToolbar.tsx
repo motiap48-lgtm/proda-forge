@@ -1,17 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format, addDays, addMonths, subMonths, differenceInDays, startOfWeek, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
 import { 
   RefreshCw, FileDown, Printer, Filter, Clock, ChevronsUpDown, ChevronsDownUp, 
-  CalendarDays, ChevronLeft, ChevronRight, FileText, User, Maximize2, Minimize2, X, Users 
+  CalendarDays, ChevronLeft, ChevronRight, FileText, User, Maximize2, Minimize2, X, Users,
+  ChevronDown, Settings2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { PeriodType, ShiftColors } from "../utils";
 import { CalendarLegend } from "./CalendarLegend";
 
@@ -111,6 +114,9 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   activeFiltersCount,
   defaultReductionHours,
 }) => {
+  const isMobile = useIsMobile();
+  const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
+
   const goToToday = () => {
     onStartDateChange(new Date());
     if (period === "custom") onEndDateChange(addDays(new Date(), 6));
@@ -158,6 +164,143 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
     }
   };
 
+  // Mobile compact view
+  if (isMobile) {
+    return (
+      <div className="flex flex-col gap-2">
+        {/* Compact header row for mobile */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Ротация</span>
+          </div>
+          
+          {/* Stats indicator */}
+          <div className="flex items-center gap-2 px-2 py-1 bg-muted/50 rounded-md border text-xs">
+            <User className="h-3 w-3" />
+            <span>{filteredOperatorsCount}</span>
+            <div className="w-px h-3 bg-border" />
+            <Clock className="h-3 w-3 text-emerald-600" />
+            <span className="text-emerald-600">{grandTotal.hours}ч{grandTotal.minutes > 0 ? grandTotal.minutes + 'м' : ''}</span>
+          </div>
+        </div>
+
+        {/* Period selection - compact for mobile */}
+        <div className="flex items-center gap-2">
+          <ToggleGroup type="single" value={period} onValueChange={(val) => val && onPeriodChange(val as PeriodType)} className="border rounded-md flex-1">
+            <ToggleGroupItem value="7" size="sm" className="text-xs px-2 flex-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+              7д
+            </ToggleGroupItem>
+            <ToggleGroupItem value="14" size="sm" className="text-xs px-2 flex-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+              14д
+            </ToggleGroupItem>
+            <ToggleGroupItem value="month" size="sm" className="text-xs px-2 flex-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+              Мес
+            </ToggleGroupItem>
+          </ToggleGroup>
+          
+          {/* Navigation buttons */}
+          <div className="flex items-center border rounded-md">
+            <Button variant="ghost" size="sm" onClick={goToPreviousPeriod} className="h-8 w-8 p-0">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={goToNextPeriod} className="h-8 w-8 p-0">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Collapsible advanced controls */}
+        <Collapsible open={isToolbarExpanded} onOpenChange={setIsToolbarExpanded}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full justify-between text-xs">
+              <span className="flex items-center gap-2">
+                <Settings2 className="h-3.5 w-3.5" />
+                Настройки и фильтры
+                {(hasActiveFilters || activeFiltersCount) && (
+                  <Badge variant="secondary" className="h-4 text-[10px] px-1">
+                    {activeFiltersCount || 0}
+                  </Badge>
+                )}
+              </span>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", isToolbarExpanded && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-2">
+            {/* Export buttons */}
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" onClick={onExportExcel} className="flex-1 text-xs">
+                <FileDown className="h-3.5 w-3.5 mr-1" />
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={onExportPdf} className="flex-1 text-xs">
+                <FileText className="h-3.5 w-3.5 mr-1" />
+                PDF
+              </Button>
+              <Button variant="outline" size="sm" onClick={onPrint} className="flex-1 text-xs">
+                <Printer className="h-3.5 w-3.5 mr-1" />
+                Печать
+              </Button>
+            </div>
+
+            {/* Quick date presets */}
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" onClick={goToToday} className="flex-1 text-xs">
+                Сегодня
+              </Button>
+              <Button variant="outline" size="sm" onClick={goToStartOfWeek} className="flex-1 text-xs">
+                Неделя
+              </Button>
+              <Button variant="outline" size="sm" onClick={goToStartOfMonth} className="flex-1 text-xs">
+                Месяц
+              </Button>
+            </div>
+
+            {/* Schedule filter */}
+            <Select value={scheduleFilter} onValueChange={onScheduleFilterChange}>
+              <SelectTrigger className="w-full text-xs">
+                <SelectValue placeholder="Все графики" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все графики</SelectItem>
+                {uniqueSchedules.filter(name => name && name.trim() !== '').map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Absence status filter */}
+            {onAbsenceStatusFilterChange && (
+              <Select 
+                value={absenceStatusFilter || "all"} 
+                onValueChange={(v) => onAbsenceStatusFilterChange(v as AbsenceStatusFilter)}
+              >
+                <SelectTrigger className="w-full text-xs">
+                  <SelectValue placeholder="Статус сотрудника" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все сотрудники</SelectItem>
+                  <SelectItem value="on_leave">🏖️ В отпуске</SelectItem>
+                  <SelectItem value="sick">🏥 На больничном</SelectItem>
+                  <SelectItem value="available">✅ На работе</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Reset filters */}
+            {hasActiveFilters && onResetFilters && (
+              <Button variant="destructive" size="sm" onClick={onResetFilters} className="w-full text-xs">
+                <X className="h-3.5 w-3.5 mr-1" />
+                Сбросить фильтры
+              </Button>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+    );
+  }
+
+  // Desktop view (original)
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
