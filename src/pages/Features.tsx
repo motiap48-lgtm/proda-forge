@@ -667,26 +667,26 @@ const Features = () => {
                                     value={currentStatus} 
                                     onValueChange={(v) => handleStatusChange(feature.id, v as FeatureStatus)}
                                   >
-                                    <SelectTrigger className="h-7 sm:h-8 w-[90px] sm:w-[130px] text-[10px] sm:text-sm">
+                                    <SelectTrigger className="h-7 sm:h-8 w-[70px] sm:w-[130px] text-[10px] sm:text-sm">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="done">
-                                        <div className="flex items-center gap-2">
-                                          <CheckCircle2 className="h-3 w-3 text-green-600" />
-                                          <span className="text-xs sm:text-sm">Готово</span>
+                                      <SelectItem value="done" className="whitespace-nowrap">
+                                        <div className="flex items-center gap-1 sm:gap-2">
+                                          <CheckCircle2 className="h-3 w-3 text-green-600 shrink-0" />
+                                          <span className="text-xs sm:text-sm whitespace-nowrap">Готово</span>
                                         </div>
                                       </SelectItem>
-                                      <SelectItem value="in-progress">
-                                        <div className="flex items-center gap-2">
-                                          <Clock className="h-3 w-3 text-amber-600" />
-                                          <span className="text-xs sm:text-sm">В работе</span>
+                                      <SelectItem value="in-progress" className="whitespace-nowrap">
+                                        <div className="flex items-center gap-1 sm:gap-2">
+                                          <Clock className="h-3 w-3 text-amber-600 shrink-0" />
+                                          <span className="text-xs sm:text-sm whitespace-nowrap">В работе</span>
                                         </div>
                                       </SelectItem>
-                                      <SelectItem value="planned">
-                                        <div className="flex items-center gap-2">
-                                          <AlertCircle className="h-3 w-3 text-blue-600" />
-                                          <span className="text-xs sm:text-sm">План</span>
+                                      <SelectItem value="planned" className="whitespace-nowrap">
+                                        <div className="flex items-center gap-1 sm:gap-2">
+                                          <AlertCircle className="h-3 w-3 text-blue-600 shrink-0" />
+                                          <span className="text-xs sm:text-sm whitespace-nowrap">План</span>
                                         </div>
                                       </SelectItem>
                                     </SelectContent>
