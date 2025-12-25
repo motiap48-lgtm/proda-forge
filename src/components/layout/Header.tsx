@@ -1,4 +1,4 @@
-import { Settings, LogOut, UserCircle } from "lucide-react";
+import { Settings, LogOut, UserCircle, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,10 +13,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { NotificationPopover } from "@/components/notifications/NotificationPopover";
+import { useBetaSettings } from "@/hooks/useBetaSettings";
 
 export const Header = () => {
   const { user, userRoles, signOut, loading } = useAuth();
   const navigate = useNavigate();
+  const { settings: betaSettings } = useBetaSettings();
 
   const getRoleLabel = (role: string) => {
     const roleLabels: Record<string, string> = {
@@ -46,9 +48,21 @@ export const Header = () => {
               <span className="text-sm sm:text-lg font-bold text-primary-foreground">EVA</span>
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg sm:text-xl font-bold text-foreground">ERP Vostok Auto</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-bold text-foreground">ERP Vostok Auto</h1>
+                {betaSettings.showBetaBadge && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                    Beta
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">Управление производством</p>
             </div>
+            {betaSettings.showBetaBadge && (
+              <Badge variant="outline" className="sm:hidden text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                Beta
+              </Badge>
+            )}
           </div>
 
           <Button 
@@ -71,9 +85,21 @@ export const Header = () => {
             <span className="text-sm sm:text-lg font-bold text-primary-foreground">EVA</span>
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-lg sm:text-xl font-bold text-foreground">ERP Vostok Auto</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground">ERP Vostok Auto</h1>
+              {betaSettings.showBetaBadge && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                  Beta
+                </Badge>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">Управление производством</p>
           </div>
+          {betaSettings.showBetaBadge && (
+            <Badge variant="outline" className="sm:hidden text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+              Beta
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -116,6 +142,12 @@ export const Header = () => {
                 <Settings className="mr-2 h-4 w-4" />
                 Настройки
               </DropdownMenuItem>
+              {betaSettings.showFeaturesPage && (
+                <DropdownMenuItem onClick={() => navigate("/features")}>
+                  <ListChecks className="mr-2 h-4 w-4" />
+                  Функциональность
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
