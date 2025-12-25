@@ -434,22 +434,22 @@ const MRPPlanning = () => {
 
         {/* Results */}
         <Tabs defaultValue="purchase" className="space-y-4">
-          <ScrollArea className="w-full">
-            <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-3">
-              <TabsTrigger value="purchase" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-2 sm:px-4">
+          <div className="w-full overflow-x-auto pb-1">
+            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-3">
+              <TabsTrigger value="purchase" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3 sm:px-4">
                 <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-                <span className="text-xs sm:text-sm">Потребность к закупке</span>
+                <span className="text-xs sm:text-sm">К закупке</span>
               </TabsTrigger>
-              <TabsTrigger value="production" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-2 sm:px-4">
+              <TabsTrigger value="production" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3 sm:px-4">
                 <Factory className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-                <span className="text-xs sm:text-sm">Потребность к производству</span>
+                <span className="text-xs sm:text-sm">К производству</span>
               </TabsTrigger>
-              <TabsTrigger value="workcenters" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-2 sm:px-4">
+              <TabsTrigger value="workcenters" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3 sm:px-4">
                 <Warehouse className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-                <span className="text-xs sm:text-sm">Рапорты по участкам</span>
+                <span className="text-xs sm:text-sm">По участкам</span>
               </TabsTrigger>
             </TabsList>
-          </ScrollArea>
+          </div>
 
           {/* Purchase Requirements Tab */}
           <TabsContent value="purchase" className="space-y-4">
