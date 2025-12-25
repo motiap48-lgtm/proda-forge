@@ -36,14 +36,20 @@ import {
   Trash2,
   Database,
   Eye,
-  EyeOff
+  EyeOff,
+  Download,
+  Printer,
+  MessageSquare
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChangelog, ChangelogEntry, ChangelogFormData } from "@/hooks/useChangelog";
 import { useFeatureStatuses, FeatureStatus } from "@/hooks/useFeatureStatuses";
+import { useFeatureComments } from "@/hooks/useFeatureComments";
 import { ChangelogDialog } from "@/components/features/ChangelogDialog";
+import { FeatureCommentsDialog } from "@/components/features/FeatureCommentsDialog";
+import { exportToExcel, exportToPDF } from "@/components/features/FeaturesExport";
 import { useAuth } from "@/contexts/AuthContext";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -338,6 +344,7 @@ const Features = () => {
   
   const { changelog, isLoading: changelogLoading, createEntry, updateEntry, deleteEntry, seedDefaultEntries, isFromDatabase } = useChangelog();
   const { getStatus, updateStatus } = useFeatureStatuses();
+  const { getCommentsCount } = useFeatureComments();
   
   const [activeTab, setActiveTab] = useState("features");
   const [searchQuery, setSearchQuery] = useState("");
@@ -353,6 +360,8 @@ const Features = () => {
 
   const [changelogDialogOpen, setChangelogDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ChangelogEntry | null>(null);
+  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
+  const [selectedFeatureForComments, setSelectedFeatureForComments] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
@@ -433,6 +442,43 @@ const Features = () => {
       .map(f => ({ ...f, moduleName: module.name, moduleIcon: module.icon }))
   );
 
+  const openCommentsDialog = (featureId: string, featureName: string) => {
+    setSelectedFeatureForComments({ id: featureId, name: featureName });
+    setCommentsDialogOpen(true);
+  };
+
+  // Prepare export data
+  const prepareExportData = () => {
+    const features = featureModules.flatMap(module =>
+      module.features.map(f => ({
+        id: f.id,
+        name: f.name,
+        description: f.description,
+        status: getFeatureStatus(f),
+        category: module.name,
+      }))
+    );
+
+    const changelogData = changelog.map(entry => ({
+      version: entry.version,
+      title: entry.title,
+      date: entry.date,
+      changes: entry.changes,
+    }));
+
+    return { features, changelog: changelogData };
+  };
+
+  const handleExportExcel = () => {
+    const { features, changelog: changelogData } = prepareExportData();
+    exportToExcel(features, changelogData);
+  };
+
+  const handleExportPDF = () => {
+    const { features, changelog: changelogData } = prepareExportData();
+    exportToPDF(features, changelogData);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -440,9 +486,21 @@ const Features = () => {
 
       <main className="container py-4 sm:py-6 lg:py-8">
         <div className="mb-6 sm:mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Функциональность системы</h1>
-            <Badge variant="secondary" className="text-xs">Beta</Badge>
+          <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Функциональность системы</h1>
+              <Badge variant="secondary" className="text-xs">Beta</Badge>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleExportExcel}>
+                <Download className="h-4 w-4 mr-2" />
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportPDF}>
+                <Printer className="h-4 w-4 mr-2" />
+                PDF
+              </Button>
+            </div>
           </div>
           <p className="text-sm sm:text-base text-muted-foreground">
             Полный список реализованного и планируемого функционала ERP Vostok Auto
@@ -590,6 +648,19 @@ const Features = () => {
                                 </div>
                               </div>
                               <div className="ml-3 flex-shrink-0 flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 relative"
+                                  onClick={() => openCommentsDialog(feature.id, feature.name)}
+                                >
+                                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                  {getCommentsCount(feature.id) > 0 && (
+                                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center">
+                                      {getCommentsCount(feature.id)}
+                                    </span>
+                                  )}
+                                </Button>
                                 {isAdmin ? (
                                   <Select 
                                     value={currentStatus} 
@@ -857,6 +928,15 @@ const Features = () => {
         onSave={handleSaveChangelog}
         isLoading={createEntry.isPending || updateEntry.isPending}
       />
+
+      {selectedFeatureForComments && (
+        <FeatureCommentsDialog
+          open={commentsDialogOpen}
+          onOpenChange={setCommentsDialogOpen}
+          featureId={selectedFeatureForComments.id}
+          featureName={selectedFeatureForComments.name}
+        />
+      )}
     </div>
   );
 };
