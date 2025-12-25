@@ -49,6 +49,7 @@ import { useFeatureStatuses, FeatureStatus } from "@/hooks/useFeatureStatuses";
 import { useFeatureComments } from "@/hooks/useFeatureComments";
 import { ChangelogDialog } from "@/components/features/ChangelogDialog";
 import { FeatureCommentsDialog } from "@/components/features/FeatureCommentsDialog";
+import { ChangelogViewsAnalytics } from "@/components/features/ChangelogViewsAnalytics";
 import { exportToExcel, exportToPDF } from "@/components/features/FeaturesExport";
 import { useAuth } from "@/contexts/AuthContext";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -912,6 +913,10 @@ const Features = () => {
                 </ScrollArea>
               </CardContent>
             </Card>
+            
+            {isAdmin && (
+              <ChangelogViewsAnalytics />
+            )}
           </TabsContent>
         </Tabs>
 

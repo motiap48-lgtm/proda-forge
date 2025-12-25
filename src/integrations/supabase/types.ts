@@ -295,6 +295,38 @@ export type Database = {
         }
         Relationships: []
       }
+      changelog_views: {
+        Row: {
+          changelog_id: string
+          id: string
+          user_id: string
+          view_source: string | null
+          viewed_at: string
+        }
+        Insert: {
+          changelog_id: string
+          id?: string
+          user_id: string
+          view_source?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          changelog_id?: string
+          id?: string
+          user_id?: string
+          view_source?: string | null
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "changelog_views_changelog_id_fkey"
+            columns: ["changelog_id"]
+            isOneToOne: false
+            referencedRelation: "changelog_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compensation_records: {
         Row: {
           absence_compensation_id: string
