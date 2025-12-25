@@ -38,6 +38,9 @@ interface OvertimeEntryDialogProps {
   date: Date;
   entry?: OvertimeEntry | null;
   scheduledEndTime?: string; // e.g., "19:30"
+  operators?: { id: string; full_name: string }[];
+  onOperatorChange?: (id: string) => void;
+  onDateChange?: (date: Date) => void;
 }
 
 export const OvertimeEntryDialog = ({
@@ -48,6 +51,9 @@ export const OvertimeEntryDialog = ({
   date,
   entry,
   scheduledEndTime = "19:30",
+  operators = [],
+  onOperatorChange,
+  onDateChange,
 }: OvertimeEntryDialogProps) => {
   const createEntry = useCreateOvertimeEntry();
   const updateEntry = useUpdateOvertimeEntry();
@@ -194,23 +200,49 @@ export const OvertimeEntryDialog = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Operator & Date info */}
-          <div className="p-3 bg-muted/50 rounded-lg">
-            <div className="text-sm font-medium">{operatorName}</div>
-            <div className="text-sm text-muted-foreground">
-              {format(date, "d MMMM yyyy (EEEE)", { locale: ru })}
+          {/* Operator & Date selection/info */}
+          {!entry && operators.length > 0 && onOperatorChange && onDateChange ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Оператор</Label>
+                <Select value={operatorId} onValueChange={onOperatorChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите оператора..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {operators.map((op) => (
+                      <SelectItem key={op.id} value={op.id}>{op.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Дата</Label>
+                <Input
+                  type="date"
+                  value={format(date, "yyyy-MM-dd")}
+                  onChange={(e) => e.target.value && onDateChange(new Date(e.target.value))}
+                />
+              </div>
             </div>
-            {entry && (
-              <Badge 
-                variant={isApproved ? "default" : "secondary"} 
-                className="mt-2"
-              >
-                {entry.status === 'pending' && "Ожидает подтверждения"}
-                {entry.status === 'approved' && "Подтверждено"}
-                {entry.status === 'cancelled' && "Отменено"}
-              </Badge>
-            )}
-          </div>
+          ) : (
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <div className="text-sm font-medium">{operatorName}</div>
+              <div className="text-sm text-muted-foreground">
+                {format(date, "d MMMM yyyy (EEEE)", { locale: ru })}
+              </div>
+              {entry && (
+                <Badge 
+                  variant={isApproved ? "default" : "secondary"} 
+                  className="mt-2"
+                >
+                  {entry.status === 'pending' && "Ожидает подтверждения"}
+                  {entry.status === 'approved' && "Подтверждено"}
+                  {entry.status === 'cancelled' && "Отменено"}
+                </Badge>
+              )}
+            </div>
+          )}
 
           {/* Time inputs */}
           <div className="grid grid-cols-2 gap-4">

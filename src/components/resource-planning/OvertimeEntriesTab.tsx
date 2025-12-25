@@ -395,28 +395,17 @@ export const OvertimeEntriesTab = () => {
       </Card>
 
       {/* Dialog */}
-      {selectedOperator && (
-        <OvertimeEntryDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          operatorId={selectedOperatorId}
-          operatorName={selectedOperator.full_name}
-          date={selectedDate}
-          entry={selectedEntry}
-        />
-      )}
-
-      {/* Dialog for adding new - with operator selector */}
-      {dialogOpen && !selectedEntry && (
-        <OvertimeEntryDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          operatorId={selectedOperatorId}
-          operatorName={activeOperators.find((op: any) => op.id === selectedOperatorId)?.full_name || ""}
-          date={selectedDate}
-          entry={null}
-        />
-      )}
+      <OvertimeEntryDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        operatorId={selectedOperatorId}
+        operatorName={activeOperators.find((op: any) => op.id === selectedOperatorId)?.full_name || ""}
+        date={selectedDate}
+        entry={selectedEntry}
+        operators={activeOperators}
+        onOperatorChange={setSelectedOperatorId}
+        onDateChange={setSelectedDate}
+      />
     </div>
   );
 };
