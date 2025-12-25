@@ -29,6 +29,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProductionReports from "./pages/ProductionReports";
 import ResourcePlanning from "./pages/ResourcePlanning";
+import Features from "./pages/Features";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const AppRoutes = () => {
         <Route path="/planning/resources" element={<ProtectedRoute><ResourcePlanning /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/features" element={<Features />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

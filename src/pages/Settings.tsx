@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users, Calendar, ExternalLink, Download, CalendarOff, Clock, CalendarCheck, ClipboardList } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Moon, Sun, Globe, Lock, Tag, Building2, Sparkles, Users, Calendar, ExternalLink, Download, CalendarOff, Clock, CalendarCheck, ClipboardList, FlaskConical, ListChecks } from "lucide-react";
 import { MaterialCategoriesManagement } from "@/components/settings/MaterialCategoriesManagement";
 import { ContractorsManagement } from "@/components/settings/ContractorsManagement";
 import { CustomersManagement } from "@/components/settings/CustomersManagement";
@@ -16,6 +16,7 @@ import { DistributionStrategySettings } from "@/components/settings/Distribution
 import { HolidayImportDialog } from "@/components/resource-planning/HolidayImportDialog";
 import { useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useTimesheetSettings } from "@/hooks/useTimesheetSettings";
+import { useBetaSettings } from "@/hooks/useBetaSettings";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const { data: calendarExceptions = [] } = useCalendarExceptions();
   const { settings: timesheetSettings, updateSettings: updateTimesheetSettings } = useTimesheetSettings();
+  const { settings: betaSettings, updateSettings: updateBetaSettings } = useBetaSettings();
   const [notifications, setNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -62,6 +64,61 @@ const Settings = () => {
         </div>
 
         <div className="grid gap-4 sm:gap-6">
+          {/* Beta Settings */}
+          <Card className="border-2 border-amber-500/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FlaskConical className="h-5 w-5 text-amber-500" />
+                Бета-режим
+                <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                  Beta
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Настройки тестового периода приложения
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="show-beta-badge">Показывать Beta-бейдж</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Отображать метку "Beta" рядом с логотипом
+                  </p>
+                </div>
+                <Switch
+                  id="show-beta-badge"
+                  checked={betaSettings.showBetaBadge}
+                  onCheckedChange={(checked) => updateBetaSettings({ showBetaBadge: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="show-features-page">Страница функциональности</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Показывать страницу со списком всех функций системы
+                  </p>
+                </div>
+                <Switch
+                  id="show-features-page"
+                  checked={betaSettings.showFeaturesPage}
+                  onCheckedChange={(checked) => updateBetaSettings({ showFeaturesPage: checked })}
+                />
+              </div>
+              {betaSettings.showFeaturesPage && (
+                <div className="pt-2">
+                  <Link to="/features">
+                    <Button variant="outline" className="gap-2">
+                      <ListChecks className="h-4 w-4" />
+                      Открыть страницу функциональности
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Notifications Settings */}
           <Card>
             <CardHeader>
