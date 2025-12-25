@@ -224,43 +224,43 @@ const ResourcePlanning = () => {
         </Collapsible>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-7 mb-6">
-            <TabsTrigger value="shift-tasks" className="flex items-center gap-2">
-              <CalendarClock className="h-4 w-4" />
-              <span className="hidden sm:inline">ССЗ</span>
-              <span className="sm:hidden">ССЗ</span>
-            </TabsTrigger>
-            <TabsTrigger value="gantt" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Загрузка</span>
-              <span className="sm:hidden">Ганта</span>
-            </TabsTrigger>
-            <TabsTrigger value="hours-report" className="flex items-center gap-2">
-              <FileBarChart className="h-4 w-4" />
-              <span className="hidden sm:inline">Часы</span>
-              <span className="sm:hidden">Часы</span>
-            </TabsTrigger>
-            <TabsTrigger value="schedules" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              <span className="hidden sm:inline">Графики</span>
-              <span className="sm:hidden">Графики</span>
-            </TabsTrigger>
-            <TabsTrigger value="calendar" className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              <span className="hidden sm:inline">Календарь</span>
-              <span className="sm:hidden">Кален.</span>
-            </TabsTrigger>
-            <TabsTrigger value="operators" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Операторы</span>
-              <span className="sm:hidden">Опер.</span>
-            </TabsTrigger>
-            <TabsTrigger value="brigades" className="flex items-center gap-2">
-              <UsersRound className="h-4 w-4" />
-              <span className="hidden sm:inline">Бригады</span>
-              <span className="sm:hidden">Бриг.</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
+            <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-7">
+              <TabsTrigger value="shift-tasks" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
+                <CalendarClock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">ССЗ</span>
+              </TabsTrigger>
+              <TabsTrigger value="gantt" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
+                <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm hidden sm:inline">Загрузка</span>
+                <span className="text-xs sm:hidden">Ганта</span>
+              </TabsTrigger>
+              <TabsTrigger value="hours-report" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
+                <FileBarChart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">Часы</span>
+              </TabsTrigger>
+              <TabsTrigger value="schedules" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
+                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm hidden sm:inline">Графики</span>
+                <span className="text-xs sm:hidden">Граф.</span>
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
+                <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm hidden sm:inline">Календарь</span>
+                <span className="text-xs sm:hidden">Кал.</span>
+              </TabsTrigger>
+              <TabsTrigger value="operators" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
+                <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm hidden sm:inline">Операторы</span>
+                <span className="text-xs sm:hidden">Опер.</span>
+              </TabsTrigger>
+              <TabsTrigger value="brigades" className="flex items-center gap-1.5 px-2 sm:px-3 whitespace-nowrap">
+                <UsersRound className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm hidden sm:inline">Бригады</span>
+                <span className="text-xs sm:hidden">Бриг.</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="shift-tasks">
             <ShiftTasksTab />
