@@ -1391,31 +1391,39 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     )}
                                     onClick={() => setTimesheetOperator({ id: operator.id, name: operator.full_name })}
                                   >
-                                    <div className="flex items-center gap-0.5">
-                                      {hasActual && <ClipboardCheck className="h-3 w-3" />}
-                                      {hasCompensationTotal && <Hammer className="h-3 w-3" />}
-                                      {hasOvertimeTotal && <Clock className="h-3 w-3" />}
-                                      <span>{Math.floor(totalWithExtra / 60)}ч</span>
-                                    </div>
+                                    {/* Если есть данные табеля - показываем факт сверху, план снизу */}
                                     {hasActual ? (
-                                      <div className={cn(
-                                        "text-[9px] font-bold",
-                                        hasOvertimeTotal 
-                                          ? "text-purple-700 dark:text-purple-300"
-                                          : diff >= 0 ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"
-                                      )}>
-                                        ф: {actualHours.hours}ч{actualHours.minutes > 0 ? ` ${actualHours.minutes}м` : ''}
-                                      </div>
-                                    ) : hasOvertimeTotal ? (
-                                      <div className="text-[9px] text-purple-700 dark:text-purple-300 font-medium">
-                                        +{overtimeHours.hours}ч перераб
-                                      </div>
-                                    ) : hasCompensationTotal ? (
-                                      <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">
-                                        +{compensationHours.hours}ч отр
-                                      </div>
+                                      <>
+                                        <div className="flex items-center gap-0.5">
+                                          <ClipboardCheck className="h-3 w-3" />
+                                          {hasOvertimeTotal && <Clock className="h-3 w-3" />}
+                                          {/* Факт = фактические часы + подтвержденные переработки */}
+                                          <span>{Math.floor((actualMinutes + overtimeMinutes) / 60)}ч{(actualMinutes + overtimeMinutes) % 60 > 0 ? ` ${(actualMinutes + overtimeMinutes) % 60}м` : ''}</span>
+                                        </div>
+                                        <div className="text-[9px] opacity-80">
+                                          {/* План = плановые часы (без переработок) */}
+                                          ф: {totalHours.hours}ч{totalHours.minutes > 0 ? ` ${totalHours.minutes}м` : ''}
+                                        </div>
+                                      </>
                                     ) : (
-                                      totalHours.minutes > 0 && <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>
+                                      <>
+                                        <div className="flex items-center gap-0.5">
+                                          {hasCompensationTotal && <Hammer className="h-3 w-3" />}
+                                          {hasOvertimeTotal && <Clock className="h-3 w-3" />}
+                                          <span>{Math.floor(totalWithExtra / 60)}ч{totalWithExtra % 60 > 0 ? ` ${totalWithExtra % 60}м` : ''}</span>
+                                        </div>
+                                        {hasOvertimeTotal ? (
+                                          <div className="text-[9px] text-purple-700 dark:text-purple-300 font-medium">
+                                            +{overtimeHours.hours}ч{overtimeHours.minutes > 0 ? ` ${overtimeHours.minutes}м` : ''} перераб
+                                          </div>
+                                        ) : hasCompensationTotal ? (
+                                          <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                            +{compensationHours.hours}ч{compensationHours.minutes > 0 ? ` ${compensationHours.minutes}м` : ''} отр
+                                          </div>
+                                        ) : (
+                                          totalHours.minutes > 0 && <div className="text-[10px] opacity-80">{totalHours.minutes}м</div>
+                                        )}
+                                      </>
                                     )}
                                   </div>
                                 </TooltipTrigger>
