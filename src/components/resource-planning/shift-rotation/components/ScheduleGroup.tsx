@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck, Hammer, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay, type ShiftColors, type PeriodType } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, useDeleteOperatorAbsence, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
@@ -111,11 +112,15 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   printRef,
   isFirstGroup,
 }) => {
+  const isMobile = useIsMobile();
   const schedule = operators[0]?.work_schedules;
   const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
   const scheduleId = schedule?.id;
   const scheduleCycleStartDate = schedule?.cycle_start_date;
   const groupStats = calculateGroupStats(operators);
+  
+  // Mobile-optimized employee column width
+  const mobileEmployeeWidth = isMobile ? Math.min(employeeColumnWidth, 120) : employeeColumnWidth;
 
   // State for editing absence from cell click
   const [editingCellAbsence, setEditingCellAbsence] = useState<{ absence: OperatorAbsence; operatorName: string } | null>(null);
@@ -489,17 +494,26 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           {/* Flex container: fixed employee column + single calendar scroll container */}
           <div
             ref={isFirstGroup ? printRef : undefined}
-            className="border border-border rounded-lg flex w-full min-w-0 max-h-[60vh] overflow-hidden relative isolate"
-            style={{ ["--sr-header-h" as any]: "76px" }}
+            className={cn(
+              "border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate",
+              isMobile ? "max-h-[50vh]" : "max-h-[60vh]"
+            )}
+            style={{ 
+              ["--sr-header-h" as any]: isMobile ? "50px" : "76px",
+              ["--sr-row-h" as any]: isMobile ? "40px" : "52px"
+            }}
           >
             {/* Employee column */}
-            <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-50" style={{ width: `${employeeColumnWidth}px` }}>
+            <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-50" style={{ width: `${mobileEmployeeWidth}px` }}>
               <div
-                className="flex-shrink-0 bg-muted/30 text-base font-semibold text-foreground px-3 py-2 h-[var(--sr-header-h)] flex items-center gap-2 border-b border-border mb-1"
+                className={cn(
+                  "flex-shrink-0 bg-muted/30 font-semibold text-foreground py-2 h-[var(--sr-header-h)] flex items-center gap-2 border-b border-border mb-1",
+                  isMobile ? "text-xs px-2" : "text-base px-3"
+                )}
                 style={{ boxShadow: "0 4px 12px -4px hsl(var(--foreground) / 0.15), 0 2px 6px -2px hsl(var(--foreground) / 0.1)" }}
               >
-                <Users className="h-5 w-5 text-muted-foreground" />
-                Сотрудники
+                <Users className={cn(isMobile ? "h-4 w-4" : "h-5 w-5", "text-muted-foreground")} />
+                {!isMobile && "Сотрудники"}
               </div>
               
               <div 
@@ -529,12 +543,13 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                       <HoverCardTrigger asChild>
                         <div 
                           className={cn(
-                            "px-2 h-[52px] flex items-center gap-2 group border-b border-border/50 mb-1",
+                            "flex items-center gap-1 group border-b border-border/50 mb-1",
+                            isMobile ? "px-1 h-[40px]" : "px-2 h-[52px] gap-2",
                             onEditOperator && "hover:bg-muted/50 cursor-pointer"
                           )}
                           onClick={() => onEditOperator?.(operator)}
                         >
-                          <span className="text-sm font-medium truncate flex-1">{operator.full_name}</span>
+                          <span className={cn("font-medium truncate flex-1", isMobile ? "text-xs" : "text-sm")}>{operator.full_name}</span>
                           {currentAbsence && absenceInfo && (
                             <span title={absenceInfo.label} className="flex-shrink-0">
                               <span className="text-sm">{absenceInfo.icon}</span>
@@ -603,7 +618,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             {/* Header edge fade */}
             <div
               className="absolute top-0 h-[var(--sr-header-h)] w-10 pointer-events-none z-[90]"
-              style={{ left: `${employeeColumnWidth}px` }}
+              style={{ left: `${mobileEmployeeWidth}px` }}
               aria-hidden="true"
             >
               <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent" />
@@ -618,7 +633,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             {/* Body edge fade */}
             <div
               className="absolute top-[var(--sr-header-h)] bottom-0 w-10 pointer-events-none z-[70]"
-              style={{ left: `${employeeColumnWidth}px` }}
+              style={{ left: `${mobileEmployeeWidth}px` }}
               aria-hidden="true"
             >
               <div className="h-full w-full bg-gradient-to-r from-background via-background/70 to-transparent" />
@@ -684,7 +699,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                           <div
                             key={day.toISOString()}
                             className={cn(
-                              "text-center text-sm p-1.5 h-[60px] flex flex-col items-center justify-center rounded-md relative",
+                              "text-center flex flex-col items-center justify-center rounded-md relative",
+                              isMobile ? "text-xs p-0.5 h-[var(--sr-header-h)]" : "text-sm p-1.5 h-[60px]",
                               isTodayDate
                                 ? cn(
                                     "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
@@ -703,7 +719,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             title={calendarException ? calendarException.name : undefined}
                           >
                             {/* Holiday/Shortened day indicator */}
-                            {(isHoliday || isShortenedDayHeader) && !isTodayDate && (
+                            {(isHoliday || isShortenedDayHeader) && !isTodayDate && !isMobile && (
                               <div className="absolute top-0.5 right-0.5">
                                 {isHoliday ? (
                                   <span className="text-[10px]">🎉</span>
@@ -712,10 +728,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 )}
                               </div>
                             )}
-                            <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
+                            {!isMobile && <div className="font-medium text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>}
                             <div
                               className={cn(
-                                "text-sm font-semibold",
+                                "font-semibold",
+                                isMobile ? "text-xs" : "text-sm",
                                 isTodayDate
                                   ? "text-white"
                                   : isHoliday
@@ -729,15 +746,18 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             >
                               {format(day, "d", { locale: ru })}
                             </div>
-                            {(showMonth || daysCount <= 14) && (
+                            {!isMobile && (showMonth || daysCount <= 14) && (
                               <div className="text-[10px] opacity-70">{format(day, "MMM", { locale: ru })}</div>
                             )}
                           </div>
                         );
                       })}
-                      <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                        <Clock className="h-3 w-3 mb-0.5" />
-                        <div className="text-[10px]">Итого</div>
+                      <div className={cn(
+                        "text-center p-1 flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium",
+                        isMobile ? "text-xs h-[var(--sr-header-h)]" : "text-sm h-[60px]"
+                      )}>
+                        <Clock className={cn(isMobile ? "h-2.5 w-2.5" : "h-3 w-3 mb-0.5")} />
+                        {!isMobile && <div className="text-[10px]">Итого</div>}
                       </div>
                     </>
                   )}
