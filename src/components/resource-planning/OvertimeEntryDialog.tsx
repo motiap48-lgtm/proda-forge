@@ -346,78 +346,93 @@ export const OvertimeEntryDialog = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <div className="flex gap-2 w-full sm:w-auto">
+        <DialogFooter className="flex-row justify-between gap-2 pt-4 border-t">
+          {/* Left side - Delete button */}
+          <div className="flex gap-2">
             {entry && onDelete && (
               <Button
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   onOpenChange(false);
                   onDelete(entry);
                 }}
                 disabled={isSubmitting}
-                className="text-destructive hover:text-destructive"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-4 w-4 mr-1.5" />
                 Удалить
               </Button>
             )}
           </div>
           
-          <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
+          {/* Right side - Action buttons */}
+          <div className="flex gap-2">
+            {/* For pending entries */}
             {entry && entry.status === 'pending' && (
               <>
                 <Button
-                  variant="outline"
+                  variant="ghost"
+                  size="sm"
                   onClick={handleCancel}
                   disabled={isSubmitting}
-                  className="text-amber-600 hover:text-amber-700"
+                  className="text-muted-foreground hover:text-foreground"
                 >
-                  <X className="h-4 w-4 mr-2" />
-                  Отменить
+                  Отменить запись
                 </Button>
                 <Button
-                  variant="default"
+                  size="sm"
                   onClick={handleApprove}
                   disabled={isSubmitting || !description.trim()}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
                   Подтвердить
+                </Button>
+                <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
+                  Сохранить
                 </Button>
               </>
             )}
             
-            {(!entry || entry.status === 'pending') && (
-              <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {entry ? "Сохранить" : "Добавить"}
+            {/* For new entry */}
+            {!entry && (
+              <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
+                Добавить
               </Button>
             )}
             
+            {/* For approved entries */}
             {entry?.status === 'approved' && (
               <>
-                {isAdmin && (
+                {isAdmin ? (
                   <>
                     <Button
                       variant="outline"
+                      size="sm"
                       onClick={handleRevokeApproval}
                       disabled={isSubmitting}
-                      className="text-amber-600 hover:text-amber-700"
                     >
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Отменить подтверждение
+                      <RotateCcw className="h-4 w-4 mr-1.5" />
+                      Снять подтверждение
                     </Button>
-                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                    <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
                       Сохранить
                     </Button>
                   </>
-                )}
-                {!isAdmin && (
-                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
                     Закрыть
                   </Button>
                 )}
               </>
+            )}
+            
+            {/* For cancelled entries */}
+            {entry?.status === 'cancelled' && (
+              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+                Закрыть
+              </Button>
             )}
           </div>
         </DialogFooter>
