@@ -30,6 +30,7 @@ import {
 import { OperatorAbsenceDialog } from "./OperatorAbsenceDialog";
 import { BulkAbsenceDialog } from "./BulkAbsenceDialog";
 import { AbsenceExportDialog } from "./AbsenceExportDialog";
+import { YearlyMedalRankingDialog } from "./YearlyMedalRankingDialog";
 
 interface ShiftRotationCalendarProps {
   operators: any[];
@@ -794,6 +795,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           onExportAbsences={() => setShowExportAbsenceDialog(true)}
           defaultReductionHours={defaultReductionHours}
         />
+        {medalSettings?.is_enabled && (
+          <div className="mt-2">
+            <YearlyMedalRankingDialog />
+          </div>
+        )}
       </CardHeader>
       <CardContent className="p-0">
         <div className="px-2 py-2 sm:py-4">
