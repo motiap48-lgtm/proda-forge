@@ -279,12 +279,16 @@ export const OvertimeEntryDialog = ({
           {/* Work order selection */}
           <div className="space-y-2">
             <Label>Производственный заказ (опционально)</Label>
-            <Select value={workOrderId} onValueChange={setWorkOrderId} disabled={isApproved}>
+            <Select 
+              value={workOrderId || "__none__"} 
+              onValueChange={(val) => setWorkOrderId(val === "__none__" ? "" : val)} 
+              disabled={isApproved}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Выберите заказ..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Без привязки</SelectItem>
+                <SelectItem value="__none__">Без привязки</SelectItem>
                 {activeOrders.map((order: any) => (
                   <SelectItem key={order.id} value={order.id}>
                     {order.order_number} — {order.products?.name}
