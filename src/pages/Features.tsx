@@ -667,7 +667,7 @@ const Features = () => {
                                     value={currentStatus} 
                                     onValueChange={(v) => handleStatusChange(feature.id, v as FeatureStatus)}
                                   >
-                                    <SelectTrigger className="h-7 sm:h-8 w-[85px] sm:w-[130px] text-[10px] sm:text-sm">
+                                    <SelectTrigger className="h-7 sm:h-8 w-[106px] sm:w-[130px] text-[10px] sm:text-sm">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
