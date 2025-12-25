@@ -545,6 +545,33 @@ export type Database = {
           },
         ]
       }
+      feature_comments: {
+        Row: {
+          content: string
+          created_at: string
+          feature_id: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          feature_id: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          feature_id?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       feature_statuses: {
         Row: {
           id: string
