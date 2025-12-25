@@ -249,34 +249,36 @@ export const CalendarExceptionsTab = () => {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex flex-col gap-2 sm:gap-4">
+        <div className="flex flex-col gap-2">
           <SearchInput
             placeholder="Поиск..."
             hint="Поиск исключений"
             value={searchQuery}
             onChange={setSearchQuery}
-            containerClassName="flex-1 max-w-md"
+            containerClassName="flex-1"
           />
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
-              <Download className="h-4 w-4 mr-2" />
-              Импорт праздников РФ
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm" onClick={() => setShowImportDialog(true)}>
+              <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Импорт праздников РФ</span>
+              <span className="sm:hidden ml-1.5">Импорт</span>
             </Button>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Добавить исключение
+            <Button size="sm" className="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm" onClick={() => setDialogOpen(true)}>
+              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Добавить</span>
+              <span className="sm:hidden ml-1.5">Добавить</span>
             </Button>
           </div>
         </div>
 
         {/* Filters row */}
-        <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm text-muted-foreground whitespace-nowrap">Год:</Label>
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Label className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Год:</Label>
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[100px] sm:w-[140px] h-8 sm:h-9 text-xs sm:text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -290,17 +292,17 @@ export const CalendarExceptionsTab = () => {
             </Select>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Label className="text-sm text-muted-foreground whitespace-nowrap">Тип:</Label>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Label className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Тип:</Label>
             <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[110px] sm:w-[180px] h-8 sm:h-9 text-xs sm:text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Все типы</SelectItem>
                 <SelectItem value="holiday">Праздники</SelectItem>
-                <SelectItem value="shortened_day">Сокращённые дни</SelectItem>
-                <SelectItem value="extra_working_day">Рабочие дни (перенос)</SelectItem>
+                <SelectItem value="shortened_day">Сокращённые</SelectItem>
+                <SelectItem value="extra_working_day">Рабочие</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -319,42 +321,43 @@ export const CalendarExceptionsTab = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {Object.keys(groupedExceptions).sort((a, b) => Number(b) - Number(a)).map((year) => (
-            <div key={year} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5" />
-                  {year} год
-                  <Badge variant="secondary">{groupedExceptions[year].length}</Badge>
+            <div key={year} className="space-y-2 sm:space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm sm:text-lg font-semibold flex items-center gap-1.5 sm:gap-2">
+                  <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span>{year} год</span>
+                  <Badge variant="secondary" className="text-[10px] sm:text-xs h-5 sm:h-6">{groupedExceptions[year].length}</Badge>
                 </h3>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 sm:h-8 text-xs sm:text-sm"
                   onClick={() => handleDeleteYear(year)}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Удалить {year} год
+                  <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Удалить {year} год</span>
                 </Button>
               </div>
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {groupedExceptions[year].map((exception: any) => (
                   <Card key={exception.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
                             {getExceptionTypeIcon(exception.exception_type, exception.is_working_day)}
-                            <span className="font-medium">{exception.name}</span>
+                            <span className="font-medium text-sm sm:text-base truncate">{exception.name}</span>
                           </div>
-                          <div className="text-sm text-muted-foreground mb-2">
+                          <div className="text-xs sm:text-sm text-muted-foreground mb-1.5 sm:mb-2">
                             {format(parseISO(exception.exception_date), "d MMMM yyyy (EEEE)", { locale: ru })}
                           </div>
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                             <Badge 
                               variant={exception.is_working_day ? "default" : "destructive"}
                               className={cn(
+                                "text-[10px] sm:text-xs h-5 sm:h-6",
                                 exception.is_working_day 
                                   ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30" 
                                   : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30"
@@ -362,25 +365,25 @@ export const CalendarExceptionsTab = () => {
                             >
                               {exception.is_working_day ? "Рабочий" : "Выходной"}
                             </Badge>
-                            <Badge variant="outline">
+                            <Badge variant="outline" className="text-[10px] sm:text-xs h-5 sm:h-6">
                               {getExceptionTypeLabel(exception.exception_type)}
                             </Badge>
                             {exception.exception_type === "shortened_day" && (
-                              <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                              <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] sm:text-xs h-5 sm:h-6">
                                 {exception.reduction_hours ? `-${exception.reduction_hours}ч` : (exception.reduced_hours ? `${exception.reduced_hours}ч` : "-1ч")}
                               </Badge>
                             )}
                           </div>
                           {exception.description && (
-                            <p className="text-sm text-muted-foreground mt-2">{exception.description}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 sm:mt-2 line-clamp-2">{exception.description}</p>
                           )}
                         </div>
-                        <div className="flex items-center gap-1 ml-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(exception)}>
-                            <Edit className="h-4 w-4" />
+                        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => handleEdit(exception)}>
+                            <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(exception)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => handleDelete(exception)}>
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-destructive" />
                           </Button>
                         </div>
                       </div>
