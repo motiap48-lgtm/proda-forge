@@ -584,10 +584,10 @@ const Features = () => {
                   <SelectValue placeholder="Фильтр по статусу" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Все статусы</SelectItem>
-                  <SelectItem value="done">Готово</SelectItem>
-                  <SelectItem value="in-progress">В работе</SelectItem>
-                  <SelectItem value="planned">Планируется</SelectItem>
+                  <SelectItem value="all" className="whitespace-nowrap">Все статусы</SelectItem>
+                  <SelectItem value="done" className="whitespace-nowrap">Готово</SelectItem>
+                  <SelectItem value="in-progress" className="whitespace-nowrap">В работе</SelectItem>
+                  <SelectItem value="planned" className="whitespace-nowrap">Планируется</SelectItem>
                 </SelectContent>
               </Select>
             </div>
