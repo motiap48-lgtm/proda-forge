@@ -1,0 +1,308 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+
+export interface ChangelogEntry {
+  id: string;
+  version: string;
+  title: string;
+  date: string;
+  changes: string[];
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+export interface ChangelogFormData {
+  version: string;
+  title: string;
+  date: string;
+  changes: string[];
+  is_published: boolean;
+}
+
+// Default changelog entries for initial seeding
+const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' | 'created_by'>[] = [
+  {
+    version: "0.9.5",
+    title: "Улучшения страницы функциональности",
+    date: "2024-12-25",
+    changes: [
+      "Добавлена возможность отмечать функции как избранные",
+      "Реализован поиск по функциям",
+      "Добавлена фильтрация по статусу",
+      "Добавлен changelog - история изменений системы"
+    ],
+    is_published: true
+  },
+  {
+    version: "0.9.4",
+    title: "Мобильная адаптация календаря",
+    date: "2024-12-24",
+    changes: [
+      "Исправлено отображение календаря ротации на мобильных устройствах",
+      "Оптимизирована ширина колонок для маленьких экранов",
+      "Улучшена компактность отображения данных"
+    ],
+    is_published: true
+  },
+  {
+    version: "0.9.3",
+    title: "Beta-режим и страница функциональности",
+    date: "2024-12-23",
+    changes: [
+      "Добавлен индикатор Beta версии рядом с логотипом",
+      "Создана страница отслеживания функциональности",
+      "Добавлены настройки Beta-режима"
+    ],
+    is_published: true
+  },
+  {
+    version: "0.9.2",
+    title: "Улучшения ресурсного планирования",
+    date: "2024-12-20",
+    changes: [
+      "Добавлена поддержка drag-and-drop для отсутствий",
+      "Реализовано выделение диапазона дат",
+      "Улучшена синхронизация скролла в календаре",
+      "Добавлена кнопка 'Сегодня' для быстрой навигации"
+    ],
+    is_published: true
+  },
+  {
+    version: "0.9.1",
+    title: "Компенсации и табель",
+    date: "2024-12-15",
+    changes: [
+      "Добавлен модуль компенсаций отсутствий",
+      "Реализован расширенный табель рабочего времени",
+      "Добавлены отчёты по часам операторов"
+    ],
+    is_published: true
+  },
+  {
+    version: "0.9.0",
+    title: "Графики и бригады",
+    date: "2024-12-10",
+    changes: [
+      "Реализовано управление рабочими графиками",
+      "Добавлена поддержка сменных графиков",
+      "Создан модуль управления бригадами",
+      "Добавлен календарь ротации смен"
+    ],
+    is_published: true
+  },
+  {
+    version: "0.8.5",
+    title: "Отчёты производства",
+    date: "2024-12-05",
+    changes: [
+      "Добавлен план-факт отчёт по участкам",
+      "Реализован отчёт по клиентам",
+      "Добавлен экспорт отчётов в Excel",
+      "Улучшены печатные формы"
+    ],
+    is_published: true
+  }
+];
+
+export const useChangelog = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const { data: changelog = [], isLoading, refetch } = useQuery({
+    queryKey: ["changelog"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("changelog_entries")
+        .select("*")
+        .order("date", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching changelog:", error);
+        return defaultChangelog.map((c, i) => ({ 
+          ...c, 
+          id: `default-${i}`, 
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          created_by: null
+        })) as ChangelogEntry[];
+      }
+
+      // If no entries in DB, return defaults
+      if (!data || data.length === 0) {
+        return defaultChangelog.map((c, i) => ({ 
+          ...c, 
+          id: `default-${i}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          created_by: null
+        })) as ChangelogEntry[];
+      }
+
+      return data as ChangelogEntry[];
+    }
+  });
+
+  const createEntry = useMutation({
+    mutationFn: async (data: ChangelogFormData) => {
+      const { error } = await supabase
+        .from("changelog_entries")
+        .insert({
+          version: data.version,
+          title: data.title,
+          date: data.date,
+          changes: data.changes,
+          is_published: data.is_published,
+          created_by: user?.id
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["changelog"] });
+      queryClient.invalidateQueries({ queryKey: ["unseen-changelog"] });
+      toast.success("Запись добавлена");
+    },
+    onError: (error) => {
+      console.error("Error creating changelog entry:", error);
+      toast.error("Ошибка при создании записи");
+    }
+  });
+
+  const updateEntry = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: ChangelogFormData }) => {
+      const { error } = await supabase
+        .from("changelog_entries")
+        .update({
+          version: data.version,
+          title: data.title,
+          date: data.date,
+          changes: data.changes,
+          is_published: data.is_published
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["changelog"] });
+      toast.success("Запись обновлена");
+    },
+    onError: (error) => {
+      console.error("Error updating changelog entry:", error);
+      toast.error("Ошибка при обновлении записи");
+    }
+  });
+
+  const deleteEntry = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("changelog_entries")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["changelog"] });
+      toast.success("Запись удалена");
+    },
+    onError: (error) => {
+      console.error("Error deleting changelog entry:", error);
+      toast.error("Ошибка при удалении записи");
+    }
+  });
+
+  const seedDefaultEntries = useMutation({
+    mutationFn: async () => {
+      const entries = defaultChangelog.map(c => ({
+        ...c,
+        created_by: user?.id
+      }));
+
+      const { error } = await supabase
+        .from("changelog_entries")
+        .insert(entries);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["changelog"] });
+      toast.success("Записи по умолчанию добавлены");
+    },
+    onError: (error) => {
+      console.error("Error seeding default entries:", error);
+      toast.error("Ошибка при добавлении записей");
+    }
+  });
+
+  return {
+    changelog,
+    isLoading,
+    refetch,
+    createEntry,
+    updateEntry,
+    deleteEntry,
+    seedDefaultEntries,
+    isFromDatabase: changelog.length > 0 && !changelog[0]?.id?.startsWith('default-')
+  };
+};
+
+export const useUnseenChangelog = () => {
+  const { user } = useAuth();
+
+  const { data: unseenEntries = [], isLoading } = useQuery({
+    queryKey: ["unseen-changelog", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+
+      // Get all published changelog entries
+      const { data: allEntries, error: entriesError } = await supabase
+        .from("changelog_entries")
+        .select("*")
+        .eq("is_published", true)
+        .order("date", { ascending: false });
+
+      if (entriesError || !allEntries) return [];
+
+      // Get user's seen entries
+      const { data: seenEntries, error: seenError } = await supabase
+        .from("user_seen_changelog")
+        .select("changelog_id")
+        .eq("user_id", user.id);
+
+      if (seenError) return allEntries as ChangelogEntry[];
+
+      const seenIds = new Set(seenEntries?.map(s => s.changelog_id) || []);
+      return allEntries.filter(e => !seenIds.has(e.id)) as ChangelogEntry[];
+    },
+    enabled: !!user?.id
+  });
+
+  const markAsSeen = useMutation({
+    mutationFn: async (changelogIds: string[]) => {
+      if (!user?.id || changelogIds.length === 0) return;
+
+      const entries = changelogIds.map(changelog_id => ({
+        user_id: user.id,
+        changelog_id
+      }));
+
+      const { error } = await supabase
+        .from("user_seen_changelog")
+        .upsert(entries, { onConflict: "user_id,changelog_id" });
+
+      if (error) throw error;
+    }
+  });
+
+  return {
+    unseenEntries,
+    isLoading,
+    markAsSeen,
+    hasUnseenUpdates: unseenEntries.length > 0
+  };
+};

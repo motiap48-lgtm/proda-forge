@@ -9,6 +9,7 @@ import { NavigationLoadingProvider } from "@/contexts/NavigationLoadingContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import { PageLoadingScreen } from "@/components/layout/PageLoadingScreen";
+import { UpdatesNotificationDialog } from "@/components/features/UpdatesNotificationDialog";
 import Index from "./pages/Index";
 import ProductionOrders from "./pages/ProductionOrders";
 import NewProductionOrder from "./pages/NewProductionOrder";
@@ -37,6 +38,7 @@ const AppRoutes = () => {
   return (
     <NavigationLoadingProvider>
       <PageLoadingScreen />
+      <UpdatesNotificationDialog />
       <Routes>
         <Route path="/auth" element={<Auth />} />
         <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
