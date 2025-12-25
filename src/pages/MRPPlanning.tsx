@@ -434,20 +434,22 @@ const MRPPlanning = () => {
 
         {/* Results */}
         <Tabs defaultValue="purchase" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="purchase" className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              Потребность к закупке
-            </TabsTrigger>
-            <TabsTrigger value="production" className="flex items-center gap-2">
-              <Factory className="h-4 w-4" />
-              Потребность к производству
-            </TabsTrigger>
-            <TabsTrigger value="workcenters" className="flex items-center gap-2">
-              <Warehouse className="h-4 w-4" />
-              Рапорты по участкам
-            </TabsTrigger>
-          </TabsList>
+          <ScrollArea className="w-full">
+            <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-3">
+              <TabsTrigger value="purchase" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-2 sm:px-4">
+                <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                <span className="text-xs sm:text-sm">Потребность к закупке</span>
+              </TabsTrigger>
+              <TabsTrigger value="production" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-2 sm:px-4">
+                <Factory className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                <span className="text-xs sm:text-sm">Потребность к производству</span>
+              </TabsTrigger>
+              <TabsTrigger value="workcenters" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-2 sm:px-4">
+                <Warehouse className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                <span className="text-xs sm:text-sm">Рапорты по участкам</span>
+              </TabsTrigger>
+            </TabsList>
+          </ScrollArea>
 
           {/* Purchase Requirements Tab */}
           <TabsContent value="purchase" className="space-y-4">
