@@ -927,6 +927,7 @@ const Features = () => {
         entry={editingEntry}
         onSave={handleSaveChangelog}
         isLoading={createEntry.isPending || updateEntry.isPending}
+        changelog={changelog}
       />
 
       {selectedFeatureForComments && (

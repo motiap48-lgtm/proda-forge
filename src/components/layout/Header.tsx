@@ -55,7 +55,7 @@ export const Header = () => {
                 <h1 className="text-lg sm:text-xl font-bold text-foreground">ERP Vostok Auto</h1>
               {betaSettings.showBetaBadge && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-                    Beta v{latestVersion}
+                    Beta{betaSettings.showVersionInBadge ? ` v${latestVersion}` : ''}
                   </Badge>
                 )}
               </div>
@@ -63,7 +63,7 @@ export const Header = () => {
             </div>
           {betaSettings.showBetaBadge && (
               <Badge variant="outline" className="sm:hidden text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-                Beta v{latestVersion}
+                Beta{betaSettings.showVersionInBadge ? ` v${latestVersion}` : ''}
               </Badge>
             )}
           </div>
@@ -92,7 +92,7 @@ export const Header = () => {
               <h1 className="text-lg sm:text-xl font-bold text-foreground">ERP Vostok Auto</h1>
               {betaSettings.showBetaBadge && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-                  Beta v{latestVersion}
+                  Beta{betaSettings.showVersionInBadge ? ` v${latestVersion}` : ''}
                 </Badge>
               )}
             </div>
@@ -100,7 +100,7 @@ export const Header = () => {
           </div>
           {betaSettings.showBetaBadge && (
             <Badge variant="outline" className="sm:hidden text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-              Beta v{latestVersion}
+              Beta{betaSettings.showVersionInBadge ? ` v${latestVersion}` : ''}
             </Badge>
           )}
         </div>

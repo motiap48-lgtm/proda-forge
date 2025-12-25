@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ChangelogEntry, ChangelogFormData } from "@/hooks/useChangelog";
+import { ChangelogEntry, ChangelogFormData, getNextVersion, getLatestVersion } from "@/hooks/useChangelog";
 import { format } from "date-fns";
 
 interface ChangelogDialogProps {
@@ -14,6 +14,7 @@ interface ChangelogDialogProps {
   entry?: ChangelogEntry | null;
   onSave: (data: ChangelogFormData) => void;
   isLoading?: boolean;
+  changelog?: ChangelogEntry[];
 }
 
 export const ChangelogDialog = ({
@@ -21,7 +22,8 @@ export const ChangelogDialog = ({
   onOpenChange,
   entry,
   onSave,
-  isLoading
+  isLoading,
+  changelog = []
 }: ChangelogDialogProps) => {
   const [version, setVersion] = useState("");
   const [title, setTitle] = useState("");
@@ -37,13 +39,16 @@ export const ChangelogDialog = ({
       setChangesText(entry.changes.join("\n"));
       setIsPublished(entry.is_published);
     } else {
-      setVersion("");
+      // Auto-generate next version
+      const latestVersion = getLatestVersion(changelog);
+      const nextVersion = getNextVersion(latestVersion);
+      setVersion(nextVersion);
       setTitle("");
       setDate(format(new Date(), "yyyy-MM-dd"));
       setChangesText("");
       setIsPublished(true);
     }
-  }, [entry, open]);
+  }, [entry, open, changelog]);
 
   const handleSubmit = () => {
     const changes = changesText
