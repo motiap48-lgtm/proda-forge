@@ -593,7 +593,10 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                 })}
                 
                 {/* Group summary row */}
-                <div className="bg-muted/30 px-2 h-[44px] flex items-center text-xs text-muted-foreground border-t border-border">
+                <div className={cn(
+                  "bg-muted/30 flex items-center text-xs text-muted-foreground border-t border-border",
+                  isMobile ? "px-1 h-8" : "px-2 h-[44px]"
+                )}>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="flex items-center gap-1 text-emerald-600" title="Рабочие дни"><CalendarCheck className="h-3 w-3" />{groupStats.workingDays}</span>
                     <span className="flex items-center gap-1 text-rose-500" title="Выходные"><CalendarX className="h-3 w-3" />{groupStats.offDays}</span>
@@ -661,7 +664,10 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
               <div className="sticky top-0 z-[80] relative">
                 {/* Grid header with full-width background */}
                 <div
-                  className="relative pl-2 pr-0.5 py-2 bg-background h-[var(--sr-header-h)]"
+                  className={cn(
+                    "relative bg-background h-[var(--sr-header-h)]",
+                    isMobile ? "pl-1 pr-0.5 py-1" : "pl-2 pr-0.5 py-2"
+                  )}
                   style={{
                     ...calendarGridStyle,
                     boxShadow: "0 4px 12px -4px hsl(var(--foreground) / 0.15), 0 2px 6px -2px hsl(var(--foreground) / 0.1)",
@@ -765,7 +771,10 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
               </div>
               
               {/* Calendar body */}
-              <div className="pl-2 pr-0.5 pt-1 pb-1 relative z-0" style={calendarGridStyle}>
+              <div className={cn(
+                "pt-1 pb-1 relative z-0",
+                isMobile ? "pl-1 pr-0.5" : "pl-2 pr-0.5"
+              )} style={calendarGridStyle}>
                 {period === "year" ? (
                   <>
                     {/* Year view - Operator rows */}
@@ -778,16 +787,16 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             return (
                               <div 
                                 key={month.toISOString()} 
-                                className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-900/50 text-blue-700 dark:text-blue-300"
+                                className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-900/50 text-blue-700 dark:text-blue-300"
                               >
                                 <div className="font-medium">{monthHours.hours}ч</div>
-                                {monthHours.minutes > 0 && <div className="text-[10px] opacity-80">{monthHours.minutes}м</div>}
+                                {monthHours.minutes > 0 && !isMobile && <div className="text-[10px] opacity-80">{monthHours.minutes}м</div>}
                               </div>
                             );
                           })}
-                          <div className="text-center p-1.5 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
+                          <div className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
                             <div>{yearlyTotal.hours}ч</div>
-                            {yearlyTotal.minutes > 0 && <div className="text-[10px]">{yearlyTotal.minutes}м</div>}
+                            {yearlyTotal.minutes > 0 && !isMobile && <div className="text-[10px]">{yearlyTotal.minutes}м</div>}
                           </div>
                         </React.Fragment>
                       );
@@ -804,14 +813,14 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const h = Math.floor(monthTotal / 60);
                             const m = monthTotal % 60;
                             return (
-                              <div key={month.toISOString()} className="text-center h-[44px] flex items-center justify-center text-[10px] text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">
-                                {h}ч{m > 0 ? ` ${m}м` : ''}
+                              <div key={month.toISOString()} className="text-center h-8 flex items-center justify-center text-[10px] text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">
+                                {h}ч{m > 0 && !isMobile ? ` ${m}м` : ''}
                               </div>
                             );
                           })}
-                          <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
+                          <div className="text-center p-0.5 h-8 flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
                             <div>{groupYearlyTotal.hours}ч</div>
-                            {groupYearlyTotal.minutes > 0 && <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>}
+                            {groupYearlyTotal.minutes > 0 && !isMobile && <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>}
                           </div>
                         </>
                       );
@@ -887,7 +896,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               return (
                                 <div 
                                   key={day.toISOString()} 
-                                  className="text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800 text-gray-600 dark:text-gray-400"
+                                  className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800 text-gray-600 dark:text-gray-400"
                                   title="Уволен"
                                 >
                                   <UserMinus className="h-3 w-3 opacity-60" />
@@ -899,7 +908,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               return (
                                 <div 
                                   key={day.toISOString()} 
-                                  className="text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900 text-gray-400 dark:text-gray-500"
+                                  className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900 text-gray-400 dark:text-gray-500"
                                   title="До приёма на работу"
                                 >
                                   <span className="text-[10px]">—</span>
@@ -933,7 +942,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     setEditingCellAbsence({ absence, operatorName: operator.full_name });
                                   }}
                                   className={cn(
-                                    "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden cursor-grab active:cursor-grabbing group outline-none",
+                                    "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden cursor-grab active:cursor-grabbing group outline-none",
                                     isSelected && "ring-2 ring-primary z-20",
                                     isHovered && !isSelected && "ring-2 ring-primary/60 z-10",
                                     !isHovered && !isSelected && "hover:ring-2 hover:ring-primary/50",
@@ -1060,7 +1069,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 onMouseLeave={() => isToday(day) && onTodayColumnHover(false)}
                                 onContextMenu={handleContextMenu}
                                 className={cn(
-                                  "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden select-none",
+                                  "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden select-none",
                                   canCreateAbsence && !inPreview && !isDraggingSelection && "cursor-pointer hover:ring-2 hover:ring-primary/30 hover:bg-primary/5",
                                   isDraggingSelection && canCreateAbsence && "cursor-crosshair",
                                   isDropTarget(day, operator.id) && "ring-2 ring-primary bg-primary/10",
@@ -1297,7 +1306,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 <TooltipTrigger asChild>
                                   <div 
                                     className={cn(
-                                      "text-center p-1 h-[52px] flex flex-col items-center justify-center rounded-md text-xs font-medium cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
+                                      "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs font-medium cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
                                       hasActual 
                                         ? diff >= 0 
                                           ? "bg-gradient-to-b from-green-200 to-green-300 dark:from-green-800 dark:to-green-900 text-green-800 dark:text-green-200"
@@ -1354,11 +1363,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                       return (
                         <>
                           {days.map((day) => (
-                            <div key={day.toISOString()} className="text-center h-[44px] flex items-center justify-center text-xs text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">—</div>
+                            <div key={day.toISOString()} className="text-center h-8 flex items-center justify-center text-xs text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">—</div>
                           ))}
-                          <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
+                          <div className="text-center p-0.5 h-8 flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
                             <div>{groupStats.totalHours}ч</div>
-                            {groupStats.totalMinutes > 0 && <div className="text-[10px]">{groupStats.totalMinutes}м</div>}
+                            {groupStats.totalMinutes > 0 && !isMobile && <div className="text-[10px]">{groupStats.totalMinutes}м</div>}
                           </div>
                         </>
                       );

@@ -2,6 +2,7 @@ import React, { memo } from "react";
 import { getDay, isToday } from "date-fns";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { PeriodType } from "../utils";
 
 interface GrandTotalRowProps {
@@ -35,29 +36,43 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   calculateGroupTotalHours,
   calculateGroupYearlyTotal,
 }) => {
+  const isMobile = useIsMobile();
+  
   if (filteredOperators.length === 0) return null;
 
   const grandTotalCalc = period === "year" 
     ? calculateGroupYearlyTotal(filteredOperators)
     : calculateGroupTotalHours(filteredOperators);
+  
+  // Mobile-optimized column width
+  const mobileEmployeeWidth = isMobile ? Math.min(employeeColumnWidth, 120) : employeeColumnWidth;
+  const cellHeight = isMobile ? "h-8" : "h-[44px]";
 
   return (
-    <div className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate">
+    <div 
+      className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate"
+      style={{
+        ["--sr-row-h" as any]: isMobile ? "32px" : "44px"
+      }}
+    >
       {/* Fixed label column - matches ScheduleGroup employee column */}
       <div 
         className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-50" 
-        style={{ width: `${employeeColumnWidth}px` }}
+        style={{ width: `${mobileEmployeeWidth}px` }}
       >
-        <div className="px-3 flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
-          <Clock className="h-4 w-4" />
-          ОБЩИЙ ИТОГ:
+        <div className={cn(
+          "flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-300",
+          isMobile ? "px-1.5 text-xs" : "px-3 text-sm"
+        )}>
+          <Clock className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
+          {isMobile ? "ИТОГО" : "ОБЩИЙ ИТОГ:"}
         </div>
       </div>
       
       {/* Blur overlays - matching calendar container */}
       <div
         className="absolute top-0 bottom-0 w-10 pointer-events-none z-[60]"
-        style={{ left: `${employeeColumnWidth}px` }}
+        style={{ left: `${mobileEmployeeWidth}px` }}
       >
         <div className="h-full w-full bg-gradient-to-r from-emerald-50 dark:from-emerald-950/30 via-emerald-50/70 dark:via-emerald-950/20 to-transparent" />
       </div>
@@ -72,7 +87,10 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
         onScroll={handleSyncScroll('grand-total')}
         className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate bg-emerald-50 dark:bg-emerald-950/30"
       >
-        <div style={calendarGridStyle} className="pl-2 pr-0.5 py-1.5 items-center">
+        <div style={calendarGridStyle} className={cn(
+          "items-center",
+          isMobile ? "pl-1 pr-0.5 py-1" : "pl-2 pr-0.5 py-1.5"
+        )}>
           {period === "year" ? (
             <>
               {months.map((month) => {
@@ -86,9 +104,13 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
                 return (
                   <div 
                     key={month.toISOString()} 
-                    className="text-center text-xs font-medium h-[44px] flex items-center justify-center rounded-md bg-gradient-to-b from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-900/50 text-emerald-700 dark:text-emerald-300"
+                    className={cn(
+                      "text-center font-medium flex items-center justify-center rounded-md bg-gradient-to-b from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-900/50 text-emerald-700 dark:text-emerald-300",
+                      cellHeight,
+                      isMobile ? "text-[10px]" : "text-xs"
+                    )}
                   >
-                    {h}ч{m > 0 ? ` ${m}м` : ''}
+                    {h}ч{m > 0 && !isMobile ? ` ${m}м` : ''}
                   </div>
                 );
               })}
@@ -100,7 +122,9 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
                 <div 
                   key={day.toISOString()} 
                   className={cn(
-                    "text-center text-xs text-muted-foreground h-[44px] flex items-center justify-center rounded-md",
+                    "text-center text-muted-foreground flex items-center justify-center rounded-md",
+                    cellHeight,
+                    isMobile ? "text-[10px]" : "text-xs",
                     isWeekend 
                       ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                       : "bg-gradient-to-b from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30",
@@ -116,9 +140,13 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
             })
           )}
           {/* Grand total cell */}
-          <div className="text-center p-1.5 h-[44px] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold">
+          <div className={cn(
+            "text-center flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold",
+            cellHeight,
+            isMobile ? "text-[10px] p-0.5" : "text-xs p-1.5"
+          )}>
             <div>{grandTotalCalc.hours}ч</div>
-            {grandTotalCalc.minutes > 0 && <div className="text-[10px] opacity-80">{grandTotalCalc.minutes}м</div>}
+            {grandTotalCalc.minutes > 0 && !isMobile && <div className="text-[10px] opacity-80">{grandTotalCalc.minutes}м</div>}
           </div>
         </div>
       </div>
