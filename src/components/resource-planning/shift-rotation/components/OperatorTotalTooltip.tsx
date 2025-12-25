@@ -316,26 +316,15 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
         </div>
       )}
       
-      {/* Overtime */}
-      {(overtimeData.approvedHours > 0 || overtimeData.approvedMinutes > 0 || 
-        overtimeData.pendingHours > 0 || overtimeData.pendingMinutes > 0) && (
+      {/* Overtime - show only pending, approved is shown in final difference */}
+      {(overtimeData.pendingHours > 0 || overtimeData.pendingMinutes > 0) && (
         <div className="border-t border-border/50 pt-2 space-y-1">
-          {(overtimeData.approvedHours > 0 || overtimeData.approvedMinutes > 0) && (
-            <div className="flex justify-between items-center text-purple-500">
-              <span>⏱️ Переработка:</span>
-              <span className="font-medium">
-                +{formatTime(overtimeData.approvedHours, overtimeData.approvedMinutes)}
-              </span>
-            </div>
-          )}
-          {(overtimeData.pendingHours > 0 || overtimeData.pendingMinutes > 0) && (
-            <div className="flex justify-between items-center text-purple-400">
-              <span>Ожидает подтверждения:</span>
-              <span className="font-medium">
-                ~{formatTime(overtimeData.pendingHours, overtimeData.pendingMinutes)}
-              </span>
-            </div>
-          )}
+          <div className="flex justify-between items-center text-purple-400">
+            <span>⏱️ Ожидает подтверждения:</span>
+            <span className="font-medium">
+              ~{formatTime(overtimeData.pendingHours, overtimeData.pendingMinutes)}
+            </span>
+          </div>
         </div>
       )}
       
