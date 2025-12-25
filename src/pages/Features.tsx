@@ -317,23 +317,23 @@ const getStatusBadge = (status: FeatureStatus) => {
   switch (status) {
     case "done":
       return (
-        <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30 gap-1">
-          <CheckCircle2 className="h-3 w-3" />
-          Готово
+        <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30 gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5">
+          <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+          <span className="hidden xs:inline">Готово</span>
         </Badge>
       );
     case "in-progress":
       return (
-        <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 gap-1">
-          <Clock className="h-3 w-3" />
-          В работе
+        <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5">
+          <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+          <span className="hidden xs:inline">В работе</span>
         </Badge>
       );
     case "planned":
       return (
-        <Badge variant="outline" className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30 gap-1">
-          <AlertCircle className="h-3 w-3" />
-          Планируется
+        <Badge variant="outline" className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30 gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5">
+          <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+          <span className="hidden xs:inline">План</span>
         </Badge>
       );
   }
@@ -485,79 +485,79 @@ const Features = () => {
       <Header />
       <Navigation />
 
-      <main className="container py-4 sm:py-6 lg:py-8">
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Функциональность системы</h1>
+      <main className="container py-4 sm:py-6 lg:py-8 px-3 sm:px-4">
+        <div className="mb-4 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Функциональность системы</h1>
               <Badge variant="secondary" className="text-xs">Beta</Badge>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleExportExcel}>
-                <Download className="h-4 w-4 mr-2" />
-                Excel
+              <Button variant="outline" size="sm" onClick={handleExportExcel} className="flex-1 sm:flex-none">
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Excel</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportPDF}>
-                <Printer className="h-4 w-4 mr-2" />
-                PDF
+              <Button variant="outline" size="sm" onClick={handleExportPDF} className="flex-1 sm:flex-none">
+                <Printer className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">PDF</span>
               </Button>
             </div>
           </div>
-          <p className="text-sm sm:text-base text-muted-foreground">
+          <p className="text-xs sm:text-sm lg:text-base text-muted-foreground">
             Полный список реализованного и планируемого функционала ERP Vostok Auto
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 max-w-md">
-            <TabsTrigger value="features" className="gap-2">
-              <Layers className="h-4 w-4" />
-              <span className="hidden sm:inline">Функции</span>
+          <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+            <TabsTrigger value="features" className="gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm">
+              <Layers className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Функции</span>
             </TabsTrigger>
-            <TabsTrigger value="favorites" className="gap-2">
-              <Star className="h-4 w-4" />
-              <span className="hidden sm:inline">Избранное</span>
+            <TabsTrigger value="favorites" className="gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm">
+              <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Избранное</span>
               {favorites.length > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 justify-center text-xs">
+                <Badge variant="secondary" className="ml-0.5 sm:ml-1 h-4 w-4 sm:h-5 sm:w-5 p-0 justify-center text-[10px] sm:text-xs">
                   {favorites.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="changelog" className="gap-2">
-              <History className="h-4 w-4" />
-              <span className="hidden sm:inline">История</span>
+            <TabsTrigger value="changelog" className="gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm">
+              <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">История</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="features" className="space-y-4">
             {/* Summary Stats */}
             <Card>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <CardContent className="p-3 sm:pt-6 sm:p-6">
+                <div className="grid grid-cols-4 gap-2 sm:gap-4">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-foreground">{totalFeatures}</div>
-                    <div className="text-sm text-muted-foreground">Всего функций</div>
+                    <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-foreground">{totalFeatures}</div>
+                    <div className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Всего</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">{doneFeatures}</div>
-                    <div className="text-sm text-muted-foreground">Реализовано</div>
+                    <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-green-600">{doneFeatures}</div>
+                    <div className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Готово</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-amber-600">{inProgressFeatures}</div>
-                    <div className="text-sm text-muted-foreground">В работе</div>
+                    <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-amber-600">{inProgressFeatures}</div>
+                    <div className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">В работе</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">{plannedFeatures}</div>
-                    <div className="text-sm text-muted-foreground">Планируется</div>
+                    <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-blue-600">{plannedFeatures}</div>
+                    <div className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">План</div>
                   </div>
                 </div>
-                <Separator className="my-4" />
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Прогресс разработки</span>
+                <Separator className="my-3 sm:my-4" />
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex justify-between text-xs sm:text-sm">
+                    <span className="text-muted-foreground">Прогресс</span>
                     <span className="font-medium">{progressPercent}%</span>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-1.5 sm:h-2 bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-500"
                       style={{ width: `${progressPercent}%` }}
@@ -601,63 +601,63 @@ const Features = () => {
                 
                 return (
                   <Card key={module.id}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                          <Icon className="h-5 w-5 text-primary" />
-                          {module.name}
+                    <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-3">
+                      <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2">
+                        <CardTitle className="flex items-center gap-2 text-sm sm:text-base lg:text-lg">
+                          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                          <span className="truncate">{module.name}</span>
                         </CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                          <Badge variant="secondary" className="text-[10px] sm:text-xs">
                             {moduleDone}/{moduleTotal}
                           </Badge>
                           {module.path && (
-                            <Badge variant="outline" className="text-xs font-mono">
+                            <Badge variant="outline" className="text-[10px] sm:text-xs font-mono hidden sm:flex">
                               {module.path}
                             </Badge>
                           )}
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="grid gap-2">
+                    <CardContent className="p-3 sm:p-6 pt-0">
+                      <div className="grid gap-1.5 sm:gap-2">
                         {module.features.map((feature) => {
                           const currentStatus = getFeatureStatus(feature);
                           return (
                             <div 
                               key={feature.id}
-                              className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                              className="flex items-start sm:items-center justify-between py-2 px-2 sm:px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors gap-2"
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <div className="flex items-start sm:items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 flex-shrink-0"
+                                  className="h-6 w-6 sm:h-7 sm:w-7 flex-shrink-0 mt-0.5 sm:mt-0"
                                   onClick={() => toggleFavorite(feature.id)}
                                 >
                                   <Star 
-                                    className={`h-4 w-4 ${favorites.includes(feature.id) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} 
+                                    className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${favorites.includes(feature.id) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} 
                                   />
                                 </Button>
                                 <div className="min-w-0">
-                                  <div className="font-medium text-sm text-foreground truncate">
+                                  <div className="font-medium text-xs sm:text-sm text-foreground line-clamp-2 sm:truncate">
                                     {feature.name}
                                   </div>
-                                  <div className="text-xs text-muted-foreground truncate">
+                                  <div className="text-[10px] sm:text-xs text-muted-foreground line-clamp-2 sm:truncate">
                                     {feature.description}
                                   </div>
                                 </div>
                               </div>
-                              <div className="ml-3 flex-shrink-0 flex items-center gap-2">
+                              <div className="flex-shrink-0 flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-2">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 relative"
+                                  className="h-6 w-6 sm:h-7 sm:w-7 relative"
                                   onClick={() => openCommentsDialog(feature.id, feature.name)}
                                 >
-                                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                  <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                                   {getCommentsCount(feature.id) > 0 && (
-                                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center">
+                                    <span className="absolute -top-1 -right-1 h-3.5 w-3.5 sm:h-4 sm:w-4 bg-primary text-primary-foreground text-[8px] sm:text-[10px] rounded-full flex items-center justify-center">
                                       {getCommentsCount(feature.id)}
                                     </span>
                                   )}
@@ -667,32 +667,34 @@ const Features = () => {
                                     value={currentStatus} 
                                     onValueChange={(v) => handleStatusChange(feature.id, v as FeatureStatus)}
                                   >
-                                    <SelectTrigger className="h-8 w-[130px]">
+                                    <SelectTrigger className="h-7 sm:h-8 w-[90px] sm:w-[130px] text-[10px] sm:text-sm">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="done">
                                         <div className="flex items-center gap-2">
                                           <CheckCircle2 className="h-3 w-3 text-green-600" />
-                                          Готово
+                                          <span className="text-xs sm:text-sm">Готово</span>
                                         </div>
                                       </SelectItem>
                                       <SelectItem value="in-progress">
                                         <div className="flex items-center gap-2">
                                           <Clock className="h-3 w-3 text-amber-600" />
-                                          В работе
+                                          <span className="text-xs sm:text-sm">В работе</span>
                                         </div>
                                       </SelectItem>
                                       <SelectItem value="planned">
                                         <div className="flex items-center gap-2">
                                           <AlertCircle className="h-3 w-3 text-blue-600" />
-                                          Планируется
+                                          <span className="text-xs sm:text-sm">План</span>
                                         </div>
                                       </SelectItem>
                                     </SelectContent>
                                   </Select>
                                 ) : (
-                                  getStatusBadge(currentStatus)
+                                  <div className="scale-90 sm:scale-100 origin-right">
+                                    {getStatusBadge(currentStatus)}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -783,20 +785,20 @@ const Features = () => {
 
           <TabsContent value="changelog" className="space-y-4">
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardHeader className="p-3 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <History className="h-5 w-5 text-primary" />
+                    <CardTitle className="flex items-center gap-2 text-sm sm:text-base lg:text-lg">
+                      <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       История изменений
                       {isFromDatabase && (
-                        <Badge variant="outline" className="gap-1 text-xs">
-                          <Database className="h-3 w-3" />
+                        <Badge variant="outline" className="gap-1 text-[10px] sm:text-xs">
+                          <Database className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                           БД
                         </Badge>
                       )}
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-xs sm:text-sm mt-1">
                       Журнал обновлений и изменений системы
                     </CardDescription>
                   </div>
@@ -808,9 +810,10 @@ const Features = () => {
                           size="sm"
                           onClick={() => seedDefaultEntries.mutate()}
                           disabled={seedDefaultEntries.isPending}
+                          className="text-xs sm:text-sm"
                         >
-                          <Database className="h-4 w-4 mr-2" />
-                          Сохранить в БД
+                          <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Сохранить в БД</span>
                         </Button>
                       )}
                       <Button 
@@ -819,16 +822,17 @@ const Features = () => {
                           setEditingEntry(null);
                           setChangelogDialogOpen(true);
                         }}
+                        className="text-xs sm:text-sm"
                       >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Добавить
+                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Добавить</span>
                       </Button>
                     </div>
                   )}
                 </div>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[600px] pr-4">
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <ScrollArea className="h-[400px] sm:h-[600px] pr-2 sm:pr-4">
                   <div className="relative">
                     <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
                     <div className="space-y-6">
