@@ -478,7 +478,8 @@ export const OperationsDetailedReport = ({ startDate, endDate }: OperationsDetai
       {/* Controls */}
       <div className="flex flex-wrap gap-2 items-center">
         <SearchInput
-          placeholder="Поиск по операции, изделию, заказу..."
+          placeholder="Поиск..."
+          hint="Поиск по операции, изделию, заказу"
           value={searchQuery}
           onChange={setSearchQuery}
           containerClassName="flex-1 min-w-[200px] max-w-sm"

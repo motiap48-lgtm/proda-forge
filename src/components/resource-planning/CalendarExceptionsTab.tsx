@@ -253,7 +253,8 @@ export const CalendarExceptionsTab = () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
           <SearchInput
-            placeholder="Поиск исключений..."
+            placeholder="Поиск..."
+            hint="Поиск исключений"
             value={searchQuery}
             onChange={setSearchQuery}
             containerClassName="flex-1 max-w-md"

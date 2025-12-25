@@ -101,7 +101,8 @@ const Inventory = () => {
           <CardContent className="p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
               <SearchInput
-                placeholder="Поиск по наименованию или коду..."
+                placeholder="Поиск..."
+                hint="Поиск по наименованию или коду"
                 value={searchQuery}
                 onChange={setSearchQuery}
                 containerClassName="flex-1"

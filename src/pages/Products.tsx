@@ -228,7 +228,8 @@ const Products = () => {
 
         <div className="flex flex-col gap-4">
           <SearchInput
-            placeholder="Поиск по названию или коду..."
+            placeholder="Поиск..."
+            hint="Поиск по названию или коду"
             value={searchQuery}
             onChange={setSearchQuery}
             containerClassName="flex-1"

@@ -659,7 +659,8 @@ export const ProductionOutputReport = ({ startDate, endDate }: ProductionOutputR
               {/* Filters row */}
               <div className="flex flex-col gap-4 mb-4 sm:flex-row">
                 <SearchInput
-                  placeholder="Поиск по продукту, участку или операции..."
+                  placeholder="Поиск..."
+                  hint="Поиск по продукту, участку или операции"
                   value={searchQuery}
                   onChange={setSearchQuery}
                   containerClassName="flex-1"
