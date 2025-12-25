@@ -434,22 +434,23 @@ const MRPPlanning = () => {
 
         {/* Results */}
         <Tabs defaultValue="purchase" className="space-y-4">
-          <div className="w-full overflow-x-auto pb-1">
-            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-3">
-              <TabsTrigger value="purchase" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3 sm:px-4">
-                <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-                <span className="text-xs sm:text-sm">К закупке</span>
-              </TabsTrigger>
-              <TabsTrigger value="production" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3 sm:px-4">
-                <Factory className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-                <span className="text-xs sm:text-sm">К производству</span>
-              </TabsTrigger>
-              <TabsTrigger value="workcenters" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3 sm:px-4">
-                <Warehouse className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-                <span className="text-xs sm:text-sm">По участкам</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="purchase" className="flex items-center justify-center gap-1 px-1 sm:px-2 text-xs sm:text-sm">
+              <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+              <span className="hidden xs:inline">К закупке</span>
+              <span className="xs:hidden">Закупка</span>
+            </TabsTrigger>
+            <TabsTrigger value="production" className="flex items-center justify-center gap-1 px-1 sm:px-2 text-xs sm:text-sm">
+              <Factory className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+              <span className="hidden xs:inline">К производству</span>
+              <span className="xs:hidden">Произв.</span>
+            </TabsTrigger>
+            <TabsTrigger value="workcenters" className="flex items-center justify-center gap-1 px-1 sm:px-2 text-xs sm:text-sm">
+              <Warehouse className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+              <span className="hidden xs:inline">По участкам</span>
+              <span className="xs:hidden">Участки</span>
+            </TabsTrigger>
+          </TabsList>
 
           {/* Purchase Requirements Tab */}
           <TabsContent value="purchase" className="space-y-4">
