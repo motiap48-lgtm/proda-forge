@@ -1412,7 +1412,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                         </div>
                                         <div className="text-[9px] opacity-80">
                                           {/* План = полный план по графику */}
-                                          ф: {fullPlanHours.hours}ч{fullPlanHours.minutes > 0 ? ` ${fullPlanHours.minutes}м` : ''}
+                                          п: {fullPlanHours.hours}ч{fullPlanHours.minutes > 0 ? ` ${fullPlanHours.minutes}м` : ''}
                                         </div>
                                       </>
                                     ) : (
