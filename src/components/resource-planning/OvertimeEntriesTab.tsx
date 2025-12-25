@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -23,8 +24,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { Clock, Plus, Search, Edit, CheckCircle2, X, CalendarIcon, FileSpreadsheet } from "lucide-react";
+import { Clock, Plus, Search, Edit, CheckCircle2, X, CalendarIcon, FileSpreadsheet, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -34,6 +45,7 @@ import {
   useOvertimeEntries,
   useApproveOvertimeEntry,
   useUpdateOvertimeEntry,
+  useDeleteOvertimeEntry,
   OvertimeEntry,
 } from "@/hooks/useOvertimeEntries";
 import { useOperators } from "@/hooks/useResourcePlanning";
@@ -50,11 +62,18 @@ export const OvertimeEntriesTab = () => {
   const [selectedEntry, setSelectedEntry] = useState<OvertimeEntry | null>(null);
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<OvertimeEntry | null>(null);
 
   const { data: overtimeEntries = [], isLoading } = useOvertimeEntries(startDate, endDate);
   const { data: operators = [] } = useOperators();
   const approveEntry = useApproveOvertimeEntry();
   const updateEntry = useUpdateOvertimeEntry();
+  const deleteEntry = useDeleteOvertimeEntry();
 
   const activeOperators = useMemo(() => 
     operators.filter((op: any) => op.is_active),
@@ -140,6 +159,65 @@ export const OvertimeEntriesTab = () => {
     } catch (error: any) {
       toast.error(error.message);
     }
+  };
+
+  const handleDeleteClick = (entry: OvertimeEntry) => {
+    setEntryToDelete(entry);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!entryToDelete) return;
+    try {
+      await deleteEntry.mutateAsync(entryToDelete.id);
+      toast.success("Переработка удалена");
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setDeleteDialogOpen(false);
+      setEntryToDelete(null);
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (selectedIds.size === 0) {
+      toast.error("Выберите записи для удаления");
+      return;
+    }
+    setBulkDeleteDialogOpen(true);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    try {
+      const idsToDelete = Array.from(selectedIds);
+      for (const id of idsToDelete) {
+        await deleteEntry.mutateAsync(id);
+      }
+      toast.success(`Удалено записей: ${idsToDelete.length}`);
+      setSelectedIds(new Set());
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setBulkDeleteDialogOpen(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredEntries.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredEntries.map(e => e.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
   };
 
   const handleExport = () => {
@@ -269,6 +347,12 @@ export const OvertimeEntriesTab = () => {
             </div>
 
             <div className="flex gap-2 ml-auto">
+              {selectedIds.size > 0 && (
+                <Button variant="destructive" size="sm" onClick={handleBulkDeleteClick}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Удалить ({selectedIds.size})
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={handleExport}>
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Excel
@@ -312,6 +396,12 @@ export const OvertimeEntriesTab = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={filteredEntries.length > 0 && selectedIds.size === filteredEntries.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
                 <TableHead>Дата</TableHead>
                 <TableHead>Оператор</TableHead>
                 <TableHead>Время</TableHead>
@@ -325,13 +415,19 @@ export const OvertimeEntriesTab = () => {
             <TableBody>
               {filteredEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Переработки не найдены
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredEntries.map((entry) => (
                   <TableRow key={entry.id} className={cn(entry.status === "cancelled" && "opacity-50")}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(entry.id)}
+                        onCheckedChange={() => toggleSelect(entry.id)}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {format(new Date(entry.work_date), "d MMM", { locale: ru })}
                     </TableCell>
@@ -384,6 +480,14 @@ export const OvertimeEntriesTab = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteClick(entry)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -405,7 +509,49 @@ export const OvertimeEntriesTab = () => {
         operators={activeOperators}
         onOperatorChange={setSelectedOperatorId}
         onDateChange={setSelectedDate}
+        onDelete={handleDeleteClick}
       />
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить переработку?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {entryToDelete && (
+                <>
+                  Переработка от {format(new Date(entryToDelete.work_date), "d MMMM yyyy", { locale: ru })} 
+                  ({entryToDelete.operators?.full_name}) будет удалена безвозвратно.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk delete confirmation dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить выбранные переработки?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Будет удалено записей: {selectedIds.size}. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Удалить все
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

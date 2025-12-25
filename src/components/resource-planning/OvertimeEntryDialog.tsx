@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Clock, AlertCircle, FileText, CheckCircle2, X } from "lucide-react";
+import { Clock, AlertCircle, FileText, CheckCircle2, X, Trash2 } from "lucide-react";
 import { format, parse } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ interface OvertimeEntryDialogProps {
   operators?: { id: string; full_name: string }[];
   onOperatorChange?: (id: string) => void;
   onDateChange?: (date: Date) => void;
+  onDelete?: (entry: OvertimeEntry) => void;
 }
 
 export const OvertimeEntryDialog = ({
@@ -55,6 +56,7 @@ export const OvertimeEntryDialog = ({
   operators = [],
   onOperatorChange,
   onDateChange,
+  onDelete,
 }: OvertimeEntryDialogProps) => {
   const createEntry = useCreateOvertimeEntry();
   const updateEntry = useUpdateOvertimeEntry();
@@ -324,40 +326,59 @@ export const OvertimeEntryDialog = ({
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          {entry && entry.status === 'pending' && (
-            <>
+          <div className="flex gap-2 w-full sm:w-auto">
+            {entry && onDelete && (
               <Button
                 variant="outline"
-                onClick={handleCancel}
+                onClick={() => {
+                  onOpenChange(false);
+                  onDelete(entry);
+                }}
                 disabled={isSubmitting}
                 className="text-destructive hover:text-destructive"
               >
-                <X className="h-4 w-4 mr-2" />
-                Отменить
+                <Trash2 className="h-4 w-4 mr-2" />
+                Удалить
               </Button>
-              <Button
-                variant="default"
-                onClick={handleApprove}
-                disabled={isSubmitting || !description.trim()}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Подтвердить
+            )}
+          </div>
+          
+          <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
+            {entry && entry.status === 'pending' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={isSubmitting}
+                  className="text-amber-600 hover:text-amber-700"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Отменить
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={handleApprove}
+                  disabled={isSubmitting || !description.trim()}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Подтвердить
+                </Button>
+              </>
+            )}
+            
+            {(!entry || entry.status === 'pending') && (
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {entry ? "Сохранить" : "Добавить"}
               </Button>
-            </>
-          )}
-          
-          {(!entry || entry.status === 'pending') && (
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {entry ? "Сохранить" : "Добавить"}
-            </Button>
-          )}
-          
-          {entry?.status === 'approved' && (
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Закрыть
-            </Button>
-          )}
+            )}
+            
+            {entry?.status === 'approved' && (
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Закрыть
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
