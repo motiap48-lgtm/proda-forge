@@ -637,7 +637,8 @@ export const FlattenedSpecificationDialog = ({
             {/* Поиск и фильтр по родителю */}
             <div className="flex gap-3 pt-2 border-t">
               <SearchInput
-                placeholder="Поиск по наименованию или коду..."
+                placeholder="Поиск..."
+                hint="Поиск по наименованию или коду"
                 value={searchQuery}
                 onChange={setSearchQuery}
                 containerClassName="flex-1"

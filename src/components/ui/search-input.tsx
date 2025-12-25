@@ -8,17 +8,19 @@ export interface SearchInputProps
   value: string;
   onChange: (value: string) => void;
   containerClassName?: string;
+  hint?: string; // Полное описание для title/hover
 }
 
 const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ className, containerClassName, value, onChange, placeholder = "Поиск...", ...props }, ref) => {
+  ({ className, containerClassName, value, onChange, placeholder = "Поиск...", hint, ...props }, ref) => {
     return (
-      <div className={cn("relative", containerClassName)}>
+      <div className={cn("relative", containerClassName)} title={hint || placeholder}>
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           ref={ref}
           type="text"
           placeholder={placeholder}
+          title={hint || placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={cn("pl-10 pr-10", className)}

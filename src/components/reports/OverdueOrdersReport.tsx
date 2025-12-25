@@ -300,7 +300,8 @@ export const OverdueOrdersReport = () => {
       {/* Controls */}
       <div className="flex flex-wrap gap-2 items-center">
         <SearchInput
-          placeholder="Поиск по заказу, изделию, клиенту..."
+          placeholder="Поиск..."
+          hint="Поиск по заказу, изделию, клиенту"
           value={searchQuery}
           onChange={setSearchQuery}
           containerClassName="flex-1 min-w-[200px] max-w-sm"

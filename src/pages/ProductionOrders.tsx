@@ -562,7 +562,8 @@ const ProductionOrdersContent = () => {
           <CardContent className="p-4 sm:p-6">
             <div className="flex flex-col gap-3 sm:gap-4">
               <SearchInput
-                placeholder="Поиск по номеру или продукту..."
+                placeholder="Поиск..."
+                hint="Поиск по номеру или продукту"
                 value={searchQuery}
                 onChange={setSearchQuery}
                 containerClassName="flex-1"

@@ -146,7 +146,8 @@ export const CustomersManagement = () => {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
         <SearchInput
-          placeholder="Поиск клиентов..."
+          placeholder="Поиск..."
+          hint="Поиск клиентов"
           value={searchQuery}
           onChange={setSearchQuery}
           containerClassName="flex-1 max-w-sm"

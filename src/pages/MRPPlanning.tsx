@@ -497,6 +497,7 @@ const MRPPlanning = () => {
                   <div className="mb-4 space-y-3">
                     <SearchInput
                       placeholder="Поиск..."
+                      hint="Поиск по названию или коду материала"
                       value={purchaseSearch}
                       onChange={setPurchaseSearch}
                       containerClassName="max-w-md"
@@ -719,7 +720,8 @@ const MRPPlanning = () => {
                 {productionRequirements.length > 0 && (
                   <div className="mb-4 space-y-3">
                     <SearchInput
-                      placeholder="Поиск по названию или коду..."
+                      placeholder="Поиск..."
+                      hint="Поиск по названию или коду"
                       value={productionSearch}
                       onChange={setProductionSearch}
                       containerClassName="max-w-md"
@@ -939,7 +941,8 @@ const MRPPlanning = () => {
                 {workCenterReports.length > 0 && (
                   <div className="mb-4">
                     <SearchInput
-                      placeholder="Поиск по названию участка или продукции..."
+                      placeholder="Поиск..."
+                      hint="Поиск по названию участка или продукции"
                       value={workCenterSearch}
                       onChange={setWorkCenterSearch}
                       containerClassName="max-w-md"

@@ -575,7 +575,8 @@ const WorkCenters = () => {
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row gap-4">
               <SearchInput
-                placeholder="Поиск по номеру, названию или цеху..."
+                placeholder="Поиск..."
+                hint="Поиск по номеру, названию или цеху"
                 value={searchQuery}
                 onChange={setSearchQuery}
                 containerClassName="flex-1"

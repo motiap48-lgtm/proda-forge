@@ -88,7 +88,8 @@ export const BrigadesTab = () => {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
         <SearchInput
-          placeholder="Поиск бригад..."
+          placeholder="Поиск..."
+          hint="Поиск бригад"
           value={searchQuery}
           onChange={setSearchQuery}
           containerClassName="flex-1 max-w-md"

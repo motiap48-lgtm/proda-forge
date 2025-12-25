@@ -571,7 +571,8 @@ const Features = () => {
             {/* Search and Filter */}
             <div className="flex flex-col sm:flex-row gap-3">
               <SearchInput
-                placeholder="Поиск по функциям..."
+                placeholder="Поиск..."
+                hint="Поиск по функциям"
                 value={searchQuery}
                 onChange={setSearchQuery}
                 containerClassName="flex-1"

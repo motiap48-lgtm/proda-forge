@@ -77,7 +77,8 @@ const MaterialIssues = () => {
         <Card className="mb-4 sm:mb-6">
           <CardContent className="p-4 sm:p-6">
             <SearchInput
-              placeholder="Поиск по номеру документа или заказу..."
+              placeholder="Поиск..."
+              hint="Поиск по номеру документа или заказу"
               value={searchQuery}
               onChange={setSearchQuery}
             />
