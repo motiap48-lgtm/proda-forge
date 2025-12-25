@@ -496,7 +496,7 @@ const MRPPlanning = () => {
                 {purchaseRequirements.length > 0 && (
                   <div className="mb-4 space-y-3">
                     <SearchInput
-                      placeholder="Поиск по названию или коду материала..."
+                      placeholder="Поиск..."
                       value={purchaseSearch}
                       onChange={setPurchaseSearch}
                       containerClassName="max-w-md"
