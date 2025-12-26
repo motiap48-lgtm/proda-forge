@@ -77,6 +77,7 @@ interface ScheduleGroupProps {
   calculateYearlyTotal: (operator: any) => { hours: number; minutes: number };
   calculateGroupYearlyTotal: (ops: any[]) => { hours: number; minutes: number };
   getDayMinutes?: (operator: any, day: Date) => number;
+  getPlannedDayMinutes?: (operator: any, day: Date) => number;
   printRef?: React.RefObject<HTMLDivElement>;
   isFirstGroup?: boolean;
 }
@@ -120,6 +121,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   calculateYearlyTotal,
   calculateGroupYearlyTotal,
   getDayMinutes,
+  getPlannedDayMinutes,
   printRef,
   isFirstGroup,
 }) => {
@@ -1381,50 +1383,15 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const baseFullPlanMinutes = baseFullPlanHours.hours * 60 + baseFullPlanHours.minutes;
 
                             // Annual leave should reduce plan in the total cell
-                            const annualLeaveMinutes = days.reduce((sum, day) => {
-                              if (isOperatorTerminated(operator, day)) return sum;
-                              if (isBeforeHireDate(operator, day)) return sum;
-
-                              const absence = isDateInAbsence(day, absences, operator.id);
-                              if (!absence || absence.absence_type !== "annual_leave") return sum;
-
-                              const dateStr = format(day, "yyyy-MM-dd");
-                              const exception = calendarExceptions.find(ex => ex.exception_date === dateStr);
-                              if (exception && !exception.is_working_day) return sum;
-
-                              // Mirror getShiftForDateWithOverride logic from calendar calculations
-                              const override = scheduleOverrides.find(
-                                (o) => o.operator_id === operator.id && o.override_date === dateStr
-                              );
-
-                              const schedule = operator.work_schedules;
-                              const shifts = schedule?.work_schedule_shifts;
-
-                              let shift = getShiftForDate(operator, day);
-
-                              if (override) {
-                                if (!override.is_working_day) return sum;
-                                if (!shifts || shifts.length === 0) return sum;
-
-                                if (override.shift_number) {
-                                  shift = shifts.find((s: any) => s.shift_number === override.shift_number) || shifts[0];
-                                } else {
-                                  shift = getShiftForDate(operator, day) || shifts[0];
-                                }
-                              }
-
-                              if (!shift) return sum;
-
-                              let dayMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
-
-                              if (exception && exception.exception_type === "shortened_day") {
-                                const scheduleReductionHours = schedule?.reduction_hours;
-                                const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
-                                dayMinutes = Math.max(0, dayMinutes - reductionHours * 60);
-                              }
-
-                              return sum + dayMinutes;
-                            }, 0);
+                            // Use getPlannedDayMinutes which calculates planned minutes without checking absences
+                            const annualLeaveMinutes = getPlannedDayMinutes 
+                              ? days.reduce((sum, day) => {
+                                  const absence = isDateInAbsence(day, absences, operator.id);
+                                  if (!absence || absence.absence_type !== "annual_leave") return sum;
+                                  // Get planned minutes for this day (ignores absences)
+                                  return sum + getPlannedDayMinutes(operator, day);
+                                }, 0)
+                              : 0;
 
                             const planMinutes = Math.max(0, baseFullPlanMinutes - annualLeaveMinutes);
                             const planHours = { hours: Math.floor(planMinutes / 60), minutes: planMinutes % 60 };
@@ -1482,8 +1449,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                         <div className="flex items-center gap-0.5">
                                           {hasCompensationTotal && <Hammer className="h-3 w-3" />}
                                           {hasOvertimeTotal && <Clock className="h-3 w-3" />}
-                                          {/* Без данных табеля показываем план + переработки */}
-                                          <span>{planHours.hours}ч{planHours.minutes > 0 ? ` ${planHours.minutes}м` : ''}</span>
+                                          {/* Без данных табеля показываем план */}
+                                          <span>{planHours.hours}ч</span>
                                         </div>
                                         {hasOvertimeTotal ? (
                                           <div className="text-[9px] text-purple-700 dark:text-purple-300 font-medium">
@@ -1494,6 +1461,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                             +{compensationHours.hours}ч{compensationHours.minutes > 0 ? ` ${compensationHours.minutes}м` : ''} отр
                                           </div>
                                         ) : (
+                                          /* Показываем минуты только если они есть - НЕ дублируя */
                                           planHours.minutes > 0 && <div className="text-[10px] opacity-80">{planHours.minutes}м</div>
                                         )}
                                       </>
