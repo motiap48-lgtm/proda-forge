@@ -311,24 +311,39 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   const otherAbsenceGroups = absenceGroups.filter(g => !ABSENCES_REDUCING_PLAN.includes(g.type));
 
   
+  // Check if plan differs from full plan (absences are reducing)
+  const hasPlanReduction = vacationGroups.length > 0;
+  
   return (
     <div className="space-y-2 min-w-[220px] text-xs">
-      {/* Plan with vacation already deducted - use the value passed from parent */}
-      <div className="flex justify-between items-center">
-        <span className="text-muted-foreground">План:</span>
-        <span className="font-medium">{formatTime(planHours, planMinutes)}</span>
-      </div>
+      {/* Show full plan if there's vacation reducing it */}
+      {hasPlanReduction && (
+        <div className="flex justify-between items-center text-muted-foreground/70">
+          <span>Полный план:</span>
+          <span>{formatTime(fullPlanData.hours, fullPlanData.minutes)}</span>
+        </div>
+      )}
       
-      {/* Show vacation info if any (already included in plan reduction) */}
+      {/* Show vacation reduction */}
       {vacationGroups.length > 0 && (
-        <div className="text-muted-foreground/70 text-[10px] -mt-1">
+        <div className="flex justify-between items-center text-blue-500">
           {vacationGroups.map(group => (
-            <span key={group.type}>
-              ({group.icon} {group.label}: {group.calendarDays}д / {Math.round(group.hours * 10) / 10}ч)
-            </span>
+            <React.Fragment key={group.type}>
+              <span className="flex items-center gap-1">
+                <span>{group.icon}</span>
+                <span>{group.label} ({group.calendarDays}д):</span>
+              </span>
+              <span className="font-medium">−{Math.round(group.hours * 10) / 10}ч</span>
+            </React.Fragment>
           ))}
         </div>
       )}
+      
+      {/* Plan with vacation already deducted */}
+      <div className={`flex justify-between items-center ${hasPlanReduction ? 'border-t border-border/50 pt-2' : ''}`}>
+        <span className="text-muted-foreground">{hasPlanReduction ? 'План (норма):' : 'План:'}</span>
+        <span className="font-medium">{formatTime(planHours, planMinutes)}</span>
+      </div>
       
       {/* Other absences by type (requiring compensation) */}
        {otherAbsenceGroups.length > 0 && (
