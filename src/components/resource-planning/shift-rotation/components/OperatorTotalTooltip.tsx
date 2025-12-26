@@ -1,7 +1,14 @@
 import React from "react";
 import { format, getDay } from "date-fns";
 import { ru } from "date-fns/locale";
-import { ABSENCE_TYPE_LABELS, type OperatorAbsence, isDateInAbsence, isOperatorTerminated, isBeforeHireDate } from "@/hooks/useOperatorAbsences";
+import {
+  ABSENCE_TYPE_LABELS,
+  type OperatorAbsence,
+  isDateInAbsence,
+  isOperatorTerminated,
+  isBeforeHireDate,
+  isCompensableAbsenceType,
+} from "@/hooks/useOperatorAbsences";
 import { type OperatorTimesheet, getTimesheetForDate } from "@/hooks/useOperatorTimesheets";
 import { type CompensationRecord } from "@/hooks/useAbsenceCompensations";
 import { type OvertimeEntry } from "@/hooks/useOvertimeEntries";
@@ -101,21 +108,9 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operator, exceptionsMap]);
   
-  // Types of absences that require compensation (отработка)
-  const ABSENCES_REQUIRING_COMPENSATION = [
-    'absence', // Отсутствие
-    'personal', // Личные обстоятельства
-    'unpaid_leave', // Отпуск без сохранения ЗП
-  ];
-  
-  // Types of absences that DON'T require compensation (paid leave, etc.)
-  const ABSENCES_NOT_REQUIRING_COMPENSATION = [
-    'vacation', // Ежегодный отпуск
-    'sick_leave', // Больничный
-    'business_trip', // Командировка
-    'training', // Обучение
-    'maternity_leave', // Декретный отпуск
-  ];
+  // Absence types that should reduce the plan (e.g. annual leave)
+  // Note: these are stored values from operator_absences.absence_type
+  const ABSENCES_REDUCING_PLAN = ["annual_leave"];
   
   // Calculate absence hours grouped by type
   // For vacation: count ALL calendar days in the period (for display)
@@ -136,10 +131,8 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
         // Calculate what would have been worked this day
         const dateStr = format(day, "yyyy-MM-dd");
         const exception = exceptionsMap.get(dateStr);
-        
         // Determine if this absence type requires compensation
-        const requiresCompensation = ABSENCES_REQUIRING_COMPENSATION.includes(absence.absence_type);
-        
+        const requiresCompensation = isCompensableAbsenceType(absence.absence_type);
         if (!groups.has(absence.absence_type)) {
           groups.set(absence.absence_type, {
             type: absence.absence_type,
@@ -181,10 +174,6 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     
     return Array.from(groups.values());
   }, [days, absences, operatorId, operator, exceptionsMap]);
-  
-  // Calculate total absence hours
-  const totalAbsenceHours = absenceGroups.reduce((sum, g) => sum + g.hours, 0);
-  const totalAbsenceMinutes = Math.round(totalAbsenceHours * 60);
   
   // Calculate only absences that require compensation
   const absencesRequiringCompensationMinutes = Math.round(
@@ -272,19 +261,19 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operatorId, timesheetMap]);
   
-  // Calculate vacation (paid leave) hours separately - these reduce the plan
-  const vacationMinutes = Math.round(
+  // Calculate absences reducing plan hours (e.g. annual leave)
+  const planReductionMinutes = Math.round(
     absenceGroups
-      .filter(g => ABSENCES_NOT_REQUIRING_COMPENSATION.includes(g.type))
+      .filter(g => ABSENCES_REDUCING_PLAN.includes(g.type))
       .reduce((sum, g) => sum + g.hours, 0) * 60
   );
   
-  // Plan after vacation deduction = full plan - vacation hours
-  const planAfterVacation = fullPlanData.totalMinutes - vacationMinutes;
+  // Plan after deduction = full plan - reduction absences
+  const planAfterVacation = fullPlanData.totalMinutes - planReductionMinutes;
   const planAfterVacationHours = Math.floor(planAfterVacation / 60);
   const planAfterVacationMinutes = planAfterVacation % 60;
   
-  // Calculate expected work = plan after vacation - other absences + confirmed compensation
+  // Calculate expected work = plan after deduction - compensable absences + confirmed compensation
   const expectedMinutes = planAfterVacation - absencesRequiringCompensationMinutes + compensationData.totalConfirmedMinutes;
   
   // Actual total = timesheet data + approved overtime
@@ -295,7 +284,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     ? actualTotalMinutes - expectedMinutes
     : null;
   
-  // Remaining to compensate - ONLY for absences that require compensation (not vacation, sick leave, etc.)
+  // Remaining to compensate - ONLY for absences that require compensation
   const remainingToCompensate = absencesRequiringCompensationMinutes - compensationData.totalConfirmedMinutes - compensationData.totalPendingMinutes;
   
   const formatTime = (hours: number, minutes: number) => {
@@ -318,9 +307,9 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     return `${sign}${h}ч${m > 0 ? ` ${m}м` : ""}`;
   };
 
-  // Separate vacation and other absences for display
-  const vacationGroups = absenceGroups.filter(g => ABSENCES_NOT_REQUIRING_COMPENSATION.includes(g.type));
-  const otherAbsenceGroups = absenceGroups.filter(g => !ABSENCES_NOT_REQUIRING_COMPENSATION.includes(g.type));
+  // Separate plan-reducing absences and others for display
+  const vacationGroups = absenceGroups.filter(g => ABSENCES_REDUCING_PLAN.includes(g.type));
+  const otherAbsenceGroups = absenceGroups.filter(g => !ABSENCES_REDUCING_PLAN.includes(g.type));
 
   return (
     <div className="space-y-2 min-w-[220px] text-xs">
