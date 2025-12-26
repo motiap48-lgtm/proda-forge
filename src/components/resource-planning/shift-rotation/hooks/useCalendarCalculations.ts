@@ -242,6 +242,34 @@ export const useCalendarCalculations = ({
   const getDayMinutes = (operator: any, day: Date): number => {
     return calculateDayMinutes(operator, day).minutes;
   };
+  
+  // Get planned minutes for a day WITHOUT checking absences
+  // Used for calculating how much would have been worked on absence days
+  const getPlannedDayMinutes = (operator: any, day: Date): number => {
+    // Skip if terminated or not hired
+    if (isOperatorTerminated(operator, day)) return 0;
+    if (isBeforeHireDate(operator, day)) return 0;
+    
+    const exception = getExceptionForDate(day);
+    
+    // Check if it's a holiday (non-working day)
+    if (exception && !exception.is_working_day) return 0;
+    
+    const shift = getShiftForDateWithOverride(operator, day);
+    if (!shift) return 0;
+    
+    const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+    
+    // If it's a shortened day
+    if (exception && exception.exception_type === "shortened_day") {
+      const scheduleReductionHours = operator.work_schedules?.reduction_hours;
+      const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
+      const reductionMinutes = reductionHours * 60;
+      return Math.max(0, normalNetMinutes - reductionMinutes);
+    }
+    
+    return normalNetMinutes;
+  };
 
   // Calculate hours for a specific month (with absence, override, and exception consideration)
   const calculateMonthHours = (operator: any, month: Date): { hours: number; minutes: number } => {
@@ -415,6 +443,7 @@ export const useCalendarCalculations = ({
     getExceptionForDate,
     calculateDayMinutes,
     getDayMinutes,
+    getPlannedDayMinutes,
     getShiftForDateWithOverride,
   };
 };

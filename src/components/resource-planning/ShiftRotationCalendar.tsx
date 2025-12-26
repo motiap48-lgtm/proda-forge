@@ -168,6 +168,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     calculateYearlyTotal,
     calculateGroupYearlyTotal,
     getDayMinutes,
+    getPlannedDayMinutes,
   } = useCalendarCalculations({
     operators: filteredOperators,
     period,
@@ -852,6 +853,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   calculateYearlyTotal={calculateYearlyTotal}
                   calculateGroupYearlyTotal={calculateGroupYearlyTotal}
                   getDayMinutes={getDayMinutes}
+                  getPlannedDayMinutes={getPlannedDayMinutes}
                   printRef={printRef}
                   isFirstGroup={index === 0}
                 />
