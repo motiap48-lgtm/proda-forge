@@ -101,9 +101,25 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operator, exceptionsMap]);
   
+  // Types of absences that require compensation (отработка)
+  const ABSENCES_REQUIRING_COMPENSATION = [
+    'absence', // Отсутствие
+    'personal', // Личные обстоятельства
+    'unpaid_leave', // Отпуск без сохранения ЗП
+  ];
+  
+  // Types of absences that DON'T require compensation (paid leave, etc.)
+  const ABSENCES_NOT_REQUIRING_COMPENSATION = [
+    'vacation', // Ежегодный отпуск
+    'sick_leave', // Больничный
+    'business_trip', // Командировка
+    'training', // Обучение
+    'maternity_leave', // Декретный отпуск
+  ];
+  
   // Calculate absence hours grouped by type
   const absenceGroups = React.useMemo(() => {
-    const groups = new Map<string, AbsenceGroup>();
+    const groups = new Map<string, AbsenceGroup & { requiresCompensation: boolean }>();
     const schedule = operator.work_schedules;
     
     days.forEach(day => {
@@ -134,6 +150,9 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
           dayMinutes = Math.max(0, dayMinutes - reductionHours * 60);
         }
         
+        // Determine if this absence type requires compensation
+        const requiresCompensation = ABSENCES_REQUIRING_COMPENSATION.includes(absence.absence_type);
+        
         if (!groups.has(absence.absence_type)) {
           groups.set(absence.absence_type, {
             type: absence.absence_type,
@@ -141,6 +160,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
             icon: typeInfo?.icon || "📝",
             days: 0,
             hours: 0,
+            requiresCompensation,
           });
         }
         
@@ -156,6 +176,13 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   // Calculate total absence hours
   const totalAbsenceHours = absenceGroups.reduce((sum, g) => sum + g.hours, 0);
   const totalAbsenceMinutes = Math.round(totalAbsenceHours * 60);
+  
+  // Calculate only absences that require compensation
+  const absencesRequiringCompensationMinutes = Math.round(
+    absenceGroups
+      .filter(g => g.requiresCompensation)
+      .reduce((sum, g) => sum + g.hours, 0) * 60
+  );
   
   // Calculate compensation hours (confirmed only)
   const compensationData = React.useMemo(() => {
@@ -247,8 +274,8 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     ? actualTotalMinutes - expectedMinutes
     : null;
   
-  // Remaining to compensate
-  const remainingToCompensate = totalAbsenceMinutes - compensationData.totalConfirmedMinutes - compensationData.totalPendingMinutes;
+  // Remaining to compensate - ONLY for absences that require compensation (not vacation, sick leave, etc.)
+  const remainingToCompensate = absencesRequiringCompensationMinutes - compensationData.totalConfirmedMinutes - compensationData.totalPendingMinutes;
   
   const formatTime = (hours: number, minutes: number) => {
     if (minutes > 0) {
