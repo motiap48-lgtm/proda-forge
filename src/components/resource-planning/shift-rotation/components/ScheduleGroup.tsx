@@ -1377,8 +1377,57 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const hasOvertimeTotal = overtimeHours.hours > 0 || overtimeHours.minutes > 0;
                             
                             // Full plan - without subtracting absences (what should be worked by schedule)
-                            const fullPlanHours = calculateFullPlanHours(operator);
-                            const fullPlanMinutes = fullPlanHours.hours * 60 + fullPlanHours.minutes;
+                            const baseFullPlanHours = calculateFullPlanHours(operator);
+                            const baseFullPlanMinutes = baseFullPlanHours.hours * 60 + baseFullPlanHours.minutes;
+
+                            // Annual leave should reduce plan in the total cell
+                            const annualLeaveMinutes = days.reduce((sum, day) => {
+                              if (isOperatorTerminated(operator, day)) return sum;
+                              if (isBeforeHireDate(operator, day)) return sum;
+
+                              const absence = isDateInAbsence(day, absences, operator.id);
+                              if (!absence || absence.absence_type !== "annual_leave") return sum;
+
+                              const dateStr = format(day, "yyyy-MM-dd");
+                              const exception = calendarExceptions.find(ex => ex.exception_date === dateStr);
+                              if (exception && !exception.is_working_day) return sum;
+
+                              // Mirror getShiftForDateWithOverride logic from calendar calculations
+                              const override = scheduleOverrides.find(
+                                (o) => o.operator_id === operator.id && o.override_date === dateStr
+                              );
+
+                              const schedule = operator.work_schedules;
+                              const shifts = schedule?.work_schedule_shifts;
+
+                              let shift = getShiftForDate(operator, day);
+
+                              if (override) {
+                                if (!override.is_working_day) return sum;
+                                if (!shifts || shifts.length === 0) return sum;
+
+                                if (override.shift_number) {
+                                  shift = shifts.find((s: any) => s.shift_number === override.shift_number) || shifts[0];
+                                } else {
+                                  shift = getShiftForDate(operator, day) || shifts[0];
+                                }
+                              }
+
+                              if (!shift) return sum;
+
+                              let dayMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+
+                              if (exception && exception.exception_type === "shortened_day") {
+                                const scheduleReductionHours = schedule?.reduction_hours;
+                                const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
+                                dayMinutes = Math.max(0, dayMinutes - reductionHours * 60);
+                              }
+
+                              return sum + dayMinutes;
+                            }, 0);
+
+                            const planMinutes = Math.max(0, baseFullPlanMinutes - annualLeaveMinutes);
+                            const planHours = { hours: Math.floor(planMinutes / 60), minutes: planMinutes % 60 };
                             
                             const compensationMinutes = compensationHours.hours * 60 + compensationHours.minutes;
                             const overtimeMinutes = overtimeHours.hours * 60 + overtimeHours.minutes;
@@ -1387,8 +1436,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             // Fact = actual from timesheets + approved overtime
                             const factMinutes = actualMinutes + overtimeMinutes;
                             
-                            // Difference from full plan
-                            const diff = factMinutes - fullPlanMinutes;
+                            // Difference from plan (already reduced by annual leave)
+                            const diff = factMinutes - planMinutes;
                             
                             // Determine cell color based on state
                             const getCellColorClass = () => {
@@ -1424,8 +1473,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           <span>{Math.floor(factMinutes / 60)}ч{factMinutes % 60 > 0 ? ` ${factMinutes % 60}м` : ''}</span>
                                         </div>
                                         <div className="text-[9px] opacity-80">
-                                          {/* План = полный план по графику */}
-                                          п: {fullPlanHours.hours}ч{fullPlanHours.minutes > 0 ? ` ${fullPlanHours.minutes}м` : ''}
+                                          {/* План = план с учетом вычета ежегодного отпуска */}
+                                          п: {planHours.hours}ч{planHours.minutes > 0 ? ` ${planHours.minutes}м` : ''}
                                         </div>
                                       </>
                                     ) : (
@@ -1434,7 +1483,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           {hasCompensationTotal && <Hammer className="h-3 w-3" />}
                                           {hasOvertimeTotal && <Clock className="h-3 w-3" />}
                                           {/* Без данных табеля показываем план + переработки */}
-                                          <span>{fullPlanHours.hours}ч{fullPlanHours.minutes > 0 ? ` ${fullPlanHours.minutes}м` : ''}</span>
+                                          <span>{planHours.hours}ч{planHours.minutes > 0 ? ` ${planHours.minutes}м` : ''}</span>
                                         </div>
                                         {hasOvertimeTotal ? (
                                           <div className="text-[9px] text-purple-700 dark:text-purple-300 font-medium">
@@ -1445,7 +1494,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                             +{compensationHours.hours}ч{compensationHours.minutes > 0 ? ` ${compensationHours.minutes}м` : ''} отр
                                           </div>
                                         ) : (
-                                          fullPlanHours.minutes > 0 && <div className="text-[10px] opacity-80">{fullPlanHours.minutes}м</div>
+                                          planHours.minutes > 0 && <div className="text-[10px] opacity-80">{planHours.minutes}м</div>
                                         )}
                                       </>
                                     )}
