@@ -63,7 +63,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   }, [calendarExceptions]);
 
   // Calculate FULL plan (without subtracting absences) - this is what should have been worked
-  const fullPlan = React.useMemo(() => {
+  const fullPlanData = React.useMemo(() => {
     let totalMinutes = 0;
     const schedule = operator.work_schedules;
     
@@ -118,8 +118,10 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   ];
   
   // Calculate absence hours grouped by type
+  // For vacation: count ALL calendar days in the period (for display)
+  // For work hours deduction: only count working days
   const absenceGroups = React.useMemo(() => {
-    const groups = new Map<string, AbsenceGroup & { requiresCompensation: boolean }>();
+    const groups = new Map<string, AbsenceGroup & { requiresCompensation: boolean; calendarDays: number }>();
     const schedule = operator.work_schedules;
     
     days.forEach(day => {
@@ -135,11 +137,34 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
         const dateStr = format(day, "yyyy-MM-dd");
         const exception = exceptionsMap.get(dateStr);
         
-        // If it's a holiday anyway, don't count
+        // Determine if this absence type requires compensation
+        const requiresCompensation = ABSENCES_REQUIRING_COMPENSATION.includes(absence.absence_type);
+        
+        if (!groups.has(absence.absence_type)) {
+          groups.set(absence.absence_type, {
+            type: absence.absence_type,
+            label: typeInfo?.label || absence.absence_type,
+            icon: typeInfo?.icon || "📝",
+            days: 0,
+            calendarDays: 0,
+            hours: 0,
+            requiresCompensation,
+          });
+        }
+        
+        const group = groups.get(absence.absence_type)!;
+        
+        // Always count calendar days for vacation display
+        group.calendarDays += 1;
+        
+        // If it's a holiday anyway, don't count work hours
         if (exception && !exception.is_working_day) return;
         
         const shift = getShiftForDate(operator, day);
         if (!shift) return; // It was a day off anyway
+        
+        // Count working days
+        group.days += 1;
         
         let dayMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
         
@@ -150,22 +175,6 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
           dayMinutes = Math.max(0, dayMinutes - reductionHours * 60);
         }
         
-        // Determine if this absence type requires compensation
-        const requiresCompensation = ABSENCES_REQUIRING_COMPENSATION.includes(absence.absence_type);
-        
-        if (!groups.has(absence.absence_type)) {
-          groups.set(absence.absence_type, {
-            type: absence.absence_type,
-            label: typeInfo?.label || absence.absence_type,
-            icon: typeInfo?.icon || "📝",
-            days: 0,
-            hours: 0,
-            requiresCompensation,
-          });
-        }
-        
-        const group = groups.get(absence.absence_type)!;
-        group.days += 1;
         group.hours += dayMinutes / 60;
       }
     });
@@ -263,8 +272,20 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operatorId, timesheetMap]);
   
-  // Calculate expected work = full plan - absences + confirmed compensation (without overtime - overtime is extra work)
-  const expectedMinutes = fullPlan.totalMinutes - totalAbsenceMinutes + compensationData.totalConfirmedMinutes;
+  // Calculate vacation (paid leave) hours separately - these reduce the plan
+  const vacationMinutes = Math.round(
+    absenceGroups
+      .filter(g => ABSENCES_NOT_REQUIRING_COMPENSATION.includes(g.type))
+      .reduce((sum, g) => sum + g.hours, 0) * 60
+  );
+  
+  // Plan after vacation deduction = full plan - vacation hours
+  const planAfterVacation = fullPlanData.totalMinutes - vacationMinutes;
+  const planAfterVacationHours = Math.floor(planAfterVacation / 60);
+  const planAfterVacationMinutes = planAfterVacation % 60;
+  
+  // Calculate expected work = plan after vacation - other absences + confirmed compensation
+  const expectedMinutes = planAfterVacation - absencesRequiringCompensationMinutes + compensationData.totalConfirmedMinutes;
   
   // Actual total = timesheet data + approved overtime
   const actualTotalMinutes = actualData.totalMinutes + overtimeData.totalApprovedMinutes;
@@ -297,22 +318,37 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     return `${sign}${h}ч${m > 0 ? ` ${m}м` : ""}`;
   };
 
+  // Separate vacation and other absences for display
+  const vacationGroups = absenceGroups.filter(g => ABSENCES_NOT_REQUIRING_COMPENSATION.includes(g.type));
+  const otherAbsenceGroups = absenceGroups.filter(g => !ABSENCES_NOT_REQUIRING_COMPENSATION.includes(g.type));
+
   return (
     <div className="space-y-2 min-w-[220px] text-xs">
-      {/* Full Plan */}
+      {/* Plan with vacation already deducted */}
       <div className="flex justify-between items-center">
         <span className="text-muted-foreground">План:</span>
-        <span className="font-medium">{formatTime(fullPlan.hours, fullPlan.minutes)}</span>
+        <span className="font-medium">{formatTime(planAfterVacationHours, planAfterVacationMinutes)}</span>
       </div>
       
-      {/* Absences by type */}
-      {absenceGroups.length > 0 && (
+      {/* Show vacation info if any (already included in plan reduction) */}
+      {vacationGroups.length > 0 && (
+        <div className="text-muted-foreground/70 text-[10px] -mt-1">
+          {vacationGroups.map(group => (
+            <span key={group.type}>
+              ({group.icon} {group.label}: {group.calendarDays}д / {Math.round(group.hours * 10) / 10}ч)
+            </span>
+          ))}
+        </div>
+      )}
+      
+      {/* Other absences by type (requiring compensation) */}
+      {otherAbsenceGroups.length > 0 && (
         <div className="border-t border-border/50 pt-2 space-y-1">
-          {absenceGroups.map(group => (
+          {otherAbsenceGroups.map(group => (
             <div key={group.type} className="flex justify-between items-center text-rose-500">
               <span className="flex items-center gap-1">
                 <span>{group.icon}</span>
-                <span>{group.label} ({group.days}д):</span>
+                <span>{group.label} ({group.calendarDays}д):</span>
               </span>
               <span className="font-medium">-{Math.round(group.hours * 10) / 10}ч</span>
             </div>
