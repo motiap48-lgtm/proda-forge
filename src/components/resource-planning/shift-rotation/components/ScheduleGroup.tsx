@@ -1504,8 +1504,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   <OperatorTotalTooltip
                                     operatorId={operator.id}
                                     operatorName={operator.full_name}
-                                    planHours={totalHours.hours}
-                                    planMinutes={totalHours.minutes}
+                                    planHours={planHours.hours}
+                                    planMinutes={planHours.minutes}
                                     days={days}
                                     absences={absences}
                                     timesheetMap={timesheetMap}
