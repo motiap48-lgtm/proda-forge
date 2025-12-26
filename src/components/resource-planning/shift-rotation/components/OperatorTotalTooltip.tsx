@@ -262,19 +262,18 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   }, [days, operatorId, timesheetMap]);
   
   // Calculate absences reducing plan hours (e.g. annual leave)
+  // This is for display purposes in vacationGroups
   const planReductionMinutes = Math.round(
     absenceGroups
       .filter(g => ABSENCES_REDUCING_PLAN.includes(g.type))
       .reduce((sum, g) => sum + g.hours, 0) * 60
   );
   
-  // Plan after deduction = full plan - reduction absences
-  const planAfterVacation = fullPlanData.totalMinutes - planReductionMinutes;
-  const planAfterVacationHours = Math.floor(planAfterVacation / 60);
-  const planAfterVacationMinutes = planAfterVacation % 60;
+  // Plan from parent - already has vacation deducted
+  const passedPlanMinutes = planHours * 60 + planMinutes;
   
-  // Calculate expected work = plan after deduction - compensable absences + confirmed compensation
-  const expectedMinutes = planAfterVacation - absencesRequiringCompensationMinutes + compensationData.totalConfirmedMinutes;
+  // Calculate expected work = plan (with vacation already deducted from props) - compensable absences + confirmed compensation
+  const expectedMinutes = passedPlanMinutes - absencesRequiringCompensationMinutes + compensationData.totalConfirmedMinutes;
   
   // Actual total = timesheet data + approved overtime
   const actualTotalMinutes = actualData.totalMinutes + overtimeData.totalApprovedMinutes;
@@ -311,12 +310,13 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   const vacationGroups = absenceGroups.filter(g => ABSENCES_REDUCING_PLAN.includes(g.type));
   const otherAbsenceGroups = absenceGroups.filter(g => !ABSENCES_REDUCING_PLAN.includes(g.type));
 
+  
   return (
     <div className="space-y-2 min-w-[220px] text-xs">
-      {/* Plan with vacation already deducted */}
+      {/* Plan with vacation already deducted - use the value passed from parent */}
       <div className="flex justify-between items-center">
         <span className="text-muted-foreground">План:</span>
-        <span className="font-medium">{formatTime(planAfterVacationHours, planAfterVacationMinutes)}</span>
+        <span className="font-medium">{formatTime(planHours, planMinutes)}</span>
       </div>
       
       {/* Show vacation info if any (already included in plan reduction) */}
