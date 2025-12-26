@@ -269,12 +269,12 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       .reduce((sum, g) => sum + g.hours, 0) * 60
   );
   
-  // Plan from parent - already has vacation deducted
+  // Plan from parent - уже с учетом отсутствий (план по периодy)
   const passedPlanMinutes = planHours * 60 + planMinutes;
   
-  // Calculate expected work = plan (with vacation already deducted from props) - compensable absences + confirmed compensation
-  const expectedMinutes = passedPlanMinutes - absencesRequiringCompensationMinutes + compensationData.totalConfirmedMinutes;
-  
+  // Ожидаемая норма = план (отработки/переработки показываем отдельно)
+  const expectedMinutes = passedPlanMinutes;
+
   // Actual total = timesheet data + approved overtime
   const actualTotalMinutes = actualData.totalMinutes + overtimeData.totalApprovedMinutes;
   
@@ -331,20 +331,20 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       )}
       
       {/* Other absences by type (requiring compensation) */}
-      {otherAbsenceGroups.length > 0 && (
-        <div className="border-t border-border/50 pt-2 space-y-1">
-          {otherAbsenceGroups.map(group => (
-            <div key={group.type} className="flex justify-between items-center text-rose-500">
-              <span className="flex items-center gap-1">
-                <span>{group.icon}</span>
-                <span>{group.label} ({group.calendarDays}д):</span>
-              </span>
-              <span className="font-medium">-{Math.round(group.hours * 10) / 10}ч</span>
-            </div>
-          ))}
-        </div>
-      )}
-      
+       {otherAbsenceGroups.length > 0 && (
+         <div className="border-t border-border/50 pt-2 space-y-1">
+           {otherAbsenceGroups.map(group => (
+             <div key={group.type} className="flex justify-between items-center text-rose-500">
+               <span className="flex items-center gap-1">
+                 <span>{group.icon}</span>
+                 <span>{group.label} ({group.calendarDays}д):</span>
+               </span>
+               <span className="font-medium">{Math.round(group.hours * 10) / 10}ч</span>
+             </div>
+           ))}
+         </div>
+       )}
+
       {/* Compensation */}
       {(compensationData.confirmedHours > 0 || compensationData.confirmedMinutes > 0 || 
         compensationData.pendingHours > 0 || compensationData.pendingMinutes > 0) && (

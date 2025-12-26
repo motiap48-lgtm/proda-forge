@@ -1378,24 +1378,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const overtimeHours = calculateOvertimeHours(operator.id);
                             const hasOvertimeTotal = overtimeHours.hours > 0 || overtimeHours.minutes > 0;
                             
-                            // Full plan - without subtracting absences (what should be worked by schedule)
-                            const baseFullPlanHours = calculateFullPlanHours(operator);
-                            const baseFullPlanMinutes = baseFullPlanHours.hours * 60 + baseFullPlanHours.minutes;
+                            // План за период должен исключать подтверждённые отсутствия (отпуск/больничный/прогул и т.д.)
+                            // Для этого используем calculateTotalHours, который уже учитывает absences + exceptions + overrides
+                            const planData = calculateTotalHours(operator);
+                            const planMinutes = planData.hours * 60 + planData.minutes;
+                            const planHours = planData;
 
-                            // Annual leave should reduce plan in the total cell
-                            // Use getPlannedDayMinutes which calculates planned minutes without checking absences
-                            const annualLeaveMinutes = getPlannedDayMinutes 
-                              ? days.reduce((sum, day) => {
-                                  const absence = isDateInAbsence(day, absences, operator.id);
-                                  if (!absence || absence.absence_type !== "annual_leave") return sum;
-                                  // Get planned minutes for this day (ignores absences)
-                                  return sum + getPlannedDayMinutes(operator, day);
-                                }, 0)
-                              : 0;
-
-                            const planMinutes = Math.max(0, baseFullPlanMinutes - annualLeaveMinutes);
-                            const planHours = { hours: Math.floor(planMinutes / 60), minutes: planMinutes % 60 };
-                            
                             const compensationMinutes = compensationHours.hours * 60 + compensationHours.minutes;
                             const overtimeMinutes = overtimeHours.hours * 60 + overtimeHours.minutes;
                             const actualMinutes = actualHours.hours * 60 + actualHours.minutes;
