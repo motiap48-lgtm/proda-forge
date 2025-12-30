@@ -12,7 +12,7 @@ import {
 import { type OperatorTimesheet, getTimesheetForDate } from "@/hooks/useOperatorTimesheets";
 import { type CompensationRecord } from "@/hooks/useAbsenceCompensations";
 import { type OvertimeEntry } from "@/hooks/useOvertimeEntries";
-import { getShiftForDate, isWorkingDay } from "../utils";
+import { getShiftForDate } from "../utils";
 
 interface CalendarException {
   id: string;
@@ -28,12 +28,15 @@ interface OperatorTotalTooltipProps {
   operatorName: string;
   planHours: number;
   planMinutes: number;
+  fullPlanHours?: number;
+  fullPlanMinutes?: number;
   days: Date[];
   absences: OperatorAbsence[];
   timesheetMap: Map<string, OperatorTimesheet>;
   compensationRecordsMap: Map<string, CompensationRecord[]>;
   overtimeMap?: Map<string, OvertimeEntry[]>;
   getDayMinutes?: (operator: any, day: Date) => number;
+  getPlannedDayMinutes?: (operator: any, day: Date) => number;
   operator: any;
   calendarExceptions?: CalendarException[];
 }
@@ -51,12 +54,15 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   operatorName,
   planHours,
   planMinutes,
+  fullPlanHours,
+  fullPlanMinutes,
   days,
   absences,
   timesheetMap,
   compensationRecordsMap,
   overtimeMap = new Map(),
   getDayMinutes,
+  getPlannedDayMinutes,
   operator,
   calendarExceptions = [],
 }) => {
@@ -69,8 +75,31 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     return map;
   }, [calendarExceptions]);
 
-  // Calculate FULL plan (without subtracting absences) - this is what should have been worked
+  // Use passed fullPlan if available, otherwise calculate from getPlannedDayMinutes
   const fullPlanData = React.useMemo(() => {
+    // If we have explicit full plan passed from parent (most accurate)
+    if (fullPlanHours !== undefined && fullPlanMinutes !== undefined) {
+      return {
+        hours: fullPlanHours,
+        minutes: fullPlanMinutes,
+        totalMinutes: fullPlanHours * 60 + fullPlanMinutes,
+      };
+    }
+    
+    // Otherwise calculate using getPlannedDayMinutes which accounts for overrides
+    if (getPlannedDayMinutes) {
+      let totalMinutes = 0;
+      days.forEach(day => {
+        totalMinutes += getPlannedDayMinutes(operator, day);
+      });
+      return {
+        hours: Math.floor(totalMinutes / 60),
+        minutes: totalMinutes % 60,
+        totalMinutes,
+      };
+    }
+    
+    // Fallback: calculate manually (legacy behavior without overrides)
     let totalMinutes = 0;
     const schedule = operator.work_schedules;
     
@@ -106,7 +135,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       minutes: totalMinutes % 60,
       totalMinutes,
     };
-  }, [days, operator, exceptionsMap]);
+  }, [days, operator, exceptionsMap, fullPlanHours, fullPlanMinutes, getPlannedDayMinutes]);
   
   // Absence types that should reduce the plan (e.g. annual leave)
   // Note: these are stored values from operator_absences.absence_type
@@ -128,9 +157,6 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       if (absence) {
         const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type];
         
-        // Calculate what would have been worked this day
-        const dateStr = format(day, "yyyy-MM-dd");
-        const exception = exceptionsMap.get(dateStr);
         // Determine if this absence type requires compensation
         const requiresCompensation = isCompensableAbsenceType(absence.absence_type);
         if (!groups.has(absence.absence_type)) {
@@ -150,30 +176,44 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
         // Always count calendar days for vacation display
         group.calendarDays += 1;
         
-        // If it's a holiday anyway, don't count work hours
-        if (exception && !exception.is_working_day) return;
-        
-        const shift = getShiftForDate(operator, day);
-        if (!shift) return; // It was a day off anyway
-        
-        // Count working days
-        group.days += 1;
-        
-        let dayMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
-        
-        // Apply shortened day reduction
-        if (exception && exception.exception_type === "shortened_day") {
-          const scheduleReductionHours = schedule?.reduction_hours;
-          const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
-          dayMinutes = Math.max(0, dayMinutes - reductionHours * 60);
+        // Use getPlannedDayMinutes if available (accounts for overrides)
+        // This returns the planned minutes for the day ignoring absences
+        if (getPlannedDayMinutes) {
+          const dayMinutes = getPlannedDayMinutes(operator, day);
+          if (dayMinutes > 0) {
+            group.days += 1;
+            group.hours += dayMinutes / 60;
+          }
+        } else {
+          // Fallback: manual calculation
+          const dateStr = format(day, "yyyy-MM-dd");
+          const exception = exceptionsMap.get(dateStr);
+          
+          // If it's a holiday anyway, don't count work hours
+          if (exception && !exception.is_working_day) return;
+          
+          const shift = getShiftForDate(operator, day);
+          if (!shift) return; // It was a day off anyway
+          
+          // Count working days
+          group.days += 1;
+          
+          let dayMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+          
+          // Apply shortened day reduction
+          if (exception && exception.exception_type === "shortened_day") {
+            const scheduleReductionHours = schedule?.reduction_hours;
+            const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
+            dayMinutes = Math.max(0, dayMinutes - reductionHours * 60);
+          }
+          
+          group.hours += dayMinutes / 60;
         }
-        
-        group.hours += dayMinutes / 60;
       }
     });
     
     return Array.from(groups.values());
-  }, [days, absences, operatorId, operator, exceptionsMap]);
+  }, [days, absences, operatorId, operator, exceptionsMap, getPlannedDayMinutes]);
   
   // Calculate only absences that require compensation
   const absencesRequiringCompensationMinutes = Math.round(

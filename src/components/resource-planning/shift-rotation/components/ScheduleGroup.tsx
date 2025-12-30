@@ -1457,20 +1457,28 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="p-3">
-                                  <OperatorTotalTooltip
-                                    operatorId={operator.id}
-                                    operatorName={operator.full_name}
-                                    planHours={planHours.hours}
-                                    planMinutes={planHours.minutes}
-                                    days={days}
-                                    absences={absences}
-                                    timesheetMap={timesheetMap}
-                                    compensationRecordsMap={compensationRecordsMap}
-                                    overtimeMap={overtimeMap}
-                                    getDayMinutes={getDayMinutes}
-                                    operator={operator}
-                                    calendarExceptions={calendarExceptions}
-                                  />
+                                  {(() => {
+                                    const fullPlanData = calculateFullPlanHours(operator);
+                                    return (
+                                      <OperatorTotalTooltip
+                                        operatorId={operator.id}
+                                        operatorName={operator.full_name}
+                                        planHours={planHours.hours}
+                                        planMinutes={planHours.minutes}
+                                        fullPlanHours={fullPlanData.hours}
+                                        fullPlanMinutes={fullPlanData.minutes}
+                                        days={days}
+                                        absences={absences}
+                                        timesheetMap={timesheetMap}
+                                        compensationRecordsMap={compensationRecordsMap}
+                                        overtimeMap={overtimeMap}
+                                        getDayMinutes={getDayMinutes}
+                                        getPlannedDayMinutes={getPlannedDayMinutes}
+                                        operator={operator}
+                                        calendarExceptions={calendarExceptions}
+                                      />
+                                    );
+                                  })()}
                                 </TooltipContent>
                               </Tooltip>
                             );
