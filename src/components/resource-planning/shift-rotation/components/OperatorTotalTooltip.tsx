@@ -137,9 +137,10 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operator, exceptionsMap, fullPlanHours, fullPlanMinutes, getPlannedDayMinutes]);
   
-  // Absence types that should reduce the plan (e.g. annual leave)
-  // Note: these are stored values from operator_absences.absence_type
-  const ABSENCES_REDUCING_PLAN = ["annual_leave"];
+  // Absence types that should reduce the plan (non-compensable absences)
+  // These are absences where the employee is NOT expected to work off the missed time
+  // Compensable absences (unauthorized_absence, administrative_leave_with_compensation) do NOT reduce plan
+  const ABSENCES_REDUCING_PLAN = ["annual_leave", "sick_leave", "administrative_leave_without_compensation", "maternity_leave", "unpaid_leave"];
   
   // Calculate absence hours grouped by type
   // For vacation: count ALL calendar days in the period (for display)
