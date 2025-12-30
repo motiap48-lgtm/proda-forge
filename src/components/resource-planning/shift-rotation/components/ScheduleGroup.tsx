@@ -71,6 +71,7 @@ interface ScheduleGroupProps {
   handleSyncScroll: (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => void;
   handleSyncVerticalScroll: (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => void;
   calculateTotalHours: (operator: any, absences?: OperatorAbsence[]) => { hours: number; minutes: number };
+  calculatePlanHours: (operator: any) => { hours: number; minutes: number };
   calculateFullPlanHours: (operator: any) => { hours: number; minutes: number };
   calculateMonthHours: (operator: any, month: Date) => { hours: number; minutes: number };
   calculateGroupStats: (ops: any[]) => { workingDays: number; offDays: number; absenceDays: number; totalHours: number; totalMinutes: number };
@@ -115,6 +116,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   handleSyncScroll,
   handleSyncVerticalScroll,
   calculateTotalHours,
+  calculatePlanHours,
   calculateFullPlanHours,
   calculateMonthHours,
   calculateGroupStats,
@@ -1378,9 +1380,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const overtimeHours = calculateOvertimeHours(operator.id);
                             const hasOvertimeTotal = overtimeHours.hours > 0 || overtimeHours.minutes > 0;
                             
-                            // План за период должен исключать подтверждённые отсутствия (отпуск/больничный/прогул и т.д.)
-                            // Для этого используем calculateTotalHours, который уже учитывает absences + exceptions + overrides
-                            const planData = calculateTotalHours(operator);
+                            // План = полный план минус только non-compensable absences (отпуск, больничный)
+                            // Compensable absences (прогул, административный с отработкой) НЕ уменьшают план
+                            const planData = calculatePlanHours(operator);
                             const planMinutes = planData.hours * 60 + planData.minutes;
                             const planHours = planData;
 
@@ -1391,7 +1393,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             // Fact = actual from timesheets + approved overtime
                             const factMinutes = actualMinutes + overtimeMinutes;
                             
-                            // Difference from plan (already reduced by annual leave)
+                            // Difference from plan - это настоящая переработка/недоработка
                             const diff = factMinutes - planMinutes;
                             
                             // Determine cell color based on state
