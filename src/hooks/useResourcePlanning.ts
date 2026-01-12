@@ -129,6 +129,7 @@ export const useOperators = () => {
             cycle_days_on,
             cycle_days_off,
             cycle_start_date,
+            reduction_hours,
             work_schedule_shifts (
               id, shift_number, shift_name, start_time, end_time, net_work_minutes, gross_work_minutes, break_minutes
             )
@@ -317,6 +318,7 @@ export const useBrigades = () => {
             cycle_days_on,
             cycle_days_off,
             cycle_start_date,
+            reduction_hours,
             work_schedule_shifts (
               id, shift_number, shift_name, start_time, end_time, net_work_minutes, gross_work_minutes, break_minutes
             )
