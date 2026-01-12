@@ -29,8 +29,9 @@ import {
   useOperatorTimesheets, 
   useBulkUpsertTimesheets,
   createTimesheetMap,
-  getTimesheetForDate 
+  getTimesheetForDate,
 } from "@/hooks/useOperatorTimesheets";
+import { useOvertimeEntries, createOvertimeMap } from "@/hooks/useOvertimeEntries";
 import { getTimesheetSettings } from "@/hooks/useTimesheetSettings";
 
 interface TimesheetDialogProps {
@@ -55,10 +56,12 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   compensationMinutesPerDay,
 }) => {
   const { data: timesheets = [], isLoading } = useOperatorTimesheets(startDate, endDate, [operatorId]);
+  const { data: overtimeEntries = [] } = useOvertimeEntries(startDate, endDate, [operatorId]);
   const bulkUpsert = useBulkUpsertTimesheets();
   
   const timesheetMap = useMemo(() => createTimesheetMap(timesheets), [timesheets]);
-  
+  const overtimeMap = useMemo(() => createOvertimeMap(overtimeEntries), [overtimeEntries]);
+
   // Generate days array
   const days = useMemo(() => {
     const result: Date[] = [];
@@ -197,25 +200,37 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   // Calculate totals
   const totals = useMemo(() => {
     let planned = 0;
-    let actual = 0;
-    
-    days.forEach(day => {
+    let actualRegular = 0;
+    let approvedOvertime = 0;
+
+    days.forEach((day) => {
       const dateStr = format(day, "yyyy-MM-dd");
+
       planned += plannedMinutesPerDay(day);
-      
+
+      // Regular fact minutes (without overtime)
       if (edits[dateStr] !== undefined) {
-        actual += edits[dateStr];
+        actualRegular += edits[dateStr];
       } else {
         const ts = getTimesheetForDate(timesheetMap, operatorId, day);
         if (ts) {
-          actual += ts.actual_minutes;
+          actualRegular += ts.actual_minutes;
         }
       }
+
+      // Approved overtime minutes (from overtime entries)
+      const overtimeKey = `${operatorId}_${dateStr}`;
+      const entries = overtimeMap.get(overtimeKey) || [];
+      approvedOvertime += entries
+        .filter((e) => e.status === "approved")
+        .reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
     });
-    
-    return { planned, actual };
-  }, [days, edits, timesheetMap, operatorId, plannedMinutesPerDay]);
-  
+
+    const actualTotal = actualRegular + approvedOvertime;
+
+    return { planned, actualRegular, approvedOvertime, actualTotal };
+  }, [days, edits, timesheetMap, operatorId, plannedMinutesPerDay, overtimeMap]);
+
   const formatMinutes = (m: number) => {
     const rounded = Math.round(m);
     const isNegative = rounded < 0;
@@ -487,14 +502,26 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               </div>
               <div>
                 <span className="text-muted-foreground">Факт: </span>
-                <span className="font-bold text-primary">{formatMinutes(totals.actual)}</span>
-                {totals.actual !== totals.planned && (
-                  <span className={`ml-2 text-xs ${totals.actual >= totals.planned ? 'text-green-600' : 'text-amber-600'}`}>
-                    ({totals.actual >= totals.planned ? '+' : ''}{formatMinutes(totals.actual - totals.planned)})
+                <span className="font-bold text-primary">{formatMinutes(totals.actualTotal)}</span>
+                {totals.actualTotal !== totals.planned && (
+                  <span
+                    className={cn(
+                      "ml-2 text-xs",
+                      totals.actualTotal >= totals.planned ? "text-green-600" : "text-amber-600"
+                    )}
+                  >
+                    ({totals.actualTotal >= totals.planned ? "+" : ""}
+                    {formatMinutes(totals.actualTotal - totals.planned)})
                   </span>
                 )}
               </div>
+              {totals.approvedOvertime > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Переработка (25.12 и др., подтв.): +{formatMinutes(totals.approvedOvertime)}
+                </div>
+              )}
             </div>
+
             
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
