@@ -475,6 +475,48 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       ) : null}
                     </div>
                     
+                    {/* Overtime column - show if any overtime for this day */}
+                    {(() => {
+                      const overtimeKey = `${operatorId}_${dateStr}`;
+                      const dayOvertimeEntries = overtimeMap.get(overtimeKey) || [];
+                      const approvedOT = dayOvertimeEntries.filter(e => e.status === "approved");
+                      const pendingOT = dayOvertimeEntries.filter(e => e.status === "pending");
+                      const approvedMinutes = approvedOT.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+                      const pendingMinutes = pendingOT.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+                      
+                      if (approvedMinutes > 0 || pendingMinutes > 0) {
+                        return (
+                          <div className="flex items-center gap-1 shrink-0">
+                            {approvedMinutes > 0 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-purple-300">
+                                    +{formatMinutes(approvedMinutes)}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">Переработка (подтв.): {approvedOT.map(e => e.description).join(", ")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {pendingMinutes > 0 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">
+                                    ~{formatMinutes(pendingMinutes)}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">Ожидает подтв.: {pendingOT.map(e => e.description).join(", ")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                    
                     {/* Status column - fixed width */}
                     <div className="w-10 shrink-0 flex justify-center">
                       {hasSaved && (
@@ -516,8 +558,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 )}
               </div>
               {totals.approvedOvertime > 0 && (
-                <div className="text-xs text-muted-foreground">
-                  Переработка (25.12 и др., подтв.): +{formatMinutes(totals.approvedOvertime)}
+                <div className="text-xs text-purple-600 font-medium">
+                  Переработка за период: +{formatMinutes(totals.approvedOvertime)}
                 </div>
               )}
             </div>
