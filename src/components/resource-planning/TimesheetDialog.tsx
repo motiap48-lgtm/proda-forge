@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { format, addDays, endOfMonth, isSameDay } from "date-fns";
+import { format, addDays, endOfMonth, isSameDay, startOfDay, isAfter } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info, CheckSquare, Square } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -88,10 +88,13 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   const isLastDayOfMonth = isSameDay(today, lastDayOfMonth);
   const canFillByPlan = !settings.restrictFillByPlanToLastDay || isLastDayOfMonth;
   
-  // Days with plan > 0
+  // Days with plan > 0 AND not in the future
+  const todayStart = startOfDay(today);
   const selectableDays = useMemo(() => 
-    days.filter(day => plannedMinutesPerDay(day) > 0).map(day => format(day, "yyyy-MM-dd")),
-    [days, plannedMinutesPerDay]
+    days
+      .filter(day => plannedMinutesPerDay(day) > 0 && !isAfter(startOfDay(day), todayStart))
+      .map(day => format(day, "yyyy-MM-dd")),
+    [days, plannedMinutesPerDay, todayStart]
   );
   
   const allSelected = selectableDays.length > 0 && selectableDays.every(d => selectedDays.has(d));
