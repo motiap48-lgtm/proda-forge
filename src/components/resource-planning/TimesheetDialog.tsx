@@ -81,6 +81,13 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   const hasEdits = Object.keys(edits).length > 0;
   const hasSelection = selectedDays.size > 0;
   
+  // Check if "Fill by plan" should be restricted - MUST be before functions that use it
+  const settings = getTimesheetSettings();
+  const today = new Date();
+  const lastDayOfMonth = endOfMonth(endDate);
+  const isLastDayOfMonth = isSameDay(today, lastDayOfMonth);
+  const canFillByPlan = !settings.restrictFillByPlanToLastDay || isLastDayOfMonth;
+  
   // Days with plan > 0
   const selectableDays = useMemo(() => 
     days.filter(day => plannedMinutesPerDay(day) > 0).map(day => format(day, "yyyy-MM-dd")),
@@ -160,12 +167,6 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     }
   };
   
-  // Check if "Fill by plan" should be restricted
-  const settings = getTimesheetSettings();
-  const today = new Date();
-  const lastDayOfMonth = endOfMonth(endDate);
-  const isLastDayOfMonth = isSameDay(today, lastDayOfMonth);
-  const canFillByPlan = !settings.restrictFillByPlanToLastDay || isLastDayOfMonth;
   
   const handleFillPlan = () => {
     if (!canFillByPlan) {
