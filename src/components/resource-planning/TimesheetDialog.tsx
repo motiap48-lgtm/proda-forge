@@ -110,6 +110,10 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   };
   
   const fillSelectedByPlan = () => {
+    if (!canFillByPlan) {
+      toast.error("Заполнение по плану доступно только в последний день месяца");
+      return;
+    }
     const newEdits: Record<string, number> = { ...edits };
     selectedDays.forEach(dateStr => {
       const day = new Date(dateStr);
@@ -317,15 +321,27 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 <CheckSquare className="h-3 w-3 text-primary shrink-0" />
                 <span className="text-primary font-medium">Выбрано: {selectedDays.size}</span>
                 <div className="flex gap-1 ml-auto">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={fillSelectedByPlan}
-                  >
-                    <Check className="h-3 w-3 mr-1" />
-                    По плану
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={fillSelectedByPlan}
+                          disabled={!canFillByPlan}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          По плану
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {!canFillByPlan && (
+                      <TooltipContent>
+                        <p className="text-xs">Заполнение по плану доступно только в последний день месяца</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
                   <Button
                     variant="outline"
                     size="sm"
