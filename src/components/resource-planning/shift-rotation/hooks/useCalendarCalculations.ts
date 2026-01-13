@@ -197,6 +197,12 @@ export const useCalendarCalculations = ({
     return getShiftForDate(operator, date);
   };
 
+  // Helper to check if schedule is cyclic (2/2, 3/3, etc.) - holidays don't apply to cyclic schedules
+  const isCyclicSchedule = (operator: any): boolean => {
+    const schedule = operator.work_schedules;
+    return schedule?.schedule_type === 'cyclic';
+  };
+
   // Calculate working minutes for a specific day, considering calendar exceptions
   const calculateDayMinutes = (operator: any, day: Date): { minutes: number; isShortenedDay: boolean; reductionMinutes: number } => {
     // Skip if operator is not available
@@ -205,9 +211,11 @@ export const useCalendarCalculations = ({
     }
     
     const exception = getExceptionForDate(day);
+    const isCyclic = isCyclicSchedule(operator);
     
     // Check if it's a holiday (non-working day)
-    if (exception && !exception.is_working_day) {
+    // IMPORTANT: Cyclic schedules (2/2, etc.) ignore holidays - they work on holidays
+    if (exception && !exception.is_working_day && !isCyclic) {
       return { minutes: 0, isShortenedDay: false, reductionMinutes: 0 };
     }
     
@@ -218,8 +226,8 @@ export const useCalendarCalculations = ({
     
     const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
     
-    // If it's a shortened day
-    if (exception && exception.exception_type === "shortened_day") {
+    // If it's a shortened day - cyclic schedules also ignore shortened days
+    if (exception && exception.exception_type === "shortened_day" && !isCyclic) {
       // ALWAYS use schedule-specific reduction_hours for relative reduction
       // The reduced_hours field in calendar_exceptions is for display/reference only (e.g., for 8-hour schedules)
       // Each schedule has its own reduction_hours that should be applied
@@ -250,17 +258,18 @@ export const useCalendarCalculations = ({
     if (isBeforeHireDate(operator, day)) return 0;
     
     const exception = getExceptionForDate(day);
+    const isCyclic = isCyclicSchedule(operator);
     
-    // Check if it's a holiday (non-working day)
-    if (exception && !exception.is_working_day) return 0;
+    // Check if it's a holiday (non-working day) - cyclic schedules ignore holidays
+    if (exception && !exception.is_working_day && !isCyclic) return 0;
     
     const shift = getShiftForDateWithOverride(operator, day);
     if (!shift) return 0;
     
     const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
     
-    // If it's a shortened day
-    if (exception && exception.exception_type === "shortened_day") {
+    // If it's a shortened day - cyclic schedules ignore shortened days
+    if (exception && exception.exception_type === "shortened_day" && !isCyclic) {
       const scheduleReductionHours = operator.work_schedules?.reduction_hours;
       const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
       const reductionMinutes = reductionHours * 60;
@@ -305,15 +314,16 @@ export const useCalendarCalculations = ({
   const calculatePlanHours = (operator: any): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     const schedule = operator.work_schedules;
+    const isCyclic = isCyclicSchedule(operator);
     
     days.forEach(day => {
       // Skip if terminated or not hired
       if (isOperatorTerminated(operator, day)) return;
       if (isBeforeHireDate(operator, day)) return;
       
-      // Check for holiday (non-working calendar exception)
+      // Check for holiday (non-working calendar exception) - cyclic schedules ignore holidays
       const exception = getExceptionForDate(day);
-      if (exception && !exception.is_working_day) return;
+      if (exception && !exception.is_working_day && !isCyclic) return;
       
       // Check if operator has an absence that reduces plan (annual_leave, sick_leave, etc.)
       const absence = isDateInAbsence(day, absences, operator.id);
@@ -329,8 +339,8 @@ export const useCalendarCalculations = ({
       
       const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
       
-      // Apply shortened day reduction if applicable
-      if (exception && exception.exception_type === "shortened_day") {
+      // Apply shortened day reduction if applicable - cyclic schedules ignore shortened days
+      if (exception && exception.exception_type === "shortened_day" && !isCyclic) {
         const scheduleReductionHours = schedule?.reduction_hours;
         const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
         const reductionMinutes = reductionHours * 60;
@@ -350,15 +360,16 @@ export const useCalendarCalculations = ({
   const calculateFullPlanHours = (operator: any): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     const schedule = operator.work_schedules;
+    const isCyclic = isCyclicSchedule(operator);
     
     days.forEach(day => {
       // Skip if terminated or not hired
       if (isOperatorTerminated(operator, day)) return;
       if (isBeforeHireDate(operator, day)) return;
       
-      // Check for holiday (non-working calendar exception)
+      // Check for holiday (non-working calendar exception) - cyclic schedules ignore holidays
       const exception = getExceptionForDate(day);
-      if (exception && !exception.is_working_day) return;
+      if (exception && !exception.is_working_day && !isCyclic) return;
       
       // Get shift for this day (considering overrides)
       const shift = getShiftForDateWithOverride(operator, day);
@@ -366,8 +377,8 @@ export const useCalendarCalculations = ({
       
       const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
       
-      // Apply shortened day reduction if applicable
-      if (exception && exception.exception_type === "shortened_day") {
+      // Apply shortened day reduction if applicable - cyclic schedules ignore shortened days
+      if (exception && exception.exception_type === "shortened_day" && !isCyclic) {
         const scheduleReductionHours = schedule?.reduction_hours;
         const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
         const reductionMinutes = reductionHours * 60;
@@ -405,6 +416,8 @@ export const useCalendarCalculations = ({
     let totalMinutes = 0;
     
     ops.forEach(operator => {
+      const isCyclic = isCyclicSchedule(operator);
+      
       days.forEach(day => {
         // Check if operator is on leave
         const absence = isDateInAbsence(day, absences, operator.id);
@@ -419,9 +432,9 @@ export const useCalendarCalculations = ({
           return;
         }
         
-        // Check for calendar exception (holiday)
+        // Check for calendar exception (holiday) - cyclic schedules ignore holidays
         const exception = getExceptionForDate(day);
-        if (exception && !exception.is_working_day) {
+        if (exception && !exception.is_working_day && !isCyclic) {
           totalOffDays++;
           return;
         }
