@@ -376,19 +376,31 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
             <div className="space-y-1 py-2">
               {/* Select all row */}
               <div className="flex items-center gap-3 py-1 px-2 border-b mb-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={toggleAll}
-                >
-                  {allSelected ? (
-                    <CheckSquare className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Square className="h-4 w-4 text-muted-foreground" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={toggleAll}
+                        disabled={!canFillByPlan && selectableDays.length > 0}
+                      >
+                        {allSelected ? (
+                          <CheckSquare className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Square className={cn("h-4 w-4", (!canFillByPlan && selectableDays.length > 0) ? "text-muted-foreground/30" : "text-muted-foreground")} />
+                        )}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!canFillByPlan && selectableDays.length > 0 && (
+                    <TooltipContent>
+                      <p className="text-xs">Выбор дней доступен только в последний день месяца</p>
+                    </TooltipContent>
                   )}
-                </Button>
-                <span className="text-xs text-muted-foreground">
+                </Tooltip>
+                <span className={cn("text-xs", (!canFillByPlan && selectableDays.length > 0) ? "text-muted-foreground/50" : "text-muted-foreground")}>
                   {allSelected ? "Снять выделение" : "Выбрать все рабочие дни"}
                 </span>
               </div>
