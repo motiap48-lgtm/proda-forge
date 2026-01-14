@@ -374,36 +374,26 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
           
           <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
             <div className="space-y-1 py-2">
-              {/* Select all row */}
-              <div className="flex items-center gap-3 py-1 px-2 border-b mb-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={toggleAll}
-                        disabled={!canFillByPlan && selectableDays.length > 0}
-                      >
-                        {allSelected ? (
-                          <CheckSquare className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Square className={cn("h-4 w-4", (!canFillByPlan && selectableDays.length > 0) ? "text-muted-foreground/30" : "text-muted-foreground")} />
-                        )}
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {!canFillByPlan && selectableDays.length > 0 && (
-                    <TooltipContent>
-                      <p className="text-xs">Выбор дней доступен только в последний день месяца</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-                <span className={cn("text-xs", (!canFillByPlan && selectableDays.length > 0) ? "text-muted-foreground/50" : "text-muted-foreground")}>
-                  {allSelected ? "Снять выделение" : "Выбрать все рабочие дни"}
-                </span>
-              </div>
+              {/* Select all row - only show on last day of month */}
+              {canFillByPlan && (
+                <div className="flex items-center gap-3 py-1 px-2 border-b mb-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={toggleAll}
+                  >
+                    {allSelected ? (
+                      <CheckSquare className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Square className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {allSelected ? "Снять выделение" : "Выбрать все рабочие дни"}
+                  </span>
+                </div>
+              )}
               
               {days.map(day => {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -416,29 +406,35 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 const hasSaved = ts && !hasEdit;
                 const isSelected = selectedDays.has(dateStr);
                 const canSelect = planned > 0 && !isFutureDate(day);
+                const isFuture = isFutureDate(day);
                 
                 return (
                   <div 
                     key={dateStr} 
                     className={cn(
                       "flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50",
-                      isSelected && "bg-primary/5"
+                      isSelected && "bg-primary/5",
+                      isFuture && "opacity-50"
                     )}
                   >
-                    {/* Checkbox */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 shrink-0"
-                      onClick={() => canSelect && toggleDay(dateStr)}
-                      disabled={!canSelect}
-                    >
-                      {isSelected ? (
-                        <CheckSquare className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Square className={cn("h-4 w-4", canSelect ? "text-muted-foreground" : "text-muted-foreground/30")} />
-                      )}
-                    </Button>
+                    {/* Checkbox - only show on last day of month */}
+                    {canFillByPlan ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 shrink-0"
+                        onClick={() => canSelect && toggleDay(dateStr)}
+                        disabled={!canSelect}
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Square className={cn("h-4 w-4", canSelect ? "text-muted-foreground" : "text-muted-foreground/30")} />
+                        )}
+                      </Button>
+                    ) : (
+                      <div className="w-6 shrink-0" /> 
+                    )}
                     
                     {/* Date column - fixed width */}
                     <div className="w-[85px] shrink-0 text-sm">
@@ -464,30 +460,43 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     
                     {/* Fact column - fixed width */}
                     <div className="flex items-center gap-1.5">
-                      <Label className="text-xs text-muted-foreground shrink-0">Факт:</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="1"
-                        className="w-[70px] h-8 text-sm"
-                        value={Math.round(currentValue)}
-                        onChange={(e) => {
-                          const rawValue = e.target.value;
-                          // Only allow integers
-                          if (rawValue === '' || /^\d+$/.test(rawValue)) {
-                            const val = parseInt(rawValue) || 0;
-                            setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          // Block decimal point and minus sign
-                          if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === 'e') {
-                            e.preventDefault();
-                          }
-                        }}
-                        placeholder="мин"
-                      />
-                      <span className="text-xs text-muted-foreground shrink-0">мин</span>
+                      <Label className={cn("text-xs shrink-0", isFuture ? "text-muted-foreground/50" : "text-muted-foreground")}>Факт:</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="1"
+                              className="w-[70px] h-8 text-sm"
+                              value={Math.round(currentValue)}
+                              onChange={(e) => {
+                                if (isFuture) return;
+                                const rawValue = e.target.value;
+                                // Only allow integers
+                                if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                                  const val = parseInt(rawValue) || 0;
+                                  setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                // Block decimal point and minus sign
+                                if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === 'e') {
+                                  e.preventDefault();
+                                }
+                              }}
+                              placeholder="мин"
+                              disabled={isFuture}
+                            />
+                          </span>
+                        </TooltipTrigger>
+                        {isFuture && (
+                          <TooltipContent>
+                            <p className="text-xs">Нельзя заполнять будущие даты</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                      <span className={cn("text-xs shrink-0", isFuture ? "text-muted-foreground/50" : "text-muted-foreground")}>мин</span>
                     </div>
                     
                     {/* Action column - fixed width */}
