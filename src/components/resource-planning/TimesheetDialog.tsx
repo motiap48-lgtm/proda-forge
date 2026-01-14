@@ -90,9 +90,13 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   // Days with plan > 0 AND not in the future
   const todayStart = startOfDay(today);
+  
+  // Check if a date is in the future (cannot be selected)
+  const isFutureDate = (day: Date) => isAfter(startOfDay(day), todayStart);
+  
   const selectableDays = useMemo(() => 
     days
-      .filter(day => plannedMinutesPerDay(day) > 0 && !isAfter(startOfDay(day), todayStart))
+      .filter(day => plannedMinutesPerDay(day) > 0 && !isFutureDate(day))
       .map(day => format(day, "yyyy-MM-dd")),
     [days, plannedMinutesPerDay, todayStart]
   );
@@ -399,7 +403,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 const hasEdit = edits[dateStr] !== undefined;
                 const hasSaved = ts && !hasEdit;
                 const isSelected = selectedDays.has(dateStr);
-                const canSelect = planned > 0;
+                const canSelect = planned > 0 && !isFutureDate(day);
                 
                 return (
                   <div 
