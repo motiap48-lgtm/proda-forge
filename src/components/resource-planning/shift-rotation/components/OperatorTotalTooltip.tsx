@@ -372,7 +372,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
             <div key={group.type} className="flex justify-between items-center text-blue-500">
               <span className="flex items-center gap-1">
                 <span>{group.icon}</span>
-                <span>{group.label} ({group.days > 0 ? `${group.days}д` : `${group.calendarDays}к.д.`}):</span>
+                <span>{group.label} ({group.calendarDays}к.д.{group.days > 0 && group.days !== group.calendarDays ? `, ${group.days}р.д.` : ''}):</span>
               </span>
               <span className="font-medium">−{Math.round(group.hours * 10) / 10}ч</span>
             </div>
@@ -393,7 +393,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
              <div key={group.type} className="flex justify-between items-center text-rose-500">
                <span className="flex items-center gap-1">
                  <span>{group.icon}</span>
-                 <span>{group.label} ({group.days > 0 ? `${group.days}д` : `${group.calendarDays}к.д.`}):</span>
+                 <span>{group.label} ({group.calendarDays}к.д.{group.days > 0 && group.days !== group.calendarDays ? `, ${group.days}р.д.` : ''}):</span>
                </span>
                <span className="font-medium">{Math.round(group.hours * 10) / 10}ч</span>
              </div>
