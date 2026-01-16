@@ -580,9 +580,9 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       ) : null}
                     </div>
                     
-                    {/* Overtime column - show only pending overtime (approved is shown in the fact section) */}
-                    {pendingMinutes > 0 && (
-                      <div className="flex items-center gap-1 shrink-0">
+                    {/* Overtime column - fixed width, show only pending overtime */}
+                    <div className="w-[50px] shrink-0 flex items-center justify-center pt-1">
+                      {pendingMinutes > 0 && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">
@@ -593,8 +593,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                             <p className="text-xs">Ожидает подтв.: {pendingOT.map(e => e.description).join(", ")}</p>
                           </TooltipContent>
                         </Tooltip>
-                      </div>
-                    )}
+                      )}
+                    </div>
                     
                     {/* Status column - fixed width, aligned to first row */}
                     <div className="w-10 shrink-0 flex justify-center pt-1">
