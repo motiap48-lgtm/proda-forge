@@ -478,7 +478,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     </div>
                     
                     {/* Fact column - fixed width */}
-                    <div className="w-[280px] shrink-0 flex flex-col gap-1">
+                    <div className="w-[120px] shrink-0 flex flex-col gap-1">
                       {/* Main fact row */}
                       <div className="flex items-center gap-1.5">
                         <Label className={cn("text-xs shrink-0 w-[90px]", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>Факт:</Label>
