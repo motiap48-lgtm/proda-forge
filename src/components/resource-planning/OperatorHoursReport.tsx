@@ -18,6 +18,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Calendar, Clock, FileSpreadsheet, Users, TrendingDown, AlertTriangle } from "lucide-react";
 import { format, startOfMonth, endOfMonth, addDays, getDaysInMonth, startOfYear, endOfYear, getYear } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -25,11 +31,17 @@ import { cn } from "@/lib/utils";
 import { useOperators, useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useAllOperatorAbsences, isDateInAbsence, isOperatorTerminated, isBeforeHireDate } from "@/hooks/useOperatorAbsences";
 import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
-import { useOvertimeEntries, createOvertimeMap } from "@/hooks/useOvertimeEntries";
+import { useOvertimeEntries, createOvertimeMap, OvertimeEntry } from "@/hooks/useOvertimeEntries";
 import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
 import * as XLSX from "xlsx";
 
 type PeriodType = "month" | "quarter" | "year";
+
+interface OvertimeDetail {
+  date: string;
+  hours: number;
+  isWorkingDay: boolean;
+}
 
 interface OperatorHoursData {
   operator: any;
@@ -44,6 +56,7 @@ interface OperatorHoursData {
   overtimeDays: number;
   overtimeHours: number;
   totalDays: number;
+  overtimeDetails: OvertimeDetail[];
 }
 
 export const OperatorHoursReport = () => {
@@ -155,6 +168,7 @@ export const OperatorHoursReport = () => {
       let overtimeHours = 0;
       const overtimeDaysSet = new Set<string>(); // Track unique overtime days
       const workingDaysSet = new Set<string>(); // Track working days for total calculation
+      const overtimeDetailsMap = new Map<string, { hours: number; isWorkingDay: boolean }>();
 
       const schedule = operator.work_schedules;
       const shifts = schedule?.work_schedule_shifts || [];
@@ -169,6 +183,21 @@ export const OperatorHoursReport = () => {
           return;
         }
 
+        // Get shift for this day to determine if working day
+        const shift = getShiftForDate(operator, day);
+        const exception = exceptionsMap.get(dateStr);
+        
+        // Determine if this is a working day for overtime tooltip
+        let isDayWorkingDay = false;
+        if (shift) {
+          // Holiday check for non-cyclic
+          if (exception && !exception.is_working_day && !isCyclicSchedule) {
+            isDayWorkingDay = false;
+          } else {
+            isDayWorkingDay = true;
+          }
+        }
+
         // Check for overtime on this day
         const overtimeKey = `${operator.id}_${dateStr}`;
         const dayOvertimeEntries = overtimeMap.get(overtimeKey) || [];
@@ -177,6 +206,10 @@ export const OperatorHoursReport = () => {
         if (dayOvertimeMinutes > 0) {
           overtimeHours += dayOvertimeMinutes / 60;
           overtimeDaysSet.add(dateStr);
+          overtimeDetailsMap.set(dateStr, {
+            hours: dayOvertimeMinutes / 60,
+            isWorkingDay: isDayWorkingDay,
+          });
         }
 
         // Check absence
@@ -186,10 +219,6 @@ export const OperatorHoursReport = () => {
           return;
         }
 
-        const exception = exceptionsMap.get(dateStr);
-        
-        // Get shift for this day
-        const shift = getShiftForDate(operator, day);
         const normalNetMinutes = shift 
           ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes))
           : 0;
@@ -244,6 +273,15 @@ export const OperatorHoursReport = () => {
       });
       const totalDays = workingDays + additionalOvertimeDays;
 
+      // Build overtime details array sorted by date
+      const overtimeDetails: OvertimeDetail[] = Array.from(overtimeDetailsMap.entries())
+        .map(([date, detail]) => ({
+          date,
+          hours: detail.hours,
+          isWorkingDay: detail.isWorkingDay,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
       return {
         operator,
         plannedHours,
@@ -257,6 +295,7 @@ export const OperatorHoursReport = () => {
         overtimeDays,
         overtimeHours,
         totalDays,
+        overtimeDetails,
       };
     });
   }, [filteredOperators, days, absences, exceptionsMap, overtimeMap]);
@@ -279,6 +318,18 @@ export const OperatorHoursReport = () => {
     );
   }, [operatorHoursData]);
 
+  // Helper to format overtime details for export
+  const formatOvertimeDetailsForExport = (details: OvertimeDetail[]): string => {
+    if (details.length === 0) return "";
+    return details
+      .map(d => {
+        const dateFormatted = format(new Date(d.date), "dd.MM", { locale: ru });
+        const dayType = d.isWorkingDay ? "раб." : "вых.";
+        return `${dateFormatted} (${d.hours.toFixed(1)}ч, ${dayType})`;
+      })
+      .join("; ");
+  };
+
   // Export to Excel
   const handleExport = () => {
     const exportData = operatorHoursData.map(data => ({
@@ -287,6 +338,7 @@ export const OperatorHoursReport = () => {
       "График": data.operator.work_schedules?.name || "-",
       "Рабочих дней": data.workingDays,
       "Дней с переработкой": data.overtimeDays,
+      "Детали переработок": formatOvertimeDetailsForExport(data.overtimeDetails),
       "Итого дней": data.totalDays,
       "Праздников": data.holidaysCount,
       "Сокращённых дней": data.shortenedDaysCount,
@@ -306,6 +358,7 @@ export const OperatorHoursReport = () => {
       "График": "",
       "Рабочих дней": totals.workingDays,
       "Дней с переработкой": totals.overtimeDays,
+      "Детали переработок": "",
       "Итого дней": totals.totalDays,
       "Праздников": operatorHoursData.reduce((sum, d) => sum + d.holidaysCount, 0),
       "Сокращённых дней": operatorHoursData.reduce((sum, d) => sum + d.shortenedDaysCount, 0),
@@ -322,7 +375,7 @@ export const OperatorHoursReport = () => {
     const ws = XLSX.utils.json_to_sheet(exportData);
     
     ws["!cols"] = [
-      { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 16 }, { wch: 12 },
+      { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 16 }, { wch: 50 }, { wch: 12 },
       { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, 
       { wch: 18 }, { wch: 20 }, { wch: 16 }
     ];
@@ -542,9 +595,44 @@ export const OperatorHoursReport = () => {
                       <TableCell className="text-center">{data.workingDays}</TableCell>
                       <TableCell className="text-center">
                         {data.overtimeDays > 0 ? (
-                          <Badge variant="secondary" className="bg-purple-500/10 text-purple-700 dark:text-purple-400">
-                            {data.overtimeDays}
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge 
+                                  variant="secondary" 
+                                  className="bg-purple-500/10 text-purple-700 dark:text-purple-400 cursor-help"
+                                >
+                                  {data.overtimeDays}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-xs">
+                                <div className="space-y-1 text-xs">
+                                  <p className="font-medium mb-1">Дни с переработкой:</p>
+                                  {data.overtimeDetails.map((detail, idx) => (
+                                    <div key={idx} className="flex justify-between gap-3">
+                                      <span>
+                                        {format(new Date(detail.date), "dd.MM (EE)", { locale: ru })}
+                                      </span>
+                                      <span className="flex items-center gap-1.5">
+                                        <span className="font-medium">{detail.hours.toFixed(1)}ч</span>
+                                        <Badge 
+                                          variant="outline" 
+                                          className={cn(
+                                            "text-[10px] px-1 py-0",
+                                            detail.isWorkingDay 
+                                              ? "border-blue-500/30 text-blue-600 dark:text-blue-400" 
+                                              : "border-orange-500/30 text-orange-600 dark:text-orange-400"
+                                          )}
+                                        >
+                                          {detail.isWorkingDay ? "раб." : "вых."}
+                                        </Badge>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
