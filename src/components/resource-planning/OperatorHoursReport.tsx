@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useOperators, useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useAllOperatorAbsences, isDateInAbsence, isOperatorTerminated, isBeforeHireDate } from "@/hooks/useOperatorAbsences";
 import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
+import { useOvertimeEntries, createOvertimeMap } from "@/hooks/useOvertimeEntries";
 import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
 import * as XLSX from "xlsx";
 
@@ -40,6 +41,9 @@ interface OperatorHoursData {
   holidaysReduction: number;
   absenceDays: number;
   workingDays: number;
+  overtimeDays: number;
+  overtimeHours: number;
+  totalDays: number;
 }
 
 export const OperatorHoursReport = () => {
@@ -109,6 +113,12 @@ export const OperatorHoursReport = () => {
     return result;
   }, [dateRange]);
 
+  // Fetch overtime entries for the date range
+  const { data: overtimeEntries = [] } = useOvertimeEntries(dateRange.start, dateRange.end, operatorIds);
+  
+  // Create overtime map for fast lookup
+  const overtimeMap = useMemo(() => createOvertimeMap(overtimeEntries.filter(e => e.status === 'approved')), [overtimeEntries]);
+
   // Create exceptions map
   const exceptionsMap = useMemo(() => {
     const map = new Map<string, any>();
@@ -142,6 +152,9 @@ export const OperatorHoursReport = () => {
       let holidaysReduction = 0;
       let absenceDays = 0;
       let workingDays = 0;
+      let overtimeHours = 0;
+      const overtimeDaysSet = new Set<string>(); // Track unique overtime days
+      const workingDaysSet = new Set<string>(); // Track working days for total calculation
 
       const schedule = operator.work_schedules;
       const shifts = schedule?.work_schedule_shifts || [];
@@ -149,9 +162,21 @@ export const OperatorHoursReport = () => {
       const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
 
       days.forEach(day => {
+        const dateStr = format(day, "yyyy-MM-dd");
+        
         // Check termination/hire
         if (isOperatorTerminated(operator, day) || isBeforeHireDate(operator, day)) {
           return;
+        }
+
+        // Check for overtime on this day
+        const overtimeKey = `${operator.id}_${dateStr}`;
+        const dayOvertimeEntries = overtimeMap.get(overtimeKey) || [];
+        const dayOvertimeMinutes = dayOvertimeEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+        
+        if (dayOvertimeMinutes > 0) {
+          overtimeHours += dayOvertimeMinutes / 60;
+          overtimeDaysSet.add(dateStr);
         }
 
         // Check absence
@@ -161,7 +186,6 @@ export const OperatorHoursReport = () => {
           return;
         }
 
-        const dateStr = format(day, "yyyy-MM-dd");
         const exception = exceptionsMap.get(dateStr);
         
         // Get shift for this day
@@ -197,6 +221,7 @@ export const OperatorHoursReport = () => {
           shortenedDaysCount++;
           shortenedDaysReduction += normalHours - reducedHours;
           workingDays++;
+          workingDaysSet.add(dateStr);
           return;
         }
 
@@ -205,22 +230,36 @@ export const OperatorHoursReport = () => {
           plannedHours += normalHours;
           actualHours += normalHours;
           workingDays++;
+          workingDaysSet.add(dateStr);
         }
       });
+
+      // Calculate overtime days that are NOT working days (for total days calculation)
+      const overtimeDays = overtimeDaysSet.size;
+      let additionalOvertimeDays = 0;
+      overtimeDaysSet.forEach(dateStr => {
+        if (!workingDaysSet.has(dateStr)) {
+          additionalOvertimeDays++;
+        }
+      });
+      const totalDays = workingDays + additionalOvertimeDays;
 
       return {
         operator,
         plannedHours,
-        actualHours,
+        actualHours: actualHours + overtimeHours, // Include overtime in actual hours
         shortenedDaysCount,
         shortenedDaysReduction,
         holidaysCount,
         holidaysReduction,
         absenceDays,
         workingDays,
+        overtimeDays,
+        overtimeHours,
+        totalDays,
       };
     });
-  }, [filteredOperators, days, absences, exceptionsMap]);
+  }, [filteredOperators, days, absences, exceptionsMap, overtimeMap]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -231,8 +270,12 @@ export const OperatorHoursReport = () => {
         shortenedDaysReduction: acc.shortenedDaysReduction + data.shortenedDaysReduction,
         holidaysReduction: acc.holidaysReduction + data.holidaysReduction,
         totalReduction: acc.totalReduction + data.shortenedDaysReduction + data.holidaysReduction,
+        overtimeDays: acc.overtimeDays + data.overtimeDays,
+        overtimeHours: acc.overtimeHours + data.overtimeHours,
+        totalDays: acc.totalDays + data.totalDays,
+        workingDays: acc.workingDays + data.workingDays,
       }),
-      { plannedHours: 0, actualHours: 0, shortenedDaysReduction: 0, holidaysReduction: 0, totalReduction: 0 }
+      { plannedHours: 0, actualHours: 0, shortenedDaysReduction: 0, holidaysReduction: 0, totalReduction: 0, overtimeDays: 0, overtimeHours: 0, totalDays: 0, workingDays: 0 }
     );
   }, [operatorHoursData]);
 
@@ -240,12 +283,16 @@ export const OperatorHoursReport = () => {
   const handleExport = () => {
     const exportData = operatorHoursData.map(data => ({
       "Оператор": data.operator.full_name,
+      "Должность": data.operator.position || "-",
       "График": data.operator.work_schedules?.name || "-",
       "Рабочих дней": data.workingDays,
+      "Дней с переработкой": data.overtimeDays,
+      "Итого дней": data.totalDays,
       "Праздников": data.holidaysCount,
       "Сокращённых дней": data.shortenedDaysCount,
       "Отсутствий": data.absenceDays,
       "Плановые часы": data.plannedHours.toFixed(1),
+      "Переработка (ч)": data.overtimeHours.toFixed(1),
       "Фактические часы": data.actualHours.toFixed(1),
       "Сокращение (праздники)": data.holidaysReduction.toFixed(1),
       "Сокращение (короткие дни)": data.shortenedDaysReduction.toFixed(1),
@@ -255,12 +302,16 @@ export const OperatorHoursReport = () => {
     // Add totals row
     exportData.push({
       "Оператор": "ИТОГО",
+      "Должность": "",
       "График": "",
-      "Рабочих дней": operatorHoursData.reduce((sum, d) => sum + d.workingDays, 0),
+      "Рабочих дней": totals.workingDays,
+      "Дней с переработкой": totals.overtimeDays,
+      "Итого дней": totals.totalDays,
       "Праздников": operatorHoursData.reduce((sum, d) => sum + d.holidaysCount, 0),
       "Сокращённых дней": operatorHoursData.reduce((sum, d) => sum + d.shortenedDaysCount, 0),
       "Отсутствий": operatorHoursData.reduce((sum, d) => sum + d.absenceDays, 0),
       "Плановые часы": totals.plannedHours.toFixed(1),
+      "Переработка (ч)": totals.overtimeHours.toFixed(1),
       "Фактические часы": totals.actualHours.toFixed(1),
       "Сокращение (праздники)": totals.holidaysReduction.toFixed(1),
       "Сокращение (короткие дни)": totals.shortenedDaysReduction.toFixed(1),
@@ -271,8 +322,9 @@ export const OperatorHoursReport = () => {
     const ws = XLSX.utils.json_to_sheet(exportData);
     
     ws["!cols"] = [
-      { wch: 25 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 15 },
-      { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 16 }
+      { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 16 }, { wch: 12 },
+      { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, 
+      { wch: 18 }, { wch: 20 }, { wch: 16 }
     ];
     
     XLSX.utils.book_append_sheet(wb, ws, "Часы работы");
@@ -458,13 +510,17 @@ export const OperatorHoursReport = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[200px]">Оператор</TableHead>
+                  <TableHead className="w-[180px]">Оператор</TableHead>
+                  <TableHead>Должность</TableHead>
                   <TableHead>График</TableHead>
                   <TableHead className="text-center">Раб. дней</TableHead>
+                  <TableHead className="text-center">Дней с перераб.</TableHead>
+                  <TableHead className="text-center">Итого дней</TableHead>
                   <TableHead className="text-center">Праздников</TableHead>
                   <TableHead className="text-center">Сокращ. дней</TableHead>
                   <TableHead className="text-center">Отсутствий</TableHead>
                   <TableHead className="text-right">Плановые</TableHead>
+                  <TableHead className="text-right">Переработка</TableHead>
                   <TableHead className="text-right">Фактические</TableHead>
                   <TableHead className="text-right">Сокращение</TableHead>
                 </TableRow>
@@ -475,12 +531,25 @@ export const OperatorHoursReport = () => {
                   return (
                     <TableRow key={data.operator.id}>
                       <TableCell className="font-medium">{data.operator.full_name}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {data.operator.position || "—"}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
                           {data.operator.work_schedules?.name || "-"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">{data.workingDays}</TableCell>
+                      <TableCell className="text-center">
+                        {data.overtimeDays > 0 ? (
+                          <Badge variant="secondary" className="bg-purple-500/10 text-purple-700 dark:text-purple-400">
+                            {data.overtimeDays}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center font-medium">{data.totalDays}</TableCell>
                       <TableCell className="text-center">
                         {data.holidaysCount > 0 ? (
                           <Badge variant="secondary" className="bg-rose-500/10 text-rose-700 dark:text-rose-400">
@@ -507,6 +576,15 @@ export const OperatorHoursReport = () => {
                         )}
                       </TableCell>
                       <TableCell className="text-right">{data.plannedHours.toFixed(1)}ч</TableCell>
+                      <TableCell className="text-right">
+                        {data.overtimeHours > 0 ? (
+                          <span className="text-purple-600 dark:text-purple-400">
+                            +{data.overtimeHours.toFixed(1)}ч
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-medium">{data.actualHours.toFixed(1)}ч</TableCell>
                       <TableCell className="text-right">
                         {totalReduction > 0 ? (
@@ -525,9 +603,10 @@ export const OperatorHoursReport = () => {
                 <TableRow className="bg-muted/50 font-medium">
                   <TableCell>ИТОГО</TableCell>
                   <TableCell></TableCell>
-                  <TableCell className="text-center">
-                    {operatorHoursData.reduce((sum, d) => sum + d.workingDays, 0)}
-                  </TableCell>
+                  <TableCell></TableCell>
+                  <TableCell className="text-center">{totals.workingDays}</TableCell>
+                  <TableCell className="text-center">{totals.overtimeDays}</TableCell>
+                  <TableCell className="text-center">{totals.totalDays}</TableCell>
                   <TableCell className="text-center">
                     {operatorHoursData.reduce((sum, d) => sum + d.holidaysCount, 0)}
                   </TableCell>
@@ -538,6 +617,9 @@ export const OperatorHoursReport = () => {
                     {operatorHoursData.reduce((sum, d) => sum + d.absenceDays, 0)}
                   </TableCell>
                   <TableCell className="text-right">{totals.plannedHours.toFixed(1)}ч</TableCell>
+                  <TableCell className="text-right text-purple-600 dark:text-purple-400">
+                    +{totals.overtimeHours.toFixed(1)}ч
+                  </TableCell>
                   <TableCell className="text-right">{totals.actualHours.toFixed(1)}ч</TableCell>
                   <TableCell className="text-right text-amber-600 dark:text-amber-400">
                     -{totals.totalReduction.toFixed(1)}ч
