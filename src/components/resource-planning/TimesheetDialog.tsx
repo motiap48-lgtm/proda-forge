@@ -401,12 +401,31 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 const compensationMinutes = compensationMinutesPerDay?.(day) || 0;
                 const hasCompensation = compensationMinutes > 0;
                 const ts = getTimesheetForDate(timesheetMap, operatorId, day);
-                const currentValue = edits[dateStr] ?? ts?.actual_minutes ?? 0;
+                
+                // Get approved overtime for this day
+                const overtimeKey = `${operatorId}_${dateStr}`;
+                const dayOvertimeEntries = overtimeMap.get(overtimeKey) || [];
+                const approvedOT = dayOvertimeEntries.filter(e => e.status === "approved");
+                const pendingOT = dayOvertimeEntries.filter(e => e.status === "pending");
+                const approvedMinutes = approvedOT.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+                const pendingMinutes = pendingOT.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+                
+                // Regular minutes (from edits or timesheet)
+                const regularMinutes = edits[dateStr] ?? ts?.actual_minutes ?? 0;
+                // Total fact = regular + approved overtime
+                const totalFactMinutes = regularMinutes + approvedMinutes;
+                
                 const hasEdit = edits[dateStr] !== undefined;
-                const hasSaved = ts && !hasEdit;
+                // Show green checkmark only if saved AND saved value > 0
+                const hasSavedPositive = ts && ts.actual_minutes > 0 && !hasEdit;
                 const isSelected = selectedDays.has(dateStr);
-                const canSelect = planned > 0 && !isFutureDate(day);
                 const isFuture = isFutureDate(day);
+                // Non-working day = plan is 0
+                const isNonWorkingDay = planned === 0;
+                // Can select only working days that are not in the future
+                const canSelect = !isNonWorkingDay && !isFuture;
+                // Disable input for future dates OR non-working days
+                const isDisabled = isFuture || isNonWorkingDay;
                 
                 return (
                   <div 
@@ -414,7 +433,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     className={cn(
                       "flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50",
                       isSelected && "bg-primary/5",
-                      isFuture && "opacity-50"
+                      isDisabled && "opacity-50"
                     )}
                   >
                     {/* Checkbox - only show on last day of month */}
@@ -460,7 +479,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     
                     {/* Fact column - fixed width */}
                     <div className="flex items-center gap-1.5">
-                      <Label className={cn("text-xs shrink-0", isFuture ? "text-muted-foreground/50" : "text-muted-foreground")}>Факт:</Label>
+                      <Label className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>Факт:</Label>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="inline-flex">
@@ -469,9 +488,9 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                               min="0"
                               step="1"
                               className="w-[70px] h-8 text-sm"
-                              value={Math.round(currentValue)}
+                              value={Math.round(regularMinutes)}
                               onChange={(e) => {
-                                if (isFuture) return;
+                                if (isDisabled) return;
                                 const rawValue = e.target.value;
                                 // Only allow integers
                                 if (rawValue === '' || /^\d+$/.test(rawValue)) {
@@ -486,22 +505,38 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                                 }
                               }}
                               placeholder="мин"
-                              disabled={isFuture}
+                              disabled={isDisabled}
                             />
                           </span>
                         </TooltipTrigger>
-                        {isFuture && (
+                        {isDisabled && (
                           <TooltipContent>
-                            <p className="text-xs">Нельзя заполнять будущие даты</p>
+                            <p className="text-xs">
+                              {isFuture ? "Нельзя заполнять будущие даты" : "Нерабочий день по графику"}
+                            </p>
                           </TooltipContent>
                         )}
                       </Tooltip>
-                      <span className={cn("text-xs shrink-0", isFuture ? "text-muted-foreground/50" : "text-muted-foreground")}>мин</span>
+                      <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин</span>
+                      {/* Show total with overtime if approved */}
+                      {approvedMinutes > 0 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-xs text-purple-600 font-medium">
+                              ={formatMinutes(totalFactMinutes)}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Итого с переработкой: {formatMinutes(regularMinutes)} + {formatMinutes(approvedMinutes)}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
                     
                     {/* Action column - fixed width */}
                     <div className="w-8 shrink-0 flex justify-center">
-                      {planned > 0 && currentValue !== planned ? (
+                      {/* Show fill by plan button only for working days, not future, and when current != plan */}
+                      {!isDisabled && planned > 0 && regularMinutes !== planned ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -521,50 +556,39 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     </div>
                     
                     {/* Overtime column - show if any overtime for this day */}
-                    {(() => {
-                      const overtimeKey = `${operatorId}_${dateStr}`;
-                      const dayOvertimeEntries = overtimeMap.get(overtimeKey) || [];
-                      const approvedOT = dayOvertimeEntries.filter(e => e.status === "approved");
-                      const pendingOT = dayOvertimeEntries.filter(e => e.status === "pending");
-                      const approvedMinutes = approvedOT.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
-                      const pendingMinutes = pendingOT.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
-                      
-                      if (approvedMinutes > 0 || pendingMinutes > 0) {
-                        return (
-                          <div className="flex items-center gap-1 shrink-0">
-                            {approvedMinutes > 0 && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-purple-300">
-                                    +{formatMinutes(approvedMinutes)}
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">Переработка (подтв.): {approvedOT.map(e => e.description).join(", ")}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            {pendingMinutes > 0 && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">
-                                    ~{formatMinutes(pendingMinutes)}
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">Ожидает подтв.: {pendingOT.map(e => e.description).join(", ")}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                    {(approvedMinutes > 0 || pendingMinutes > 0) && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        {approvedMinutes > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-purple-300">
+                                +{formatMinutes(approvedMinutes)}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Переработка (подтв.): {approvedOT.map(e => e.description).join(", ")}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        {pendingMinutes > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">
+                                ~{formatMinutes(pendingMinutes)}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Ожидает подтв.: {pendingOT.map(e => e.description).join(", ")}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    )}
                     
                     {/* Status column - fixed width */}
                     <div className="w-10 shrink-0 flex justify-center">
-                      {hasSaved && (
+                      {/* Green checkmark only for saved positive values */}
+                      {hasSavedPositive && (
                         <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
                           ✓
                         </Badge>
