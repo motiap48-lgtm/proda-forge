@@ -518,16 +518,37 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         )}
                       </Tooltip>
                       <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин</span>
+                      
                       {/* Show total with overtime if approved */}
                       {approvedMinutes > 0 && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="text-xs text-purple-600 font-medium">
+                            <span className="text-xs text-purple-600 font-medium whitespace-nowrap">
                               ={formatMinutes(totalFactMinutes)}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="text-xs">Итого с переработкой: {formatMinutes(regularMinutes)} + {formatMinutes(approvedMinutes)}</p>
+                            <p className="text-xs">Итого: {formatMinutes(regularMinutes)} + {formatMinutes(approvedMinutes)} (переработка)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      
+                      {/* Separate disabled overtime field for working days with overtime */}
+                      {approvedMinutes > 0 && !isNonWorkingDay && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                className="w-[60px] h-8 text-sm bg-purple-50 border-purple-200 text-purple-700"
+                                value={Math.round(approvedMinutes)}
+                                disabled
+                              />
+                              <span className="text-xs text-purple-500 shrink-0">мин</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Переработка (подтв.): {approvedOT.map(e => e.description).join(", ")}</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
