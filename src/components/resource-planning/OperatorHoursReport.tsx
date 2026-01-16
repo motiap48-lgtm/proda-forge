@@ -32,6 +32,7 @@ import { useOperators, useCalendarExceptions } from "@/hooks/useResourcePlanning
 import { useAllOperatorAbsences, isDateInAbsence, isOperatorTerminated, isBeforeHireDate } from "@/hooks/useOperatorAbsences";
 import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { useOvertimeEntries, createOvertimeMap, OvertimeEntry } from "@/hooks/useOvertimeEntries";
+import { useOperatorTimesheets, createTimesheetMap } from "@/hooks/useOperatorTimesheets";
 import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
 import * as XLSX from "xlsx";
 import { useReactToPrint } from "react-to-print";
@@ -137,8 +138,14 @@ export const OperatorHoursReport = () => {
   // Fetch overtime entries for the date range
   const { data: overtimeEntries = [] } = useOvertimeEntries(dateRange.start, dateRange.end, operatorIds);
   
+  // Fetch timesheets for the date range
+  const { data: timesheets = [] } = useOperatorTimesheets(dateRange.start, dateRange.end, operatorIds);
+  
   // Create overtime map for fast lookup
   const overtimeMap = useMemo(() => createOvertimeMap(overtimeEntries.filter(e => e.status === 'approved')), [overtimeEntries]);
+  
+  // Create timesheet map for fast lookup
+  const timesheetMap = useMemo(() => createTimesheetMap(timesheets), [timesheets]);
 
   // Create exceptions map
   const exceptionsMap = useMemo(() => {
@@ -166,7 +173,7 @@ export const OperatorHoursReport = () => {
   const operatorHoursData: OperatorHoursData[] = useMemo(() => {
     return filteredOperators.map((operator: any) => {
       let plannedHours = 0;
-      let actualHours = 0;
+      let timesheetActualMinutes = 0; // Only from timesheets
       let shortenedDaysCount = 0;
       let shortenedDaysReduction = 0;
       let holidaysCount = 0;
@@ -220,6 +227,13 @@ export const OperatorHoursReport = () => {
           });
         }
 
+        // Check for timesheet entry - this is the actual hours from calendar
+        const timesheetKey = `${operator.id}_${dateStr}`;
+        const timesheet = timesheetMap.get(timesheetKey);
+        if (timesheet && timesheet.actual_minutes > 0) {
+          timesheetActualMinutes += timesheet.actual_minutes;
+        }
+
         // Check absence
         const absence = isDateInAbsence(day, absences, operator.id);
         if (absence) {
@@ -254,7 +268,6 @@ export const OperatorHoursReport = () => {
             reducedHours = Math.max(0, normalHours - reductionHours);
           }
           
-          actualHours += reducedHours;
           shortenedDaysCount++;
           shortenedDaysReduction += normalHours - reducedHours;
           workingDays++;
@@ -265,7 +278,6 @@ export const OperatorHoursReport = () => {
         // Normal working day
         if (shift) {
           plannedHours += normalHours;
-          actualHours += normalHours;
           workingDays++;
           workingDaysSet.add(dateStr);
         }
@@ -290,10 +302,13 @@ export const OperatorHoursReport = () => {
         }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
+      // Actual hours = timesheet hours + overtime hours
+      const actualHours = (timesheetActualMinutes / 60) + overtimeHours;
+
       return {
         operator,
         plannedHours,
-        actualHours: actualHours + overtimeHours, // Include overtime in actual hours
+        actualHours,
         shortenedDaysCount,
         shortenedDaysReduction,
         holidaysCount,
@@ -306,7 +321,7 @@ export const OperatorHoursReport = () => {
         overtimeDetails,
       };
     });
-  }, [filteredOperators, days, absences, exceptionsMap, overtimeMap]);
+  }, [filteredOperators, days, absences, exceptionsMap, overtimeMap, timesheetMap]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -570,18 +585,33 @@ export const OperatorHoursReport = () => {
       {/* Table */}
       <div ref={printRef}>
         <style type="text/css" media="print">{`
-          @page { size: landscape; margin: 10mm; }
-          body { font-size: 10px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
-          th { background-color: #f5f5f5; font-weight: 600; }
-          .print-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; }
-          .print-period { font-size: 12px; margin-bottom: 12px; }
-          .text-center { text-align: center; }
-          .text-right { text-align: right; }
+          @page { size: landscape; margin: 5mm; }
+          body { font-size: 8px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th, td { border: 1px solid #ccc; padding: 2px 3px; text-align: left; font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          th { background-color: #f0f0f0 !important; font-weight: 600; }
+          .print-title { font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+          .print-period { font-size: 10px; margin-bottom: 8px; color: #555; }
+          .print-date { font-size: 8px; color: #777; margin-bottom: 4px; }
+          .text-center { text-align: center !important; }
+          .text-right { text-align: right !important; }
           .font-medium { font-weight: 500; }
-          .totals-row { background-color: #f5f5f5; font-weight: 600; }
+          .totals-row { background-color: #f0f0f0 !important; font-weight: 600; }
+          th:nth-child(1), td:nth-child(1) { width: 14%; }
+          th:nth-child(2), td:nth-child(2) { width: 10%; }
+          th:nth-child(3), td:nth-child(3) { width: 8%; }
+          th:nth-child(4), td:nth-child(4) { width: 5%; }
+          th:nth-child(5), td:nth-child(5) { width: 6%; }
+          th:nth-child(6), td:nth-child(6) { width: 5%; }
+          th:nth-child(7), td:nth-child(7) { width: 6%; }
+          th:nth-child(8), td:nth-child(8) { width: 6%; }
+          th:nth-child(9), td:nth-child(9) { width: 6%; }
+          th:nth-child(10), td:nth-child(10) { width: 7%; }
+          th:nth-child(11), td:nth-child(11) { width: 7%; }
+          th:nth-child(12), td:nth-child(12) { width: 7%; }
+          th:nth-child(13), td:nth-child(13) { width: 7%; }
         `}</style>
+        <div className="hidden print:block print-date">{format(new Date(), "dd.MM.yyyy, HH:mm", { locale: ru })}</div>
         <div className="hidden print:block print-title">Отчёт по часам работы операторов</div>
         <div className="hidden print:block print-period">{getPeriodLabel()}</div>
         <Card className="print:shadow-none print:border-none">
@@ -593,19 +623,19 @@ export const OperatorHoursReport = () => {
               <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[180px]">Оператор</TableHead>
+                  <TableHead>Оператор</TableHead>
                   <TableHead>Должность</TableHead>
                   <TableHead>График</TableHead>
-                  <TableHead className="text-center">Раб. дней</TableHead>
-                  <TableHead className="text-center">Дней с перераб.</TableHead>
-                  <TableHead className="text-center">Итого дней</TableHead>
-                  <TableHead className="text-center">Праздников</TableHead>
-                  <TableHead className="text-center">Сокращ. дней</TableHead>
-                  <TableHead className="text-center">Отсутствий</TableHead>
-                  <TableHead className="text-right">Плановые</TableHead>
-                  <TableHead className="text-right">Переработка</TableHead>
-                  <TableHead className="text-right">Фактические</TableHead>
-                  <TableHead className="text-right">Сокращение</TableHead>
+                  <TableHead className="text-center">Раб.</TableHead>
+                  <TableHead className="text-center">Перераб.</TableHead>
+                  <TableHead className="text-center">Итого</TableHead>
+                  <TableHead className="text-center">Праздн.</TableHead>
+                  <TableHead className="text-center">Сокращ.</TableHead>
+                  <TableHead className="text-center">Отсутст.</TableHead>
+                  <TableHead className="text-right">План</TableHead>
+                  <TableHead className="text-right">Перераб.</TableHead>
+                  <TableHead className="text-right">Факт</TableHead>
+                  <TableHead className="text-right">Сокращ.</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
