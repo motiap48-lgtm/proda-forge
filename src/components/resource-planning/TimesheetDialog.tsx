@@ -431,7 +431,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                   <div 
                     key={dateStr} 
                     className={cn(
-                      "flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50",
+                      "flex items-start gap-2 py-1.5 px-2 rounded hover:bg-muted/50",
                       isSelected && "bg-primary/5",
                       isDisabled && "opacity-50"
                     )}
@@ -456,12 +456,12 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     )}
                     
                     {/* Date column - fixed width */}
-                    <div className="w-[85px] shrink-0 text-sm">
+                    <div className="w-[85px] shrink-0 text-sm pt-1.5">
                       {format(day, "EEE, d MMM", { locale: ru })}
                     </div>
                     
                     {/* Plan column - fixed width */}
-                    <div className="w-[100px] shrink-0 flex items-center gap-1">
+                    <div className="w-[100px] shrink-0 flex items-center gap-1 pt-1">
                       <Badge variant="outline" className={cn("w-full justify-center text-xs", hasCompensation && "border-amber-400 bg-amber-50")}>
                         План: {formatMinutes(planned)}
                       </Badge>
@@ -596,8 +596,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       </div>
                     )}
                     
-                    {/* Status column - fixed width */}
-                    <div className="w-10 shrink-0 flex justify-center">
+                    {/* Status column - fixed width, aligned to first row */}
+                    <div className="w-10 shrink-0 flex justify-center pt-1">
                       {/* Green checkmark only for saved positive values */}
                       {hasSavedPositive && (
                         <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
