@@ -520,6 +520,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                           )}
                         </Tooltip>
                         <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин</span>
+                        <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>={formatMinutes(regularMinutes)}</span>
                       </div>
                       
                       {/* Separate overtime row for working days with approved overtime */}
@@ -579,33 +580,19 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       ) : null}
                     </div>
                     
-                    {/* Overtime column - show if any overtime for this day */}
-                    {(approvedMinutes > 0 || pendingMinutes > 0) && (
+                    {/* Overtime column - show only pending overtime (approved is shown in the fact section) */}
+                    {pendingMinutes > 0 && (
                       <div className="flex items-center gap-1 shrink-0">
-                        {approvedMinutes > 0 && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-purple-300">
-                                +{formatMinutes(approvedMinutes)}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">Переработка (подтв.): {approvedOT.map(e => e.description).join(", ")}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        {pendingMinutes > 0 && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">
-                                ~{formatMinutes(pendingMinutes)}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">Ожидает подтв.: {pendingOT.map(e => e.description).join(", ")}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">
+                              ~{formatMinutes(pendingMinutes)}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Ожидает подтв.: {pendingOT.map(e => e.description).join(", ")}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     )}
                     
