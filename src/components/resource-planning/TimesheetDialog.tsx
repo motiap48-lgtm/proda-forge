@@ -431,7 +431,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                   <div 
                     key={dateStr} 
                     className={cn(
-                      "flex items-start gap-2 py-1.5 px-2 rounded hover:bg-muted/50",
+                      "flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded",
                       isSelected && "bg-primary/5",
                       isDisabled && "opacity-50"
                     )}
