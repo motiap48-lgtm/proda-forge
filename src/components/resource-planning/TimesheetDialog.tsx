@@ -523,8 +523,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>={formatMinutes(regularMinutes)}</span>
                       </div>
                       
-                      {/* Separate overtime row for working days with approved overtime */}
-                      {approvedMinutes > 0 && !isNonWorkingDay && (
+                      {/* Separate overtime row for days with approved overtime */}
+                      {approvedMinutes > 0 && (
                         <div className="flex items-center gap-1.5">
                           <Label className="text-xs shrink-0 w-[90px] text-purple-600">Переработка:</Label>
                           <Tooltip>
@@ -547,8 +547,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         </div>
                       )}
                       
-                      {/* Total row when overtime exists */}
-                      {approvedMinutes > 0 && !isNonWorkingDay && (
+                      {/* Total row when overtime exists and there's regular work too */}
+                      {approvedMinutes > 0 && regularMinutes > 0 && (
                         <div className="flex items-center gap-1.5">
                           <Label className="text-xs shrink-0 w-[90px] text-primary font-semibold">Итого:</Label>
                           <div className="w-[70px]" />
