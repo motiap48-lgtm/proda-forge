@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Calendar, Clock, FileSpreadsheet, Users, TrendingDown, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, FileSpreadsheet, Users, TrendingDown, AlertTriangle, Printer } from "lucide-react";
 import { format, startOfMonth, endOfMonth, addDays, getDaysInMonth, startOfYear, endOfYear, getYear } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,7 @@ import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { useOvertimeEntries, createOvertimeMap, OvertimeEntry } from "@/hooks/useOvertimeEntries";
 import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
 import * as XLSX from "xlsx";
+import { useReactToPrint } from "react-to-print";
 
 type PeriodType = "month" | "quarter" | "year";
 
@@ -67,6 +68,8 @@ export const OperatorHoursReport = () => {
   const operatorIds = useMemo(() => operators.filter((op: any) => op.is_active).map((op: any) => op.id), [operators]);
   const { data: scheduleOverrides = [] } = useScheduleOverrides(operatorIds);
   
+  const printRef = useRef<HTMLDivElement>(null);
+  
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
   
@@ -75,6 +78,11 @@ export const OperatorHoursReport = () => {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth.toString());
   const [selectedQuarter, setSelectedQuarter] = useState(Math.floor(currentMonth / 3).toString());
   const [scheduleFilter, setScheduleFilter] = useState<string>("all");
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Отчёт_часы_работы`,
+  });
 
   // Get unique schedules for filter
   const uniqueSchedules = useMemo(() => {
@@ -492,10 +500,16 @@ export const OperatorHoursReport = () => {
               </Select>
             </div>
 
-            <Button variant="outline" onClick={handleExport} className="h-8 sm:h-9 text-xs sm:text-sm col-span-2 sm:col-span-1">
+            <Button variant="outline" onClick={handleExport} className="h-8 sm:h-9 text-xs sm:text-sm">
               <FileSpreadsheet className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Экспорт</span>
               <span className="sm:hidden">Excel</span>
+            </Button>
+            
+            <Button variant="outline" onClick={() => handlePrint()} className="h-8 sm:h-9 text-xs sm:text-sm">
+              <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Печать</span>
+              <span className="sm:hidden">Печать</span>
             </Button>
           </div>
         </CardContent>
@@ -554,13 +568,29 @@ export const OperatorHoursReport = () => {
       </div>
 
       {/* Table */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{getPeriodLabel()}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
+      <div ref={printRef}>
+        <style type="text/css" media="print">{`
+          @page { size: landscape; margin: 10mm; }
+          body { font-size: 10px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
+          th { background-color: #f5f5f5; font-weight: 600; }
+          .print-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; }
+          .print-period { font-size: 12px; margin-bottom: 12px; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .font-medium { font-weight: 500; }
+          .totals-row { background-color: #f5f5f5; font-weight: 600; }
+        `}</style>
+        <div className="hidden print:block print-title">Отчёт по часам работы операторов</div>
+        <div className="hidden print:block print-period">{getPeriodLabel()}</div>
+        <Card className="print:shadow-none print:border-none">
+          <CardHeader className="pb-2 print:hidden">
+            <CardTitle className="text-base">{getPeriodLabel()}</CardTitle>
+          </CardHeader>
+          <CardContent className="print:p-0">
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[180px]">Оператор</TableHead>
@@ -598,12 +628,14 @@ export const OperatorHoursReport = () => {
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Badge 
-                                  variant="secondary" 
-                                  className="bg-purple-500/10 text-purple-700 dark:text-purple-400 cursor-help"
-                                >
-                                  {data.overtimeDays}
-                                </Badge>
+                                <span className="inline-block cursor-help">
+                                  <Badge 
+                                    variant="secondary" 
+                                    className="bg-purple-500/10 text-purple-700 dark:text-purple-400"
+                                  >
+                                    {data.overtimeDays}
+                                  </Badge>
+                                </span>
                               </TooltipTrigger>
                               <TooltipContent side="bottom" className="max-w-xs">
                                 <div className="space-y-1 text-xs">
@@ -615,17 +647,16 @@ export const OperatorHoursReport = () => {
                                       </span>
                                       <span className="flex items-center gap-1.5">
                                         <span className="font-medium">{detail.hours.toFixed(1)}ч</span>
-                                        <Badge 
-                                          variant="outline" 
+                                        <span 
                                           className={cn(
-                                            "text-[10px] px-1 py-0",
+                                            "text-[10px] px-1 py-0 border rounded",
                                             detail.isWorkingDay 
                                               ? "border-blue-500/30 text-blue-600 dark:text-blue-400" 
                                               : "border-orange-500/30 text-orange-600 dark:text-orange-400"
                                           )}
                                         >
                                           {detail.isWorkingDay ? "раб." : "вых."}
-                                        </Badge>
+                                        </span>
                                       </span>
                                     </div>
                                   ))}
@@ -718,6 +749,7 @@ export const OperatorHoursReport = () => {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };
