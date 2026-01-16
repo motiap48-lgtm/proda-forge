@@ -478,79 +478,83 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     </div>
                     
                     {/* Fact column - fixed width */}
-                    <div className="flex items-center gap-1.5">
-                      <Label className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>Факт:</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex">
-                            <Input
-                              type="number"
-                              min="0"
-                              step="1"
-                              className="w-[70px] h-8 text-sm"
-                              value={Math.round(regularMinutes)}
-                              onChange={(e) => {
-                                if (isDisabled) return;
-                                const rawValue = e.target.value;
-                                // Only allow integers
-                                if (rawValue === '' || /^\d+$/.test(rawValue)) {
-                                  const val = parseInt(rawValue) || 0;
-                                  setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                // Block decimal point and minus sign
-                                if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === 'e') {
-                                  e.preventDefault();
-                                }
-                              }}
-                              placeholder="мин"
-                              disabled={isDisabled}
-                            />
-                          </span>
-                        </TooltipTrigger>
-                        {isDisabled && (
-                          <TooltipContent>
-                            <p className="text-xs">
-                              {isFuture ? "Нельзя заполнять будущие даты" : "Нерабочий день по графику"}
-                            </p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                      <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин</span>
-                      
-                      {/* Show total with overtime if approved */}
-                      {approvedMinutes > 0 && (
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <Label className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>Факт:</Label>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="text-xs text-purple-600 font-medium whitespace-nowrap">
-                              ={formatMinutes(totalFactMinutes)}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Итого: {formatMinutes(regularMinutes)} + {formatMinutes(approvedMinutes)} (переработка)</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                      
-                      {/* Separate disabled overtime field for working days with overtime */}
-                      {approvedMinutes > 0 && !isNonWorkingDay && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1">
+                            <span className="inline-flex">
                               <Input
                                 type="number"
-                                className="w-[60px] h-8 text-sm bg-purple-50 border-purple-200 text-purple-700"
-                                value={Math.round(approvedMinutes)}
-                                disabled
+                                min="0"
+                                step="1"
+                                className="w-[70px] h-8 text-sm"
+                                value={Math.round(regularMinutes)}
+                                onChange={(e) => {
+                                  if (isDisabled) return;
+                                  const rawValue = e.target.value;
+                                  // Only allow integers
+                                  if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                                    const val = parseInt(rawValue) || 0;
+                                    setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  // Block decimal point and minus sign
+                                  if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === 'e') {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                placeholder="мин"
+                                disabled={isDisabled}
                               />
-                              <span className="text-xs text-purple-500 shrink-0">мин</span>
-                            </div>
+                            </span>
                           </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Переработка (подтв.): {approvedOT.map(e => e.description).join(", ")}</p>
-                          </TooltipContent>
+                          {isDisabled && (
+                            <TooltipContent>
+                              <p className="text-xs">
+                                {isFuture ? "Нельзя заполнять будущие даты" : "Нерабочий день по графику"}
+                              </p>
+                            </TooltipContent>
+                          )}
                         </Tooltip>
+                        <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин</span>
+                        
+                        {/* Show total with overtime if approved */}
+                        {approvedMinutes > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-xs text-purple-600 font-medium whitespace-nowrap">
+                                ={formatMinutes(totalFactMinutes)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Итого: {formatMinutes(regularMinutes)} + {formatMinutes(approvedMinutes)} (переработка)</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                      
+                      {/* Separate disabled overtime field on new line for working days with overtime */}
+                      {approvedMinutes > 0 && !isNonWorkingDay && (
+                        <div className="flex items-center gap-1.5 ml-[32px]">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  className="w-[70px] h-7 text-sm bg-purple-50 border-purple-200 text-purple-700"
+                                  value={Math.round(approvedMinutes)}
+                                  disabled
+                                />
+                                <span className="text-xs text-purple-500 shrink-0">мин</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Переработка (подтв.): {approvedOT.map(e => e.description).join(", ")}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                       )}
                     </div>
                     
