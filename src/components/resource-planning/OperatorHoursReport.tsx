@@ -145,6 +145,8 @@ export const OperatorHoursReport = () => {
 
       const schedule = operator.work_schedules;
       const shifts = schedule?.work_schedule_shifts || [];
+      // Check if this is a cyclic schedule (2/2, etc.) - they ignore holidays
+      const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
 
       days.forEach(day => {
         // Check termination/hire
@@ -169,8 +171,8 @@ export const OperatorHoursReport = () => {
           : 0;
         const normalHours = normalNetMinutes / 60;
 
-        // Holiday (non-working day)
-        if (exception && !exception.is_working_day) {
+        // Holiday (non-working day) - cyclic schedules ignore holidays
+        if (exception && !exception.is_working_day && !isCyclicSchedule) {
           if (shift) {
             holidaysCount++;
             holidaysReduction += normalHours;
@@ -179,15 +181,15 @@ export const OperatorHoursReport = () => {
           return;
         }
 
-        // Shortened day
-        if (exception && exception.exception_type === "shortened_day" && shift) {
+        // Shortened day - cyclic schedules ignore shortened days
+        if (exception && exception.exception_type === "shortened_day" && shift && !isCyclicSchedule) {
           plannedHours += normalHours;
           
           let reducedHours: number;
           if (exception.reduced_hours != null && exception.reduced_hours > 0) {
             reducedHours = Math.min(exception.reduced_hours, normalHours);
           } else {
-            const reductionHours = exception.reduction_hours ?? 1;
+            const reductionHours = schedule?.reduction_hours ?? exception.reduction_hours ?? 1;
             reducedHours = Math.max(0, normalHours - reductionHours);
           }
           
