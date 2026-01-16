@@ -536,8 +536,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                                   value={Math.round(approvedMinutes)}
                                   disabled
                                 />
-                                <span className="text-xs text-purple-500 shrink-0 w-[30px]">мин</span>
-                                <span className="text-xs text-purple-600 font-medium shrink-0 w-[40px]">+{formatMinutes(approvedMinutes)}</span>
+                                <span className="text-xs text-purple-500 shrink-0">мин</span>
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
