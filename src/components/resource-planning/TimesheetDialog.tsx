@@ -479,8 +479,9 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     
                     {/* Fact column - fixed width */}
                     <div className="flex flex-col gap-1">
+                      {/* Main fact row */}
                       <div className="flex items-center gap-1.5">
-                        <Label className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>Факт:</Label>
+                        <Label className={cn("text-xs shrink-0 w-[90px]", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>Факт:</Label>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="inline-flex">
@@ -518,42 +519,41 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                             </TooltipContent>
                           )}
                         </Tooltip>
-                        <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин</span>
-                        
-                        {/* Show total with overtime if approved */}
-                        {approvedMinutes > 0 && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-xs text-purple-600 font-medium whitespace-nowrap">
-                                ={formatMinutes(totalFactMinutes)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">Итого: {formatMinutes(regularMinutes)} + {formatMinutes(approvedMinutes)} (переработка)</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+                        <span className={cn("text-xs shrink-0 w-[30px]", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин</span>
+                        <span className="text-xs text-muted-foreground shrink-0 w-[40px]">={formatMinutes(regularMinutes)}</span>
                       </div>
                       
-                      {/* Separate disabled overtime field on new line for working days with overtime */}
+                      {/* Separate overtime row for working days with approved overtime */}
                       {approvedMinutes > 0 && !isNonWorkingDay && (
-                        <div className="flex items-center gap-1.5 ml-[32px]">
+                        <div className="flex items-center gap-1.5">
+                          <Label className="text-xs shrink-0 w-[90px] text-purple-600">Переработка:</Label>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1.5">
                                 <Input
                                   type="number"
                                   className="w-[70px] h-7 text-sm bg-purple-50 border-purple-200 text-purple-700"
                                   value={Math.round(approvedMinutes)}
                                   disabled
                                 />
-                                <span className="text-xs text-purple-500 shrink-0">мин</span>
+                                <span className="text-xs text-purple-500 shrink-0 w-[30px]">мин</span>
+                                <span className="text-xs text-purple-600 font-medium shrink-0 w-[40px]">+{formatMinutes(approvedMinutes)}</span>
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="text-xs">Переработка (подтв.): {approvedOT.map(e => e.description).join(", ")}</p>
                             </TooltipContent>
                           </Tooltip>
+                        </div>
+                      )}
+                      
+                      {/* Total row when overtime exists */}
+                      {approvedMinutes > 0 && !isNonWorkingDay && (
+                        <div className="flex items-center gap-1.5">
+                          <Label className="text-xs shrink-0 w-[90px] text-primary font-semibold">Итого:</Label>
+                          <div className="w-[70px]" />
+                          <div className="w-[30px]" />
+                          <span className="text-xs text-primary font-semibold shrink-0 w-[40px]">{formatMinutes(totalFactMinutes)}</span>
                         </div>
                       )}
                     </div>
