@@ -164,6 +164,7 @@ export const useOperatorCompensationBalance = (operatorId: string) => {
       } as OperatorCompensationBalance;
     },
     enabled: !!operatorId,
+    staleTime: 0, // Always refetch on invalidation
   });
 };
 
