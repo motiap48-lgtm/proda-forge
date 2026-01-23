@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw } from "lucide-react";
+import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -26,6 +26,7 @@ import {
   useDeleteAbsenceCompensation,
   useDeleteCompensationRecord,
   useConfirmCompensationRecord,
+  useCancelAbsenceCompensation,
   useRestoreAbsenceCompensation,
   useForceDeleteAbsenceCompensation,
   COMPENSATION_STATUS_LABELS,
@@ -113,6 +114,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   const deleteAbsence = useDeleteAbsenceCompensation();
   const deleteRecord = useDeleteCompensationRecord();
   const confirmRecord = useConfirmCompensationRecord();
+  const cancelAbsence = useCancelAbsenceCompensation();
   const restoreAbsence = useRestoreAbsenceCompensation();
   const forceDeleteAbsence = useForceDeleteAbsenceCompensation();
 
@@ -168,6 +170,10 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
 
   const handleDeleteAbsence = (id: string) => {
     deleteAbsence.mutate(id);
+  };
+
+  const handleCancelAbsence = (id: string) => {
+    cancelAbsence.mutate(id);
   };
 
   const handleRestoreAbsence = (id: string) => {
@@ -389,11 +395,24 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-muted-foreground hover:text-rose-600"
-                              onClick={() => handleDeleteAbsence(comp.id)}
+                              className="text-amber-600 hover:text-amber-700"
+                              onClick={() => handleCancelAbsence(comp.id)}
+                              title="Отменить"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Ban className="h-4 w-4" />
                             </Button>
+                            {/* Only show delete if no compensation records */}
+                            {(!comp.compensation_records || comp.compensation_records.length === 0) && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-muted-foreground hover:text-rose-600"
+                                onClick={() => handleDeleteAbsence(comp.id)}
+                                title="Удалить"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>
