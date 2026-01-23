@@ -1002,7 +1002,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden cursor-grab active:cursor-grabbing group outline-none",
                                     isSelected && "ring-2 ring-primary z-20",
                                     isHovered && !isSelected && "ring-2 ring-primary/60 z-10",
-                                    !isHovered && !isSelected && "hover:ring-2 hover:ring-primary/50",
+                                    !isHovered && !isSelected && !hasOvertime && "hover:ring-2 hover:ring-primary/50",
                                     isDragging(absence.id) && "opacity-50 scale-95",
                                     absence.absence_type === 'annual_leave' && "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-900/50 dark:to-blue-900/70 text-blue-700 dark:text-blue-300",
                                     absence.absence_type === 'sick_leave' && "bg-gradient-to-b from-red-200 to-red-300 dark:from-red-900/50 dark:to-red-900/70 text-red-700 dark:text-red-300",
@@ -1013,6 +1013,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     absence.absence_type === 'business_trip' && "bg-gradient-to-b from-purple-200 to-purple-300 dark:from-purple-900/50 dark:to-purple-900/70 text-purple-700 dark:text-purple-300",
                                     absence.absence_type === 'unauthorized_absence' && "bg-gradient-to-b from-rose-300 to-rose-400 dark:from-rose-800/60 dark:to-rose-900/80 text-rose-800 dark:text-rose-200",
                                     absence.absence_type === 'other' && "bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 text-slate-600 dark:text-slate-300",
+                                    // Overtime ring on absence cell
+                                    hasOvertime && !isSelected && !isHovered && "ring-2 ring-purple-400 dark:ring-purple-600",
                                     isToday(day) && "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]"
                                   )}
                                   title={`${absenceInfo.label}${absence.notes ? `: ${absence.notes}` : ''}\nКлик - редактировать | Delete - удалить | Перетащить - переместить`}
