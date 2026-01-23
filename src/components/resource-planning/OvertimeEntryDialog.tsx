@@ -19,9 +19,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Clock, AlertCircle, FileText, CheckCircle2, X, Trash2, RotateCcw } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Clock, AlertCircle, FileText, CheckCircle2, Trash2, RotateCcw, CalendarIcon, XCircle } from "lucide-react";
 import { format, parse } from "date-fns";
 import { ru } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   useCreateOvertimeEntry,
@@ -71,6 +78,8 @@ export const OvertimeEntryDialog = ({
   const [description, setDescription] = useState("");
   const [workOrderId, setWorkOrderId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localDate, setLocalDate] = useState<Date>(date);
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
 
   useEffect(() => {
     if (entry) {
@@ -78,13 +87,15 @@ export const OvertimeEntryDialog = ({
       setEndTime(entry.end_time?.slice(0, 5) || "21:00");
       setDescription(entry.description || "");
       setWorkOrderId(entry.work_order_id || "");
+      setLocalDate(entry.work_date ? new Date(entry.work_date) : date);
     } else {
       setStartTime(scheduledEndTime);
       setEndTime("21:00");
       setDescription("");
       setWorkOrderId("");
+      setLocalDate(date);
     }
-  }, [entry, scheduledEndTime, open]);
+  }, [entry, scheduledEndTime, open, date]);
 
   const calculateDuration = (): number => {
     try {
@@ -121,12 +132,13 @@ export const OvertimeEntryDialog = ({
           end_time: endTime,
           description,
           work_order_id: workOrderId || null,
+          work_date: format(localDate, "yyyy-MM-dd"),
         });
         toast.success("Переработка обновлена");
       } else {
         await createEntry.mutateAsync({
           operator_id: operatorId,
-          work_date: format(date, "yyyy-MM-dd"),
+          work_date: format(localDate, "yyyy-MM-dd"),
           start_time: startTime,
           end_time: endTime,
           description,
@@ -215,7 +227,7 @@ export const OvertimeEntryDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
@@ -226,7 +238,7 @@ export const OvertimeEntryDialog = ({
         <div className="space-y-4">
           {/* Operator & Date selection/info */}
           {!entry && operators.length > 0 && onOperatorChange && onDateChange ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Оператор</Label>
                 <SearchableSelect
@@ -244,23 +256,82 @@ export const OvertimeEntryDialog = ({
               </div>
               <div className="space-y-2">
                 <Label>Дата</Label>
-                <Input
-                  type="date"
-                  value={format(date, "yyyy-MM-dd")}
-                  onChange={(e) => e.target.value && onDateChange(new Date(e.target.value))}
-                />
+                <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !localDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {localDate ? format(localDate, "d MMMM yyyy", { locale: ru }) : "Выберите дату"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={localDate}
+                      onSelect={(d) => {
+                        if (d) {
+                          setLocalDate(d);
+                          onDateChange(d);
+                          setDatePopoverOpen(false);
+                        }
+                      }}
+                      initialFocus
+                      locale={ru}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           ) : (
-            <div className="p-3 bg-muted/50 rounded-lg">
+            <div className="p-3 bg-muted/50 rounded-lg space-y-2">
               <div className="text-sm font-medium">{operatorName}</div>
-              <div className="text-sm text-muted-foreground">
-                {format(date, "d MMMM yyyy (EEEE)", { locale: ru })}
-              </div>
+              {/* Editable date for existing entry */}
+              {entry && canEdit ? (
+                <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "w-full sm:w-auto justify-start text-left font-normal",
+                        !localDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(localDate, "d MMMM yyyy (EEEE)", { locale: ru })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={localDate}
+                      onSelect={(d) => {
+                        if (d) {
+                          setLocalDate(d);
+                          setDatePopoverOpen(false);
+                        }
+                      }}
+                      initialFocus
+                      locale={ru}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  {format(localDate, "d MMMM yyyy (EEEE)", { locale: ru })}
+                </div>
+              )}
               {entry && (
                 <Badge 
                   variant={isApproved ? "default" : "secondary"} 
-                  className="mt-2"
+                  className="mt-1"
                 >
                   {entry.status === 'pending' && "Ожидает подтверждения"}
                   {entry.status === 'approved' && "Подтверждено"}
@@ -346,22 +417,13 @@ export const OvertimeEntryDialog = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-col gap-3 pt-4 border-t">
-          {/* Main action buttons */}
-          <div className="flex flex-wrap gap-2 justify-end w-full">
-            {/* For pending entries */}
-            {entry && entry.status === 'pending' && (
-              <>
+        <DialogFooter className="flex-col gap-3 pt-4 border-t sm:flex-col">
+          {/* For pending entries */}
+          {entry && entry.status === 'pending' && (
+            <div className="flex flex-col gap-2 w-full">
+              {/* Primary actions row */}
+              <div className="grid grid-cols-2 gap-2">
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancel}
-                  disabled={isSubmitting}
-                >
-                  Отменить запись
-                </Button>
-                <Button
-                  size="sm"
                   onClick={handleApprove}
                   disabled={isSubmitting || !description.trim()}
                   className="bg-green-600 hover:bg-green-700"
@@ -369,56 +431,105 @@ export const OvertimeEntryDialog = ({
                   <CheckCircle2 className="h-4 w-4 mr-1.5" />
                   Подтвердить
                 </Button>
-                <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
+                <Button onClick={handleSubmit} disabled={isSubmitting}>
                   Сохранить
                 </Button>
-              </>
-            )}
-            
-            {/* For new entry */}
-            {!entry && (
-              <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
-                Добавить
-              </Button>
-            )}
-            
-            {/* For approved entries - admin can revoke */}
-            {entry?.status === 'approved' && isAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRevokeApproval}
-                disabled={isSubmitting}
-              >
-                <RotateCcw className="h-4 w-4 mr-1.5" />
-                Снять подтверждение
-              </Button>
-            )}
-            
-            {/* Close button for approved (non-admin) or cancelled */}
-            {((entry?.status === 'approved' && !isAdmin) || entry?.status === 'cancelled') && (
+              </div>
+              {/* Secondary actions row */}
+              <div className="flex justify-between items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancel}
+                  disabled={isSubmitting}
+                >
+                  <XCircle className="h-4 w-4 mr-1.5" />
+                  Отменить запись
+                </Button>
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onDelete(entry);
+                    }}
+                    disabled={isSubmitting}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1.5" />
+                    Удалить
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* For new entry */}
+          {!entry && (
+            <Button className="w-full" onClick={handleSubmit} disabled={isSubmitting}>
+              Добавить
+            </Button>
+          )}
+          
+          {/* For approved entries - admin can revoke */}
+          {entry?.status === 'approved' && (
+            <div className="flex flex-col gap-2 w-full">
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  onClick={handleRevokeApproval}
+                  disabled={isSubmitting}
+                  className="w-full"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1.5" />
+                  Снять подтверждение
+                </Button>
+              )}
+              <div className="flex justify-between items-center">
+                <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+                  Закрыть
+                </Button>
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onDelete(entry);
+                    }}
+                    disabled={isSubmitting}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1.5" />
+                    Удалить
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* For cancelled entries */}
+          {entry?.status === 'cancelled' && (
+            <div className="flex justify-between items-center w-full">
               <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
                 Закрыть
               </Button>
-            )}
-          </div>
-          
-          {/* Delete button - separate row */}
-          {entry && onDelete && (
-            <div className="flex justify-start w-full">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  onOpenChange(false);
-                  onDelete(entry);
-                }}
-                disabled={isSubmitting}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 className="h-4 w-4 mr-1.5" />
-                Удалить
-              </Button>
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onDelete(entry);
+                  }}
+                  disabled={isSubmitting}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Удалить
+                </Button>
+              )}
             </div>
           )}
         </DialogFooter>
