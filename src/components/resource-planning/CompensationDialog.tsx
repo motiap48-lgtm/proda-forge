@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check } from "lucide-react";
+import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -26,6 +26,8 @@ import {
   useDeleteAbsenceCompensation,
   useDeleteCompensationRecord,
   useConfirmCompensationRecord,
+  useRestoreAbsenceCompensation,
+  useForceDeleteAbsenceCompensation,
   COMPENSATION_STATUS_LABELS,
   AbsenceCompensation,
 } from "@/hooks/useAbsenceCompensations";
@@ -111,9 +113,12 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   const deleteAbsence = useDeleteAbsenceCompensation();
   const deleteRecord = useDeleteCompensationRecord();
   const confirmRecord = useConfirmCompensationRecord();
+  const restoreAbsence = useRestoreAbsenceCompensation();
+  const forceDeleteAbsence = useForceDeleteAbsenceCompensation();
 
-  // Check if a record can be confirmed (date has passed)
-  const canConfirmRecord = (compensationDate: string): boolean => {
+  // Check if a record can be confirmed (date has passed and compensation is not cancelled)
+  const canConfirmRecord = (compensationDate: string, compensationStatus: string): boolean => {
+    if (compensationStatus === "cancelled") return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const recordDate = new Date(compensationDate);
@@ -163,6 +168,14 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
 
   const handleDeleteAbsence = (id: string) => {
     deleteAbsence.mutate(id);
+  };
+
+  const handleRestoreAbsence = (id: string) => {
+    restoreAbsence.mutate(id);
+  };
+
+  const handleForceDeleteAbsence = (id: string) => {
+    forceDeleteAbsence.mutate(id);
   };
 
   const totalPending = roundHours(compensations
@@ -330,35 +343,58 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                         )}
                       </div>
                       <div className="flex gap-1">
-                        {comp.status !== "cancelled" && comp.status !== "completed" && (
+                        {comp.status === "cancelled" ? (
                           <>
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => setAddingCompensationFor(comp.id)}
-                              title="Добавить одну отработку"
+                              className="text-emerald-600 hover:text-emerald-700"
+                              onClick={() => handleRestoreAbsence(comp.id)}
+                              title="Восстановить"
                             >
-                              <Plus className="h-4 w-4" />
+                              <RotateCcw className="h-4 w-4" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => setBulkCompensationFor(comp)}
-                              title="Массовая отработка"
+                              className="text-muted-foreground hover:text-rose-600"
+                              onClick={() => handleForceDeleteAbsence(comp.id)}
+                              title="Удалить полностью"
                             >
-                              <CalendarDays className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </>
-                        )}
-                        {comp.status !== "cancelled" && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-muted-foreground hover:text-rose-600"
-                            onClick={() => handleDeleteAbsence(comp.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        ) : (
+                          <>
+                            {comp.status !== "completed" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setAddingCompensationFor(comp.id)}
+                                  title="Добавить одну отработку"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setBulkCompensationFor(comp)}
+                                  title="Массовая отработка"
+                                >
+                                  <CalendarDays className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-muted-foreground hover:text-rose-600"
+                              onClick={() => handleDeleteAbsence(comp.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -368,7 +404,8 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                       <div className="mt-2 pl-4 border-l-2 border-emerald-200 dark:border-emerald-800 space-y-1">
                         {comp.compensation_records.map((record) => {
                           const isConfirmed = record.status === "confirmed";
-                          const canConfirm = canConfirmRecord(record.compensation_date);
+                          const canConfirm = canConfirmRecord(record.compensation_date, comp.status);
+                          const isCancelled = comp.status === "cancelled";
                           
                           return (
                             <div
@@ -379,12 +416,12 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                                 {isConfirmed ? (
                                   <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
                                 ) : (
-                                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                                  <Clock className={`h-3.5 w-3.5 ${isCancelled ? "text-gray-400" : "text-amber-500"}`} />
                                 )}
-                                <span className={!isConfirmed ? "text-muted-foreground" : ""}>
+                                <span className={!isConfirmed || isCancelled ? "text-muted-foreground" : ""}>
                                   {format(new Date(record.compensation_date), "d MMM", { locale: ru })}
                                   : {record.hours_worked}ч
-                                  {!isConfirmed && (
+                                  {!isConfirmed && !isCancelled && (
                                     <span className="text-amber-600 ml-1">(ожидает)</span>
                                   )}
                                   {record.notes && (
@@ -392,44 +429,46 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                                   )}
                                 </span>
                               </div>
-                              <div className="flex gap-1">
-                                {!isConfirmed && (
+                              {!isCancelled && (
+                                <div className="flex gap-1">
+                                  {!isConfirmed && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className={`h-6 w-6 p-0 ${
+                                        canConfirm 
+                                          ? "text-emerald-600 hover:text-emerald-700" 
+                                          : "text-muted-foreground cursor-not-allowed"
+                                      }`}
+                                      onClick={() => {
+                                        if (canConfirm) {
+                                          confirmRecord.mutate({
+                                            id: record.id,
+                                            absence_compensation_id: comp.id,
+                                          });
+                                        }
+                                      }}
+                                      disabled={!canConfirm}
+                                      title={canConfirm ? "Подтвердить отработку" : "Можно подтвердить только после наступления даты"}
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </Button>
+                                  )}
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className={`h-6 w-6 p-0 ${
-                                      canConfirm 
-                                        ? "text-emerald-600 hover:text-emerald-700" 
-                                        : "text-muted-foreground cursor-not-allowed"
-                                    }`}
-                                    onClick={() => {
-                                      if (canConfirm) {
-                                        confirmRecord.mutate({
-                                          id: record.id,
-                                          absence_compensation_id: comp.id,
-                                        });
-                                      }
-                                    }}
-                                    disabled={!canConfirm}
-                                    title={canConfirm ? "Подтвердить отработку" : "Можно подтвердить только после наступления даты"}
+                                    className="h-6 w-6 p-0 text-muted-foreground hover:text-rose-600"
+                                    onClick={() =>
+                                      deleteRecord.mutate({
+                                        id: record.id,
+                                        absence_compensation_id: comp.id,
+                                      })
+                                    }
                                   >
-                                    <Check className="h-3 w-3" />
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0 text-muted-foreground hover:text-rose-600"
-                                  onClick={() =>
-                                    deleteRecord.mutate({
-                                      id: record.id,
-                                      absence_compensation_id: comp.id,
-                                    })
-                                  }
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}

@@ -533,6 +533,108 @@ export const useUnconfirmCompensationRecord = () => {
   });
 };
 
+// Restore cancelled absence compensation
+export const useRestoreAbsenceCompensation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Get the compensation to recalculate status
+      const { data: compensation, error: fetchError } = await supabase
+        .from("absence_compensations")
+        .select(`*, compensation_records (*)`)
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const absComp = compensation as AbsenceCompensation;
+      
+      // Calculate correct status based on records
+      const newStatus = calculateCompensationStatus(
+        Number(absComp.absence_hours),
+        absComp.compensation_records
+      );
+
+      const { error } = await supabase
+        .from("absence_compensations")
+        .update({ status: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      return { success: true, compensation };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
+      toast.success("Запись отработки восстановлена");
+    },
+    onError: (error: any) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+};
+
+// Force delete absence compensation (including all records)
+export const useForceDeleteAbsenceCompensation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // First get the compensation details
+      const { data: compensation, error: fetchError } = await supabase
+        .from("absence_compensations")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Delete all compensation records first
+      const { error: recordsError } = await supabase
+        .from("compensation_records")
+        .delete()
+        .eq("absence_compensation_id", id);
+
+      if (recordsError) throw recordsError;
+
+      // Delete the absence compensation
+      const { error } = await supabase
+        .from("absence_compensations")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      // Also delete corresponding operator_absences record for this date
+      const absenceDate = compensation.absence_date;
+      const operatorId = compensation.operator_id;
+
+      await supabase
+        .from("operator_absences")
+        .delete()
+        .eq("operator_id", operatorId)
+        .eq("start_date", absenceDate)
+        .eq("end_date", absenceDate);
+
+      return { success: true, compensation };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
+      toast.success("Запись полностью удалена");
+    },
+    onError: (error: any) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+};
+
 // Delete all absence compensations for an operator
 export const useDeleteAllOperatorCompensations = () => {
   const queryClient = useQueryClient();
@@ -560,6 +662,8 @@ export const useDeleteAllOperatorCompensations = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
       toast.success("Все записи отработки удалены");
     },
     onError: (error: any) => {
