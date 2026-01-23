@@ -1030,6 +1030,79 @@ export type Database = {
           },
         ]
       }
+      operator_schedule_history: {
+        Row: {
+          assigned_shift_id: string | null
+          assigned_shift_name: string | null
+          assigned_shift_number: number | null
+          change_reason: string | null
+          changed_by: string | null
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          operator_id: string
+          shift_rotation_enabled: boolean | null
+          shift_rotation_start_date: string | null
+          work_schedule_id: string | null
+          work_schedule_name: string | null
+        }
+        Insert: {
+          assigned_shift_id?: string | null
+          assigned_shift_name?: string | null
+          assigned_shift_number?: number | null
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          operator_id: string
+          shift_rotation_enabled?: boolean | null
+          shift_rotation_start_date?: string | null
+          work_schedule_id?: string | null
+          work_schedule_name?: string | null
+        }
+        Update: {
+          assigned_shift_id?: string | null
+          assigned_shift_name?: string | null
+          assigned_shift_number?: number | null
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          operator_id?: string
+          shift_rotation_enabled?: boolean | null
+          shift_rotation_start_date?: string | null
+          work_schedule_id?: string | null
+          work_schedule_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_schedule_history_assigned_shift_id_fkey"
+            columns: ["assigned_shift_id"]
+            isOneToOne: false
+            referencedRelation: "work_schedule_shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operator_schedule_history_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operator_schedule_history_work_schedule_id_fkey"
+            columns: ["work_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "work_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operator_schedule_overrides: {
         Row: {
           created_at: string
