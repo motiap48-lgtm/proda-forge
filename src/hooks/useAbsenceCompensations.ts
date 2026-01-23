@@ -324,7 +324,7 @@ export const useDeleteAbsenceCompensation = () => {
           .eq("id", id);
         
         if (updateError) throw updateError;
-        return { action: "cancelled" };
+        return { action: "cancelled", compensation };
       }
 
       // If no compensation records, delete completely
@@ -334,11 +334,36 @@ export const useDeleteAbsenceCompensation = () => {
         .eq("id", id);
 
       if (error) throw error;
-      return { action: "deleted" };
+
+      // Also delete corresponding operator_absences record for this date
+      // Find and delete operator absence that covers this exact date
+      const absenceDate = compensation.absence_date;
+      const operatorId = compensation.operator_id;
+
+      // Delete operator_absences where the absence is for this single day
+      const { data: matchingAbsences } = await supabase
+        .from("operator_absences")
+        .select("*")
+        .eq("operator_id", operatorId)
+        .eq("start_date", absenceDate)
+        .eq("end_date", absenceDate);
+
+      if (matchingAbsences && matchingAbsences.length > 0) {
+        await supabase
+          .from("operator_absences")
+          .delete()
+          .eq("operator_id", operatorId)
+          .eq("start_date", absenceDate)
+          .eq("end_date", absenceDate);
+      }
+
+      return { action: "deleted", compensation };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
       toast.success(result.action === "deleted" ? "Запись удалена" : "Запись отменена");
     },
     onError: (error: any) => {
