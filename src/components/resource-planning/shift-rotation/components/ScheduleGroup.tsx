@@ -625,7 +625,6 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                         side="right" 
                         align="start"
                         sideOffset={5}
-                        style={{ zIndex: 99999 }}
                         forceMount={undefined}
                       >
                         <OperatorInfoCard 
