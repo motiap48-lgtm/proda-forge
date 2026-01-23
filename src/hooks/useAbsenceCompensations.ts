@@ -559,19 +559,24 @@ export const useCancelAbsenceCompensation = () => {
 
       if (error) throw error;
 
-      // Also delete corresponding operator_absences record for this date
-      // to remove the indicator from the calendar
+      // IMPORTANT:
+      // Do NOT delete operator_absences here. There are DB triggers that, on DELETE,
+      // may remove absence_compensations rows (if no work-off records exist), which
+      // makes the cancelled item disappear from this dialog.
+      // Instead, mark the absence as cancelled so it stops showing on the calendar.
       const absenceDate = compensation.absence_date;
       const operatorId = compensation.operator_id;
 
-      await supabase
+      const { error: absenceError } = await supabase
         .from("operator_absences")
-        .delete()
+        .update({ status: "cancelled" })
         .eq("operator_id", operatorId)
         .eq("start_date", absenceDate)
         .eq("end_date", absenceDate);
 
-      return { success: true, compensation };
+      if (absenceError) throw absenceError;
+
+      return { success: true, compensation: (updated ?? compensation) };
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
