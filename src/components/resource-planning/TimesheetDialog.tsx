@@ -478,10 +478,9 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     </div>
                     
                     {/* Fact column - fixed width */}
-                    <div className="w-[120px] shrink-0 flex flex-col gap-1">
+                    <div className="w-[140px] shrink-0 flex flex-col gap-1">
                       {/* Main fact row */}
                       <div className="flex items-center gap-1.5">
-                        <Label className={cn("text-xs shrink-0 w-[90px]", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>Факт:</Label>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="inline-flex">
@@ -519,8 +518,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                             </TooltipContent>
                           )}
                         </Tooltip>
-                        <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин</span>
-                        <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>={formatMinutes(regularMinutes)}</span>
+                        <span className={cn("text-xs shrink-0 w-[55px]", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин ={formatMinutes(regularMinutes)}</span>
                       </div>
                       
                       {/* Separate overtime row for days with approved overtime */}
