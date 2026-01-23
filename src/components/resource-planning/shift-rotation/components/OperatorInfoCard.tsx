@@ -1,12 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall, UserX, Clock } from "lucide-react";
+import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall, UserX, Clock, History } from "lucide-react";
 import { parseDateOnly } from "../utils";
 import { toast } from "sonner";
 import { CompensationBalanceBadge } from "../../CompensationBalanceBadge";
+import { OperatorScheduleHistoryDialog } from "../../OperatorScheduleHistoryDialog";
 
 interface OperatorInfoCardProps {
   operator: any;
@@ -21,6 +22,8 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
   onManageAbsences,
   onOpenCompensation 
 }) => {
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  
   const schedule = operator.work_schedules;
   const isCyclic = schedule?.schedule_type === 'cyclic';
   const shifts = schedule?.work_schedule_shifts || [];
@@ -56,6 +59,11 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
   const handleManageAbsences = (e: React.MouseEvent) => {
     e.stopPropagation();
     onManageAbsences?.(operator);
+  };
+
+  const handleOpenHistory = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowHistoryDialog(true);
   };
 
   const handleOpenCompensation = (e: React.MouseEvent) => {
@@ -171,6 +179,15 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
         <Clock className="h-3 w-3 mr-1.5" />
         Отработка
       </Button>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="h-8 px-2" 
+        onClick={handleOpenHistory}
+        title="История графиков"
+      >
+        <History className="h-3.5 w-3.5" />
+      </Button>
       {operator.phone && (
         <>
           <Button variant="outline" size="sm" className="h-8 px-2" onClick={handleCall} title="Позвонить">
@@ -182,6 +199,17 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
         </>
       )}
     </div>
+
+    {/* Schedule History Dialog */}
+    <OperatorScheduleHistoryDialog
+      open={showHistoryDialog}
+      onOpenChange={setShowHistoryDialog}
+      operator={operator ? {
+        id: operator.id,
+        name: operator.full_name,
+        work_schedule: operator.work_schedules,
+      } : null}
+    />
     </div>
   );
 };
