@@ -1045,32 +1045,25 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   
                                   <GripVertical className="h-2.5 w-2.5 absolute top-0.5 right-0.5 opacity-40 group-hover:opacity-0" />
                                   
-                                  {/* Overtime indicator on absence cell */}
-                                  {hasApprovedOvertime && (
+                                  {/* Overtime indicator on absence cell - same as regular cell */}
+                                  {hasOvertime && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <div className="absolute top-0.5 left-0.5 flex items-center justify-center w-3.5 h-3.5 rounded-full bg-purple-600 dark:bg-purple-500 text-white shadow-sm">
-                                          <Timer className="h-2 w-2" />
+                                        <div 
+                                          className={cn(
+                                            "absolute bottom-0 right-0 p-0.5 transition-all z-20",
+                                            hasPendingOvertime && !hasApprovedOvertime && "animate-pulse"
+                                          )}
+                                        >
+                                          <Clock className={cn(
+                                            "h-2.5 w-2.5 transition-colors",
+                                            hasApprovedOvertime ? "text-purple-600 dark:text-purple-400" : "text-purple-400 dark:text-purple-500"
+                                          )} />
                                         </div>
                                       </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p className="text-xs">
-                                          Переработка: {Math.floor(approvedOvertimeMinutes / 60)}ч {approvedOvertimeMinutes % 60}м
-                                        </p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                  {hasPendingOvertime && !hasApprovedOvertime && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="absolute top-0.5 left-0.5 flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-500 dark:bg-amber-400 text-white shadow-sm animate-pulse">
-                                          <Timer className="h-2 w-2" />
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p className="text-xs">
-                                          Ожидает подтверждения: {Math.floor(pendingOvertimeMinutes / 60)}ч {pendingOvertimeMinutes % 60}м
-                                        </p>
+                                      <TooltipContent side="top" className="text-xs">
+                                        Переработка: {Math.floor(approvedOvertimeMinutes / 60)}ч {approvedOvertimeMinutes % 60}м
+                                        {hasPendingOvertime && <span className="text-amber-500"> (ожидает: {Math.floor(pendingOvertimeMinutes / 60)}ч)</span>}
                                       </TooltipContent>
                                     </Tooltip>
                                   )}
