@@ -36,6 +36,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Clock, Plus, Search, Edit, CheckCircle2, X, CalendarIcon, FileSpreadsheet, Trash2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -454,40 +459,60 @@ export const OvertimeEntriesTab = () => {
                       <div className="flex justify-end gap-1">
                         {entry.status === "pending" && (
                           <>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-green-600 hover:text-green-700"
+                                  onClick={() => handleQuickApprove(entry)}
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Подтвердить</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => handleQuickCancel(entry)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Отменить</TooltipContent>
+                            </Tooltip>
+                          </>
+                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-green-600 hover:text-green-700"
-                              onClick={() => handleQuickApprove(entry)}
+                              className="h-8 w-8"
+                              onClick={() => handleEdit(entry)}
                             >
-                              <CheckCircle2 className="h-4 w-4" />
+                              <Edit className="h-4 w-4" />
                             </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Редактировать</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => handleQuickCancel(entry)}
+                              onClick={() => handleDeleteClick(entry)}
                             >
-                              <X className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          </>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleEdit(entry)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteClick(entry)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Удалить</TooltipContent>
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>
