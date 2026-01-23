@@ -535,21 +535,15 @@ export const useUnconfirmCompensationRecord = () => {
 };
 
 // Cancel absence compensation (set status to cancelled)
+// IMPORTANT: This only cancels the COMPENSATION record, NOT the original absence!
+// The absence in operator_absences should remain visible on the calendar.
 export const useCancelAbsenceCompensation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Get the compensation to check and also delete operator_absences
-      const { data: compensation, error: fetchError } = await supabase
-        .from("absence_compensations")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Update status to cancelled
+      // Update only the absence_compensations status to cancelled
+      // DO NOT modify operator_absences - the absence should still be visible on calendar
       const { data: updated, error } = await supabase
         .from("absence_compensations")
         .update({ status: "cancelled" })
@@ -559,31 +553,12 @@ export const useCancelAbsenceCompensation = () => {
 
       if (error) throw error;
 
-      // IMPORTANT:
-      // Do NOT delete operator_absences here. There are DB triggers that, on DELETE,
-      // may remove absence_compensations rows (if no work-off records exist), which
-      // makes the cancelled item disappear from this dialog.
-      // Instead, mark the absence as cancelled so it stops showing on the calendar.
-      const absenceDate = compensation.absence_date;
-      const operatorId = compensation.operator_id;
-
-      const { error: absenceError } = await supabase
-        .from("operator_absences")
-        .update({ status: "cancelled" })
-        .eq("operator_id", operatorId)
-        .eq("start_date", absenceDate)
-        .eq("end_date", absenceDate);
-
-      if (absenceError) throw absenceError;
-
-      return { success: true, compensation: (updated ?? compensation) };
+      return { success: true, compensation: updated };
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
       await queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
-      await queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
-      await queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
-      toast.success("Запись отменена");
+      toast.success("Запись об отработке отменена");
     },
     onError: (error: any) => {
       toast.error(`Ошибка: ${error.message}`);
