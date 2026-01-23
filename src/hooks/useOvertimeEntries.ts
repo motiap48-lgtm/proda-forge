@@ -143,6 +143,7 @@ export const useUpdateOvertimeEntry = () => {
       end_time?: string;
       description?: string;
       work_order_id?: string | null;
+      work_date?: string;
       status?: 'pending' | 'approved' | 'cancelled';
     }) => {
       const updateData: any = { ...data };
