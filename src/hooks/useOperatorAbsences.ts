@@ -173,9 +173,14 @@ export const useCreateOperatorAbsence = () => {
         : "Отсутствие добавлено"
       );
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error creating absence:", error);
-      toast.error("Ошибка при добавлении отсутствия");
+      // Check if it's an overlap error from the database trigger
+      if (error?.code === 'P0001' && error?.message?.includes('Overlapping absence')) {
+        toast.error("Указанный период пересекается с существующим отсутствием. Измените даты.");
+      } else {
+        toast.error("Ошибка при добавлении отсутствия");
+      }
     },
   });
 };
@@ -259,9 +264,14 @@ export const useUpdateOperatorAbsence = () => {
         : "Отсутствие обновлено"
       );
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error updating absence:", error);
-      toast.error("Ошибка при обновлении отсутствия");
+      // Check if it's an overlap error from the database trigger
+      if (error?.code === 'P0001' && error?.message?.includes('Overlapping absence')) {
+        toast.error("Указанный период пересекается с существующим отсутствием. Измените даты или удалите конфликтующую запись.");
+      } else {
+        toast.error("Ошибка при обновлении отсутствия");
+      }
     },
   });
 };
