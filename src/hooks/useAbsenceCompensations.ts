@@ -533,6 +533,56 @@ export const useUnconfirmCompensationRecord = () => {
   });
 };
 
+// Cancel absence compensation (set status to cancelled)
+export const useCancelAbsenceCompensation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Get the compensation to check and also delete operator_absences
+      const { data: compensation, error: fetchError } = await supabase
+        .from("absence_compensations")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update status to cancelled
+      const { error } = await supabase
+        .from("absence_compensations")
+        .update({ status: "cancelled" })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      // Also delete corresponding operator_absences record for this date
+      // to remove the indicator from the calendar
+      const absenceDate = compensation.absence_date;
+      const operatorId = compensation.operator_id;
+
+      await supabase
+        .from("operator_absences")
+        .delete()
+        .eq("operator_id", operatorId)
+        .eq("start_date", absenceDate)
+        .eq("end_date", absenceDate);
+
+      return { success: true, compensation };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
+      toast.success("Запись отменена");
+    },
+    onError: (error: any) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+};
+
 // Restore cancelled absence compensation
 export const useRestoreAbsenceCompensation = () => {
   const queryClient = useQueryClient();
