@@ -110,6 +110,7 @@ export const useAbsenceCompensations = (operatorIds?: string[], dateRange?: { fr
       return data as AbsenceCompensation[];
     },
     enabled: true,
+    staleTime: 0, // Always refetch on invalidation
   });
 };
 
@@ -549,10 +550,12 @@ export const useCancelAbsenceCompensation = () => {
       if (fetchError) throw fetchError;
 
       // Update status to cancelled
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("absence_compensations")
         .update({ status: "cancelled" })
-        .eq("id", id);
+        .eq("id", id)
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -570,11 +573,11 @@ export const useCancelAbsenceCompensation = () => {
 
       return { success: true, compensation };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
-      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
-      queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
-      queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      await queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      await queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
+      await queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
       toast.success("Запись отменена");
     },
     onError: (error: any) => {
