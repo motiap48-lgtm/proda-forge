@@ -48,6 +48,7 @@ export const BulkDeleteAbsenceDialog: React.FC<BulkDeleteAbsenceDialogProps> = (
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
 
   const { data: allAbsences = [] } = useAllOperatorAbsences();
   const deleteAbsence = useDeleteOperatorAbsence();
@@ -296,7 +297,7 @@ export const BulkDeleteAbsenceDialog: React.FC<BulkDeleteAbsenceDialogProps> = (
                     </p>
                   ) : (
                     <div className="space-y-1">
-                      {filteredAbsences.slice(0, 20).map((absence) => (
+                      {(isPreviewExpanded ? filteredAbsences : filteredAbsences.slice(0, 20)).map((absence) => (
                         <div key={absence.id} className="text-xs p-1.5 bg-muted/50 rounded flex items-center gap-2">
                           <span>{ABSENCE_TYPE_LABELS[absence.absence_type]?.icon}</span>
                           <span className="font-medium truncate flex-1">
@@ -307,10 +308,23 @@ export const BulkDeleteAbsenceDialog: React.FC<BulkDeleteAbsenceDialogProps> = (
                           </span>
                         </div>
                       ))}
-                      {filteredAbsences.length > 20 && (
-                        <p className="text-xs text-muted-foreground text-center">
+                      {filteredAbsences.length > 20 && !isPreviewExpanded && (
+                        <button
+                          type="button"
+                          onClick={() => setIsPreviewExpanded(true)}
+                          className="text-xs text-primary hover:underline text-center w-full py-1"
+                        >
                           ... и ещё {filteredAbsences.length - 20}
-                        </p>
+                        </button>
+                      )}
+                      {isPreviewExpanded && filteredAbsences.length > 20 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsPreviewExpanded(false)}
+                          className="text-xs text-muted-foreground hover:underline text-center w-full py-1"
+                        >
+                          Свернуть
+                        </button>
                       )}
                     </div>
                   )}
