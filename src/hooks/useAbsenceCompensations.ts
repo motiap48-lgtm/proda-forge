@@ -42,7 +42,8 @@ export const COMPENSATION_STATUS_LABELS = {
   cancelled: { label: "Отменено", color: "text-gray-500", bgColor: "bg-gray-100 dark:bg-gray-800" },
 };
 
-// Helper function to calculate status based on records and dates
+// Helper function to calculate status based on CONFIRMED records only
+// Hours should only be subtracted after confirmation, not after assignment
 export const calculateCompensationStatus = (
   absenceHours: number,
   compensationRecords: CompensationRecord[] | undefined
@@ -51,9 +52,7 @@ export const calculateCompensationStatus = (
     return "pending";
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
+  // Only count confirmed records for status calculation
   const totalConfirmedHours = compensationRecords.reduce(
     (sum, r) => r.status === "confirmed" ? sum + Number(r.hours_worked) : sum,
     0
@@ -64,20 +63,12 @@ export const calculateCompensationStatus = (
     return "completed";
   }
 
-  // Check if any compensation date has passed (needs confirmation or partially worked)
-  const hasPassedDates = compensationRecords.some(r => {
-    if (r.status === "confirmed") return true; // Already confirmed counts
-    const compDate = new Date(r.compensation_date);
-    compDate.setHours(0, 0, 0, 0);
-    return compDate <= today;
-  });
-
-  // If there are passed dates or confirmed hours -> partial
-  if (hasPassedDates || totalConfirmedHours > 0) {
+  // Status is "partial" ONLY if there are confirmed hours (not just pending records)
+  if (totalConfirmedHours > 0) {
     return "partial";
   }
 
-  // All dates are in the future -> pending (awaiting compensation)
+  // No confirmed records yet -> pending (regardless of pending records existing)
   return "pending";
 };
 
