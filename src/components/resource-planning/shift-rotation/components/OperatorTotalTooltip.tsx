@@ -357,10 +357,10 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   
   return (
     <div className="space-y-2 min-w-[220px] text-xs">
-      {/* Show full plan if there's vacation reducing it */}
+      {/* Show available time by schedule if there's vacation reducing it */}
       {hasPlanReduction && (
         <div className="flex justify-between items-center text-muted-foreground/70">
-          <span>Полный план:</span>
+          <span>Доступное время:</span>
           <span>{formatTime(fullPlanData.hours, fullPlanData.minutes)}</span>
         </div>
       )}
