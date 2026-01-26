@@ -27,6 +27,7 @@ import {
   useDeleteAbsenceCompensation,
   useDeleteCompensationRecord,
   useConfirmCompensationRecord,
+  useUnconfirmCompensationRecord,
   useCancelAbsenceCompensation,
   useRestoreAbsenceCompensation,
   useForceDeleteAbsenceCompensation,
@@ -214,6 +215,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   const deleteAbsence = useDeleteAbsenceCompensation();
   const deleteRecord = useDeleteCompensationRecord();
   const confirmRecord = useConfirmCompensationRecord();
+  const unconfirmRecord = useUnconfirmCompensationRecord();
   const cancelAbsence = useCancelAbsenceCompensation();
   const restoreAbsence = useRestoreAbsenceCompensation();
   const forceDeleteAbsence = useForceDeleteAbsenceCompensation();
@@ -554,7 +556,22 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                                 </div>
                                 {!isCancelled && (
                                   <div className="flex gap-1">
-                                    {!isConfirmed && (
+                                    {isConfirmed ? (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 text-amber-600 hover:text-amber-700"
+                                        onClick={() => {
+                                          unconfirmRecord.mutate({
+                                            id: record.id,
+                                            absence_compensation_id: comp.id,
+                                          });
+                                        }}
+                                        title="Отменить подтверждение"
+                                      >
+                                        <RotateCcw className="h-3 w-3" />
+                                      </Button>
+                                    ) : (
                                       <Button
                                         size="sm"
                                         variant="ghost"
@@ -587,6 +604,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                                           absence_compensation_id: comp.id,
                                         })
                                       }
+                                      title="Удалить запись"
                                     >
                                       <Trash2 className="h-3 w-3" />
                                     </Button>
