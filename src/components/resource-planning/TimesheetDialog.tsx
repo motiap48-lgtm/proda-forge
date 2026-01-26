@@ -519,22 +519,6 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                           )}
                         </Tooltip>
                         <span className={cn("text-xs shrink-0 w-[55px]", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин ={formatMinutes(regularMinutes)}</span>
-                        {/* Show underage indicator when actual < plan for working days */}
-                        {!isDisabled && regularMinutes > 0 && regularMinutes < planned && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge 
-                                variant="outline" 
-                                className="text-xs text-red-600 border-red-300 bg-red-50 shrink-0 ml-1"
-                              >
-                                -{formatMinutes(planned - regularMinutes)}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">Не доработано: {formatMinutes(planned - regularMinutes)}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
                       </div>
                       
                       {/* Separate overtime row for days with approved overtime */}
@@ -592,6 +576,26 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                           </TooltipContent>
                         </Tooltip>
                       ) : null}
+                    </div>
+                    
+                    {/* Underage indicator column - fixed width */}
+                    <div className="w-[50px] shrink-0 flex items-center justify-start pt-1">
+                      {/* Show underage indicator when actual < plan for working days */}
+                      {!isDisabled && regularMinutes > 0 && regularMinutes < planned && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs text-red-600 border-red-300 bg-red-50"
+                            >
+                              -{formatMinutes(planned - regularMinutes)}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Не доработано: {formatMinutes(planned - regularMinutes)}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
                     
                     {/* Overtime column - fixed width, show only pending overtime */}
