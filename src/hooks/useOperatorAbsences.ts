@@ -339,6 +339,86 @@ export const useDeleteOperatorAbsence = () => {
   });
 };
 
+// Bulk delete absences - optimized for speed (no individual toasts, parallel processing)
+export const useBulkDeleteOperatorAbsences = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (absenceIds: string[]) => {
+      if (absenceIds.length === 0) return { deleted: 0 };
+
+      // Get all absences to know operator_ids and dates for compensation cleanup
+      const { data: absences, error: fetchError } = await supabase
+        .from("operator_absences")
+        .select("*")
+        .in("id", absenceIds);
+
+      if (fetchError) throw fetchError;
+
+      // Collect all compensation IDs that need to be deleted
+      const compensationQueries = absences?.map(async (absence) => {
+        const { data } = await supabase
+          .from("absence_compensations")
+          .select("id")
+          .eq("operator_id", absence.operator_id)
+          .gte("absence_date", absence.start_date)
+          .lte("absence_date", absence.end_date);
+        return data || [];
+      }) || [];
+
+      const compensationResults = await Promise.all(compensationQueries);
+      const allCompensationIds = compensationResults.flat().map(c => c.id);
+
+      // Delete compensation records in batches (due to foreign key)
+      if (allCompensationIds.length > 0) {
+        // Delete in batches of 100 to avoid query limits
+        const batchSize = 100;
+        for (let i = 0; i < allCompensationIds.length; i += batchSize) {
+          const batch = allCompensationIds.slice(i, i + batchSize);
+          await supabase
+            .from("compensation_records")
+            .delete()
+            .in("absence_compensation_id", batch);
+        }
+
+        // Delete absence compensations in batches
+        for (let i = 0; i < allCompensationIds.length; i += batchSize) {
+          const batch = allCompensationIds.slice(i, i + batchSize);
+          await supabase
+            .from("absence_compensations")
+            .delete()
+            .in("id", batch);
+        }
+      }
+
+      // Delete absences in batches
+      const batchSize = 100;
+      for (let i = 0; i < absenceIds.length; i += batchSize) {
+        const batch = absenceIds.slice(i, i + batchSize);
+        const { error } = await supabase
+          .from("operator_absences")
+          .delete()
+          .in("id", batch);
+
+        if (error) throw error;
+      }
+
+      return { deleted: absenceIds.length };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      toast.success(`Удалено ${result.deleted} отсутствий`);
+    },
+    onError: (error) => {
+      console.error("Error bulk deleting absences:", error);
+      toast.error("Ошибка при массовом удалении отсутствий");
+    },
+  });
+};
+
 // Hook to merge duplicate absences for an operator
 export const useMergeOperatorAbsences = () => {
   const queryClient = useQueryClient();
