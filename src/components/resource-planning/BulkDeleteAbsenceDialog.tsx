@@ -289,7 +289,7 @@ export const BulkDeleteAbsenceDialog: React.FC<BulkDeleteAbsenceDialogProps> = (
               {/* Preview */}
               <div className="flex-1 space-y-2 min-h-0">
                 <Label>Будет удалено: {filteredAbsences.length}</Label>
-                <ScrollArea className="border rounded-md p-2 max-h-[150px]">
+                <ScrollArea className="border rounded-md p-2 h-[200px]">
                   {filteredAbsences.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       Нет отсутствий по заданным критериям
