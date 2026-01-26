@@ -292,8 +292,9 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   const totalPending = roundHours(compensations
     .filter((c) => c.status === "pending" || c.status === "partial")
     .reduce((sum, c) => {
-      const compensated = c.compensation_records?.reduce(
-        (s, r) => s + Number(r.hours_worked),
+       // Only count CONFIRMED records for balance calculation
+       const compensated = c.compensation_records?.reduce(
+         (s, r) => r.status === "confirmed" ? s + Number(r.hours_worked) : s,
         0
       ) || 0;
       return sum + (Number(c.absence_hours) - compensated);
@@ -413,8 +414,9 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                 <p className="text-center text-muted-foreground py-4">Нет записей</p>
               ) : (
                 compensations.map((comp) => {
-                  const compensatedHours = roundHours(comp.compensation_records?.reduce(
-                    (sum, r) => sum + Number(r.hours_worked),
+                   // Only count CONFIRMED records for display
+                   const compensatedHours = roundHours(comp.compensation_records?.reduce(
+                     (sum, r) => r.status === "confirmed" ? sum + Number(r.hours_worked) : sum,
                     0
                   ) || 0);
                   const remaining = roundHours(Number(comp.absence_hours) - compensatedHours);
