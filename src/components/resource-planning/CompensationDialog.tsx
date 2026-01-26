@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -15,7 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -33,6 +34,7 @@ import {
   AbsenceCompensation,
 } from "@/hooks/useAbsenceCompensations";
 import { BulkCompensationDialog } from "./BulkCompensationDialog";
+import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
 
 interface CompensationDialogProps {
   open: boolean;
@@ -41,19 +43,44 @@ interface CompensationDialogProps {
   operatorName: string;
 }
 
-// Hook to get operator's schedule hours
-const useOperatorScheduleHours = (operatorId: string) => {
+// Helper to convert minutes to HH:MM format
+const minutesToTime = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+};
+
+// Helper to convert HH:MM to minutes
+const timeToMinutes = (time: string): number => {
+  const [hours, mins] = time.split(":").map(Number);
+  return hours * 60 + mins;
+};
+
+// Hook to get operator's schedule data
+const useOperatorScheduleData = (operatorId: string) => {
   return useQuery({
-    queryKey: ["operator-schedule-hours", operatorId],
+    queryKey: ["operator-schedule-data", operatorId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("operators")
         .select(`
+          id,
           work_schedule_id,
+          shift_rotation_enabled,
+          shift_rotation_start_date,
+          assigned_shift_number,
           work_schedules (
             id,
             name,
+            schedule_type,
+            cycle_days_on,
+            cycle_days_off,
+            cycle_start_date,
             work_schedule_shifts (
+              id,
+              shift_number,
+              start_time,
+              end_time,
               net_work_minutes,
               gross_work_minutes,
               break_minutes
@@ -64,15 +91,7 @@ const useOperatorScheduleHours = (operatorId: string) => {
         .single();
 
       if (error) throw error;
-      
-      // Get hours from first shift
-      const shifts = data?.work_schedules?.work_schedule_shifts || [];
-      if (shifts.length > 0) {
-        const netMinutes = shifts[0].net_work_minutes || (shifts[0].gross_work_minutes - shifts[0].break_minutes);
-        return netMinutes / 60;
-      }
-      
-      return 8; // Default fallback
+      return data;
     },
     enabled: !!operatorId,
   });
@@ -84,7 +103,17 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   operatorId,
   operatorName,
 }) => {
-  const { data: scheduleHours = 8 } = useOperatorScheduleHours(operatorId);
+  const { data: operatorData } = useOperatorScheduleData(operatorId);
+  
+  // Calculate schedule hours from operator data
+  const scheduleHours = useMemo(() => {
+    const shifts = operatorData?.work_schedules?.work_schedule_shifts || [];
+    if (shifts.length > 0) {
+      const netMinutes = shifts[0].net_work_minutes || (shifts[0].gross_work_minutes - shifts[0].break_minutes);
+      return netMinutes / 60;
+    }
+    return 8;
+  }, [operatorData]);
   
   const [showAddAbsence, setShowAddAbsence] = useState(false);
   const [absenceDate, setAbsenceDate] = useState<Date | undefined>(new Date());
@@ -93,7 +122,8 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   
   const [addingCompensationFor, setAddingCompensationFor] = useState<string | null>(null);
   const [compensationDate, setCompensationDate] = useState<Date | undefined>(new Date());
-  const [compensationHours, setCompensationHours] = useState<string>("");
+  const [compensationStartTime, setCompensationStartTime] = useState<number>(1080); // 18:00 default
+  const [compensationEndTime, setCompensationEndTime] = useState<number>(1140); // 19:00 default
   const [compensationNotes, setCompensationNotes] = useState("");
   
   // Helper to round hours to 2 decimal places
@@ -107,6 +137,76 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
       setAbsenceHours(scheduleHours.toString());
     }
   }, [scheduleHours]);
+
+  // Check if selected date is a working day and get shift info
+  const shiftInfo = useMemo(() => {
+    if (!compensationDate || !operatorData?.work_schedules) return null;
+    
+    const schedule = operatorData.work_schedules;
+    const isWorking = isWorkingDay(schedule, compensationDate, operatorData);
+    
+    if (!isWorking) {
+      return { isWorkingDay: false, shift: null };
+    }
+    
+    const shift = getShiftForDate(operatorData, compensationDate);
+    if (!shift) return { isWorkingDay: false, shift: null };
+    
+    return {
+      isWorkingDay: true,
+      shift,
+      startMinutes: timeToMinutes(shift.start_time),
+      endMinutes: timeToMinutes(shift.end_time),
+    };
+  }, [compensationDate, operatorData]);
+
+  // Validate time range based on shift
+  const timeValidation = useMemo(() => {
+    if (!shiftInfo) return { isValid: true, message: null };
+    
+    if (!shiftInfo.isWorkingDay) {
+      return { isValid: true, message: "Нерабочий день — любое время" };
+    }
+    
+    const { startMinutes: shiftStart, endMinutes: shiftEnd } = shiftInfo;
+    
+    // Overtime must be completely before shift starts OR completely after shift ends
+    const endsBeforeShift = compensationEndTime <= shiftStart;
+    const startsAfterShift = compensationStartTime >= shiftEnd;
+    
+    if (endsBeforeShift || startsAfterShift) {
+      return { 
+        isValid: true, 
+        message: `Смена: ${minutesToTime(shiftStart)} - ${minutesToTime(shiftEnd)}` 
+      };
+    }
+    
+    return { 
+      isValid: false, 
+      message: `Время пересекается со сменой (${minutesToTime(shiftStart)} - ${minutesToTime(shiftEnd)})` 
+    };
+  }, [shiftInfo, compensationStartTime, compensationEndTime]);
+
+  // Set default times when date changes
+  useEffect(() => {
+    if (!compensationDate || !shiftInfo) return;
+    
+    if (shiftInfo.isWorkingDay && shiftInfo.endMinutes) {
+      // Working day: default start after shift ends
+      const afterShift = shiftInfo.endMinutes;
+      setCompensationStartTime(Math.min(afterShift, 1380)); // Max 23:00
+      setCompensationEndTime(Math.min(afterShift + 60, 1440)); // +1 hour
+    } else {
+      // Non-working day: default 09:00-11:00
+      setCompensationStartTime(540);
+      setCompensationEndTime(660);
+    }
+  }, [compensationDate, shiftInfo?.isWorkingDay, shiftInfo?.endMinutes]);
+
+  // Calculate hours from time range
+  const compensationHoursFromTime = useMemo(() => {
+    return roundHours((compensationEndTime - compensationStartTime) / 60);
+  }, [compensationStartTime, compensationEndTime]);
 
   const { data: compensations = [], isLoading } = useAbsenceCompensations([operatorId]);
   const createAbsence = useCreateAbsenceCompensation();
@@ -148,21 +248,24 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
 
   const handleAddCompensation = (absenceCompensationId: string, defaultHours: number) => {
     if (!compensationDate) return;
+    if (!timeValidation.isValid) return;
     
-    const hoursToAdd = compensationHours ? parseFloat(compensationHours) : defaultHours;
+    const hoursToAdd = compensationHoursFromTime > 0 ? compensationHoursFromTime : defaultHours;
     if (!hoursToAdd || hoursToAdd <= 0) return;
+    
+    const timeNotes = `${minutesToTime(compensationStartTime)} - ${minutesToTime(compensationEndTime)}`;
+    const fullNotes = compensationNotes ? `${timeNotes}; ${compensationNotes}` : timeNotes;
     
     addCompensation.mutate({
       absence_compensation_id: absenceCompensationId,
       operator_id: operatorId,
       compensation_date: format(compensationDate, "yyyy-MM-dd"),
       hours_worked: roundHours(hoursToAdd),
-      notes: compensationNotes || undefined,
+      notes: fullNotes,
     }, {
       onSuccess: () => {
         setAddingCompensationFor(null);
         setCompensationDate(new Date());
-        setCompensationHours("");
         setCompensationNotes("");
       },
     });
@@ -499,46 +602,105 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                       {addingCompensationFor === comp.id && (
                         <div className="mt-3 p-3 border rounded-lg bg-muted/30 space-y-3">
                           <h5 className="text-sm font-medium">Добавить отработку</h5>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Дата</Label>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full justify-start"
-                                  >
-                                    <CalendarIcon className="mr-2 h-3 w-3" />
-                                    {compensationDate
-                                      ? format(compensationDate, "d MMM", { locale: ru })
-                                      : "Дата"}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar
-                                    mode="single"
-                                    selected={compensationDate}
-                                    onSelect={setCompensationDate}
-                                    locale={ru}
-                                  />
-                                </PopoverContent>
-                              </Popover>
+                          
+                          {/* Date picker */}
+                          <div className="space-y-1">
+                            <Label className="text-xs">Дата</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full justify-start"
+                                >
+                                  <CalendarIcon className="mr-2 h-3 w-3" />
+                                  {compensationDate
+                                    ? format(compensationDate, "d MMM yyyy", { locale: ru })
+                                    : "Дата"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={compensationDate}
+                                  onSelect={setCompensationDate}
+                                  locale={ru}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+
+                          {/* Time range info/validation badge */}
+                          {timeValidation.message && (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-xs",
+                                timeValidation.isValid
+                                  ? shiftInfo?.isWorkingDay
+                                    ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
+                                    : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800"
+                                  : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800"
+                              )}
+                            >
+                              {timeValidation.isValid ? (
+                                <Info className="h-3 w-3 mr-1" />
+                              ) : (
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                              )}
+                              {timeValidation.message}
+                            </Badge>
+                          )}
+
+                          {/* Time slider */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <Label className="text-xs">Время</Label>
+                              <span className="font-medium">
+                                {minutesToTime(compensationStartTime)} — {minutesToTime(compensationEndTime)}
+                                <span className="ml-2 text-muted-foreground">({compensationHoursFromTime}ч)</span>
+                              </span>
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Часов</Label>
-                              <Input
-                                type="number"
-                                size={1}
-                                value={compensationHours}
-                                onChange={(e) => setCompensationHours(e.target.value)}
-                                placeholder={remaining.toString()}
-                                min="0.5"
-                                step="0.5"
-                                className="h-9"
-                              />
+                            
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground w-12">Начало</span>
+                                <Slider
+                                  value={[compensationStartTime]}
+                                  onValueChange={([val]) => {
+                                    setCompensationStartTime(val);
+                                    if (val >= compensationEndTime) {
+                                      setCompensationEndTime(Math.min(val + 30, 1440));
+                                    }
+                                  }}
+                                  min={0}
+                                  max={1410}
+                                  step={30}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs font-mono w-12 text-right">{minutesToTime(compensationStartTime)}</span>
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground w-12">Конец</span>
+                                <Slider
+                                  value={[compensationEndTime]}
+                                  onValueChange={([val]) => {
+                                    setCompensationEndTime(val);
+                                    if (val <= compensationStartTime) {
+                                      setCompensationStartTime(Math.max(val - 30, 0));
+                                    }
+                                  }}
+                                  min={30}
+                                  max={1440}
+                                  step={30}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs font-mono w-12 text-right">{minutesToTime(compensationEndTime)}</span>
+                              </div>
                             </div>
                           </div>
+                          
                           <div className="space-y-1">
                             <Label className="text-xs">Примечание</Label>
                             <Input
@@ -559,7 +721,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                             <Button
                               size="sm"
                               onClick={() => handleAddCompensation(comp.id, remaining)}
-                              disabled={addCompensation.isPending}
+                              disabled={addCompensation.isPending || !timeValidation.isValid}
                             >
                               Добавить
                             </Button>
