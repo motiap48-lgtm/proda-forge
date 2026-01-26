@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { format } from "date-fns";
+import { format, startOfYear, endOfYear } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   Dialog,
@@ -19,7 +19,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FileText, Download, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { FileText, Download, Clock, CheckCircle, AlertCircle, Calendar } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -41,15 +48,61 @@ interface OperatorCompensationSummary {
   partialCount: number;
 }
 
+type PeriodFilter = "current_year" | "all_time" | string; // string for specific years
+
 export const CompensationReportDialog: React.FC<CompensationReportDialogProps> = ({
   open,
   onOpenChange,
 }) => {
-  const { data: reportData = [], isLoading } = useQuery({
-    queryKey: ["compensation-report"],
+  const currentYear = new Date().getFullYear();
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("current_year");
+
+  // Get available years from data
+  const { data: availableYears = [] } = useQuery({
+    queryKey: ["compensation-available-years"],
     queryFn: async () => {
+      const { data, error } = await supabase
+        .from("absence_compensations")
+        .select("absence_date")
+        .neq("status", "cancelled")
+        .order("absence_date", { ascending: true });
+
+      if (error) throw error;
+
+      const years = new Set<number>();
+      data?.forEach((item) => {
+        const year = new Date(item.absence_date).getFullYear();
+        years.add(year);
+      });
+
+      return Array.from(years).sort((a, b) => b - a);
+    },
+    enabled: open,
+  });
+
+  const { data: reportData = [], isLoading } = useQuery({
+    queryKey: ["compensation-report", periodFilter],
+    queryFn: async () => {
+      // Build date filter based on period
+      let dateFilter: { from?: string; to?: string } = {};
+      
+      if (periodFilter === "current_year") {
+        dateFilter = {
+          from: `${currentYear}-01-01`,
+          to: `${currentYear}-12-31`,
+        };
+      } else if (periodFilter !== "all_time") {
+        // Specific year
+        const year = parseInt(periodFilter);
+        dateFilter = {
+          from: `${year}-01-01`,
+          to: `${year}-12-31`,
+        };
+      }
+      // all_time = no filter
+
       // Fetch all compensations with operator info
-      const { data: compensations, error } = await supabase
+      let query = supabase
         .from("absence_compensations")
         .select(`
           id,
@@ -70,6 +123,15 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
           )
         `)
         .neq("status", "cancelled");
+
+      if (dateFilter.from) {
+        query = query.gte("absence_date", dateFilter.from);
+      }
+      if (dateFilter.to) {
+        query = query.lte("absence_date", dateFilter.to);
+      }
+
+      const { data: compensations, error } = await query;
 
       if (error) throw error;
 
@@ -128,6 +190,12 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
   const totalAbsenceHours = reportData.reduce((sum, r) => sum + r.totalAbsenceHours, 0);
 
   const handleExportCSV = () => {
+    const periodLabel = periodFilter === "current_year" 
+      ? currentYear.toString() 
+      : periodFilter === "all_time" 
+        ? "all-time" 
+        : periodFilter;
+    
     const headers = [
       "Код",
       "ФИО",
@@ -161,19 +229,46 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `compensation-report-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.download = `compensation-report-${periodLabel}-${format(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const getPeriodLabel = () => {
+    if (periodFilter === "current_year") return `${currentYear} год (текущий)`;
+    if (periodFilter === "all_time") return "За всё время";
+    return `${periodFilter} год`;
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Отчёт по отработкам
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Отчёт по отработкам
+            </DialogTitle>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Select value={periodFilter} onValueChange={setPeriodFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Период" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current_year">{currentYear} (текущий)</SelectItem>
+                  {availableYears
+                    .filter((y) => y !== currentYear)
+                    .map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year} год
+                      </SelectItem>
+                    ))}
+                  <SelectItem value="all_time">За всё время</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </DialogHeader>
 
         {/* Summary cards */}

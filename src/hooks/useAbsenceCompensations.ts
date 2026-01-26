@@ -114,16 +114,23 @@ export const useAbsenceCompensations = (operatorIds?: string[], dateRange?: { fr
   });
 };
 
-// Calculate compensation balance for an operator
-export const useOperatorCompensationBalance = (operatorId: string) => {
+// Calculate compensation balance for an operator (current year only by default)
+export const useOperatorCompensationBalance = (operatorId: string, year?: number) => {
+  const currentYear = year ?? new Date().getFullYear();
+  
   return useQuery({
-    queryKey: ["operator-compensation-balance", operatorId],
+    queryKey: ["operator-compensation-balance", operatorId, currentYear],
     queryFn: async () => {
+      const startOfYear = `${currentYear}-01-01`;
+      const endOfYear = `${currentYear}-12-31`;
+      
       const { data: compensations, error: compError } = await supabase
         .from("absence_compensations")
         .select(`*, compensation_records (*)`)
         .eq("operator_id", operatorId)
-        .neq("status", "cancelled");
+        .neq("status", "cancelled")
+        .gte("absence_date", startOfYear)
+        .lte("absence_date", endOfYear);
 
       if (compError) throw compError;
 
@@ -161,7 +168,8 @@ export const useOperatorCompensationBalance = (operatorId: string) => {
         totalCompensatedHours,
         pendingHours: totalAbsenceHours - totalCompensatedHours,
         pendingCompensations,
-      } as OperatorCompensationBalance;
+        year: currentYear,
+      } as OperatorCompensationBalance & { year: number };
     },
     enabled: !!operatorId,
     staleTime: 0, // Always refetch on invalidation
