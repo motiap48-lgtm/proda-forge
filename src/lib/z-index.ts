@@ -4,9 +4,10 @@
  * Hierarchy (lowest to highest):
  * 1. Base content (default/auto)
  * 2. Sticky headers, fixed elements (10-40)
- * 3. Popovers, Tooltips, HoverCards, Dropdowns, Select, ContextMenu (50)
+ * 3. HoverCards (50) - Closes when modals open
  * 4. Modal overlays - Dialog, Sheet, AlertDialog, Drawer (9998)
  * 5. Modal content - Dialog, Sheet, AlertDialog, Drawer (9999)
+ * 6. Interactive overlays within modals - Popovers, Dropdowns, Select, ContextMenu (10000)
  */
 
 export const Z_INDEX = {
@@ -19,29 +20,31 @@ export const Z_INDEX = {
   scrollFade: 70,
   headerFade: 90,
   
-  // Interactive overlays (popovers, tooltips, dropdowns)
-  popover: 50,
-  tooltip: 50,
+  // HoverCards (close when modals open, so lower z-index is fine)
   hoverCard: 50,
-  dropdown: 50,
-  contextMenu: 50,
-  select: 50,
   
   // Modal overlays (dimmed backgrounds)
   modalOverlay: 9998,
   
   // Modal content (dialogs, sheets, drawers)
   modalContent: 9999,
+  
+  // Interactive overlays that can appear within modals (must be above modal content)
+  popover: 10000,
+  tooltip: 10000,
+  dropdown: 10000,
+  contextMenu: 10000,
+  select: 10000,
 } as const;
 
 // Tailwind class equivalents for use in className
 export const Z_INDEX_CLASSES = {
-  popover: "z-50",
-  tooltip: "z-50",
   hoverCard: "z-50",
-  dropdown: "z-50",
-  contextMenu: "z-50",
-  select: "z-50",
   modalOverlay: "z-[9998]",
   modalContent: "z-[9999]",
+  popover: "z-[10000]",
+  tooltip: "z-[10000]",
+  dropdown: "z-[10000]",
+  contextMenu: "z-[10000]",
+  select: "z-[10000]",
 } as const;
