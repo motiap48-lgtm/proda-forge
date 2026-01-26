@@ -18,7 +18,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { CalendarIcon, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAllOperatorAbsences, ABSENCE_TYPE_LABELS, useDeleteOperatorAbsence } from "@/hooks/useOperatorAbsences";
+import { useAllOperatorAbsences, ABSENCE_TYPE_LABELS, useBulkDeleteOperatorAbsences } from "@/hooks/useOperatorAbsences";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -51,7 +51,7 @@ export const BulkDeleteAbsenceDialog: React.FC<BulkDeleteAbsenceDialogProps> = (
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
 
   const { data: allAbsences = [] } = useAllOperatorAbsences();
-  const deleteAbsence = useDeleteOperatorAbsence();
+  const bulkDeleteAbsences = useBulkDeleteOperatorAbsences();
 
   // Filter absences based on selected criteria
   const filteredAbsences = useMemo(() => {
@@ -112,12 +112,9 @@ export const BulkDeleteAbsenceDialog: React.FC<BulkDeleteAbsenceDialogProps> = (
     setIsSubmitting(true);
 
     try {
-      // Delete absences one by one to properly handle compensation records
-      for (const absence of filteredAbsences) {
-        await deleteAbsence.mutateAsync(absence.id);
-      }
-
-      toast.success(`Удалено ${filteredAbsences.length} отсутствий`);
+      // Use optimized bulk delete
+      const absenceIds = filteredAbsences.map(a => a.id);
+      await bulkDeleteAbsences.mutateAsync(absenceIds);
       
       // Reset form
       setSelectedOperatorIds(new Set());
@@ -128,7 +125,7 @@ export const BulkDeleteAbsenceDialog: React.FC<BulkDeleteAbsenceDialogProps> = (
       onOpenChange(false);
     } catch (error) {
       console.error("Error deleting absences:", error);
-      toast.error("Ошибка при удалении отсутствий");
+      // Toast is already shown by the mutation
     } finally {
       setIsSubmitting(false);
     }
