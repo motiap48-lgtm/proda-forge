@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NavigationLoadingProvider } from "@/contexts/NavigationLoadingContext";
+import { HoverCardProvider } from "@/contexts/HoverCardContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import { PageLoadingScreen } from "@/components/layout/PageLoadingScreen";
@@ -74,15 +75,17 @@ const App = () => {
     <>
       {showLoading && <LoadingScreen onComplete={() => setShowLoading(false)} />}
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AuthProvider>
-              <AppRoutes />
-            </AuthProvider>
-          </BrowserRouter>
-        </TooltipProvider>
+        <HoverCardProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AuthProvider>
+                <AppRoutes />
+              </AuthProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </HoverCardProvider>
       </QueryClientProvider>
     </>
   );
