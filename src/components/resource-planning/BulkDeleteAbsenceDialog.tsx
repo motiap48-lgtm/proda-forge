@@ -66,15 +66,19 @@ export const BulkDeleteAbsenceDialog: React.FC<BulkDeleteAbsenceDialogProps> = (
         return false;
       }
 
-      // Filter by date range
+      // Filter by date range - normalize dates to compare only date part
       if (startDate) {
-        const absenceEnd = new Date(absence.end_date);
-        if (absenceEnd < startDate) return false;
+        const absenceEnd = new Date(absence.end_date + "T23:59:59");
+        const startNormalized = new Date(startDate);
+        startNormalized.setHours(0, 0, 0, 0);
+        if (absenceEnd < startNormalized) return false;
       }
 
       if (endDate) {
-        const absenceStart = new Date(absence.start_date);
-        if (absenceStart > endDate) return false;
+        const absenceStart = new Date(absence.start_date + "T00:00:00");
+        const endNormalized = new Date(endDate);
+        endNormalized.setHours(23, 59, 59, 999);
+        if (absenceStart > endNormalized) return false;
       }
 
       return true;
