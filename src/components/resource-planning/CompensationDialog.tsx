@@ -619,12 +619,13 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                                     : "Дата"}
                                 </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent className="w-auto p-0 z-[9999]" align="start">
                                 <Calendar
                                   mode="single"
                                   selected={compensationDate}
                                   onSelect={setCompensationDate}
                                   locale={ru}
+                                  className="pointer-events-auto"
                                 />
                               </PopoverContent>
                             </Popover>
