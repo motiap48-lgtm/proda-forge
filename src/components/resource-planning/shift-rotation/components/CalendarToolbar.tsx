@@ -11,7 +11,7 @@ import { ru } from "date-fns/locale";
 import { 
   RefreshCw, FileDown, Printer, Filter, Clock, ChevronsUpDown, ChevronsDownUp, 
   CalendarDays, ChevronLeft, ChevronRight, FileText, User, Maximize2, Minimize2, X, Users,
-  ChevronDown, Settings2
+  ChevronDown, Settings2, Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -54,6 +54,7 @@ interface CalendarToolbarProps {
   onExportPdf: () => void;
   onPrint: () => void;
   onBulkAbsence?: () => void;
+  onBulkDeleteAbsence?: () => void;
   onExportAbsences?: () => void;
   isStartDatePickerOpen: boolean;
   onStartDatePickerOpenChange: (open: boolean) => void;
@@ -101,6 +102,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onExportPdf,
   onPrint,
   onBulkAbsence,
+  onBulkDeleteAbsence,
   onExportAbsences,
   isStartDatePickerOpen,
   onStartDatePickerOpenChange,
@@ -615,18 +617,34 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           </Select>
         )}
 
-        {/* Bulk absence button */}
-        {onBulkAbsence && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onBulkAbsence}
-            className="gap-1.5 text-xs"
-            title="Массовое создание отсутствий"
-          >
-            <Users className="h-4 w-4" />
-            Массовое отсутствие
-          </Button>
+        {/* Bulk absence buttons */}
+        {(onBulkAbsence || onBulkDeleteAbsence) && (
+          <div className="flex items-center border rounded-md overflow-hidden">
+            {onBulkAbsence && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onBulkAbsence}
+                className="gap-1.5 text-xs rounded-none border-r"
+                title="Массовое создание отсутствий"
+              >
+                <Users className="h-4 w-4" />
+                <span className="hidden lg:inline">Массовое отсутствие</span>
+              </Button>
+            )}
+            {onBulkDeleteAbsence && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onBulkDeleteAbsence}
+                className="gap-1.5 text-xs rounded-none text-destructive hover:text-destructive hover:bg-destructive/10"
+                title="Массовое удаление отсутствий"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="hidden lg:inline">Удалить</span>
+              </Button>
+            )}
+          </div>
         )}
         
         {/* Expand/Collapse all */}
