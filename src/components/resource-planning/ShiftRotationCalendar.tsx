@@ -29,6 +29,7 @@ import {
 } from "./shift-rotation";
 import { OperatorAbsenceDialog } from "./OperatorAbsenceDialog";
 import { BulkAbsenceDialog } from "./BulkAbsenceDialog";
+import { BulkDeleteAbsenceDialog } from "./BulkDeleteAbsenceDialog";
 import { AbsenceExportDialog } from "./AbsenceExportDialog";
 import { YearlyMedalRankingDialog } from "./YearlyMedalRankingDialog";
 
@@ -63,6 +64,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [absenceOperator, setAbsenceOperator] = useState<any>(null);
   const [showBulkAbsenceDialog, setShowBulkAbsenceDialog] = useState(false);
+  const [showBulkDeleteAbsenceDialog, setShowBulkDeleteAbsenceDialog] = useState(false);
   const [showExportAbsenceDialog, setShowExportAbsenceDialog] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
@@ -784,6 +786,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           onExportPdf={handleExportToPdf}
           onPrint={handlePrint}
           onBulkAbsence={() => setShowBulkAbsenceDialog(true)}
+          onBulkDeleteAbsence={() => setShowBulkDeleteAbsenceDialog(true)}
           isStartDatePickerOpen={isStartDatePickerOpen}
           onStartDatePickerOpenChange={setIsStartDatePickerOpen}
           isEndDatePickerOpen={isEndDatePickerOpen}
@@ -892,6 +895,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       <BulkAbsenceDialog
         open={showBulkAbsenceDialog}
         onOpenChange={setShowBulkAbsenceDialog}
+        operators={filteredOperators}
+      />
+
+      {/* Bulk delete absence dialog */}
+      <BulkDeleteAbsenceDialog
+        open={showBulkDeleteAbsenceDialog}
+        onOpenChange={setShowBulkDeleteAbsenceDialog}
         operators={filteredOperators}
       />
 
