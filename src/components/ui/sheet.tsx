@@ -4,6 +4,8 @@ import { X } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { Z_INDEX_CLASSES } from "@/lib/z-index";
+import { useHoverCardContext } from "@/contexts/HoverCardContext";
 
 function useFullscreenContainer() {
   const [, forceRerender] = React.useState(0);
@@ -19,7 +21,21 @@ function useFullscreenContainer() {
     : undefined;
 }
 
-const Sheet = SheetPrimitive.Root;
+const Sheet = ({ onOpenChange, ...props }: React.ComponentPropsWithoutRef<typeof SheetPrimitive.Root>) => {
+  const hoverCardContext = useHoverCardContext();
+
+  const handleOpenChange = React.useCallback(
+    (open: boolean) => {
+      if (open) {
+        hoverCardContext?.notifyModalOpened();
+      }
+      onOpenChange?.(open);
+    },
+    [onOpenChange, hoverCardContext]
+  );
+
+  return <SheetPrimitive.Root onOpenChange={handleOpenChange} {...props} />;
+};
 
 const SheetTrigger = SheetPrimitive.Trigger;
 
@@ -39,7 +55,7 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-[9998] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      `fixed inset-0 ${Z_INDEX_CLASSES.modalOverlay} bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0`,
       className,
     )}
     {...props}
@@ -49,7 +65,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-[9999] gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+  `fixed ${Z_INDEX_CLASSES.modalContent} gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500`,
   {
     variants: {
       side: {
