@@ -98,26 +98,51 @@ export const useBulkUpsertTimesheets = () => {
       status?: 'pending' | 'confirmed' | 'approved';
       notes?: string;
     }>) => {
-      const { data, error } = await supabase
-        .from("operator_timesheets")
-        .upsert(
-          entries.map(e => ({
-            operator_id: e.operator_id,
-            work_date: e.work_date,
-            planned_minutes: e.planned_minutes ?? 0,
-            actual_minutes: e.actual_minutes,
-            overtime_minutes: e.overtime_minutes ?? 0,
-            status: e.status ?? 'pending',
-            notes: e.notes ?? null,
-          })),
-          {
-            onConflict: 'operator_id,work_date',
-          }
-        )
-        .select();
+      // Separate entries into upserts (actual > 0) and deletes (actual = 0)
+      const toUpsert = entries.filter(e => e.actual_minutes > 0);
+      const toDelete = entries.filter(e => e.actual_minutes === 0);
       
-      if (error) throw error;
-      return data;
+      let upsertedData: any[] = [];
+      
+      // Upsert non-zero entries
+      if (toUpsert.length > 0) {
+        const { data, error } = await supabase
+          .from("operator_timesheets")
+          .upsert(
+            toUpsert.map(e => ({
+              operator_id: e.operator_id,
+              work_date: e.work_date,
+              planned_minutes: e.planned_minutes ?? 0,
+              actual_minutes: e.actual_minutes,
+              overtime_minutes: e.overtime_minutes ?? 0,
+              status: e.status ?? 'pending',
+              notes: e.notes ?? null,
+            })),
+            {
+              onConflict: 'operator_id,work_date',
+            }
+          )
+          .select();
+        
+        if (error) throw error;
+        upsertedData = data || [];
+      }
+      
+      // Delete zero entries (if they exist in DB)
+      if (toDelete.length > 0) {
+        // Build conditions for deletion
+        for (const entry of toDelete) {
+          const { error } = await supabase
+            .from("operator_timesheets")
+            .delete()
+            .eq("operator_id", entry.operator_id)
+            .eq("work_date", entry.work_date);
+          
+          if (error) throw error;
+        }
+      }
+      
+      return upsertedData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
