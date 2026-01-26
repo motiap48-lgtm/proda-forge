@@ -244,32 +244,33 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh]">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Отчёт по отработкам
-            </DialogTitle>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Select value={periodFilter} onValueChange={setPeriodFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Период" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="current_year">{currentYear} (текущий)</SelectItem>
-                  {availableYears
-                    .filter((y) => y !== currentYear)
-                    .map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year} год
-                      </SelectItem>
-                    ))}
-                  <SelectItem value="all_time">За всё время</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Отчёт по отработкам
+          </DialogTitle>
         </DialogHeader>
+
+        {/* Period filter - moved outside DialogHeader to avoid conflict with close button */}
+        <div className="flex items-center gap-2 -mt-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Период:</span>
+          <Select value={periodFilter} onValueChange={setPeriodFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Период" />
+            </SelectTrigger>
+            <SelectContent className="z-[9999] bg-popover">
+              <SelectItem value="current_year">{currentYear} (текущий)</SelectItem>
+              {availableYears
+                .filter((y) => y !== currentYear)
+                .map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year} год
+                  </SelectItem>
+                ))}
+              <SelectItem value="all_time">За всё время</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-4">
