@@ -509,8 +509,12 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 const hasSavedPositive = ts && ts.actual_minutes > 0 && !hasEdit;
                 const isSelected = selectedDays.has(dateStr);
                 const isFuture = isFutureDate(day);
+                // Check if operator has an absence for this day (admin leave, sick, vacation, etc.)
+                const dayAbsence = getAbsenceForDay?.(day);
                 // Для редактирования день считается «нерабочим», если его нельзя заполнять (например, больничный)
                 const isNonWorkingDay = editablePlanned === 0 && pendingCompensationMinutes === 0;
+                // День является праздником/выходным (а не отсутствием оператора) если нерабочий и нет absence
+                const isHolidayOrWeekend = isNonWorkingDay && !dayAbsence;
                 const canSelect = !isNonWorkingDay && !isFuture;
                 const isDisabled = isFuture || isNonWorkingDay;
                 
@@ -636,9 +640,9 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       {/* Status */}
                       <td className="p-1 align-top">
                         <div className="flex items-center gap-0.5 flex-wrap justify-end">
-                          {/* Show deficit if fact < base plan (without counting pending compensation as deficit) */}
-                          {/* Show deficit even on disabled days (e.g. administrative leave with compensation) */}
-                          {basePlanned > 0 && totalFactMinutes < basePlanned && (
+                          {/* Show deficit if fact < base plan, but NOT for holidays/weekends */}
+                          {/* Show deficit for operator absences (admin leave with compensation, etc.) */}
+                          {!isHolidayOrWeekend && basePlanned > 0 && totalFactMinutes < basePlanned && (
                             <span className="text-destructive font-medium text-[10px]">
                               -{formatMinutes(basePlanned - totalFactMinutes)}
                             </span>
