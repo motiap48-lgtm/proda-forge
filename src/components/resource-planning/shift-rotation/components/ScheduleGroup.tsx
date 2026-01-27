@@ -1718,6 +1718,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             const key = `${timesheetOperator.id}_${dateStr}`;
             return compensationRecordsMap?.get(key) || [];
           }}
+          isCalendarHoliday={(date: Date) => {
+            // Check if the date is a non-working calendar exception (holiday)
+            const dateStr = format(date, "yyyy-MM-dd");
+            const exception = calendarExceptions?.find(e => e.exception_date === dateStr);
+            return exception ? !exception.is_working_day : false;
+          }}
         />
       )}
       

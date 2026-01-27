@@ -74,6 +74,11 @@ interface TimesheetDialogProps {
   compensationMinutesPerDay?: (date: Date) => number;
   confirmedCompensationMinutesPerDay?: (date: Date) => number;
   compensationRecordsForDay?: (date: Date) => ExtendedCompensationRecord[];
+  /**
+   * Проверяет, является ли день праздником (calendar exception с is_working_day = false).
+   * Для праздников не показываем недоработку, даже если базовый план > 0.
+   */
+  isCalendarHoliday?: (date: Date) => boolean;
 }
 
 export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
@@ -89,6 +94,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   compensationMinutesPerDay,
   confirmedCompensationMinutesPerDay,
   compensationRecordsForDay,
+  isCalendarHoliday,
 }) => {
   const { data: timesheets = [], isLoading } = useOperatorTimesheets(startDate, endDate, [operatorId]);
   const { data: overtimeEntries = [] } = useOvertimeEntries(startDate, endDate, [operatorId]);
@@ -513,8 +519,10 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 const dayAbsence = getAbsenceForDay?.(day);
                 // Для редактирования день считается «нерабочим», если его нельзя заполнять (например, больничный)
                 const isNonWorkingDay = editablePlanned === 0 && pendingCompensationMinutes === 0;
-                // День является праздником/выходным (а не отсутствием оператора) если нерабочий и нет absence
-                const isHolidayOrWeekend = isNonWorkingDay && !dayAbsence;
+                // День является праздником (calendar exception) - не показываем недоработку
+                const isHoliday = isCalendarHoliday?.(day) ?? false;
+                // День является праздником/выходным если нерабочий и нет absence ИЛИ это calendar exception
+                const isHolidayOrWeekend = (isNonWorkingDay && !dayAbsence) || isHoliday;
                 const canSelect = !isNonWorkingDay && !isFuture;
                 const isDisabled = isFuture || isNonWorkingDay;
                 
