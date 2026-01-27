@@ -305,7 +305,17 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       approvedOvertime, 
       actualTotal 
     };
-  }, [days, edits, timesheetMap, operatorId, plannedMinutesPerDay, compensationMinutesPerDay, confirmedCompensationMinutesPerDay, overtimeMap]);
+  }, [
+    days,
+    edits,
+    timesheetMap,
+    operatorId,
+    plannedMinutesPerDay,
+    getAbsenceForDay,
+    compensationMinutesPerDay,
+    confirmedCompensationMinutesPerDay,
+    overtimeMap,
+  ]);
 
   const formatMinutes = (m: number) => {
     const rounded = Math.round(m);
