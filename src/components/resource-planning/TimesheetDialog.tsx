@@ -637,8 +637,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       <td className="p-1 align-top">
                         <div className="flex items-center gap-0.5 flex-wrap justify-end">
                           {/* Show deficit if fact < base plan (without counting pending compensation as deficit) */}
-                          {/* Once compensation is confirmed, it's part of fact, so no deficit for that portion */}
-                          {!isDisabled && basePlanned > 0 && totalFactMinutes < basePlanned && (
+                          {/* Show deficit even on disabled days (e.g. administrative leave with compensation) */}
+                          {basePlanned > 0 && totalFactMinutes < basePlanned && (
                             <span className="text-destructive font-medium text-[10px]">
                               -{formatMinutes(basePlanned - totalFactMinutes)}
                             </span>
