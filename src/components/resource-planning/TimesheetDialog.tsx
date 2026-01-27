@@ -771,17 +771,16 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
             <div className="text-sm space-y-1">
               <div>
                 <span className="text-muted-foreground">План: </span>
-                <span className="font-medium">{formatMinutes(totals.displayPlanned)}</span>
+                <span className="font-medium">{formatMinutes(totals.basePlanned)}</span>
                 {totals.pendingCompensation > 0 && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="ml-1 text-xs text-amber-600">
-                        (в т.ч. отработка: {formatMinutes(totals.pendingCompensation)})
+                        (недоработка: {formatMinutes(totals.pendingCompensation)})
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p className="text-xs">Базовый план: {formatMinutes(totals.basePlanned)}</p>
-                      <p className="text-xs">+ Ожидает отработки: {formatMinutes(totals.pendingCompensation)}</p>
+                      <p className="text-xs">Требуется отработать {formatMinutes(totals.pendingCompensation)} за прогулы/отсутствия</p>
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -789,15 +788,15 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               <div>
                 <span className="text-muted-foreground">Факт: </span>
                 <span className="font-bold text-primary">{formatMinutes(totals.actualTotal)}</span>
-                {totals.actualTotal !== totals.displayPlanned && (
+                {totals.actualTotal !== totals.basePlanned && (
                   <span
                     className={cn(
                       "ml-2 text-xs",
-                      totals.actualTotal >= totals.displayPlanned ? "text-green-600" : "text-amber-600"
+                      totals.actualTotal >= totals.basePlanned ? "text-green-600" : "text-amber-600"
                     )}
                   >
-                    ({totals.actualTotal >= totals.displayPlanned ? "+" : ""}
-                    {formatMinutes(totals.actualTotal - totals.displayPlanned)})
+                    ({totals.actualTotal >= totals.basePlanned ? "+" : ""}
+                    {formatMinutes(totals.actualTotal - totals.basePlanned)})
                   </span>
                 )}
               </div>
