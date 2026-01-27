@@ -46,6 +46,7 @@ export const COMPENSABLE_ABSENCE_TYPES: OperatorAbsence["absence_type"][] = [
 // - maternity_leave (декрет) - long-term, reduces planned capacity
 // - unpaid_leave (без сохранения ЗП) - operator not available, reduces plan
 // - administrative_leave_without_compensation - no work expected, reduces plan
+// - other (другое) - generic absence reducing plan (e.g., transferred vacation days)
 // 
 // Types that do NOT reduce plan:
 // - sick_leave (больничный) - plan stays full, absence is undertime
@@ -57,6 +58,7 @@ export const ABSENCES_REDUCING_PLAN: OperatorAbsence["absence_type"][] = [
   'maternity_leave',
   'unpaid_leave',
   'administrative_leave_without_compensation',
+  'other',
 ];
 
 // Helper function to check if absence type requires compensation
