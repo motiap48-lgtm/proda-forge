@@ -208,15 +208,20 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const overtimeMap = useMemo(() => createOvertimeMap(overtimeEntries), [overtimeEntries]);
 
   // Create compensation records map by operator_id + date
+  // Include absence_date from parent AbsenceCompensation for display in TimeSheet
   const compensationRecordsMap = useMemo(() => {
-    const map = new Map<string, CompensationRecord[]>();
+    const map = new Map<string, (CompensationRecord & { absence_date?: string })[]>();
     compensations.forEach(comp => {
       comp.compensation_records?.forEach(record => {
         const key = `${record.operator_id}_${record.compensation_date}`;
         if (!map.has(key)) {
           map.set(key, []);
         }
-        map.get(key)!.push(record);
+        // Extend record with absence_date from parent compensation
+        map.get(key)!.push({
+          ...record,
+          absence_date: comp.absence_date
+        });
       });
     });
     return map;

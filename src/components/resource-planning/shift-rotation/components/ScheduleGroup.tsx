@@ -1671,6 +1671,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             }
             return 0;
           }}
+          compensationRecordsForDay={(date: Date) => {
+            const dateStr = format(date, "yyyy-MM-dd");
+            const key = `${timesheetOperator.id}_${dateStr}`;
+            return compensationRecordsMap?.get(key) || [];
+          }}
         />
       )}
       

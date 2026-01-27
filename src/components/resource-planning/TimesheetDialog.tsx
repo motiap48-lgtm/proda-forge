@@ -34,6 +34,20 @@ import {
 import { useOvertimeEntries, createOvertimeMap } from "@/hooks/useOvertimeEntries";
 import { getTimesheetSettings } from "@/hooks/useTimesheetSettings";
 
+// Extended compensation record with absence_date from parent
+interface ExtendedCompensationRecord {
+  id: string;
+  absence_compensation_id: string;
+  operator_id: string;
+  compensation_date: string;
+  hours_worked: number;
+  notes: string | null;
+  created_at: string;
+  created_by: string | null;
+  status: "pending" | "confirmed";
+  absence_date?: string; // Added from parent AbsenceCompensation
+}
+
 interface TimesheetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -44,6 +58,7 @@ interface TimesheetDialogProps {
   plannedMinutesPerDay: (date: Date) => number;
   compensationMinutesPerDay?: (date: Date) => number;
   confirmedCompensationMinutesPerDay?: (date: Date) => number;
+  compensationRecordsForDay?: (date: Date) => ExtendedCompensationRecord[];
 }
 
 export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
@@ -56,6 +71,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   plannedMinutesPerDay,
   compensationMinutesPerDay,
   confirmedCompensationMinutesPerDay,
+  compensationRecordsForDay,
 }) => {
   const { data: timesheets = [], isLoading } = useOperatorTimesheets(startDate, endDate, [operatorId]);
   const { data: overtimeEntries = [] } = useOvertimeEntries(startDate, endDate, [operatorId]);
@@ -434,6 +450,15 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 const hasConfirmedCompensation = confirmedCompensationMinutes > 0;
                 const ts = getTimesheetForDate(timesheetMap, operatorId, day);
                 
+                // Get compensation records with absence dates
+                const dayCompensationRecords = compensationRecordsForDay?.(day) || [];
+                const pendingRecords = dayCompensationRecords.filter(r => r.status === 'pending');
+                const confirmedRecords = dayCompensationRecords.filter(r => r.status === 'confirmed');
+                
+                // Get unique absence dates for display
+                const pendingAbsenceDates = [...new Set(pendingRecords.map(r => r.absence_date).filter(Boolean))];
+                const confirmedAbsenceDates = [...new Set(confirmedRecords.map(r => r.absence_date).filter(Boolean))];
+                
                 const overtimeKey = `${operatorId}_${dateStr}`;
                 const dayOvertimeEntries = overtimeMap.get(overtimeKey) || [];
                 const approvedOT = dayOvertimeEntries.filter(e => e.status === "approved");
@@ -579,7 +604,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       <tr className={cn("bg-amber-50/30", isSelected && "bg-primary/5")}>
                         {canFillByPlan && <td />}
                         <td className="p-1 pl-2 text-amber-600/70 text-[10px]">
-                          {format(day, "d MMM", { locale: ru })}
+                          {format(day, "d.MM", { locale: ru })}
                         </td>
                         <td className="p-1" colSpan={1}>
                           <Tooltip>
@@ -587,11 +612,18 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                               <div className="flex items-center gap-1 text-amber-600">
                                 <span className="text-[10px]">Отработка:</span>
                                 <span className="font-medium">+{formatMinutes(pendingCompensationMinutes)}</span>
+                                {pendingAbsenceDates.length > 0 && (
+                                  <span className="text-[9px] text-amber-500">
+                                    за {pendingAbsenceDates.map(d => format(new Date(d!), "dd.MM.yy")).join(", ")}
+                                  </span>
+                                )}
                                 <Hammer className="h-3 w-3 animate-pulse" />
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p className="text-xs">Отработка за {format(day, "d MMMM", { locale: ru })}</p>
+                              {pendingAbsenceDates.map(d => (
+                                <p key={d} className="text-xs">Отработка за {format(new Date(d!), "d MMMM yyyy", { locale: ru })}</p>
+                              ))}
                               <p className="text-xs text-muted-foreground">Добавится после подтверждения</p>
                             </TooltipContent>
                           </Tooltip>
@@ -617,7 +649,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       <tr className={cn("bg-green-50/30", isSelected && "bg-primary/5")}>
                         {canFillByPlan && <td />}
                         <td className="p-1 pl-2 text-green-600/70 text-[10px]">
-                          {format(day, "d MMM", { locale: ru })}
+                          {format(day, "d.MM", { locale: ru })}
                         </td>
                         <td className="p-1" colSpan={1}>
                           <Tooltip>
@@ -625,11 +657,18 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                               <div className="flex items-center gap-1 text-green-600">
                                 <span className="text-[10px]">Отработка:</span>
                                 <span className="font-medium">+{formatMinutes(confirmedCompensationMinutes)}</span>
+                                {confirmedAbsenceDates.length > 0 && (
+                                  <span className="text-[9px] text-green-500">
+                                    за {confirmedAbsenceDates.map(d => format(new Date(d!), "dd.MM.yy")).join(", ")}
+                                  </span>
+                                )}
                                 <Check className="h-3 w-3" />
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p className="text-xs">Отработка за {format(day, "d MMMM", { locale: ru })}</p>
+                              {confirmedAbsenceDates.map(d => (
+                                <p key={d} className="text-xs">Отработка за {format(new Date(d!), "d MMMM yyyy", { locale: ru })}</p>
+                              ))}
                               <p className="text-xs text-green-600">✓ Подтверждено</p>
                             </TooltipContent>
                           </Tooltip>
