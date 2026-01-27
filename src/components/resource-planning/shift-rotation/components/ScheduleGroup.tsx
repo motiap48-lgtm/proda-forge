@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck, Hammer, Check } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck, Hammer, Check, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { OperatorInfoCard } from "./OperatorInfoCard";
@@ -947,6 +947,17 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const hours = Math.floor(actualNetMinutes / 60);
                             const mins = actualNetMinutes % 60;
                             
+                            // Calculate underage (недоработка) for this day
+                            const dayTimesheet = getTimesheetForDate(timesheetMap, operator.id, day);
+                            const hasTimesheetForDay = dayTimesheet && dayTimesheet.actual_minutes > 0;
+                            const approvedOvertimeForDay = approvedOvertimeRecords.reduce((sum, r) => sum + (r.duration_minutes || 0), 0);
+                            const confirmedCompensationForDay = confirmedRecords.reduce((sum, r) => sum + Math.round(r.hours_worked * 60), 0);
+                            const factMinutesForDay = (dayTimesheet?.actual_minutes || 0) + approvedOvertimeForDay + confirmedCompensationForDay;
+                            const underageMinutes = effectiveIsWorking && hasTimesheetForDay && actualNetMinutes > 0 
+                              ? actualNetMinutes - factMinutesForDay 
+                              : 0;
+                            const hasUnderage = underageMinutes > 0;
+                            
                             // Handle special states
                             if (terminated) {
                               return (
@@ -1206,6 +1217,22 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   <div className="absolute top-0.5 left-0.5">
                                     <Timer className="h-2.5 w-2.5 text-orange-500 dark:text-orange-400" />
                                   </div>
+                                )}
+                                
+                                {/* Underage indicator - show when worked less than planned */}
+                                {hasUnderage && !hasOvertime && !hasCompensation && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="absolute bottom-0 left-0 p-0.5 z-20">
+                                        <TrendingDown className="h-2.5 w-2.5 text-red-500 dark:text-red-400" />
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      <span className="text-red-500 font-medium">
+                                        Недоработка: -{Math.floor(underageMinutes / 60)}ч{underageMinutes % 60 > 0 ? ` ${underageMinutes % 60}м` : ''}
+                                      </span>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 )}
                                 
                                 {/* Overtime indicator - show clock icon with color based on status */}
