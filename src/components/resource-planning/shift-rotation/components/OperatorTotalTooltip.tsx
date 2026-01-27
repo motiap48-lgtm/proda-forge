@@ -314,12 +314,17 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   // fullPlanData используется только для отображения "Доступное время" (полная норма до вычетов)
   const expectedMinutes = passedPlanMinutes;
 
-  // Actual total = timesheet data + approved overtime + confirmed compensation
-  const actualTotalMinutes = actualData.totalMinutes + overtimeData.totalApprovedMinutes + compensationData.totalConfirmedMinutes;
+  // Base fact = timesheet data + confirmed compensation (WITHOUT overtime)
+  // Overtime is counted separately, ABOVE the plan
+  const baseFactMinutes = actualData.totalMinutes + compensationData.totalConfirmedMinutes;
   
-  // Calculate difference (overtime or undertime) = actual total - expected
-  const difference = actualData.hasData 
-    ? actualTotalMinutes - expectedMinutes
+  // Total fact for display = base fact + approved overtime
+  const actualTotalMinutes = baseFactMinutes + overtimeData.totalApprovedMinutes;
+  
+  // Calculate difference (overtime or undertime) = BASE FACT - expected (without overtime)
+  // This shows whether the operator met the plan from regular work + compensation
+  const baseDifference = actualData.hasData 
+    ? baseFactMinutes - expectedMinutes
     : null;
   
   // Remaining to compensate - ONLY for absences that require compensation
@@ -453,25 +458,32 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       {actualData.hasData && (
         <div className="border-t border-border/50 pt-2 space-y-1">
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Факт:</span>
-            <span className="font-medium">{formatMinutesAsTime(actualTotalMinutes)}</span>
+            <span className="text-muted-foreground">Факт (база):</span>
+            <span className="font-medium">{formatMinutesAsTime(baseFactMinutes)}</span>
           </div>
-          {/* Show approved overtime sum separately (like in TimesheetDialog) */}
+          {/* Show approved overtime sum separately - it's ABOVE the plan */}
           {overtimeData.totalApprovedMinutes > 0 && (
             <div className="flex justify-between items-center text-purple-500">
               <span>Переработка за период:</span>
               <span className="font-medium">+{formatMinutesAsTime(overtimeData.totalApprovedMinutes)}</span>
             </div>
           )}
+          {/* Total fact including overtime */}
+          {overtimeData.totalApprovedMinutes > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Итого факт:</span>
+              <span className="font-medium">{formatMinutesAsTime(actualTotalMinutes)}</span>
+            </div>
+          )}
         </div>
       )}
       
-      {/* Difference */}
-      {difference !== null && (
+      {/* Difference - based on BASE fact vs plan (without overtime) */}
+      {baseDifference !== null && (
         <div className="border-t border-border/50 pt-2">
-          <div className={`flex justify-between items-center font-bold ${difference >= 0 ? "text-green-500" : "text-amber-500"}`}>
-            <span>{difference >= 0 ? "Переработка:" : "Недоработка:"}</span>
-            <span>{formatDiff(difference)}</span>
+          <div className={`flex justify-between items-center font-bold ${baseDifference >= 0 ? "text-green-500" : "text-amber-500"}`}>
+            <span>{baseDifference >= 0 ? "Выполнено:" : "Недоработка:"}</span>
+            <span>{formatDiff(baseDifference)}</span>
           </div>
         </div>
       )}
