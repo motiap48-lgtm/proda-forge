@@ -34,6 +34,7 @@ import {
 import { type OperatorAbsence, isAbsenceReducingPlan } from "@/hooks/useOperatorAbsences";
 import { useOvertimeEntries, createOvertimeMap } from "@/hooks/useOvertimeEntries";
 import { getTimesheetSettings } from "@/hooks/useTimesheetSettings";
+import { useOperatorCompensationBalance } from "@/hooks/useAbsenceCompensations";
 
 // Extended compensation record with absence_date from parent
 interface ExtendedCompensationRecord {
@@ -99,6 +100,10 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   const { data: timesheets = [], isLoading } = useOperatorTimesheets(startDate, endDate, [operatorId]);
   const { data: overtimeEntries = [] } = useOvertimeEntries(startDate, endDate, [operatorId]);
   const bulkUpsert = useBulkUpsertTimesheets();
+  
+  // Get real compensation balance (absence_hours - confirmed hours)
+  const year = startDate.getFullYear();
+  const { data: compensationBalance } = useOperatorCompensationBalance(operatorId, year);
   
   const timesheetMap = useMemo(() => createTimesheetMap(timesheets), [timesheets]);
   const overtimeMap = useMemo(() => createOvertimeMap(overtimeEntries), [overtimeEntries]);
@@ -836,15 +841,21 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               <div>
                 <span className="text-muted-foreground">План: </span>
                 <span className="font-medium">{formatMinutes(totals.basePlanned)}</span>
-                {totals.pendingCompensation > 0 && (
+                {/* Show real compensation balance from absence_compensations (not just pending records) */}
+                {compensationBalance && compensationBalance.pendingHours > 0 && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="ml-1 text-xs text-amber-600">
-                        (недоработка: {formatMinutes(totals.pendingCompensation)})
+                        (недоработка: {Math.round(compensationBalance.pendingHours * 10) / 10}ч)
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p className="text-xs">Требуется отработать {formatMinutes(totals.pendingCompensation)} за прогулы/отсутствия</p>
+                      <div className="text-xs space-y-1">
+                        <p>Требуется отработать за прогулы/отсутствия:</p>
+                        <p>Всего: {compensationBalance.totalAbsenceHours}ч</p>
+                        <p>Отработано: {Math.round(compensationBalance.totalCompensatedHours * 10) / 10}ч</p>
+                        <p className="font-medium">Осталось: {Math.round(compensationBalance.pendingHours * 10) / 10}ч</p>
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                 )}
