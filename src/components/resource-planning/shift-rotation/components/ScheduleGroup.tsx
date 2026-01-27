@@ -1415,8 +1415,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const overtimeMinutes = overtimeHours.hours * 60 + overtimeHours.minutes;
                             const actualMinutes = actualHours.hours * 60 + actualHours.minutes;
                             
-                            // Fact = actual from timesheets + approved overtime
-                            const factMinutes = actualMinutes + overtimeMinutes;
+                            // Fact = actual from timesheets + approved overtime + confirmed compensation
+                            const factMinutes = actualMinutes + overtimeMinutes + compensationMinutes;
                             
                             // Difference from plan - это настоящая переработка/недоработка
                             const diff = factMinutes - planMinutes;
