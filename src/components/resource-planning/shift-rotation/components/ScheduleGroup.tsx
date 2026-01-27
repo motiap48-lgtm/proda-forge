@@ -1669,10 +1669,14 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           plannedMinutesPerDay={(date: Date) => {
             const op = operators.find(o => o.id === timesheetOperator.id);
             if (!op) return 0;
-            
-            // Get planned minutes WITH absences deducted
-            // Days with absence (sick leave, vacation) return 0 - cannot fill timesheet for those days
-            // This is used for "Fill by Plan" button and to determine if day is editable
+
+            // Базовая норма по графику (без вычета больничного/отпуска)
+            return getPlannedDayMinutes ? getPlannedDayMinutes(op, date) : 0;
+          }}
+          editableMinutesPerDay={(date: Date) => {
+            const op = operators.find(o => o.id === timesheetOperator.id);
+            if (!op) return 0;
+            // Ограничение редактирования: на больничном/отпуске и т.п. возвращает 0
             return getDayMinutes ? getDayMinutes(op, date) : 0;
           }}
           compensationMinutesPerDay={(date: Date) => {
