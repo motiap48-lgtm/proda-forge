@@ -1673,6 +1673,10 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             // Базовая норма по графику (без вычета больничного/отпуска)
             return getPlannedDayMinutes ? getPlannedDayMinutes(op, date) : 0;
           }}
+          getAbsenceForDay={(date: Date) => {
+            // Return absence for this operator on this date (if any)
+            return isDateInAbsence(date, absences, timesheetOperator.id) || null;
+          }}
           editableMinutesPerDay={(date: Date) => {
             const op = operators.find(o => o.id === timesheetOperator.id);
             if (!op) return 0;
