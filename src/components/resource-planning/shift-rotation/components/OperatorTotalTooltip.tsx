@@ -8,6 +8,7 @@ import {
   isOperatorTerminated,
   isBeforeHireDate,
   isCompensableAbsenceType,
+  isAbsenceReducingPlan,
 } from "@/hooks/useOperatorAbsences";
 import { type OperatorTimesheet, getTimesheetForDate } from "@/hooks/useOperatorTimesheets";
 import { type CompensationRecord } from "@/hooks/useAbsenceCompensations";
@@ -137,14 +138,15 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operator, exceptionsMap, fullPlanHours, fullPlanMinutes, getPlannedDayMinutes]);
   
-  // ВАЖНО: базовый «План» — это норма по графику (без вычета больничных/отпусков).
-  // Отсутствия учитываются в «Факте» как недоработка и показываются отдельными строками.
+  // ВАЖНО: План = норма по графику МИНУС отпуска (annual_leave, maternity_leave, unpaid_leave и т.д.)
+  // Больничный НЕ вычитается из плана — он отображается как неотработка в Факте.
+  // Компенсируемые отсутствия (прогул, адм. с отработкой) также не вычитаются — их нужно отработать.
   
   // Calculate absence hours grouped by type
   // For vacation: count ALL calendar days in the period (for display)
   // For work hours deduction: only count working days
   const absenceGroups = React.useMemo(() => {
-    const groups = new Map<string, AbsenceGroup & { requiresCompensation: boolean; calendarDays: number }>();
+    const groups = new Map<string, AbsenceGroup & { requiresCompensation: boolean; reducingPlan: boolean; calendarDays: number }>();
     const schedule = operator.work_schedules;
     
     days.forEach(day => {
@@ -158,6 +160,9 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
         
         // Determine if this absence type requires compensation
         const requiresCompensation = isCompensableAbsenceType(absence.absence_type);
+        // Determine if this absence reduces the base plan
+        const reducingPlan = isAbsenceReducingPlan(absence.absence_type);
+        
         if (!groups.has(absence.absence_type)) {
           groups.set(absence.absence_type, {
             type: absence.absence_type,
@@ -167,6 +172,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
             calendarDays: 0,
             hours: 0,
             requiresCompensation,
+            reducingPlan,
           });
         }
         
@@ -343,21 +349,62 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     ? { hours: fullPlanData.hours, minutes: fullPlanData.minutes }
     : { hours: planHours, minutes: planMinutes };
   
+  // Separate absences into categories for display
+  const planReducingAbsences = absenceGroups.filter(g => g.reducingPlan);
+  const undertimeAbsences = absenceGroups.filter(g => !g.reducingPlan && !g.requiresCompensation);
+  const compensableAbsences = absenceGroups.filter(g => g.requiresCompensation);
+  
   return (
     <div className="space-y-2 min-w-[220px] text-xs">
-      {/* Базовая норма по графику (без вычета отсутствий) */}
+      {/* План (уже с вычетом отпусков) */}
       <div className="flex justify-between items-center">
         <span className="text-muted-foreground">План:</span>
         <span className="font-medium">{formatTime(planDisplay.hours, planDisplay.minutes)}</span>
       </div>
-
-      {/* Отсутствия (для объяснения недоработки) */}
-      {absenceGroups.length > 0 && (
+      
+      {/* Отпуска (вычтены из плана) */}
+      {planReducingAbsences.length > 0 && (
         <div className="border-t border-border/50 pt-2 space-y-1">
-          <div className="text-[10px] text-muted-foreground">Отсутствия:</div>
-          {absenceGroups.map(group => (
-            <div key={group.type} className="flex justify-between items-center">
-              <span className="flex items-center gap-1 text-muted-foreground">
+          <div className="text-[10px] text-muted-foreground">Вычтено из плана:</div>
+          {planReducingAbsences.map(group => (
+            <div key={group.type} className="flex justify-between items-center text-blue-500">
+              <span className="flex items-center gap-1">
+                <span>{group.icon}</span>
+                <span>
+                  {group.label} ({group.calendarDays}к.д.{group.days > 0 && group.days !== group.calendarDays ? `, ${group.days}р.д.` : ""}):
+                </span>
+              </span>
+              <span className="font-medium">−{Math.round(group.hours * 10) / 10}ч</span>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Больничные и командировки (не вычитаются из плана, но отображаются как неотработка) */}
+      {undertimeAbsences.length > 0 && (
+        <div className="border-t border-border/50 pt-2 space-y-1">
+          <div className="text-[10px] text-muted-foreground">Неотработано (не вычитается из плана):</div>
+          {undertimeAbsences.map(group => (
+            <div key={group.type} className="flex justify-between items-center text-amber-500">
+              <span className="flex items-center gap-1">
+                <span>{group.icon}</span>
+                <span>
+                  {group.label} ({group.calendarDays}к.д.{group.days > 0 && group.days !== group.calendarDays ? `, ${group.days}р.д.` : ""}):
+                </span>
+              </span>
+              <span className="font-medium">{Math.round(group.hours * 10) / 10}ч</span>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Прогулы и адм. с отработкой (требуют компенсации) */}
+      {compensableAbsences.length > 0 && (
+        <div className="border-t border-border/50 pt-2 space-y-1">
+          <div className="text-[10px] text-muted-foreground">Требуют отработки:</div>
+          {compensableAbsences.map(group => (
+            <div key={group.type} className="flex justify-between items-center text-rose-500">
+              <span className="flex items-center gap-1">
                 <span>{group.icon}</span>
                 <span>
                   {group.label} ({group.calendarDays}к.д.{group.days > 0 && group.days !== group.calendarDays ? `, ${group.days}р.д.` : ""}):

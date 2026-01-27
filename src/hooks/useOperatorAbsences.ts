@@ -41,9 +41,33 @@ export const COMPENSABLE_ABSENCE_TYPES: OperatorAbsence["absence_type"][] = [
   'administrative_leave_with_compensation',  // Административный с отработкой
 ];
 
+// Types of absences that REDUCE the base plan (scheduled capacity):
+// - annual_leave (отпуск) - operator is not available, reduces planned capacity
+// - maternity_leave (декрет) - long-term, reduces planned capacity
+// - unpaid_leave (без сохранения ЗП) - operator not available, reduces plan
+// - administrative_leave_without_compensation - no work expected, reduces plan
+// 
+// Types that do NOT reduce plan:
+// - sick_leave (больничный) - plan stays full, absence is undertime
+// - business_trip (командировка) - counts as work, doesn't reduce plan
+// - unauthorized_absence (прогул) - must be compensated, doesn't reduce plan
+// - administrative_leave_with_compensation - must be compensated
+export const ABSENCES_REDUCING_PLAN: OperatorAbsence["absence_type"][] = [
+  'annual_leave',
+  'maternity_leave',
+  'unpaid_leave',
+  'administrative_leave_without_compensation',
+];
+
 // Helper function to check if absence type requires compensation
 export const isCompensableAbsenceType = (type: OperatorAbsence["absence_type"]): boolean => {
   return COMPENSABLE_ABSENCE_TYPES.includes(type);
+};
+
+// Helper function to check if absence type reduces the base plan
+// These absences mean the operator is genuinely not available and reduces capacity
+export const isAbsenceReducingPlan = (type: OperatorAbsence["absence_type"]): boolean => {
+  return ABSENCES_REDUCING_PLAN.includes(type);
 };
 
 export const useOperatorAbsences = (operatorId?: string) => {

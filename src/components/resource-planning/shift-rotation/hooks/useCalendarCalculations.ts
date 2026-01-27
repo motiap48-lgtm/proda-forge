@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { addDays, getDaysInMonth, differenceInDays, startOfMonth, format } from "date-fns";
 import { getShiftForDate, getShiftColor, type PeriodType, type ShiftColors } from "../utils";
-import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence, isCompensableAbsenceType } from "@/hooks/useOperatorAbsences";
+import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence, isAbsenceReducingPlan } from "@/hooks/useOperatorAbsences";
 import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
 import { useIsMobile } from "@/hooks/use-mobile";
 export interface CalendarException {
@@ -325,13 +325,15 @@ export const useCalendarCalculations = ({
       const exception = getExceptionForDate(day);
       if (exception && !exception.is_working_day && !isCyclic) return;
       
-      // Check if operator has an absence that reduces plan (annual_leave, sick_leave, etc.)
+      // Check if operator has an absence that reduces plan
+      // Only annual_leave, maternity_leave, unpaid_leave, administrative_leave_without_compensation reduce plan
+      // Sick leave, business trips, and compensable absences do NOT reduce plan
       const absence = isDateInAbsence(day, absences, operator.id);
-      if (absence && !isCompensableAbsenceType(absence.absence_type)) {
-        // Non-compensable absence (like annual_leave) - skip this day, reduces plan
+      if (absence && isAbsenceReducingPlan(absence.absence_type)) {
+        // This absence type reduces plan (e.g., vacation) - skip this day
         return;
       }
-      // Compensable absences do NOT reduce the plan - the operator must work these hours off
+      // Other absences (sick leave, business trips, compensable) keep the plan intact
       
       // Get shift for this day (considering overrides)
       const shift = getShiftForDateWithOverride(operator, day);
