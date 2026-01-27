@@ -396,43 +396,44 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
           </div>
           
           <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
-            <div className="space-y-1 py-2">
-              {/* Select all row - only show on last day of month */}
-              {canFillByPlan && (
-                <div className="flex items-center gap-3 py-1 px-2 border-b mb-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={toggleAll}
-                  >
-                    {allSelected ? (
-                      <CheckSquare className="h-4 w-4 text-primary" />
-                    ) : (
-                      <Square className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    {allSelected ? "Снять выделение" : "Выбрать все рабочие дни"}
-                  </span>
-                </div>
-              )}
-              
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-background border-b">
+                <tr>
+                  {canFillByPlan && (
+                    <th className="w-6 p-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0"
+                        onClick={toggleAll}
+                      >
+                        {allSelected ? (
+                          <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                        ) : (
+                          <Square className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </th>
+                  )}
+                  <th className="text-left p-1 font-medium text-muted-foreground">Дата</th>
+                  <th className="text-left p-1 font-medium text-muted-foreground">План</th>
+                  <th className="text-center p-1 font-medium text-muted-foreground w-14">мин</th>
+                  <th className="text-left p-1 font-medium text-muted-foreground">Факт</th>
+                  <th className="w-6 p-1"></th>
+                  <th className="w-10 p-1"></th>
+                </tr>
+              </thead>
+              <tbody>
               {days.map(day => {
                 const dateStr = format(day, "yyyy-MM-dd");
-                // Base planned minutes (without pending compensation) - used for "Fill by Plan"
                 const basePlanned = plannedMinutesPerDay(day);
-                // Pending compensation minutes (not yet worked/confirmed)
                 const pendingCompensationMinutes = compensationMinutesPerDay?.(day) || 0;
-                // Confirmed compensation minutes (already worked and confirmed)
                 const confirmedCompensationMinutes = confirmedCompensationMinutesPerDay?.(day) || 0;
-                // Display plan = base + pending compensation (target to work)
                 const displayPlanned = basePlanned + pendingCompensationMinutes;
                 const hasPendingCompensation = pendingCompensationMinutes > 0;
                 const hasConfirmedCompensation = confirmedCompensationMinutes > 0;
                 const ts = getTimesheetForDate(timesheetMap, operatorId, day);
                 
-                // Get approved overtime for this day
                 const overtimeKey = `${operatorId}_${dateStr}`;
                 const dayOvertimeEntries = overtimeMap.get(overtimeKey) || [];
                 const approvedOT = dayOvertimeEntries.filter(e => e.status === "approved");
@@ -440,277 +441,266 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 const approvedMinutes = approvedOT.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
                 const pendingMinutes = pendingOT.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
                 
-                // Regular minutes (from edits or timesheet)
                 const regularMinutes = edits[dateStr] ?? ts?.actual_minutes ?? 0;
-                // Total fact = regular + approved overtime + confirmed compensation
                 const totalFactMinutes = regularMinutes + approvedMinutes + confirmedCompensationMinutes;
                 
                 const hasEdit = edits[dateStr] !== undefined;
-                // Show green checkmark only if saved AND saved value > 0
                 const hasSavedPositive = ts && ts.actual_minutes > 0 && !hasEdit;
                 const isSelected = selectedDays.has(dateStr);
                 const isFuture = isFutureDate(day);
-                // Non-working day = base plan is 0 AND no pending compensation
                 const isNonWorkingDay = basePlanned === 0 && pendingCompensationMinutes === 0;
-                // Can select only working days that are not in the future
                 const canSelect = !isNonWorkingDay && !isFuture;
-                // Disable input for future dates OR non-working days
                 const isDisabled = isFuture || isNonWorkingDay;
                 
                 const hasExtraRows = hasPendingCompensation || hasConfirmedCompensation || approvedMinutes > 0;
                 
                 return (
-                  <div 
-                    key={dateStr} 
-                    className={cn(
-                      "px-2 py-1.5 text-xs",
+                  <React.Fragment key={dateStr}>
+                    {/* Main row */}
+                    <tr className={cn(
+                      "border-b border-border/50",
                       isSelected && "bg-primary/5",
                       isDisabled && "opacity-50"
-                    )}
-                  >
-                    {/* Main row - grid layout for perfect alignment */}
-                    <div className="grid grid-cols-[24px_70px_70px_60px_70px_28px_45px] gap-2 items-center">
+                    )}>
                       {/* Checkbox */}
-                      {canFillByPlan ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => canSelect && toggleDay(dateStr)}
-                          disabled={!canSelect}
-                        >
-                          {isSelected ? (
-                            <CheckSquare className="h-4 w-4 text-primary" />
-                          ) : (
-                            <Square className={cn("h-4 w-4", canSelect ? "text-muted-foreground" : "text-muted-foreground/30")} />
-                          )}
-                        </Button>
-                      ) : (
-                        <div className="w-6" /> 
+                      {canFillByPlan && (
+                        <td className="p-1 align-top">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0"
+                            onClick={() => canSelect && toggleDay(dateStr)}
+                            disabled={!canSelect}
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                            ) : (
+                              <Square className={cn("h-3.5 w-3.5", canSelect ? "text-muted-foreground" : "text-muted-foreground/30")} />
+                            )}
+                          </Button>
+                        </td>
                       )}
                       
                       {/* Date */}
-                      <div className="text-sm text-muted-foreground truncate">
+                      <td className="p-1 align-top whitespace-nowrap">
                         {format(day, "EEE, d MMM", { locale: ru })}
-                      </div>
+                      </td>
                       
-                      {/* Plan value */}
-                      <div className="flex items-center gap-1">
-                        <span className="text-muted-foreground">План:</span>
-                        <span className="font-medium">{formatMinutes(basePlanned)}</span>
-                        {hasSavedPositive && (
-                          <Check className="h-3 w-3 text-green-500 shrink-0" />
-                        )}
-                      </div>
+                      {/* Plan */}
+                      <td className="p-1 align-top whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">{formatMinutes(basePlanned)}</span>
+                          {hasSavedPositive && <Check className="h-3 w-3 text-green-500" />}
+                        </div>
+                      </td>
                       
                       {/* Input */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="1"
-                            className="h-7 text-sm text-center"
-                            value={Math.round(regularMinutes)}
-                            onChange={(e) => {
-                              if (isDisabled) return;
-                              const rawValue = e.target.value;
-                              if (rawValue === '' || /^\d+$/.test(rawValue)) {
-                                const val = parseInt(rawValue) || 0;
-                                setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === 'e') {
-                                e.preventDefault();
-                              }
-                            }}
-                            placeholder="мин"
-                            disabled={isDisabled}
-                          />
-                        </TooltipTrigger>
-                        {isDisabled && (
-                          <TooltipContent>
-                            <p className="text-xs">
-                              {isFuture ? "Нельзя заполнять будущие даты" : "Нерабочий день по графику"}
-                            </p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
+                      <td className="p-1 align-top">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="1"
+                              className="h-6 w-14 text-xs text-center px-1"
+                              value={Math.round(regularMinutes)}
+                              onChange={(e) => {
+                                if (isDisabled) return;
+                                const rawValue = e.target.value;
+                                if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                                  const val = parseInt(rawValue) || 0;
+                                  setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === 'e') {
+                                  e.preventDefault();
+                                }
+                              }}
+                              placeholder="0"
+                              disabled={isDisabled}
+                            />
+                          </TooltipTrigger>
+                          {isDisabled && (
+                            <TooltipContent>
+                              <p className="text-xs">
+                                {isFuture ? "Нельзя заполнять будущие даты" : "Нерабочий день"}
+                              </p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </td>
                       
                       {/* Result */}
-                      <span className={cn("text-muted-foreground", isDisabled && "opacity-50")}>
-                        мин ={formatMinutes(regularMinutes)}
-                      </span>
+                      <td className="p-1 align-top whitespace-nowrap text-muted-foreground">
+                        ={formatMinutes(regularMinutes)}
+                      </td>
                       
-                      {/* Action button */}
-                      <div className="flex justify-center">
-                        {!isDisabled && basePlanned > 0 && regularMinutes !== basePlanned ? (
+                      {/* Action */}
+                      <td className="p-1 align-top">
+                        {!isDisabled && basePlanned > 0 && regularMinutes !== basePlanned && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 w-6 p-0"
+                                className="h-5 w-5 p-0"
                                 onClick={() => setEdits(prev => ({ ...prev, [dateStr]: basePlanned }))}
                               >
                                 <ArrowRight className="h-3 w-3 text-muted-foreground hover:text-primary" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p className="text-xs">Заполнить по плану ({formatMinutes(basePlanned)})</p>
+                              <p className="text-xs">По плану ({formatMinutes(basePlanned)})</p>
                             </TooltipContent>
                           </Tooltip>
-                        ) : null}
-                      </div>
+                        )}
+                      </td>
                       
-                      {/* Status/indicators */}
-                      <div className="flex items-center justify-end gap-1">
-                        {!isDisabled && totalFactMinutes > 0 && totalFactMinutes < displayPlanned && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-destructive font-medium">
-                                -{formatMinutes(displayPlanned - totalFactMinutes)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">Не доработано</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        {hasEdit && (
-                          <Badge className="text-[10px] px-1 py-0 bg-amber-100 text-amber-700">
-                            изм.
-                          </Badge>
-                        )}
-                        {pendingMinutes > 0 && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-400">
-                                ~{formatMinutes(pendingMinutes)}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">Ожидает подтв.: {pendingOT.map(e => e.description).join(", ")}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </div>
+                      {/* Status */}
+                      <td className="p-1 align-top">
+                        <div className="flex items-center gap-0.5 flex-wrap justify-end">
+                          {!isDisabled && totalFactMinutes > 0 && totalFactMinutes < displayPlanned && (
+                            <span className="text-destructive font-medium text-[10px]">
+                              -{formatMinutes(displayPlanned - totalFactMinutes)}
+                            </span>
+                          )}
+                          {hasEdit && (
+                            <Badge className="text-[9px] px-0.5 py-0 bg-amber-100 text-amber-700 h-4">
+                              изм
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                     
-                    {/* Compensation row - aligned under plan and input columns */}
+                    {/* Pending compensation row */}
                     {hasPendingCompensation && (
-                      <div className="grid grid-cols-[24px_70px_70px_60px_70px_28px_45px] gap-2 items-center mt-0.5">
-                        <div /> {/* Empty for checkbox */}
-                        <div /> {/* Empty for date */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1 text-amber-600">
-                              <span>Отработка:</span>
-                              <span className="font-medium">+{formatMinutes(pendingCompensationMinutes)}</span>
-                              <Hammer className="h-3 w-3 shrink-0 animate-pulse" />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Ожидает отработки</p>
-                            <p className="text-xs">Добавится после подтверждения</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Input
-                          type="number"
-                          className="h-7 text-sm text-center bg-amber-50/50 border-amber-200 text-amber-700"
-                          value={Math.round(pendingCompensationMinutes)}
-                          disabled
-                        />
-                        <span className="text-amber-600">
-                          мин +{formatMinutes(pendingCompensationMinutes)}
-                        </span>
-                        <div /> {/* Empty for action */}
-                        <div /> {/* Empty for status */}
-                      </div>
+                      <tr className={cn("bg-amber-50/30", isSelected && "bg-primary/5")}>
+                        {canFillByPlan && <td />}
+                        <td />
+                        <td className="p-1 pl-2" colSpan={1}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1 text-amber-600">
+                                <span className="text-[10px]">Отработка:</span>
+                                <span className="font-medium">+{formatMinutes(pendingCompensationMinutes)}</span>
+                                <Hammer className="h-3 w-3 animate-pulse" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Добавится после подтверждения</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </td>
+                        <td className="p-1">
+                          <Input
+                            type="number"
+                            className="h-6 w-14 text-xs text-center px-1 bg-amber-50 border-amber-200 text-amber-700"
+                            value={Math.round(pendingCompensationMinutes)}
+                            disabled
+                          />
+                        </td>
+                        <td className="p-1 text-amber-600 whitespace-nowrap">
+                          +{formatMinutes(pendingCompensationMinutes)}
+                        </td>
+                        <td />
+                        <td />
+                      </tr>
                     )}
                     
                     {/* Confirmed compensation row */}
                     {hasConfirmedCompensation && (
-                      <div className="grid grid-cols-[24px_70px_70px_60px_70px_28px_45px] gap-2 items-center mt-0.5">
-                        <div /> {/* Empty for checkbox */}
-                        <div /> {/* Empty for date */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1 text-green-600">
-                              <span>Отработка:</span>
-                              <span className="font-medium">+{formatMinutes(confirmedCompensationMinutes)}</span>
-                              <Check className="h-3 w-3 shrink-0" />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Отработка подтверждена</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Input
-                          type="number"
-                          className="h-7 text-sm text-center bg-green-50 border-green-200 text-green-700"
-                          value={Math.round(confirmedCompensationMinutes)}
-                          disabled
-                        />
-                        <span className="text-green-600">
-                          мин +{formatMinutes(confirmedCompensationMinutes)}
-                        </span>
-                        <div /> {/* Empty for action */}
-                        <div /> {/* Empty for status */}
-                      </div>
+                      <tr className={cn("bg-green-50/30", isSelected && "bg-primary/5")}>
+                        {canFillByPlan && <td />}
+                        <td />
+                        <td className="p-1 pl-2" colSpan={1}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1 text-green-600">
+                                <span className="text-[10px]">Отработка:</span>
+                                <span className="font-medium">+{formatMinutes(confirmedCompensationMinutes)}</span>
+                                <Check className="h-3 w-3" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Подтверждено</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </td>
+                        <td className="p-1">
+                          <Input
+                            type="number"
+                            className="h-6 w-14 text-xs text-center px-1 bg-green-50 border-green-200 text-green-700"
+                            value={Math.round(confirmedCompensationMinutes)}
+                            disabled
+                          />
+                        </td>
+                        <td className="p-1 text-green-600 whitespace-nowrap">
+                          +{formatMinutes(confirmedCompensationMinutes)}
+                        </td>
+                        <td />
+                        <td />
+                      </tr>
                     )}
                     
                     {/* Overtime row */}
                     {approvedMinutes > 0 && (
-                      <div className="grid grid-cols-[24px_70px_70px_60px_70px_28px_45px] gap-2 items-center mt-0.5">
-                        <div /> {/* Empty for checkbox */}
-                        <div /> {/* Empty for date */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1 text-purple-600">
-                              <span>Перераб.:</span>
-                              <span className="font-medium">+{formatMinutes(approvedMinutes)}</span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">{approvedOT.map(e => e.description).join(", ")}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Input
-                          type="number"
-                          className="h-7 text-sm text-center bg-purple-50 border-purple-200 text-purple-700"
-                          value={Math.round(approvedMinutes)}
-                          disabled
-                        />
-                        <span className="text-purple-600">
-                          мин +{formatMinutes(approvedMinutes)}
-                        </span>
-                        <div /> {/* Empty for action */}
-                        <div /> {/* Empty for status */}
-                      </div>
+                      <tr className={cn("bg-purple-50/30", isSelected && "bg-primary/5")}>
+                        {canFillByPlan && <td />}
+                        <td />
+                        <td className="p-1 pl-2" colSpan={1}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1 text-purple-600">
+                                <span className="text-[10px]">Перераб.:</span>
+                                <span className="font-medium">+{formatMinutes(approvedMinutes)}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">{approvedOT.map(e => e.description).join(", ")}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </td>
+                        <td className="p-1">
+                          <Input
+                            type="number"
+                            className="h-6 w-14 text-xs text-center px-1 bg-purple-50 border-purple-200 text-purple-700"
+                            value={Math.round(approvedMinutes)}
+                            disabled
+                          />
+                        </td>
+                        <td className="p-1 text-purple-600 whitespace-nowrap">
+                          +{formatMinutes(approvedMinutes)}
+                        </td>
+                        <td />
+                        <td />
+                      </tr>
                     )}
                     
-                    {/* Total row when multiple components */}
+                    {/* Total row */}
                     {(approvedMinutes > 0 || hasConfirmedCompensation) && regularMinutes > 0 && (
-                      <div className="grid grid-cols-[24px_70px_70px_60px_70px_28px_45px] gap-2 items-center mt-0.5 pt-0.5 border-t border-dashed">
-                        <div /> {/* Empty for checkbox */}
-                        <div /> {/* Empty for date */}
-                        <div className="text-primary font-semibold">Итого:</div>
-                        <div className="h-7 flex items-center justify-center text-sm text-primary font-semibold">
+                      <tr className={cn("border-b", isSelected && "bg-primary/5")}>
+                        {canFillByPlan && <td />}
+                        <td />
+                        <td className="p-1 pl-2 font-semibold text-primary">
+                          Итого:
+                        </td>
+                        <td className="p-1 text-center font-semibold text-primary">
                           {Math.round(totalFactMinutes)}
-                        </div>
-                        <span className="text-primary font-semibold">
-                          мин ={formatMinutes(totalFactMinutes)}
-                        </span>
-                        <div /> {/* Empty for action */}
-                        <div /> {/* Empty for status */}
-                      </div>
+                        </td>
+                        <td className="p-1 font-semibold text-primary whitespace-nowrap">
+                          ={formatMinutes(totalFactMinutes)}
+                        </td>
+                        <td />
+                        <td />
+                      </tr>
                     )}
-                  </div>
+                  </React.Fragment>
                 );
               })}
-            </div>
+              </tbody>
+            </table>
           </div>
           
           <div className="flex items-center justify-between pt-4 border-t">
