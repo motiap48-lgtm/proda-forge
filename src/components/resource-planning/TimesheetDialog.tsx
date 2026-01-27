@@ -43,6 +43,7 @@ interface TimesheetDialogProps {
   endDate: Date;
   plannedMinutesPerDay: (date: Date) => number;
   compensationMinutesPerDay?: (date: Date) => number;
+  confirmedCompensationMinutesPerDay?: (date: Date) => number;
 }
 
 export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
@@ -54,6 +55,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   endDate,
   plannedMinutesPerDay,
   compensationMinutesPerDay,
+  confirmedCompensationMinutesPerDay,
 }) => {
   const { data: timesheets = [], isLoading } = useOperatorTimesheets(startDate, endDate, [operatorId]);
   const { data: overtimeEntries = [] } = useOvertimeEntries(startDate, endDate, [operatorId]);
@@ -185,7 +187,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     days.forEach(day => {
       const dateStr = format(day, "yyyy-MM-dd");
       const planned = plannedMinutesPerDay(day);
-      // plannedMinutesPerDay already includes compensation hours for those days
+      // plannedMinutesPerDay is BASE plan only (without pending compensation)
+      // Compensation hours are added to fact after confirmation
       if (planned > 0) {
         newEdits[dateStr] = planned;
       }
@@ -211,14 +214,23 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   // Calculate totals
   const totals = useMemo(() => {
-    let planned = 0;
+    let basePlanned = 0;
+    let pendingCompensation = 0;
+    let confirmedCompensation = 0;
     let actualRegular = 0;
     let approvedOvertime = 0;
 
     days.forEach((day) => {
       const dateStr = format(day, "yyyy-MM-dd");
 
-      planned += plannedMinutesPerDay(day);
+      // Base planned (without compensation)
+      basePlanned += plannedMinutesPerDay(day);
+      
+      // Pending compensation (will be added after confirmation)
+      pendingCompensation += compensationMinutesPerDay?.(day) || 0;
+      
+      // Confirmed compensation (already worked and confirmed - counts as actual)
+      confirmedCompensation += confirmedCompensationMinutesPerDay?.(day) || 0;
 
       // Regular fact minutes (without overtime)
       if (edits[dateStr] !== undefined) {
@@ -238,10 +250,21 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
         .reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
     });
 
-    const actualTotal = actualRegular + approvedOvertime;
+    // Display plan = base + pending compensation (target to work)
+    const displayPlanned = basePlanned + pendingCompensation;
+    // Actual total = regular work + approved overtime + confirmed compensation
+    const actualTotal = actualRegular + approvedOvertime + confirmedCompensation;
 
-    return { planned, actualRegular, approvedOvertime, actualTotal };
-  }, [days, edits, timesheetMap, operatorId, plannedMinutesPerDay, overtimeMap]);
+    return { 
+      basePlanned, 
+      displayPlanned, 
+      pendingCompensation, 
+      confirmedCompensation,
+      actualRegular, 
+      approvedOvertime, 
+      actualTotal 
+    };
+  }, [days, edits, timesheetMap, operatorId, plannedMinutesPerDay, compensationMinutesPerDay, confirmedCompensationMinutesPerDay, overtimeMap]);
 
   const formatMinutes = (m: number) => {
     const rounded = Math.round(m);
@@ -397,9 +420,16 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               
               {days.map(day => {
                 const dateStr = format(day, "yyyy-MM-dd");
-                const planned = plannedMinutesPerDay(day);
-                const compensationMinutes = compensationMinutesPerDay?.(day) || 0;
-                const hasCompensation = compensationMinutes > 0;
+                // Base planned minutes (without pending compensation) - used for "Fill by Plan"
+                const basePlanned = plannedMinutesPerDay(day);
+                // Pending compensation minutes (not yet worked/confirmed)
+                const pendingCompensationMinutes = compensationMinutesPerDay?.(day) || 0;
+                // Confirmed compensation minutes (already worked and confirmed)
+                const confirmedCompensationMinutes = confirmedCompensationMinutesPerDay?.(day) || 0;
+                // Display plan = base + pending compensation (target to work)
+                const displayPlanned = basePlanned + pendingCompensationMinutes;
+                const hasPendingCompensation = pendingCompensationMinutes > 0;
+                const hasConfirmedCompensation = confirmedCompensationMinutes > 0;
                 const ts = getTimesheetForDate(timesheetMap, operatorId, day);
                 
                 // Get approved overtime for this day
@@ -412,16 +442,16 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 
                 // Regular minutes (from edits or timesheet)
                 const regularMinutes = edits[dateStr] ?? ts?.actual_minutes ?? 0;
-                // Total fact = regular + approved overtime
-                const totalFactMinutes = regularMinutes + approvedMinutes;
+                // Total fact = regular + approved overtime + confirmed compensation
+                const totalFactMinutes = regularMinutes + approvedMinutes + confirmedCompensationMinutes;
                 
                 const hasEdit = edits[dateStr] !== undefined;
                 // Show green checkmark only if saved AND saved value > 0
                 const hasSavedPositive = ts && ts.actual_minutes > 0 && !hasEdit;
                 const isSelected = selectedDays.has(dateStr);
                 const isFuture = isFutureDate(day);
-                // Non-working day = plan is 0
-                const isNonWorkingDay = planned === 0;
+                // Non-working day = base plan is 0 AND no pending compensation
+                const isNonWorkingDay = basePlanned === 0 && pendingCompensationMinutes === 0;
                 // Can select only working days that are not in the future
                 const canSelect = !isNonWorkingDay && !isFuture;
                 // Disable input for future dates OR non-working days
@@ -461,17 +491,28 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     </div>
                     
                     {/* Plan column - fixed width */}
-                    <div className="w-[100px] shrink-0 flex items-center gap-1 pt-1">
-                      <Badge variant="outline" className={cn("w-full justify-center text-xs", hasCompensation && "border-amber-400 bg-amber-50")}>
-                        План: {formatMinutes(planned)}
+                    <div className="w-[115px] shrink-0 flex items-center gap-1 pt-1">
+                      <Badge variant="outline" className={cn("w-full justify-center text-xs", hasPendingCompensation && "border-amber-400 bg-amber-50")}>
+                        План: {formatMinutes(displayPlanned)}
                       </Badge>
-                      {hasCompensation && (
+                      {hasPendingCompensation && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Hammer className="h-3 w-3 text-amber-500 shrink-0" />
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="text-xs">Включает отработку: {formatMinutes(compensationMinutes)}</p>
+                            <p className="text-xs">Базовый план: {formatMinutes(basePlanned)}</p>
+                            <p className="text-xs">+ Отработка (ожид.): {formatMinutes(pendingCompensationMinutes)}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      {hasConfirmedCompensation && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Check className="h-3 w-3 text-green-500 shrink-0" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Отработка (подтв.): +{formatMinutes(confirmedCompensationMinutes)}</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -521,6 +562,23 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         <span className={cn("text-xs shrink-0 w-[55px]", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин ={formatMinutes(regularMinutes)}</span>
                       </div>
                       
+                      {/* Confirmed compensation row */}
+                      {hasConfirmedCompensation && (
+                        <div className="flex items-center gap-1.5">
+                          <Label className="text-xs shrink-0 w-[90px] text-green-600">Отработка:</Label>
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              type="number"
+                              className="w-[70px] h-7 text-sm bg-green-50 border-green-200 text-green-700"
+                              value={Math.round(confirmedCompensationMinutes)}
+                              disabled
+                            />
+                            <span className="text-xs text-green-500 shrink-0">мин</span>
+                            <span className="text-xs text-green-600 font-medium shrink-0">+{formatMinutes(confirmedCompensationMinutes)}</span>
+                          </div>
+                        </div>
+                      )}
+                      
                       {/* Separate overtime row for days with approved overtime */}
                       {approvedMinutes > 0 && (
                         <div className="flex items-center gap-1.5">
@@ -545,8 +603,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         </div>
                       )}
                       
-                      {/* Total row when overtime exists and there's regular work too */}
-                      {approvedMinutes > 0 && regularMinutes > 0 && (
+                      {/* Total row when there are multiple components */}
+                      {(approvedMinutes > 0 || hasConfirmedCompensation) && regularMinutes > 0 && (
                         <div className="flex items-center gap-1.5">
                           <Label className="text-xs shrink-0 w-[90px] text-primary font-semibold">Итого:</Label>
                           <div className="w-[70px]" />
@@ -558,21 +616,21 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     
                     {/* Action column - fixed width */}
                     <div className="w-8 shrink-0 flex justify-center">
-                      {/* Show fill by plan button only for working days, not future, and when current != plan */}
-                      {!isDisabled && planned > 0 && regularMinutes !== planned ? (
+                      {/* Show fill by plan button only for working days, not future, and when current != base plan */}
+                      {!isDisabled && basePlanned > 0 && regularMinutes !== basePlanned ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-6 w-6 p-0"
-                              onClick={() => setEdits(prev => ({ ...prev, [dateStr]: planned }))}
+                              onClick={() => setEdits(prev => ({ ...prev, [dateStr]: basePlanned }))}
                             >
                               <ArrowRight className="h-3 w-3 text-muted-foreground hover:text-primary" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="text-xs">Заполнить по плану ({formatMinutes(planned)})</p>
+                            <p className="text-xs">Заполнить по плану ({formatMinutes(basePlanned)})</p>
                           </TooltipContent>
                         </Tooltip>
                       ) : null}
@@ -580,19 +638,19 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     
                     {/* Underage indicator column - fixed width */}
                     <div className="w-[50px] shrink-0 flex items-center justify-start pt-1">
-                      {/* Show underage indicator when actual < plan for working days */}
-                      {!isDisabled && regularMinutes > 0 && regularMinutes < planned && (
+                      {/* Show underage indicator when actual < display plan for working days */}
+                      {!isDisabled && totalFactMinutes > 0 && totalFactMinutes < displayPlanned && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Badge 
                               variant="outline" 
                               className="text-xs text-red-600 border-red-300 bg-red-50"
                             >
-                              -{formatMinutes(planned - regularMinutes)}
+                              -{formatMinutes(displayPlanned - totalFactMinutes)}
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="text-xs">Не доработано: {formatMinutes(planned - regularMinutes)}</p>
+                            <p className="text-xs">Не доработано: {formatMinutes(displayPlanned - totalFactMinutes)}</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -638,23 +696,41 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
             <div className="text-sm space-y-1">
               <div>
                 <span className="text-muted-foreground">План: </span>
-                <span className="font-medium">{formatMinutes(totals.planned)}</span>
+                <span className="font-medium">{formatMinutes(totals.displayPlanned)}</span>
+                {totals.pendingCompensation > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="ml-1 text-xs text-amber-600">
+                        (в т.ч. отработка: {formatMinutes(totals.pendingCompensation)})
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Базовый план: {formatMinutes(totals.basePlanned)}</p>
+                      <p className="text-xs">+ Ожидает отработки: {formatMinutes(totals.pendingCompensation)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
               <div>
                 <span className="text-muted-foreground">Факт: </span>
                 <span className="font-bold text-primary">{formatMinutes(totals.actualTotal)}</span>
-                {totals.actualTotal !== totals.planned && (
+                {totals.actualTotal !== totals.displayPlanned && (
                   <span
                     className={cn(
                       "ml-2 text-xs",
-                      totals.actualTotal >= totals.planned ? "text-green-600" : "text-amber-600"
+                      totals.actualTotal >= totals.displayPlanned ? "text-green-600" : "text-amber-600"
                     )}
                   >
-                    ({totals.actualTotal >= totals.planned ? "+" : ""}
-                    {formatMinutes(totals.actualTotal - totals.planned)})
+                    ({totals.actualTotal >= totals.displayPlanned ? "+" : ""}
+                    {formatMinutes(totals.actualTotal - totals.displayPlanned)})
                   </span>
                 )}
               </div>
+              {totals.confirmedCompensation > 0 && (
+                <div className="text-xs text-green-600 font-medium">
+                  Отработано (подтв.): +{formatMinutes(totals.confirmedCompensation)}
+                </div>
+              )}
               {totals.approvedOvertime > 0 && (
                 <div className="text-xs text-purple-600 font-medium">
                   Переработка за период: +{formatMinutes(totals.approvedOvertime)}

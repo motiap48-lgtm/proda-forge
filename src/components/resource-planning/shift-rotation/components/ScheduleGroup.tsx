@@ -1642,26 +1642,32 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             const op = operators.find(o => o.id === timesheetOperator.id);
             if (!op) return 0;
             
-            // Get base planned minutes from schedule
-            let baseMinutes = getDayMinutes(op, date);
-            
-            // Add compensation hours for this day
-            const dateStr = format(date, "yyyy-MM-dd");
-            const key = `${timesheetOperator.id}_${dateStr}`;
-            const records = compensationRecordsMap?.get(key);
-            if (records && records.length > 0) {
-              const compensationMinutes = records.reduce((sum, r) => sum + (r.hours_worked || 0) * 60, 0);
-              baseMinutes += compensationMinutes;
-            }
-            
-            return baseMinutes;
+            // Get base planned minutes from schedule (without compensation)
+            // This is used for "Fill by Plan" button - only base hours
+            return getDayMinutes(op, date);
           }}
           compensationMinutesPerDay={(date: Date) => {
             const dateStr = format(date, "yyyy-MM-dd");
             const key = `${timesheetOperator.id}_${dateStr}`;
             const records = compensationRecordsMap?.get(key);
             if (records && records.length > 0) {
-              return records.reduce((sum, r) => sum + (r.hours_worked || 0) * 60, 0);
+              // Only show pending compensation hours for display
+              // These are the hours that WILL be added after confirmation
+              return records
+                .filter(r => r.status === 'pending')
+                .reduce((sum, r) => sum + (r.hours_worked || 0) * 60, 0);
+            }
+            return 0;
+          }}
+          confirmedCompensationMinutesPerDay={(date: Date) => {
+            const dateStr = format(date, "yyyy-MM-dd");
+            const key = `${timesheetOperator.id}_${dateStr}`;
+            const records = compensationRecordsMap?.get(key);
+            if (records && records.length > 0) {
+              // Confirmed compensation hours - already worked and confirmed
+              return records
+                .filter(r => r.status === 'confirmed')
+                .reduce((sum, r) => sum + (r.hours_worked || 0) * 60, 0);
             }
             return 0;
           }}
