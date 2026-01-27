@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
 import { Badge } from "@/components/ui/badge";
 import { format, addDays, endOfMonth, isSameDay, startOfDay, isAfter } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -486,40 +486,58 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     )}
                     
                     {/* Date column - fixed width */}
-                    <div className="w-[85px] shrink-0 text-sm pt-1.5">
+                    <div className="w-[70px] shrink-0 text-sm self-start pt-1">
                       {format(day, "EEE, d MMM", { locale: ru })}
                     </div>
                     
-                    {/* Plan column - fixed width */}
-                    <div className="w-[115px] shrink-0 flex items-center gap-1 pt-1">
-                      <Badge variant="outline" className={cn("w-full justify-center text-xs", hasPendingCompensation && "border-amber-400 bg-amber-50")}>
-                        План: {formatMinutes(displayPlanned)}
-                      </Badge>
+                    {/* Plan + Compensation column - vertical layout */}
+                    <div className="w-[95px] shrink-0 flex flex-col gap-0.5 self-start">
+                      {/* Plan row */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">План:</span>
+                        <span className="text-xs font-medium">{formatMinutes(basePlanned)}</span>
+                        {hasSavedPositive && (
+                          <Check className="h-3 w-3 text-green-500 shrink-0" />
+                        )}
+                      </div>
+                      
+                      {/* Pending compensation row (under plan) */}
                       {hasPendingCompensation && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Hammer className="h-3 w-3 text-amber-500 shrink-0" />
+                            <div className="flex items-center gap-1 text-amber-600">
+                              <span className="text-xs">Отработка:</span>
+                              <span className="text-xs font-medium">+{formatMinutes(pendingCompensationMinutes)}</span>
+                              <Hammer className="h-3 w-3 shrink-0 animate-pulse" />
+                            </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="text-xs">Базовый план: {formatMinutes(basePlanned)}</p>
-                            <p className="text-xs">+ Отработка (ожид.): {formatMinutes(pendingCompensationMinutes)}</p>
+                            <p className="text-xs">Ожидает отработки за пропущенный день</p>
+                            <p className="text-xs">Добавится к факту после подтверждения</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
+                      
+                      {/* Confirmed compensation row */}
                       {hasConfirmedCompensation && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Check className="h-3 w-3 text-green-500 shrink-0" />
+                            <div className="flex items-center gap-1 text-green-600">
+                              <span className="text-xs">Отработка:</span>
+                              <span className="text-xs font-medium">+{formatMinutes(confirmedCompensationMinutes)}</span>
+                              <Check className="h-3 w-3 shrink-0" />
+                            </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="text-xs">Отработка (подтв.): +{formatMinutes(confirmedCompensationMinutes)}</p>
+                            <p className="text-xs">Отработка подтверждена</p>
+                            <p className="text-xs">Учтено в факте</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
                     </div>
                     
-                    {/* Fact column - fixed width */}
-                    <div className="w-[140px] shrink-0 flex flex-col gap-1">
+                    {/* Fact column - vertical layout aligned with plan column */}
+                    <div className="w-[160px] shrink-0 flex flex-col gap-0.5 self-start">
                       {/* Main fact row */}
                       <div className="flex items-center gap-1.5">
                         <Tooltip>
@@ -529,19 +547,17 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                                 type="number"
                                 min="0"
                                 step="1"
-                                className="w-[70px] h-8 text-sm"
+                                className="w-[60px] h-7 text-sm"
                                 value={Math.round(regularMinutes)}
                                 onChange={(e) => {
                                   if (isDisabled) return;
                                   const rawValue = e.target.value;
-                                  // Only allow integers
                                   if (rawValue === '' || /^\d+$/.test(rawValue)) {
                                     const val = parseInt(rawValue) || 0;
                                     setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
                                   }
                                 }}
                                 onKeyDown={(e) => {
-                                  // Block decimal point and minus sign
                                   if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === 'e') {
                                     e.preventDefault();
                                   }
@@ -559,63 +575,78 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                             </TooltipContent>
                           )}
                         </Tooltip>
-                        <span className={cn("text-xs shrink-0 w-[55px]", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>мин ={formatMinutes(regularMinutes)}</span>
+                        <span className={cn("text-xs shrink-0", isDisabled ? "text-muted-foreground/50" : "text-muted-foreground")}>
+                          мин ={formatMinutes(regularMinutes)}
+                        </span>
                       </div>
                       
-                      {/* Confirmed compensation row */}
-                      {hasConfirmedCompensation && (
+                      {/* Pending compensation input row (aligned under minutes input) */}
+                      {hasPendingCompensation && (
                         <div className="flex items-center gap-1.5">
-                          <Label className="text-xs shrink-0 w-[90px] text-green-600">Отработка:</Label>
-                          <div className="flex items-center gap-1.5">
-                            <Input
-                              type="number"
-                              className="w-[70px] h-7 text-sm bg-green-50 border-green-200 text-green-700"
-                              value={Math.round(confirmedCompensationMinutes)}
-                              disabled
-                            />
-                            <span className="text-xs text-green-500 shrink-0">мин</span>
-                            <span className="text-xs text-green-600 font-medium shrink-0">+{formatMinutes(confirmedCompensationMinutes)}</span>
-                          </div>
+                          <Input
+                            type="number"
+                            className="w-[60px] h-7 text-sm bg-amber-50/50 border-amber-200 text-amber-700"
+                            value={Math.round(pendingCompensationMinutes)}
+                            disabled
+                          />
+                          <span className="text-xs text-amber-600 shrink-0">
+                            мин +{formatMinutes(pendingCompensationMinutes)}
+                          </span>
                         </div>
                       )}
                       
-                      {/* Separate overtime row for days with approved overtime */}
-                      {approvedMinutes > 0 && (
+                      {/* Confirmed compensation input row */}
+                      {hasConfirmedCompensation && (
                         <div className="flex items-center gap-1.5">
-                          <Label className="text-xs shrink-0 w-[90px] text-purple-600">Переработка:</Label>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-1.5">
-                                <Input
-                                  type="number"
-                                  className="w-[70px] h-7 text-sm bg-purple-50 border-purple-200 text-purple-700"
-                                  value={Math.round(approvedMinutes)}
-                                  disabled
-                                />
-                                <span className="text-xs text-purple-500 shrink-0">мин</span>
-                                <span className="text-xs text-purple-600 font-medium shrink-0">+{formatMinutes(approvedMinutes)}</span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">Переработка (подтв.): {approvedOT.map(e => e.description).join(", ")}</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <Input
+                            type="number"
+                            className="w-[60px] h-7 text-sm bg-green-50 border-green-200 text-green-700"
+                            value={Math.round(confirmedCompensationMinutes)}
+                            disabled
+                          />
+                          <span className="text-xs text-green-600 shrink-0">
+                            мин +{formatMinutes(confirmedCompensationMinutes)}
+                          </span>
                         </div>
+                      )}
+                      
+                      {/* Approved overtime row */}
+                      {approvedMinutes > 0 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1.5">
+                              <Input
+                                type="number"
+                                className="w-[60px] h-7 text-sm bg-purple-50 border-purple-200 text-purple-700"
+                                value={Math.round(approvedMinutes)}
+                                disabled
+                              />
+                              <span className="text-xs text-purple-600 shrink-0">
+                                мин +{formatMinutes(approvedMinutes)}
+                              </span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Переработка: {approvedOT.map(e => e.description).join(", ")}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                       
                       {/* Total row when there are multiple components */}
                       {(approvedMinutes > 0 || hasConfirmedCompensation) && regularMinutes > 0 && (
-                        <div className="flex items-center gap-1.5">
-                          <Label className="text-xs shrink-0 w-[90px] text-primary font-semibold">Итого:</Label>
-                          <div className="w-[70px]" />
-                          <div className="w-[30px]" />
-                          <span className="text-xs text-primary font-semibold shrink-0 w-[40px]">{formatMinutes(totalFactMinutes)}</span>
+                        <div className="flex items-center gap-1.5 pt-0.5 border-t border-dashed">
+                          <div className="w-[60px] h-6 flex items-center justify-center">
+                            <span className="text-xs text-primary font-semibold">Итого:</span>
+                          </div>
+                          <span className="text-xs text-primary font-semibold">
+                            {formatMinutes(totalFactMinutes)}
+                          </span>
                         </div>
                       )}
                     </div>
                     
                     {/* Action column - fixed width */}
-                    <div className="w-8 shrink-0 flex justify-center">
+                    <div className="w-8 shrink-0 flex flex-col items-center justify-start self-start pt-1">
                       {/* Show fill by plan button only for working days, not future, and when current != base plan */}
                       {!isDisabled && basePlanned > 0 && regularMinutes !== basePlanned ? (
                         <Tooltip>
@@ -637,14 +668,14 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     </div>
                     
                     {/* Underage indicator column - fixed width */}
-                    <div className="w-[50px] shrink-0 flex items-center justify-start pt-1">
+                    <div className="w-[50px] shrink-0 flex items-start justify-start self-start pt-1">
                       {/* Show underage indicator when actual < display plan for working days */}
                       {!isDisabled && totalFactMinutes > 0 && totalFactMinutes < displayPlanned && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Badge 
                               variant="outline" 
-                              className="text-xs text-red-600 border-red-300 bg-red-50"
+                              className="text-xs text-destructive border-destructive/30 bg-destructive/10"
                             >
                               -{formatMinutes(displayPlanned - totalFactMinutes)}
                             </Badge>
@@ -657,7 +688,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     </div>
                     
                     {/* Overtime column - fixed width, show only pending overtime */}
-                    <div className="w-[50px] shrink-0 flex items-center justify-center pt-1">
+                    <div className="w-[50px] shrink-0 flex items-start justify-center self-start pt-1">
                       {pendingMinutes > 0 && (
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -673,13 +704,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     </div>
                     
                     {/* Status column - fixed width, aligned to first row */}
-                    <div className="w-10 shrink-0 flex justify-center pt-1">
-                      {/* Green checkmark only for saved positive values */}
-                      {hasSavedPositive && (
-                        <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
-                          ✓
-                        </Badge>
-                      )}
+                    <div className="w-10 shrink-0 flex items-start justify-center self-start pt-1">
                       {hasEdit && (
                         <Badge className="text-xs bg-amber-100 text-amber-700">
                           изм.
