@@ -55,7 +55,16 @@ interface TimesheetDialogProps {
   operatorName: string;
   startDate: Date;
   endDate: Date;
+  /**
+   * Базовая норма по графику (не должна вычитать больничные/отпуска).
+   * Используется для отображения «План» и для расчёта итога «План».
+   */
   plannedMinutesPerDay: (date: Date) => number;
+  /**
+   * Ограничение редактирования/выбора дней (например, на больничном возвращает 0).
+   * Если не задано — считается равным plannedMinutesPerDay.
+   */
+  editableMinutesPerDay?: (date: Date) => number;
   compensationMinutesPerDay?: (date: Date) => number;
   confirmedCompensationMinutesPerDay?: (date: Date) => number;
   compensationRecordsForDay?: (date: Date) => ExtendedCompensationRecord[];
@@ -69,6 +78,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   startDate,
   endDate,
   plannedMinutesPerDay,
+  editableMinutesPerDay,
   compensationMinutesPerDay,
   confirmedCompensationMinutesPerDay,
   compensationRecordsForDay,
@@ -108,15 +118,17 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   // Days with plan > 0 AND not in the future
   const todayStart = startOfDay(today);
+
+  const editablePlannedMinutesPerDay = editableMinutesPerDay ?? plannedMinutesPerDay;
   
   // Check if a date is in the future (cannot be selected)
   const isFutureDate = (day: Date) => isAfter(startOfDay(day), todayStart);
   
   const selectableDays = useMemo(() => 
     days
-      .filter(day => plannedMinutesPerDay(day) > 0 && !isFutureDate(day))
+      .filter(day => editablePlannedMinutesPerDay(day) > 0 && !isFutureDate(day))
       .map(day => format(day, "yyyy-MM-dd")),
-    [days, plannedMinutesPerDay, todayStart]
+    [days, editablePlannedMinutesPerDay, todayStart]
   );
   
   const allSelected = selectableDays.length > 0 && selectableDays.every(d => selectedDays.has(d));
@@ -149,7 +161,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     const newEdits: Record<string, number> = { ...edits };
     selectedDays.forEach(dateStr => {
       const day = new Date(dateStr);
-      const planned = plannedMinutesPerDay(day);
+      const planned = editablePlannedMinutesPerDay(day);
       if (planned > 0) {
         newEdits[dateStr] = planned;
       }
@@ -202,8 +214,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     const newEdits: Record<string, number> = {};
     days.forEach(day => {
       const dateStr = format(day, "yyyy-MM-dd");
-      const planned = plannedMinutesPerDay(day);
-      // plannedMinutesPerDay is BASE plan only (without pending compensation)
+      const planned = editablePlannedMinutesPerDay(day);
+      // editablePlannedMinutesPerDay = план для редактирования (0 на больничных/отпусках)
       // Compensation hours are added to fact after confirmation
       if (planned > 0) {
         newEdits[dateStr] = planned;
@@ -443,6 +455,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               {days.map(day => {
                 const dateStr = format(day, "yyyy-MM-dd");
                 const basePlanned = plannedMinutesPerDay(day);
+                const editablePlanned = editablePlannedMinutesPerDay(day);
                 const pendingCompensationMinutes = compensationMinutesPerDay?.(day) || 0;
                 const confirmedCompensationMinutes = confirmedCompensationMinutesPerDay?.(day) || 0;
                 const displayPlanned = basePlanned + pendingCompensationMinutes;
@@ -473,7 +486,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 const hasSavedPositive = ts && ts.actual_minutes > 0 && !hasEdit;
                 const isSelected = selectedDays.has(dateStr);
                 const isFuture = isFutureDate(day);
-                const isNonWorkingDay = basePlanned === 0 && pendingCompensationMinutes === 0;
+                // Для редактирования день считается «нерабочим», если его нельзя заполнять (например, больничный)
+                const isNonWorkingDay = editablePlanned === 0 && pendingCompensationMinutes === 0;
                 const canSelect = !isNonWorkingDay && !isFuture;
                 const isDisabled = isFuture || isNonWorkingDay;
                 
