@@ -1484,8 +1484,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           <span>{Math.floor(factMinutes / 60)}ч{factMinutes % 60 > 0 ? ` ${factMinutes % 60}м` : ''}</span>
                                         </div>
                                         <div className="text-[9px] opacity-80">
-                                          {/* План = полный план по графику */}
-                                          п: {fullPlanData.hours}ч{fullPlanData.minutes > 0 ? ` ${fullPlanData.minutes}м` : ''}
+                                          {/* План = план с вычетом отсутствий */}
+                                          п: {reducedPlanData.hours}ч{reducedPlanData.minutes > 0 ? ` ${reducedPlanData.minutes}м` : ''}
                                         </div>
                                       </>
                                     ) : (
@@ -1493,8 +1493,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                         <div className="flex items-center gap-0.5">
                                           {hasCompensationTotal && <Hammer className="h-3 w-3" />}
                                           {hasOvertimeTotal && <Clock className="h-3 w-3" />}
-                                          {/* Без данных табеля показываем полный план */}
-                                          <span>{fullPlanData.hours}ч</span>
+                                          {/* Без данных табеля показываем план с вычетом отсутствий */}
+                                          <span>{reducedPlanData.hours}ч</span>
                                         </div>
                                         {hasOvertimeTotal ? (
                                           <div className="text-[9px] text-purple-700 dark:text-purple-300 font-medium">
@@ -1506,7 +1506,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           </div>
                                         ) : (
                                           /* Показываем минуты только если они есть - НЕ дублируя */
-                                          fullPlanData.minutes > 0 && <div className="text-[10px] opacity-80">{fullPlanData.minutes}м</div>
+                                          reducedPlanData.minutes > 0 && <div className="text-[10px] opacity-80">{reducedPlanData.minutes}м</div>
                                         )}
                                       </>
                                     )}
