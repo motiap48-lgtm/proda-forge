@@ -437,6 +437,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
       const selectedOperator = operators.find(op => op.id === selectedAbsence.operator_id);
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Ignore if user is typing in an input or textarea
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          return;
+        }
         e.preventDefault();
         if (confirm("Удалить выбранное отсутствие?")) {
           deleteAbsence.mutate(selectedAbsenceId);
