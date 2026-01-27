@@ -578,8 +578,10 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     {hasPendingCompensation && (
                       <tr className={cn("bg-amber-50/30", isSelected && "bg-primary/5")}>
                         {canFillByPlan && <td />}
-                        <td />
-                        <td className="p-1 pl-2" colSpan={1}>
+                        <td className="p-1 pl-2 text-amber-600/70 text-[10px]">
+                          {format(day, "d MMM", { locale: ru })}
+                        </td>
+                        <td className="p-1" colSpan={1}>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="flex items-center gap-1 text-amber-600">
@@ -589,7 +591,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p className="text-xs">Добавится после подтверждения</p>
+                              <p className="text-xs">Отработка за {format(day, "d MMMM", { locale: ru })}</p>
+                              <p className="text-xs text-muted-foreground">Добавится после подтверждения</p>
                             </TooltipContent>
                           </Tooltip>
                         </td>
@@ -613,8 +616,10 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     {hasConfirmedCompensation && (
                       <tr className={cn("bg-green-50/30", isSelected && "bg-primary/5")}>
                         {canFillByPlan && <td />}
-                        <td />
-                        <td className="p-1 pl-2" colSpan={1}>
+                        <td className="p-1 pl-2 text-green-600/70 text-[10px]">
+                          {format(day, "d MMM", { locale: ru })}
+                        </td>
+                        <td className="p-1" colSpan={1}>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="flex items-center gap-1 text-green-600">
@@ -624,7 +629,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p className="text-xs">Подтверждено</p>
+                              <p className="text-xs">Отработка за {format(day, "d MMMM", { locale: ru })}</p>
+                              <p className="text-xs text-green-600">✓ Подтверждено</p>
                             </TooltipContent>
                           </Tooltip>
                         </td>
@@ -684,7 +690,24 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         {canFillByPlan && <td />}
                         <td />
                         <td className="p-1 pl-2 font-semibold text-primary">
-                          Итого:
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help border-b border-dashed border-primary/50">Итого:</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="text-xs space-y-0.5">
+                                <p className="font-medium">Расчёт за {format(day, "d MMMM", { locale: ru })}:</p>
+                                <p>Регулярные: {formatMinutes(regularMinutes)}</p>
+                                {hasConfirmedCompensation && (
+                                  <p className="text-green-600">+ Отработка (подтв.): {formatMinutes(confirmedCompensationMinutes)}</p>
+                                )}
+                                {approvedMinutes > 0 && (
+                                  <p className="text-purple-600">+ Переработка: {formatMinutes(approvedMinutes)}</p>
+                                )}
+                                <p className="font-semibold border-t pt-0.5 mt-1">= {formatMinutes(totalFactMinutes)}</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
                         </td>
                         <td className="p-1 text-center font-semibold text-primary">
                           {Math.round(totalFactMinutes)}
