@@ -806,6 +806,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
           
           <div className="flex items-center justify-between pt-4 border-t">
             <div className="text-sm space-y-1">
+              {/* Plan line */}
               <div>
                 <span className="text-muted-foreground">План: </span>
                 <span className="font-medium">{formatMinutes(totals.basePlanned)}</span>
@@ -822,29 +823,52 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                   </Tooltip>
                 )}
               </div>
-              <div>
-                <span className="text-muted-foreground">Факт: </span>
-                <span className="font-bold text-primary">{formatMinutes(totals.actualTotal)}</span>
-                {totals.actualTotal !== totals.basePlanned && (
-                  <span
-                    className={cn(
-                      "ml-2 text-xs",
-                      totals.actualTotal >= totals.basePlanned ? "text-green-600" : "text-amber-600"
+              
+              {/* Base Fact (without overtime) - shows if plan was met from regular work */}
+              {(() => {
+                const baseFact = totals.actualRegular + totals.confirmedCompensation;
+                const baseDifference = baseFact - totals.basePlanned;
+                return (
+                  <div>
+                    <span className="text-muted-foreground">
+                      {totals.approvedOvertime > 0 ? "Факт (база): " : "Факт: "}
+                    </span>
+                    <span className="font-bold text-primary">{formatMinutes(baseFact)}</span>
+                    {baseFact !== totals.basePlanned && (
+                      <span
+                        className={cn(
+                          "ml-2 text-xs",
+                          baseDifference >= 0 ? "text-green-600" : "text-amber-600"
+                        )}
+                      >
+                        ({baseDifference >= 0 ? "+" : ""}
+                        {formatMinutes(baseDifference)})
+                      </span>
                     )}
-                  >
-                    ({totals.actualTotal >= totals.basePlanned ? "+" : ""}
-                    {formatMinutes(totals.actualTotal - totals.basePlanned)})
-                  </span>
-                )}
-              </div>
-              {totals.confirmedCompensation > 0 && (
-                <div className="text-xs text-green-600 font-medium">
-                  Отработано (подтв.): +{formatMinutes(totals.confirmedCompensation)}
+                  </div>
+                );
+              })()}
+              
+              {/* Overtime - shown separately, above the plan */}
+              {totals.approvedOvertime > 0 && (
+                <div className="text-purple-600 font-medium">
+                  <span>Переработка за период: </span>
+                  <span>+{formatMinutes(totals.approvedOvertime)}</span>
                 </div>
               )}
+              
+              {/* Total Fact including overtime */}
               {totals.approvedOvertime > 0 && (
-                <div className="text-xs text-purple-600 font-medium">
-                  Переработка за период: +{formatMinutes(totals.approvedOvertime)}
+                <div>
+                  <span className="text-muted-foreground">Итого факт: </span>
+                  <span className="font-bold text-primary">{formatMinutes(totals.actualTotal)}</span>
+                </div>
+              )}
+              
+              {/* Confirmed compensation breakdown */}
+              {totals.confirmedCompensation > 0 && (
+                <div className="text-xs text-green-600">
+                  В т.ч. отработка (подтв.): +{formatMinutes(totals.confirmedCompensation)}
                 </div>
               )}
             </div>
