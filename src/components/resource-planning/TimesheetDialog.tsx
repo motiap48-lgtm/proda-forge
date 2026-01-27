@@ -413,7 +413,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
           
           <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
             <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-background border-b">
+              <thead className="sticky top-0 bg-background border-b z-10">
                 <tr>
                   {canFillByPlan && (
                     <th className="w-6 p-1">
