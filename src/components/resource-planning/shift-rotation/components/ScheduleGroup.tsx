@@ -1670,10 +1670,10 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             const op = operators.find(o => o.id === timesheetOperator.id);
             if (!op) return 0;
             
-            // Get base planned minutes from schedule (without absences)
-            // This is the FULL plan - what operator would work if no absences
-            // Used for "Fill by Plan" button on days where operator actually worked
-            return getPlannedDayMinutes ? getPlannedDayMinutes(op, date) : (getDayMinutes ? getDayMinutes(op, date) : 0);
+            // Get planned minutes WITH absences deducted
+            // Days with absence (sick leave, vacation) return 0 - cannot fill timesheet for those days
+            // This is used for "Fill by Plan" button and to determine if day is editable
+            return getDayMinutes ? getDayMinutes(op, date) : 0;
           }}
           compensationMinutesPerDay={(date: Date) => {
             const dateStr = format(date, "yyyy-MM-dd");
