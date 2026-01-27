@@ -451,11 +451,18 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       )}
       
       {actualData.hasData && (
-        <div className="border-t border-border/50 pt-2">
+        <div className="border-t border-border/50 pt-2 space-y-1">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Факт:</span>
             <span className="font-medium">{formatMinutesAsTime(actualTotalMinutes)}</span>
           </div>
+          {/* Show approved overtime sum separately (like in TimesheetDialog) */}
+          {overtimeData.totalApprovedMinutes > 0 && (
+            <div className="flex justify-between items-center text-purple-500">
+              <span>Переработка за период:</span>
+              <span className="font-medium">+{formatMinutesAsTime(overtimeData.totalApprovedMinutes)}</span>
+            </div>
+          )}
         </div>
       )}
       
