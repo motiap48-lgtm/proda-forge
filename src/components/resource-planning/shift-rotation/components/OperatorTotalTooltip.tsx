@@ -137,10 +137,8 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operator, exceptionsMap, fullPlanHours, fullPlanMinutes, getPlannedDayMinutes]);
   
-  // Absence types that should reduce the plan (non-compensable absences)
-  // These are absences where the employee is NOT expected to work off the missed time
-  // Compensable absences (unauthorized_absence, administrative_leave_with_compensation) do NOT reduce plan
-  const ABSENCES_REDUCING_PLAN = ["annual_leave", "sick_leave", "administrative_leave_without_compensation", "maternity_leave", "unpaid_leave"];
+  // ВАЖНО: базовый «План» — это норма по графику (без вычета больничных/отпусков).
+  // Отсутствия учитываются в «Факте» как недоработка и показываются отдельными строками.
   
   // Calculate absence hours grouped by type
   // For vacation: count ALL calendar days in the period (for display)
@@ -302,19 +300,13 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operatorId, timesheetMap]);
   
-  // Calculate absences reducing plan hours (e.g. annual leave)
-  // This is for display purposes in vacationGroups
-  const planReductionMinutes = Math.round(
-    absenceGroups
-      .filter(g => ABSENCES_REDUCING_PLAN.includes(g.type))
-      .reduce((sum, g) => sum + g.hours, 0) * 60
-  );
-  
-  // Plan from parent - уже с учетом отсутствий (план по периодy)
+  // Plan from parent (legacy) — раньше сюда передавали «план по периоду с вычетом отсутствий».
+  // Оставляем для обратной совместимости, но как базовую норму используем fullPlanData.
   const passedPlanMinutes = planHours * 60 + planMinutes;
   
-  // Ожидаемая норма = план (отработки/переработки показываем отдельно)
-  const expectedMinutes = passedPlanMinutes;
+  // Ожидаемая норма = полный план по графику.
+  // Фоллбэк на passedPlanMinutes — на случай отсутствия данных по графику.
+  const expectedMinutes = fullPlanData.totalMinutes > 0 ? fullPlanData.totalMinutes : passedPlanMinutes;
 
   // Actual total = timesheet data + approved overtime + confirmed compensation
   const actualTotalMinutes = actualData.totalMinutes + overtimeData.totalApprovedMinutes + compensationData.totalConfirmedMinutes;
@@ -347,59 +339,35 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     return `${sign}${h}ч${m > 0 ? ` ${m}м` : ""}`;
   };
 
-  // Separate plan-reducing absences and others for display
-  const vacationGroups = absenceGroups.filter(g => ABSENCES_REDUCING_PLAN.includes(g.type));
-  const otherAbsenceGroups = absenceGroups.filter(g => !ABSENCES_REDUCING_PLAN.includes(g.type));
-
-  
-  // Check if plan differs from full plan (absences are reducing)
-  const hasPlanReduction = vacationGroups.length > 0;
+  const planDisplay = fullPlanData.totalMinutes > 0
+    ? { hours: fullPlanData.hours, minutes: fullPlanData.minutes }
+    : { hours: planHours, minutes: planMinutes };
   
   return (
     <div className="space-y-2 min-w-[220px] text-xs">
-      {/* Show available time by schedule if there's vacation reducing it */}
-      {hasPlanReduction && (
-        <div className="flex justify-between items-center text-muted-foreground/70">
-          <span>Доступное время:</span>
-          <span>{formatTime(fullPlanData.hours, fullPlanData.minutes)}</span>
-        </div>
-      )}
-      
-      {/* Show vacation reduction */}
-      {vacationGroups.length > 0 && (
-        <div className="space-y-1">
-          {vacationGroups.map(group => (
-            <div key={group.type} className="flex justify-between items-center text-blue-500">
-              <span className="flex items-center gap-1">
+      {/* Базовая норма по графику (без вычета отсутствий) */}
+      <div className="flex justify-between items-center">
+        <span className="text-muted-foreground">План:</span>
+        <span className="font-medium">{formatTime(planDisplay.hours, planDisplay.minutes)}</span>
+      </div>
+
+      {/* Отсутствия (для объяснения недоработки) */}
+      {absenceGroups.length > 0 && (
+        <div className="border-t border-border/50 pt-2 space-y-1">
+          <div className="text-[10px] text-muted-foreground">Отсутствия:</div>
+          {absenceGroups.map(group => (
+            <div key={group.type} className="flex justify-between items-center">
+              <span className="flex items-center gap-1 text-muted-foreground">
                 <span>{group.icon}</span>
-                <span>{group.label} ({group.calendarDays}к.д.{group.days > 0 && group.days !== group.calendarDays ? `, ${group.days}р.д.` : ''}):</span>
+                <span>
+                  {group.label} ({group.calendarDays}к.д.{group.days > 0 && group.days !== group.calendarDays ? `, ${group.days}р.д.` : ""}):
+                </span>
               </span>
-              <span className="font-medium">−{Math.round(group.hours * 10) / 10}ч</span>
+              <span className="font-medium">{Math.round(group.hours * 10) / 10}ч</span>
             </div>
           ))}
         </div>
       )}
-      
-      {/* Plan with vacation already deducted */}
-      <div className={`flex justify-between items-center ${hasPlanReduction ? 'border-t border-border/50 pt-2' : ''}`}>
-        <span className="text-muted-foreground">{hasPlanReduction ? 'План (норма):' : 'План:'}</span>
-        <span className="font-medium">{formatTime(planHours, planMinutes)}</span>
-      </div>
-      
-      {/* Other absences by type (requiring compensation) */}
-       {otherAbsenceGroups.length > 0 && (
-         <div className="border-t border-border/50 pt-2 space-y-1">
-           {otherAbsenceGroups.map(group => (
-             <div key={group.type} className="flex justify-between items-center text-rose-500">
-               <span className="flex items-center gap-1">
-                 <span>{group.icon}</span>
-                 <span>{group.label} ({group.calendarDays}к.д.{group.days > 0 && group.days !== group.calendarDays ? `, ${group.days}р.д.` : ''}):</span>
-               </span>
-               <span className="font-medium">{Math.round(group.hours * 10) / 10}ч</span>
-             </div>
-           ))}
-         </div>
-       )}
 
       {/* Compensation */}
       {(compensationData.confirmedHours > 0 || compensationData.confirmedMinutes > 0 || 
