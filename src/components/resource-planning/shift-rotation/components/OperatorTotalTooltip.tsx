@@ -316,8 +316,8 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
   // Ожидаемая норма = план (отработки/переработки показываем отдельно)
   const expectedMinutes = passedPlanMinutes;
 
-  // Actual total = timesheet data + approved overtime
-  const actualTotalMinutes = actualData.totalMinutes + overtimeData.totalApprovedMinutes;
+  // Actual total = timesheet data + approved overtime + confirmed compensation
+  const actualTotalMinutes = actualData.totalMinutes + overtimeData.totalApprovedMinutes + compensationData.totalConfirmedMinutes;
   
   // Calculate difference (overtime or undertime) = actual total - expected
   const difference = actualData.hasData 
