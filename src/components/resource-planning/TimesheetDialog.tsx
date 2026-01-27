@@ -558,39 +558,53 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       
                       {/* Input */}
                       <td className="p-1 align-top">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="1"
-                              className="h-6 w-14 text-xs text-center px-1"
-                              value={Math.round(regularMinutes)}
-                              onChange={(e) => {
-                                if (isDisabled) return;
-                                const rawValue = e.target.value;
-                                if (rawValue === '' || /^\d+$/.test(rawValue)) {
-                                  const val = parseInt(rawValue) || 0;
-                                  setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === 'e') {
-                                  e.preventDefault();
-                                }
-                              }}
-                              placeholder="0"
-                              disabled={isDisabled}
-                            />
-                          </TooltipTrigger>
-                          {isDisabled && (
-                            <TooltipContent>
-                              <p className="text-xs">
-                                {isFuture ? "Нельзя заполнять будущие даты" : "Нерабочий день"}
-                              </p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
+                        {(() => {
+                          // Highlight if there's a plan but no fact entered (and not a future/disabled day)
+                          const shouldHighlight = !isDisabled && basePlanned > 0 && regularMinutes === 0;
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  className={cn(
+                                    "h-6 w-14 text-xs text-center px-1",
+                                    shouldHighlight && "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-amber-500/20"
+                                  )}
+                                  value={Math.round(regularMinutes)}
+                                  onChange={(e) => {
+                                    if (isDisabled) return;
+                                    const rawValue = e.target.value;
+                                    if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                                      const val = parseInt(rawValue) || 0;
+                                      setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === 'e') {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                  placeholder="0"
+                                  disabled={isDisabled}
+                                />
+                              </TooltipTrigger>
+                              {(isDisabled || shouldHighlight) && (
+                                <TooltipContent>
+                                  <p className="text-xs">
+                                    {isFuture 
+                                      ? "Нельзя заполнять будущие даты" 
+                                      : isNonWorkingDay 
+                                        ? "Нерабочий день"
+                                        : "Не заполнено (план: " + formatMinutes(basePlanned) + ")"
+                                    }
+                                  </p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          );
+                        })()}
                       </td>
                       
                       {/* Result */}
