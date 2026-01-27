@@ -80,6 +80,7 @@ export const useAllOperatorAbsences = () => {
       if (error) throw error;
       return data as OperatorAbsence[];
     },
+    staleTime: 0, // Always fetch fresh data for absences
   });
 };
 
