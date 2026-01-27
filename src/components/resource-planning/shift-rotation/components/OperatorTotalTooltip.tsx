@@ -306,13 +306,13 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operatorId, timesheetMap]);
   
-  // Plan from parent (legacy) — раньше сюда передавали «план по периоду с вычетом отсутствий».
-  // Оставляем для обратной совместимости, но как базовую норму используем fullPlanData.
+  // Plan from parent = plan with absences deducted (annual_leave, maternity_leave, unpaid_leave, etc.)
+  // This is the ACTUAL expected work hours after accounting for plan-reducing absences
   const passedPlanMinutes = planHours * 60 + planMinutes;
   
-  // Ожидаемая норма = полный план по графику.
-  // Фоллбэк на passedPlanMinutes — на случай отсутствия данных по графику.
-  const expectedMinutes = fullPlanData.totalMinutes > 0 ? fullPlanData.totalMinutes : passedPlanMinutes;
+  // Ожидаемая норма = план с вычетом отсутствий (то, что оператор реально должен отработать)
+  // fullPlanData используется только для отображения "Доступное время" (полная норма до вычетов)
+  const expectedMinutes = passedPlanMinutes;
 
   // Actual total = timesheet data + approved overtime + confirmed compensation
   const actualTotalMinutes = actualData.totalMinutes + overtimeData.totalApprovedMinutes + compensationData.totalConfirmedMinutes;
@@ -345,9 +345,8 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     return `${sign}${h}ч${m > 0 ? ` ${m}м` : ""}`;
   };
 
-  const planDisplay = fullPlanData.totalMinutes > 0
-    ? { hours: fullPlanData.hours, minutes: fullPlanData.minutes }
-    : { hours: planHours, minutes: planMinutes };
+  // Plan display = passed plan (already with absences deducted)
+  const planDisplay = { hours: planHours, minutes: planMinutes };
   
   // Separate absences into categories for display
   const planReducingAbsences = absenceGroups.filter(g => g.reducingPlan);
