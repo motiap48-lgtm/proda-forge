@@ -561,9 +561,9 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         ={formatMinutes(regularMinutes)}
                       </td>
                       
-                      {/* Action */}
+                      {/* Action - hide arrow if already has value */}
                       <td className="p-1 align-top">
-                        {!isDisabled && basePlanned > 0 && regularMinutes !== basePlanned && (
+                        {!isDisabled && basePlanned > 0 && regularMinutes === 0 && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
