@@ -31,6 +31,7 @@ import {
   createTimesheetMap,
   getTimesheetForDate,
 } from "@/hooks/useOperatorTimesheets";
+import { type OperatorAbsence, isAbsenceReducingPlan } from "@/hooks/useOperatorAbsences";
 import { useOvertimeEntries, createOvertimeMap } from "@/hooks/useOvertimeEntries";
 import { getTimesheetSettings } from "@/hooks/useTimesheetSettings";
 
@@ -57,7 +58,7 @@ interface TimesheetDialogProps {
   endDate: Date;
   /**
    * Базовая норма по графику (не должна вычитать больничные/отпуска).
-   * Используется для отображения «План» и для расчёта итога «План».
+   * Используется для отображения «План» в строке дня.
    */
   plannedMinutesPerDay: (date: Date) => number;
   /**
@@ -65,6 +66,11 @@ interface TimesheetDialogProps {
    * Если не задано — считается равным plannedMinutesPerDay.
    */
   editableMinutesPerDay?: (date: Date) => number;
+  /**
+   * Возвращает отсутствие для дня (если есть). Используется для определения,
+   * нужно ли вычитать день из итогового плана (отпуск — да, больничный — нет).
+   */
+  getAbsenceForDay?: (date: Date) => OperatorAbsence | null;
   compensationMinutesPerDay?: (date: Date) => number;
   confirmedCompensationMinutesPerDay?: (date: Date) => number;
   compensationRecordsForDay?: (date: Date) => ExtendedCompensationRecord[];
@@ -79,6 +85,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   endDate,
   plannedMinutesPerDay,
   editableMinutesPerDay,
+  getAbsenceForDay,
   compensationMinutesPerDay,
   confirmedCompensationMinutesPerDay,
   compensationRecordsForDay,
@@ -251,8 +258,14 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     days.forEach((day) => {
       const dateStr = format(day, "yyyy-MM-dd");
 
-      // Base planned (without compensation)
-      basePlanned += plannedMinutesPerDay(day);
+      // Check if there's an absence that reduces plan (vacation, unpaid leave, etc.)
+      const absence = getAbsenceForDay?.(day);
+      const shouldReducePlan = absence && isAbsenceReducingPlan(absence.absence_type);
+      
+      // Base planned: add full schedule UNLESS it's an absence that reduces plan
+      if (!shouldReducePlan) {
+        basePlanned += plannedMinutesPerDay(day);
+      }
       
       // Pending compensation (will be added after confirmation)
       pendingCompensation += compensationMinutesPerDay?.(day) || 0;
