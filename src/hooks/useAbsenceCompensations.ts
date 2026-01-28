@@ -365,6 +365,7 @@ export const useDeleteAbsenceCompensation = () => {
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
       queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
       toast.success(result.action === "deleted" ? "Запись удалена" : "Запись отменена");
     },
     onError: (error: any) => {
@@ -411,6 +412,7 @@ export const useDeleteCompensationRecord = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
       toast.success("Запись отработки удалена");
     },
     onError: (error: any) => {
@@ -478,6 +480,7 @@ export const useConfirmCompensationRecord = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
       toast.success("Отработка подтверждена");
     },
     onError: (error: any) => {
@@ -526,6 +529,7 @@ export const useUnconfirmCompensationRecord = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
       toast.success("Подтверждение отработки отменено");
     },
     onError: (error: any) => {
@@ -535,15 +539,22 @@ export const useUnconfirmCompensationRecord = () => {
 };
 
 // Cancel absence compensation (set status to cancelled)
-// IMPORTANT: This only cancels the COMPENSATION record, NOT the original absence!
-// The absence in operator_absences should remain visible on the calendar.
+// Also cancels the corresponding operator_absences record for calendar display
 export const useCancelAbsenceCompensation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Update only the absence_compensations status to cancelled
-      // DO NOT modify operator_absences - the absence should still be visible on calendar
+      // First get the compensation to find the related absence
+      const { data: compensation, error: fetchError } = await supabase
+        .from("absence_compensations")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update the absence_compensations status to cancelled
       const { data: updated, error } = await supabase
         .from("absence_compensations")
         .update({ status: "cancelled" })
@@ -553,12 +564,28 @@ export const useCancelAbsenceCompensation = () => {
 
       if (error) throw error;
 
+      // Also cancel the corresponding operator_absences record for this date
+      // This removes the absence indicator from the calendar
+      const absenceDate = compensation.absence_date;
+      const operatorId = compensation.operator_id;
+
+      await supabase
+        .from("operator_absences")
+        .update({ status: "cancelled" })
+        .eq("operator_id", operatorId)
+        .lte("start_date", absenceDate)
+        .gte("end_date", absenceDate)
+        .eq("status", "approved");
+
       return { success: true, compensation: updated };
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
       await queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
-      toast.success("Запись об отработке отменена");
+      await queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
+      await queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
+      await queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
+      toast.success("Запись об отработке и отсутствие отменены");
     },
     onError: (error: any) => {
       toast.error(`Ошибка: ${error.message}`);
@@ -567,6 +594,7 @@ export const useCancelAbsenceCompensation = () => {
 };
 
 // Restore cancelled absence compensation
+// Also restores the corresponding operator_absences record
 export const useRestoreAbsenceCompensation = () => {
   const queryClient = useQueryClient();
 
@@ -596,6 +624,19 @@ export const useRestoreAbsenceCompensation = () => {
 
       if (error) throw error;
 
+      // Also restore the corresponding operator_absences record for this date
+      // This restores the absence indicator on the calendar
+      const absenceDate = compensation.absence_date;
+      const operatorId = compensation.operator_id;
+
+      await supabase
+        .from("operator_absences")
+        .update({ status: "approved" })
+        .eq("operator_id", operatorId)
+        .lte("start_date", absenceDate)
+        .gte("end_date", absenceDate)
+        .eq("status", "cancelled");
+
       return { success: true, compensation };
     },
     onSuccess: () => {
@@ -603,7 +644,8 @@ export const useRestoreAbsenceCompensation = () => {
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
       queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
-      toast.success("Запись отработки восстановлена");
+      queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
+      toast.success("Запись отработки и отсутствие восстановлены");
     },
     onError: (error: any) => {
       toast.error(`Ошибка: ${error.message}`);
@@ -660,6 +702,7 @@ export const useForceDeleteAbsenceCompensation = () => {
       queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
       queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
+      queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
       toast.success("Запись полностью удалена");
     },
     onError: (error: any) => {
