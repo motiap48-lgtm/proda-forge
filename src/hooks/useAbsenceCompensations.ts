@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cancelCompensableAbsenceDay, restoreCompensableAbsenceDay } from "@/hooks/absenceCompensationAbsenceSync";
 
 export interface AbsenceCompensation {
   id: string;
@@ -564,18 +565,12 @@ export const useCancelAbsenceCompensation = () => {
 
       if (error) throw error;
 
-      // Also cancel the corresponding operator_absences record for this date
-      // This removes the absence indicator from the calendar
+      // Also cancel the corresponding operator_absences record for this date.
+      // IMPORTANT: absences can be ranges -> we split to cancel only this day.
       const absenceDate = compensation.absence_date;
       const operatorId = compensation.operator_id;
 
-      await supabase
-        .from("operator_absences")
-        .update({ status: "cancelled" })
-        .eq("operator_id", operatorId)
-        .lte("start_date", absenceDate)
-        .gte("end_date", absenceDate)
-        .eq("status", "approved");
+      await cancelCompensableAbsenceDay({ operatorId, absenceDate });
 
       return { success: true, compensation: updated };
     },
@@ -629,13 +624,7 @@ export const useRestoreAbsenceCompensation = () => {
       const absenceDate = compensation.absence_date;
       const operatorId = compensation.operator_id;
 
-      await supabase
-        .from("operator_absences")
-        .update({ status: "approved" })
-        .eq("operator_id", operatorId)
-        .lte("start_date", absenceDate)
-        .gte("end_date", absenceDate)
-        .eq("status", "cancelled");
+      await restoreCompensableAbsenceDay({ operatorId, absenceDate });
 
       return { success: true, compensation };
     },

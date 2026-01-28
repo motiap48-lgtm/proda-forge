@@ -212,6 +212,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const compensationRecordsMap = useMemo(() => {
     const map = new Map<string, (CompensationRecord & { absence_date?: string })[]>();
     compensations.forEach(comp => {
+      // Cancelled compensations must not affect calendar icons, totals, tooltips, or timesheets.
+      if (comp.status === "cancelled") return;
       comp.compensation_records?.forEach(record => {
         const key = `${record.operator_id}_${record.compensation_date}`;
         if (!map.has(key)) {
