@@ -83,6 +83,8 @@ export const OperatorAbsenceDialog = ({
       let pending = 0;
       
       compensations.forEach(comp => {
+        // Cancelled compensations should not be treated as active/assigned.
+        if (comp.status === 'cancelled') return;
         const compDate = new Date(comp.absence_date);
         if (compDate >= startDate && compDate <= endDate) {
           count++;
