@@ -16,7 +16,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
-import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban, Info } from "lucide-react";
+import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban, Info, EyeOff, Eye } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -131,6 +132,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   const roundHours = (hours: number): number => Math.round(hours * 100) / 100;
   
   const [bulkCompensationFor, setBulkCompensationFor] = useState<AbsenceCompensation | null>(null);
+  const [showCancelled, setShowCancelled] = useState(false);
 
   // Update absenceHours when scheduleHours is loaded
   useEffect(() => {
@@ -406,14 +408,29 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
           </div>
         )}
 
+            {/* Show cancelled toggle */}
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-2">
+                {showCancelled ? (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className="text-sm text-muted-foreground">Показывать отменённые</span>
+              </div>
+              <Switch checked={showCancelled} onCheckedChange={setShowCancelled} />
+            </div>
+
             {/* List of compensations */}
             <div className="space-y-3">
               {isLoading ? (
                 <p className="text-center text-muted-foreground py-4">Загрузка...</p>
-              ) : compensations.length === 0 ? (
+              ) : compensations.filter((c) => showCancelled || c.status !== "cancelled").length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">Нет записей</p>
               ) : (
-                compensations.map((comp) => {
+                compensations
+                  .filter((c) => showCancelled || c.status !== "cancelled")
+                  .map((comp) => {
                    // Only count CONFIRMED records for display
                    const compensatedHours = roundHours(comp.compensation_records?.reduce(
                      (sum, r) => r.status === "confirmed" ? sum + Number(r.hours_worked) : sum,
