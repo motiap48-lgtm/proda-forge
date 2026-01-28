@@ -141,7 +141,7 @@ export const CalendarLegend = ({
       color: "bg-emerald-500",
       icon: <Briefcase className="h-3 w-3 text-white" />,
       label: "Отпуск",
-      description: "Ежегодный оплачиваемый отпуск (annual_leave)",
+      description: "Ежегодный оплачиваемый отпуск.\n⏱ Вычитается из базового плана.\n✅ Отработка не требуется.",
       isActive: absenceTypeFilter === "annual_leave",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "annual_leave" ? "all" : "annual_leave")
     },
@@ -149,7 +149,7 @@ export const CalendarLegend = ({
       color: "bg-rose-500",
       icon: <HeartPulse className="h-3 w-3 text-white" />,
       label: "Больничный",
-      description: "Временная нетрудоспособность (sick_leave)",
+      description: "Временная нетрудоспособность.\n⏱ НЕ вычитается из плана.\n⚠️ Считается недоработкой.",
       isActive: absenceTypeFilter === "sick_leave",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "sick_leave" ? "all" : "sick_leave")
     },
@@ -157,7 +157,7 @@ export const CalendarLegend = ({
       color: "bg-amber-600",
       icon: <Calendar className="h-3 w-3 text-white" />,
       label: "Адм. (с отраб.)",
-      description: "Административный с отработкой (administrative_leave_with_compensation)",
+      description: "Административный отпуск с отработкой.\n⏱ НЕ вычитается из плана.\n🔧 Обязательна отработка.",
       isActive: absenceTypeFilter === "administrative_leave_with_compensation",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "administrative_leave_with_compensation" ? "all" : "administrative_leave_with_compensation")
     },
@@ -165,7 +165,7 @@ export const CalendarLegend = ({
       color: "bg-amber-400",
       icon: <Calendar className="h-3 w-3 text-white" />,
       label: "Адм. (без отраб.)",
-      description: "Административный без отработки (administrative_leave_without_compensation)",
+      description: "Административный отпуск без отработки.\n⏱ НЕ вычитается из плана.\n⚠️ Считается недоработкой.",
       isActive: absenceTypeFilter === "administrative_leave_without_compensation",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "administrative_leave_without_compensation" ? "all" : "administrative_leave_without_compensation")
     },
@@ -173,7 +173,7 @@ export const CalendarLegend = ({
       color: "bg-violet-500",
       icon: <Baby className="h-3 w-3 text-white" />,
       label: "Декрет",
-      description: "Отпуск по уходу за ребёнком (maternity_leave)",
+      description: "Отпуск по уходу за ребёнком.\n⏱ Вычитается из базового плана.\n✅ Отработка не требуется.",
       isActive: absenceTypeFilter === "maternity_leave",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "maternity_leave" ? "all" : "maternity_leave")
     },
@@ -181,7 +181,7 @@ export const CalendarLegend = ({
       color: "bg-gray-500",
       icon: <UserX className="h-3 w-3 text-white" />,
       label: "Без сохр. з/п",
-      description: "Отпуск без сохранения заработной платы (unpaid_leave)",
+      description: "Отпуск без сохранения заработной платы.\n⏱ НЕ вычитается из плана.\n⚠️ Считается недоработкой.",
       isActive: absenceTypeFilter === "unpaid_leave",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "unpaid_leave" ? "all" : "unpaid_leave")
     },
@@ -189,7 +189,7 @@ export const CalendarLegend = ({
       color: "bg-sky-500",
       icon: <Plane className="h-3 w-3 text-white" />,
       label: "Командировка",
-      description: "Служебная командировка (business_trip)",
+      description: "Служебная командировка.\n⏱ НЕ вычитается из плана.\n✅ Считается рабочим временем.",
       isActive: absenceTypeFilter === "business_trip",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "business_trip" ? "all" : "business_trip")
     },
@@ -197,7 +197,7 @@ export const CalendarLegend = ({
       color: "bg-red-600",
       icon: <AlertTriangle className="h-3 w-3 text-white" />,
       label: "Прогул",
-      description: "Неявка без уважительной причины (unauthorized_absence)",
+      description: "Неявка без уважительной причины.\n⏱ НЕ вычитается из плана.\n🔧 Обязательна отработка.",
       isActive: absenceTypeFilter === "unauthorized_absence",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "unauthorized_absence" ? "all" : "unauthorized_absence")
     },
@@ -205,7 +205,7 @@ export const CalendarLegend = ({
       color: "bg-slate-400",
       icon: <OtherIcon className="h-3 w-3 text-white" />,
       label: "Прочее",
-      description: "Другие причины отсутствия (other)",
+      description: "Другие причины отсутствия.\n⏱ Вычитается из базового плана.\n✅ Отработка не требуется.",
       isActive: absenceTypeFilter === "other",
       onClick: () => onAbsenceTypeFilterChange?.(absenceTypeFilter === "other" ? "all" : "other")
     },
@@ -215,23 +215,32 @@ export const CalendarLegend = ({
     <div className="space-y-2">
       <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
       <div className="flex flex-wrap gap-2">
-        {items.map((item, index) => (
-          <div
-            key={index}
-            className={cn(
-              "flex items-center gap-1.5 text-xs",
-              interactive && item.onClick && "cursor-pointer hover:opacity-80 transition-opacity",
-              item.isActive && "ring-2 ring-primary ring-offset-1 rounded"
-            )}
-            title={item.description}
-            onClick={item.onClick}
-          >
-            <span className={cn("inline-flex items-center justify-center w-5 h-5 rounded border", item.color)}>
-              {item.icon || null}
-            </span>
-            <span className="text-foreground/80">{item.label}</span>
-          </div>
-        ))}
+        <TooltipProvider delayDuration={200}>
+          {items.map((item, index) => (
+            <Tooltip key={index}>
+              <TooltipTrigger asChild>
+                <div
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs cursor-help",
+                    interactive && item.onClick && "cursor-pointer hover:opacity-80 transition-opacity",
+                    item.isActive && "ring-2 ring-primary ring-offset-1 rounded"
+                  )}
+                  onClick={item.onClick}
+                >
+                  <span className={cn("inline-flex items-center justify-center w-5 h-5 rounded border", item.color)}>
+                    {item.icon || null}
+                  </span>
+                  <span className="text-foreground/80">{item.label}</span>
+                </div>
+              </TooltipTrigger>
+              {item.description && (
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <div className="text-xs whitespace-pre-line">{item.description}</div>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          ))}
+        </TooltipProvider>
       </div>
     </div>
   );
