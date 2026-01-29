@@ -34,6 +34,10 @@ export interface OperatorCompensationBalance {
   totalCompensatedHours: number;
   pendingHours: number;
   pendingCompensations: AbsenceCompensation[];
+  // Timesheet deficit: when actual < planned (e.g. left early)
+  timesheetDeficitHours: number;
+  // Combined total: absence pending + timesheet deficit
+  totalPendingHours: number;
 }
 
 export const COMPENSATION_STATUS_LABELS = {
@@ -107,6 +111,7 @@ export const useAbsenceCompensations = (operatorIds?: string[], dateRange?: { fr
 };
 
 // Calculate compensation balance for an operator (current year only by default)
+// Includes both absence_compensations (pending hours) and timesheet deficit (actual < planned)
 export const useOperatorCompensationBalance = (operatorId: string, year?: number) => {
   const currentYear = year ?? new Date().getFullYear();
   
@@ -116,6 +121,7 @@ export const useOperatorCompensationBalance = (operatorId: string, year?: number
       const startOfYear = `${currentYear}-01-01`;
       const endOfYear = `${currentYear}-12-31`;
       
+      // 1. Fetch absence compensations
       const { data: compensations, error: compError } = await supabase
         .from("absence_compensations")
         .select(`*, compensation_records (*)`)
@@ -125,6 +131,16 @@ export const useOperatorCompensationBalance = (operatorId: string, year?: number
         .lte("absence_date", endOfYear);
 
       if (compError) throw compError;
+
+      // 2. Fetch timesheets for the year to calculate deficit
+      const { data: timesheets, error: tsError } = await supabase
+        .from("operator_timesheets")
+        .select("work_date, planned_minutes, actual_minutes")
+        .eq("operator_id", operatorId)
+        .gte("work_date", startOfYear)
+        .lte("work_date", endOfYear);
+
+      if (tsError) throw tsError;
 
       const absenceCompensations = compensations as AbsenceCompensation[];
       
@@ -154,12 +170,35 @@ export const useOperatorCompensationBalance = (operatorId: string, year?: number
         }
       });
 
+      // 3. Calculate timesheet deficit: sum of (planned - actual) where actual < planned
+      // Exclude dates that already have absence_compensations (to avoid double counting)
+      const compensationDates = new Set(absenceCompensations.map(c => c.absence_date));
+      
+      let timesheetDeficitMinutes = 0;
+      (timesheets || []).forEach((ts: { work_date: string; planned_minutes: number; actual_minutes: number }) => {
+        // Skip if this date already has an absence compensation
+        if (compensationDates.has(ts.work_date)) return;
+        
+        const planned = Number(ts.planned_minutes) || 0;
+        const actual = Number(ts.actual_minutes) || 0;
+        
+        if (actual < planned) {
+          timesheetDeficitMinutes += (planned - actual);
+        }
+      });
+
+      const timesheetDeficitHours = Math.round((timesheetDeficitMinutes / 60) * 100) / 100;
+      const pendingHours = totalAbsenceHours - totalCompensatedHours;
+      const totalPendingHours = pendingHours + timesheetDeficitHours;
+
       return {
         operatorId,
         totalAbsenceHours,
         totalCompensatedHours,
-        pendingHours: totalAbsenceHours - totalCompensatedHours,
+        pendingHours,
         pendingCompensations,
+        timesheetDeficitHours,
+        totalPendingHours,
         year: currentYear,
       } as OperatorCompensationBalance & { year: number };
     },
