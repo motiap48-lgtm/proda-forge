@@ -18,10 +18,15 @@ export const CompensationPendingIcon: React.FC<CompensationPendingIconProps> = (
 
   if (isLoading || !balance) return null;
   
+  // Use totalPendingHours which includes both absence compensations AND timesheet deficits
+  const totalPending = balance.totalPendingHours ?? balance.pendingHours;
+  
   // Don't show if no pending hours
-  if (balance.pendingHours <= 0) return null;
+  if (totalPending <= 0) return null;
 
-  const pendingHours = Math.round(balance.pendingHours * 100) / 100;
+  const pendingHours = Math.round(totalPending * 100) / 100;
+  const absencePendingHours = Math.round(balance.pendingHours * 100) / 100;
+  const timesheetDeficitHours = Math.round((balance.timesheetDeficitHours ?? 0) * 100) / 100;
   const totalAbsenceHours = Math.round(balance.totalAbsenceHours * 100) / 100;
   const totalCompensatedHours = Math.round(balance.totalCompensatedHours * 100) / 100;
   const isHighDebt = pendingHours >= 8;
@@ -54,9 +59,16 @@ export const CompensationPendingIcon: React.FC<CompensationPendingIconProps> = (
           <p className={`font-medium ${isHighDebt ? "text-rose-400" : "text-amber-400"}`}>
             Неотработанные часы: {pendingHours}ч
           </p>
-          <p className="text-muted-foreground">
-            Пропущено: {totalAbsenceHours}ч / Отработано: {totalCompensatedHours}ч
-          </p>
+          {absencePendingHours > 0 && (
+            <p className="text-muted-foreground">
+              Отсутствия: {totalAbsenceHours}ч / Отработано: {totalCompensatedHours}ч
+            </p>
+          )}
+          {timesheetDeficitHours > 0 && (
+            <p className="text-muted-foreground">
+              Недоработка по табелю: {timesheetDeficitHours}ч
+            </p>
+          )}
         </div>
       </PopoverContent>
     </Popover>
