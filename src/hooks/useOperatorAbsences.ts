@@ -138,12 +138,45 @@ export interface CreateAbsenceParams extends Omit<OperatorAbsence, "id" | "creat
   requiresCompensation?: boolean;
 }
 
+// Check if any timesheet records exist for the date range (indicating partial work)
+export const checkTimesheetConflict = async (
+  operatorId: string, 
+  startDate: string, 
+  endDate: string
+): Promise<{ hasConflict: boolean; conflictDates: string[] }> => {
+  const { data: timesheets } = await supabase
+    .from("operator_timesheets")
+    .select("work_date, actual_minutes, planned_minutes")
+    .eq("operator_id", operatorId)
+    .gte("work_date", startDate)
+    .lte("work_date", endDate)
+    .gt("actual_minutes", 0); // Only consider dates with actual work recorded
+
+  const conflictDates = timesheets?.map(t => t.work_date) || [];
+  return {
+    hasConflict: conflictDates.length > 0,
+    conflictDates,
+  };
+};
+
 export const useCreateOperatorAbsence = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (params: CreateAbsenceParams) => {
       const { requiresCompensation, ...absence } = params;
+      
+      // Check for timesheet conflicts before creating absence
+      const { hasConflict, conflictDates } = await checkTimesheetConflict(
+        absence.operator_id,
+        absence.start_date,
+        absence.end_date
+      );
+      
+      if (hasConflict) {
+        const formattedDates = conflictDates.map(d => format(new Date(d), "dd.MM.yyyy")).join(", ");
+        throw new Error(`TIMESHEET_CONFLICT:На выбранные даты уже есть записи табеля с отработанными часами (${formattedDates}). Нельзя назначить отсутствие на день с частичной отработкой.`);
+      }
       
       // Create the absence record
       const { data, error } = await supabase
@@ -203,6 +236,8 @@ export const useCreateOperatorAbsence = () => {
       // Check if it's an overlap error from the database trigger
       if (error?.code === 'P0001' && error?.message?.includes('Overlapping absence')) {
         toast.error("Указанный период пересекается с существующим отсутствием. Измените даты.");
+      } else if (error?.message?.startsWith('TIMESHEET_CONFLICT:')) {
+        toast.error(error.message.replace('TIMESHEET_CONFLICT:', ''));
       } else {
         toast.error("Ошибка при добавлении отсутствия");
       }
@@ -316,14 +351,17 @@ export const useDeleteOperatorAbsence = () => {
       if (fetchError) throw fetchError;
 
       // Delete related absence_compensations for this absence period
+      // BUT preserve timesheet deficit compensations (they should not be touched by absence deletion)
       if (absence) {
         // First delete compensation_records linked to absence_compensations for this operator and date range
+        // Exclude timesheet deficit records (reason = 'Недоработка по табелю')
         const { data: compensations } = await supabase
           .from("absence_compensations")
           .select("id")
           .eq("operator_id", absence.operator_id)
           .gte("absence_date", absence.start_date)
-          .lte("absence_date", absence.end_date);
+          .lte("absence_date", absence.end_date)
+          .neq("reason", "Недоработка по табелю"); // Preserve timesheet deficits
 
         if (compensations && compensations.length > 0) {
           const compensationIds = compensations.map(c => c.id);
@@ -381,13 +419,15 @@ export const useBulkDeleteOperatorAbsences = () => {
       if (fetchError) throw fetchError;
 
       // Collect all compensation IDs that need to be deleted
+      // Exclude timesheet deficit records (reason = 'Недоработка по табелю')
       const compensationQueries = absences?.map(async (absence) => {
         const { data } = await supabase
           .from("absence_compensations")
           .select("id")
           .eq("operator_id", absence.operator_id)
           .gte("absence_date", absence.start_date)
-          .lte("absence_date", absence.end_date);
+          .lte("absence_date", absence.end_date)
+          .neq("reason", "Недоработка по табелю"); // Preserve timesheet deficits
         return data || [];
       }) || [];
 
