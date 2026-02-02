@@ -1,11 +1,19 @@
 import { useState, useMemo } from "react";
-import { Bell, Check, Trash2, AlertTriangle, Building2, Clock, ChevronDown, ChevronRight, UserCheck, CalendarClock, ClipboardCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Bell,
+  Check,
+  Trash2,
+  AlertTriangle,
+  Building2,
+  Clock,
+  ChevronDown,
+  ChevronRight,
+  UserCheck,
+  CalendarClock,
+  ClipboardCheck,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -62,23 +70,23 @@ export const NotificationPopover = () => {
     const threeDaysFromNow = addDays(today, 3);
 
     return absences
-      .filter(absence => {
+      .filter((absence) => {
         if (dismissedReturning.has(absence.id)) return false;
-        if (absence.status !== 'approved') return false;
-        
+        if (absence.status !== "approved") return false;
+
         const endDate = new Date(absence.end_date);
         endDate.setHours(0, 0, 0, 0);
-        
+
         // Return date is the day after end_date
         const returnDate = addDays(endDate, 1);
-        
+
         return returnDate >= today && returnDate <= threeDaysFromNow;
       })
-      .map(absence => {
+      .map((absence) => {
         const endDate = new Date(absence.end_date);
         const returnDate = addDays(endDate, 1);
-        const operator = operators.find(op => op.id === absence.operator_id);
-        
+        const operator = operators.find((op) => op.id === absence.operator_id);
+
         return {
           id: absence.id,
           operatorId: absence.operator_id,
@@ -93,24 +101,24 @@ export const NotificationPopover = () => {
 
   const overdueOrders = useMemo(() => {
     if (!orders) return [];
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     return orders
-      .filter(order => {
+      .filter((order) => {
         if (dismissedOrders.has(order.id)) return false;
         if (order.status === "completed" || order.status === "cancelled") return false;
-        
+
         const endDate = new Date(order.planned_end_date);
         endDate.setHours(0, 0, 0, 0);
         return endDate < today;
       })
-      .map(order => {
+      .map((order) => {
         const endDate = new Date(order.planned_end_date);
         const diffTime = today.getTime() - endDate.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         return {
           id: order.id,
           order_number: order.order_number,
@@ -126,8 +134,8 @@ export const NotificationPopover = () => {
 
   const customerGroups = useMemo(() => {
     const groups = new Map<string | null, CustomerGroup>();
-    
-    overdueOrders.forEach(order => {
+
+    overdueOrders.forEach((order) => {
       const key = order.customer_id;
       if (!groups.has(key)) {
         groups.set(key, {
@@ -143,15 +151,15 @@ export const NotificationPopover = () => {
   }, [overdueOrders]);
 
   const dismissOrder = (orderId: string) => {
-    setDismissedOrders(prev => new Set([...prev, orderId]));
+    setDismissedOrders((prev) => new Set([...prev, orderId]));
   };
 
   const dismissAll = () => {
-    setDismissedOrders(new Set(overdueOrders.map(o => o.id)));
+    setDismissedOrders(new Set(overdueOrders.map((o) => o.id)));
   };
 
   const toggleCustomer = (customerId: string) => {
-    setExpandedCustomers(prev => {
+    setExpandedCustomers((prev) => {
       const next = new Set(prev);
       if (next.has(customerId)) {
         next.delete(customerId);
@@ -163,11 +171,11 @@ export const NotificationPopover = () => {
   };
 
   const dismissReturning = (id: string) => {
-    setDismissedReturning(prev => new Set([...prev, id]));
+    setDismissedReturning((prev) => new Set([...prev, id]));
   };
 
   const dismissCompensation = (id: string) => {
-    setDismissedCompensations(prev => new Set([...prev, id]));
+    setDismissedCompensations((prev) => new Set([...prev, id]));
   };
 
   // Compensations awaiting confirmation (status = partial means date has passed)
@@ -176,29 +184,30 @@ export const NotificationPopover = () => {
     today.setHours(0, 0, 0, 0);
 
     return compensations
-      .filter(comp => {
+      .filter((comp) => {
         if (dismissedCompensations.has(comp.id)) return false;
         if (comp.status !== "partial") return false;
-        
+
         // Check for records where date has passed but not confirmed
-        const hasUnconfirmedPastRecords = comp.compensation_records?.some(r => {
+        const hasUnconfirmedPastRecords = comp.compensation_records?.some((r) => {
           if (r.status === "confirmed") return false;
           const compDate = new Date(r.compensation_date);
           compDate.setHours(0, 0, 0, 0);
           return compDate <= today;
         });
-        
+
         return hasUnconfirmedPastRecords;
       })
-      .map(comp => {
-        const operator = operators.find(op => op.id === comp.operator_id);
-        const unconfirmedRecords = comp.compensation_records?.filter(r => {
-          if (r.status === "confirmed") return false;
-          const compDate = new Date(r.compensation_date);
-          compDate.setHours(0, 0, 0, 0);
-          return compDate <= today;
-        }) || [];
-        
+      .map((comp) => {
+        const operator = operators.find((op) => op.id === comp.operator_id);
+        const unconfirmedRecords =
+          comp.compensation_records?.filter((r) => {
+            if (r.status === "confirmed") return false;
+            const compDate = new Date(r.compensation_date);
+            compDate.setHours(0, 0, 0, 0);
+            return compDate <= today;
+          }) || [];
+
         return {
           id: comp.id,
           operatorId: comp.operator_id,
@@ -235,7 +244,7 @@ export const NotificationPopover = () => {
           {totalNotifications > 0 && (
             <Badge
               variant="destructive"
-              className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+              className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[9px]"
             >
               {totalNotifications > 99 ? "99+" : totalNotifications}
             </Badge>
@@ -259,7 +268,10 @@ export const NotificationPopover = () => {
                 <ClipboardCheck className="h-3 w-3" />
                 Отработка
                 {pendingCompensations.length > 0 && (
-                  <Badge variant="secondary" className="text-xs h-4 px-1 ml-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                  <Badge
+                    variant="secondary"
+                    className="text-xs h-4 px-1 ml-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                  >
                     {pendingCompensations.length}
                   </Badge>
                 )}
@@ -268,7 +280,10 @@ export const NotificationPopover = () => {
                 <UserCheck className="h-3 w-3" />
                 Выход
                 {returningEmployees.length > 0 && (
-                  <Badge variant="secondary" className="text-xs h-4 px-1 ml-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  <Badge
+                    variant="secondary"
+                    className="text-xs h-4 px-1 ml-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                  >
                     {returningEmployees.length}
                   </Badge>
                 )}
@@ -293,12 +308,7 @@ export const NotificationPopover = () => {
                   {groupByCustomer ? "Список" : "По клиентам"}
                 </Button>
                 {overdueOrders.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={dismissAll}
-                    className="h-7 px-2 text-xs"
-                  >
+                  <Button variant="ghost" size="sm" onClick={dismissAll} className="h-7 px-2 text-xs">
                     <Check className="h-3 w-3 mr-1" />
                     Скрыть все
                   </Button>
@@ -316,17 +326,13 @@ export const NotificationPopover = () => {
                   {customerGroups.map((group) => {
                     const groupKey = group.customerId || "no-customer";
                     const isExpanded = expandedCustomers.has(groupKey);
-                    
+
                     return (
                       <Collapsible key={groupKey} open={isExpanded} onOpenChange={() => toggleCustomer(groupKey)}>
                         <CollapsibleTrigger className="w-full p-3 hover:bg-muted/50 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4" />
-                              )}
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                               <Building2 className="h-4 w-4 text-muted-foreground" />
                               <span className="font-medium text-sm">{group.customerName}</span>
                             </div>
@@ -382,16 +388,12 @@ export const NotificationPopover = () => {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-foreground">
-                              {order.order_number}
-                            </p>
+                            <p className="text-sm font-medium text-foreground">{order.order_number}</p>
                             <Badge variant="outline" className="text-xs text-destructive border-destructive">
                               -{getOverdueLabel(order.days_overdue)}
                             </Badge>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            {order.product_name}
-                          </p>
+                          <p className="text-xs text-muted-foreground">{order.product_name}</p>
                           {order.customer_name && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
                               <Building2 className="h-3 w-3" />
@@ -438,31 +440,28 @@ export const NotificationPopover = () => {
               ) : (
                 <div className="divide-y">
                   {returningEmployees.map((emp) => {
-                    const absenceInfo = ABSENCE_TYPE_LABELS[emp.absenceType] || { label: "Отсутствие", icon: "📋", color: "bg-gray-500" };
-                    
+                    const absenceInfo = ABSENCE_TYPE_LABELS[emp.absenceType] || {
+                      label: "Отсутствие",
+                      icon: "📋",
+                      color: "bg-gray-500",
+                    };
+
                     return (
-                      <div
-                        key={emp.id}
-                        className="p-4 hover:bg-muted/50 transition-colors"
-                      >
+                      <div key={emp.id} className="p-4 hover:bg-muted/50 transition-colors">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 space-y-1">
                             <div className="flex items-center gap-2">
                               <span className="text-lg">{absenceInfo.icon}</span>
-                              <p className="text-sm font-medium text-foreground">
-                                {emp.operatorName}
-                              </p>
+                              <p className="text-sm font-medium text-foreground">{emp.operatorName}</p>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              {absenceInfo.label}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{absenceInfo.label}</p>
                             <div className="flex items-center gap-2">
-                              <Badge 
-                                variant="outline" 
+                              <Badge
+                                variant="outline"
                                 className={`text-xs ${
-                                  emp.daysUntilReturn === 0 
-                                    ? "text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20" 
-                                    : emp.daysUntilReturn === 1 
+                                  emp.daysUntilReturn === 0
+                                    ? "text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20"
+                                    : emp.daysUntilReturn === 1
                                       ? "text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20"
                                       : "text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20"
                                 }`}
@@ -513,17 +512,13 @@ export const NotificationPopover = () => {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-foreground">
-                              {comp.operatorName}
-                            </p>
+                            <p className="text-sm font-medium text-foreground">{comp.operatorName}</p>
                           </div>
                           <p className="text-xs text-muted-foreground">
                             Отсутствие: {new Date(comp.absenceDate).toLocaleDateString("ru-RU")} ({comp.absenceHours}ч)
                           </p>
                           {comp.reason && (
-                            <p className="text-xs text-muted-foreground truncate max-w-[250px]">
-                              {comp.reason}
-                            </p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[250px]">{comp.reason}</p>
                           )}
                           <div className="flex items-center gap-1 flex-wrap mt-1">
                             {comp.unconfirmedRecords.map((record) => (
@@ -532,7 +527,11 @@ export const NotificationPopover = () => {
                                 variant="outline"
                                 className="text-xs text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20"
                               >
-                                {new Date(record.compensation_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })} • {record.hours_worked}ч
+                                {new Date(record.compensation_date).toLocaleDateString("ru-RU", {
+                                  day: "numeric",
+                                  month: "short",
+                                })}{" "}
+                                • {record.hours_worked}ч
                               </Badge>
                             ))}
                           </div>
