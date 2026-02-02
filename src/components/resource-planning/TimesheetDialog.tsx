@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays, endOfMonth, isSameDay, startOfDay, isAfter } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info, CheckSquare, Square } from "lucide-react";
+import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -122,10 +122,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   // Local state for edits
   const [edits, setEdits] = useState<Record<string, number>>({});
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set());
   
   const hasEdits = Object.keys(edits).length > 0;
-  const hasSelection = selectedDays.size > 0;
   
   // Check if "Fill by plan" should be restricted - MUST be before functions that use it
   const settings = getTimesheetSettings();
@@ -146,82 +144,19 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   const lastDayCurrentValue = edits[lastDayStr] !== undefined ? edits[lastDayStr] : (lastDayTimesheet?.actual_minutes || 0);
   const isLastDayFilled = lastDayCurrentValue > 0;
   
-  // Allow fill by plan if: setting is off, OR it's last day of current month (and not yet filled), OR viewing past month
-  const canFillByPlan = !settings.restrictFillByPlanToLastDay || ((isLastDayOfMonth && !isLastDayFilled) || isPastMonth);
+  // Allow fill by plan if: setting is off, OR (it's last day of current month AND not yet filled), OR (viewing past month AND last day is not filled)
+  // Key: for past months the restriction is lifted, BUT if last day is already filled, button should be disabled
+  const canFillByPlan = !settings.restrictFillByPlanToLastDay || 
+    (isLastDayOfMonth && !isLastDayFilled) || 
+    (isPastMonth && !isLastDayFilled);
   
   // Days with plan > 0 AND not in the future
   const todayStart = startOfDay(today);
 
   const editablePlannedMinutesPerDay = editableMinutesPerDay ?? plannedMinutesPerDay;
   
-  // Check if a date is in the future (cannot be selected)
+  // Check if a date is in the future (cannot be filled)
   const isFutureDate = (day: Date) => isAfter(startOfDay(day), todayStart);
-  
-  const selectableDays = useMemo(() => 
-    days
-      .filter(day => editablePlannedMinutesPerDay(day) > 0 && !isFutureDate(day))
-      .map(day => format(day, "yyyy-MM-dd")),
-    [days, editablePlannedMinutesPerDay, todayStart]
-  );
-  
-  const allSelected = selectableDays.length > 0 && selectableDays.every(d => selectedDays.has(d));
-  
-  const toggleDay = (dateStr: string) => {
-    setSelectedDays(prev => {
-      const next = new Set(prev);
-      if (next.has(dateStr)) {
-        next.delete(dateStr);
-      } else {
-        next.add(dateStr);
-      }
-      return next;
-    });
-  };
-  
-  const toggleAll = () => {
-    if (allSelected) {
-      setSelectedDays(new Set());
-    } else {
-      setSelectedDays(new Set(selectableDays));
-    }
-  };
-  
-  const fillSelectedByPlan = () => {
-    if (!canFillByPlan) {
-      toast.error("Заполнение по плану доступно только в последний день текущего месяца");
-      return;
-    }
-    const newEdits: Record<string, number> = { ...edits };
-    let filledCount = 0;
-    selectedDays.forEach(dateStr => {
-      const day = new Date(dateStr);
-      const planned = editablePlannedMinutesPerDay(day);
-      // Only fill if: has plan > 0 AND not already filled (in edits or in saved timesheets)
-      const existingTimesheet = getTimesheetForDate(timesheetMap, operatorId, day);
-      const currentValue = newEdits[dateStr] !== undefined ? newEdits[dateStr] : (existingTimesheet?.actual_minutes || 0);
-      if (planned > 0 && currentValue === 0) {
-        newEdits[dateStr] = planned;
-        filledCount++;
-      }
-    });
-    setEdits(newEdits);
-    setSelectedDays(new Set());
-    if (filledCount > 0) {
-      toast.success(`Заполнено ${filledCount} дней по плану`);
-    } else {
-      toast.info("Все выбранные дни уже заполнены");
-    }
-  };
-  
-  const clearSelectedDays = () => {
-    const newEdits: Record<string, number> = { ...edits };
-    selectedDays.forEach(dateStr => {
-      newEdits[dateStr] = 0;
-    });
-    setEdits(newEdits);
-    setSelectedDays(new Set());
-    toast.success(`Обнулено ${selectedDays.size} дней`);
-  };
   
   const handleSave = async () => {
     const entries = Object.entries(edits).map(([dateStr, actualMinutes]) => ({
@@ -440,75 +375,12 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 </span>
               </div>
             )}
-            {/* Selection controls */}
-            {hasSelection && (
-              <div className="flex items-center gap-2 text-xs bg-primary/10 px-2 py-1.5 rounded">
-                <CheckSquare className="h-3 w-3 text-primary shrink-0" />
-                <span className="text-primary font-medium">Выбрано: {selectedDays.size}</span>
-                <div className="flex gap-1 ml-auto">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="h-6 px-2 text-xs"
-                          onClick={fillSelectedByPlan}
-                          disabled={!canFillByPlan}
-                        >
-                          <Check className="h-3 w-3 mr-1" />
-                          По плану
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    {!canFillByPlan && (
-                      <TooltipContent>
-                        <p className="text-xs">Заполнение по плану доступно только в последний день текущего месяца</p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={clearSelectedDays}
-                  >
-                    <RotateCcw className="h-3 w-3 mr-1" />
-                    Обнулить
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => setSelectedDays(new Set())}
-                  >
-                    Отмена
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
           
           <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-background border-b z-10 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.1)] before:absolute before:content-[''] before:h-1 before:-top-1 before:left-0 before:right-0 before:bg-background">
                 <tr>
-                  {canFillByPlan && (
-                    <th className="w-6 p-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 w-5 p-0"
-                        onClick={toggleAll}
-                      >
-                        {allSelected ? (
-                          <CheckSquare className="h-3.5 w-3.5 text-primary" />
-                        ) : (
-                          <Square className="h-3.5 w-3.5 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </th>
-                  )}
                   <th className="text-left p-1 font-medium text-muted-foreground">Дата</th>
                   <th className="text-left p-1 font-medium text-muted-foreground">План</th>
                   <th className="text-center p-1 font-medium text-muted-foreground w-14">мин</th>
@@ -550,7 +422,6 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 
                 const hasEdit = edits[dateStr] !== undefined;
                 const hasSavedPositive = ts && ts.actual_minutes > 0 && !hasEdit;
-                const isSelected = selectedDays.has(dateStr);
                 const isFuture = isFutureDate(day);
                 // Check if operator has an absence for this day (admin leave, sick, vacation, etc.)
                 const dayAbsence = getAbsenceForDay?.(day);
@@ -562,7 +433,6 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 // то недоработку нужно показывать даже в календарный праздник.
                 // Поэтому праздники/выходные скрывают недоработку только когда НЕТ отсутствия.
                 const isHolidayOrWeekend = (isNonWorkingDay && !dayAbsence) || (isHoliday && !dayAbsence);
-                const canSelect = !isNonWorkingDay && !isFuture;
                 const isDisabled = isFuture || isNonWorkingDay;
                 
                 const hasExtraRows = hasPendingCompensation || hasConfirmedCompensation || approvedMinutes > 0;
@@ -572,27 +442,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     {/* Main row */}
                     <tr className={cn(
                       "border-b border-border/50",
-                      isSelected && "bg-primary/5",
                       isDisabled && "opacity-50"
                     )}>
-                      {/* Checkbox */}
-                      {canFillByPlan && (
-                        <td className="p-1 align-top">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 w-5 p-0"
-                            onClick={() => canSelect && toggleDay(dateStr)}
-                            disabled={!canSelect}
-                          >
-                            {isSelected ? (
-                              <CheckSquare className="h-3.5 w-3.5 text-primary" />
-                            ) : (
-                              <Square className={cn("h-3.5 w-3.5", canSelect ? "text-muted-foreground" : "text-muted-foreground/30")} />
-                            )}
-                          </Button>
-                        </td>
-                      )}
                       
                       {/* Date */}
                       <td className="p-1 align-top whitespace-nowrap">
@@ -705,8 +556,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     
                     {/* Pending compensation row */}
                     {hasPendingCompensation && (
-                      <tr className={cn("bg-amber-50/30", isSelected && "bg-primary/5")}>
-                        {canFillByPlan && <td />}
+                      <tr className="bg-amber-50/30">
                         <td className="p-1 pl-2 text-amber-600/70 text-[10px]">
                           {format(day, "d.MM", { locale: ru })}
                         </td>
@@ -750,8 +600,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     
                     {/* Confirmed compensation row */}
                     {hasConfirmedCompensation && (
-                      <tr className={cn("bg-green-50/30", isSelected && "bg-primary/5")}>
-                        {canFillByPlan && <td />}
+                      <tr className="bg-green-50/30">
                         <td className="p-1 pl-2 text-green-600/70 text-[10px]">
                           {format(day, "d.MM", { locale: ru })}
                         </td>
@@ -795,8 +644,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     
                     {/* Overtime row */}
                     {approvedMinutes > 0 && (
-                      <tr className={cn("bg-purple-50/30", isSelected && "bg-primary/5")}>
-                        {canFillByPlan && <td />}
+                      <tr className="bg-purple-50/30">
                         <td />
                         <td className="p-1 pl-2" colSpan={1}>
                           <Tooltip>
@@ -829,8 +677,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     
                     {/* Total row */}
                     {(approvedMinutes > 0 || hasConfirmedCompensation) && regularMinutes > 0 && (
-                      <tr className={cn("border-b", isSelected && "bg-primary/5")}>
-                        {canFillByPlan && <td />}
+                      <tr className="border-b">
                         <td />
                         <td className="p-1 pl-2 font-semibold text-primary">
                           <Tooltip>
