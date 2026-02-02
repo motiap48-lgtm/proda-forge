@@ -132,7 +132,16 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   const today = new Date();
   const lastDayOfMonth = endOfMonth(endDate);
   const isLastDayOfMonth = isSameDay(today, lastDayOfMonth);
-  const canFillByPlan = !settings.restrictFillByPlanToLastDay || isLastDayOfMonth;
+  
+  // Check if we're viewing a past month (restriction shouldn't apply to past months)
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  const viewingMonth = endDate.getMonth();
+  const viewingYear = endDate.getFullYear();
+  const isPastMonth = viewingYear < currentYear || (viewingYear === currentYear && viewingMonth < currentMonth);
+  
+  // Allow fill by plan if: setting is off, OR it's last day of current month, OR viewing past month
+  const canFillByPlan = !settings.restrictFillByPlanToLastDay || isLastDayOfMonth || isPastMonth;
   
   // Days with plan > 0 AND not in the future
   const todayStart = startOfDay(today);
@@ -173,7 +182,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   const fillSelectedByPlan = () => {
     if (!canFillByPlan) {
-      toast.error("Заполнение по плану доступно только в последний день месяца");
+      toast.error("Заполнение по плану доступно только в последний день текущего месяца");
       return;
     }
     const newEdits: Record<string, number> = { ...edits };
@@ -225,7 +234,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   const handleFillPlan = () => {
     if (!canFillByPlan) {
-      toast.error("Заполнение по плану доступно только в последний день месяца");
+      toast.error("Заполнение по плану доступно только в последний день текущего месяца");
       return;
     }
     
@@ -385,14 +394,14 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                   </TooltipTrigger>
                   {!canFillByPlan && (
                     <TooltipContent>
-                      <p className="text-xs">Заполнение по плану доступно только в последний день месяца</p>
+                      <p className="text-xs">Заполнение по плану доступно только в последний день текущего месяца</p>
                     </TooltipContent>
                   )}
                 </Tooltip>
               </div>
             </div>
             {/* Settings indicator */}
-            {settings.restrictFillByPlanToLastDay && (
+            {settings.restrictFillByPlanToLastDay && !isPastMonth && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded">
                 <Info className="h-3 w-3 shrink-0" />
                 <span>
@@ -431,7 +440,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     </TooltipTrigger>
                     {!canFillByPlan && (
                       <TooltipContent>
-                        <p className="text-xs">Заполнение по плану доступно только в последний день месяца</p>
+                        <p className="text-xs">Заполнение по плану доступно только в последний день текущего месяца</p>
                       </TooltipContent>
                     )}
                   </Tooltip>
