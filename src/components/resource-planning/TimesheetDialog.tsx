@@ -140,8 +140,14 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   const viewingYear = endDate.getFullYear();
   const isPastMonth = viewingYear < currentYear || (viewingYear === currentYear && viewingMonth < currentMonth);
   
-  // Allow fill by plan if: setting is off, OR it's last day of current month, OR viewing past month
-  const canFillByPlan = !settings.restrictFillByPlanToLastDay || isLastDayOfMonth || isPastMonth;
+  // Check if last day of the month is already filled (has actual minutes > 0)
+  const lastDayStr = format(lastDayOfMonth, "yyyy-MM-dd");
+  const lastDayTimesheet = getTimesheetForDate(timesheetMap, operatorId, lastDayOfMonth);
+  const lastDayCurrentValue = edits[lastDayStr] !== undefined ? edits[lastDayStr] : (lastDayTimesheet?.actual_minutes || 0);
+  const isLastDayFilled = lastDayCurrentValue > 0;
+  
+  // Allow fill by plan if: setting is off, OR it's last day of current month (and not yet filled), OR viewing past month
+  const canFillByPlan = !settings.restrictFillByPlanToLastDay || ((isLastDayOfMonth && !isLastDayFilled) || isPastMonth);
   
   // Days with plan > 0 AND not in the future
   const todayStart = startOfDay(today);
@@ -186,16 +192,25 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       return;
     }
     const newEdits: Record<string, number> = { ...edits };
+    let filledCount = 0;
     selectedDays.forEach(dateStr => {
       const day = new Date(dateStr);
       const planned = editablePlannedMinutesPerDay(day);
-      if (planned > 0) {
+      // Only fill if: has plan > 0 AND not already filled (in edits or in saved timesheets)
+      const existingTimesheet = getTimesheetForDate(timesheetMap, operatorId, day);
+      const currentValue = newEdits[dateStr] !== undefined ? newEdits[dateStr] : (existingTimesheet?.actual_minutes || 0);
+      if (planned > 0 && currentValue === 0) {
         newEdits[dateStr] = planned;
+        filledCount++;
       }
     });
     setEdits(newEdits);
     setSelectedDays(new Set());
-    toast.success(`Заполнено ${selectedDays.size} дней по плану`);
+    if (filledCount > 0) {
+      toast.success(`Заполнено ${filledCount} дней по плану`);
+    } else {
+      toast.info("Все выбранные дни уже заполнены");
+    }
   };
   
   const clearSelectedDays = () => {
@@ -238,17 +253,25 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       return;
     }
     
-    const newEdits: Record<string, number> = {};
+    const newEdits: Record<string, number> = { ...edits };
+    let filledCount = 0;
     days.forEach(day => {
       const dateStr = format(day, "yyyy-MM-dd");
       const planned = editablePlannedMinutesPerDay(day);
-      // editablePlannedMinutesPerDay = план для редактирования (0 на больничных/отпусках)
-      // Compensation hours are added to fact after confirmation
-      if (planned > 0) {
+      // Only fill if: has plan > 0 AND not already filled (in edits or in saved timesheets)
+      const existingTimesheet = getTimesheetForDate(timesheetMap, operatorId, day);
+      const currentValue = newEdits[dateStr] !== undefined ? newEdits[dateStr] : (existingTimesheet?.actual_minutes || 0);
+      if (planned > 0 && currentValue === 0) {
         newEdits[dateStr] = planned;
+        filledCount++;
       }
     });
     setEdits(newEdits);
+    if (filledCount > 0) {
+      toast.success(`Заполнено ${filledCount} дней по плану`);
+    } else {
+      toast.info("Все дни уже заполнены");
+    }
   };
   
   const handleClearAll = () => {
