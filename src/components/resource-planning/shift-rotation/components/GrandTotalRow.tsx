@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { getDay, isToday } from "date-fns";
-import { Clock } from "lucide-react";
+import { Clock, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { PeriodType } from "../utils";
@@ -19,6 +19,7 @@ interface GrandTotalRowProps {
   calculateMonthHours: (operator: any, month: Date) => { hours: number; minutes: number };
   calculateGroupTotalHours: (ops: any[]) => { hours: number; minutes: number };
   calculateGroupYearlyTotal: (ops: any[]) => { hours: number; minutes: number };
+  grandTotalFact?: { hours: number; minutes: number };
 }
 
 const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
@@ -35,6 +36,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   calculateMonthHours,
   calculateGroupTotalHours,
   calculateGroupYearlyTotal,
+  grandTotalFact,
 }) => {
   const isMobile = useIsMobile();
   
@@ -43,6 +45,8 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   const grandTotalCalc = period === "year" 
     ? calculateGroupYearlyTotal(filteredOperators)
     : calculateGroupTotalHours(filteredOperators);
+  
+  const hasFactData = grandTotalFact && (grandTotalFact.hours > 0 || grandTotalFact.minutes > 0);
   
   // Mobile-optimized column width
   const mobileEmployeeWidth = isMobile ? Math.min(employeeColumnWidth, 120) : employeeColumnWidth;
@@ -139,14 +143,31 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
               );
             })
           )}
-          {/* Grand total cell */}
+          {/* Grand total cell - shows fact if available, otherwise plan */}
           <div className={cn(
-            "text-center flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold",
+            "text-center flex flex-col items-center justify-center rounded-md font-bold",
+            hasFactData 
+              ? "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-700 dark:to-blue-800 text-blue-900 dark:text-blue-100"
+              : "bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100",
             cellHeight,
             isMobile ? "text-[10px] p-0.5" : "text-xs p-1.5"
           )}>
-            <div>{grandTotalCalc.hours}ч</div>
-            {grandTotalCalc.minutes > 0 && !isMobile && <div className="text-[10px] opacity-80">{grandTotalCalc.minutes}м</div>}
+            {hasFactData ? (
+              <>
+                <div className="flex items-center gap-0.5">
+                  <ClipboardCheck className="h-3 w-3" />
+                  <span>{grandTotalFact.hours}ч</span>
+                </div>
+                <div className="text-[9px] opacity-80">
+                  п: {grandTotalCalc.hours}ч{grandTotalCalc.minutes > 0 && !isMobile ? ` ${grandTotalCalc.minutes}м` : ''}
+                </div>
+              </>
+            ) : (
+              <>
+                <div>{grandTotalCalc.hours}ч</div>
+                {grandTotalCalc.minutes > 0 && !isMobile && <div className="text-[10px] opacity-80">{grandTotalCalc.minutes}м</div>}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -162,6 +183,8 @@ export const GrandTotalRow = memo(GrandTotalRowComponent, (prevProps, nextProps)
     prevProps.days.length === nextProps.days.length &&
     prevProps.employeeColumnWidth === nextProps.employeeColumnWidth &&
     prevProps.isTodayColumnHovered === nextProps.isTodayColumnHovered &&
-    prevProps.filteredOperators === nextProps.filteredOperators
+    prevProps.filteredOperators === nextProps.filteredOperators &&
+    prevProps.grandTotalFact?.hours === nextProps.grandTotalFact?.hours &&
+    prevProps.grandTotalFact?.minutes === nextProps.grandTotalFact?.minutes
   );
 });
