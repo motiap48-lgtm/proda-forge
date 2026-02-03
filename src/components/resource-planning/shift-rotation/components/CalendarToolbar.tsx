@@ -41,6 +41,7 @@ interface CalendarToolbarProps {
   onAbsenceTypeFilterChange?: (filter: AbsenceTypeFilter) => void;
   filteredOperatorsCount: number;
   grandTotal: { hours: number; minutes: number };
+  grandTotalFact?: { hours: number; minutes: number };
   comparisonPeriod: PeriodType | null;
   onComparisonPeriodChange: (period: PeriodType | null) => void;
   comparisonTotal: { hours: number; minutes: number } | null;
@@ -89,6 +90,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onAbsenceTypeFilterChange,
   filteredOperatorsCount,
   grandTotal,
+  grandTotalFact,
   comparisonPeriod,
   onComparisonPeriodChange,
   comparisonTotal,
@@ -184,6 +186,12 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             <div className="w-px h-3 bg-border" />
             <Clock className="h-3 w-3 text-emerald-600" />
             <span className="text-emerald-600">{grandTotal.hours}ч{grandTotal.minutes > 0 ? grandTotal.minutes + 'м' : ''}</span>
+            {grandTotalFact && (grandTotalFact.hours > 0 || grandTotalFact.minutes > 0) && (
+              <>
+                <div className="w-px h-3 bg-border" />
+                <span className="text-blue-600 font-medium">ф: {grandTotalFact.hours}ч{grandTotalFact.minutes > 0 ? grandTotalFact.minutes + 'м' : ''}</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -368,6 +376,17 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
               {grandTotal.hours}ч{grandTotal.minutes > 0 ? ` ${grandTotal.minutes}м` : ''}
             </span>
           </div>
+          {grandTotalFact && (grandTotalFact.hours > 0 || grandTotalFact.minutes > 0) && (
+            <>
+              <div className="w-px h-4 bg-border" />
+              <div className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400">
+                <span className="text-xs text-muted-foreground">ф:</span>
+                <span className="font-medium">
+                  {grandTotalFact.hours}ч{grandTotalFact.minutes > 0 ? ` ${grandTotalFact.minutes}м` : ''}
+                </span>
+              </div>
+            </>
+          )}
           {comparisonTotal && (
             <>
               <div className="w-px h-4 bg-border" />

@@ -349,7 +349,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     }
   };
 
-  // Calculate grand total
+  // Calculate grand total (plan)
   const grandTotal = useMemo(() => {
     let totalMinutes = 0;
     filteredOperators.forEach(operator => {
@@ -361,6 +361,42 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       minutes: totalMinutes % 60
     };
   }, [filteredOperators, calculateTotalHours]);
+
+  // Calculate grand total fact (actual hours from timesheets + overtime + compensation)
+  const grandTotalFact = useMemo(() => {
+    let totalMinutes = 0;
+    
+    filteredOperators.forEach(operator => {
+      // Sum all timesheet actual minutes for this operator within the period
+      const operatorTimesheets = timesheets.filter(ts => ts.operator_id === operator.id);
+      operatorTimesheets.forEach(ts => {
+        totalMinutes += ts.actual_minutes || 0;
+      });
+      
+      // Add approved overtime
+      const operatorOvertime = overtimeEntries.filter(
+        oe => oe.operator_id === operator.id && oe.status === 'approved'
+      );
+      operatorOvertime.forEach(oe => {
+        totalMinutes += oe.duration_minutes || 0;
+      });
+      
+      // Add confirmed compensation
+      compensations.forEach(comp => {
+        if (comp.status === 'cancelled') return;
+        comp.compensation_records?.forEach(record => {
+          if (record.operator_id === operator.id && record.status === 'confirmed') {
+            totalMinutes += (record.hours_worked || 0) * 60;
+          }
+        });
+      });
+    });
+    
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  }, [filteredOperators, timesheets, overtimeEntries, compensations]);
 
   // Calculate comparison period total
   const comparisonTotal = useMemo(() => {
@@ -780,6 +816,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           onAbsenceTypeFilterChange={setAbsenceTypeFilter}
           filteredOperatorsCount={filteredOperators.length}
           grandTotal={grandTotal}
+          grandTotalFact={grandTotalFact}
           comparisonPeriod={comparisonPeriod}
           onComparisonPeriodChange={setComparisonPeriod}
           comparisonTotal={comparisonTotal}
@@ -885,6 +922,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 calculateMonthHours={calculateMonthHours}
                 calculateGroupTotalHours={calculateGroupTotalHours}
                 calculateGroupYearlyTotal={calculateGroupYearlyTotal}
+                grandTotalFact={grandTotalFact}
               />
             </div>
           </div>
