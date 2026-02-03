@@ -321,6 +321,25 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
       minutes: totalMinutes % 60
     };
   }, [days, getOvertimeForDate]);
+
+  // Calculate group fact total (all operators' actual + overtime + compensation)
+  const groupFactTotal = useMemo(() => {
+    let totalMinutes = 0;
+    operators.forEach(op => {
+      const actualHours = calculateActualHours(op.id);
+      const overtimeHours = calculateOvertimeHours(op.id);
+      const compensationHours = calculateCompensationHours(op.id);
+      
+      totalMinutes += actualHours.hours * 60 + actualHours.minutes;
+      totalMinutes += overtimeHours.hours * 60 + overtimeHours.minutes;
+      totalMinutes += compensationHours.hours * 60 + compensationHours.minutes;
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60,
+      hasData: totalMinutes > 0
+    };
+  }, [operators, calculateActualHours, calculateOvertimeHours, calculateCompensationHours]);
   
   // Drag and drop functionality with resize support
   const {
@@ -1554,9 +1573,28 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                           {days.map((day) => (
                             <div key={day.toISOString()} className="text-center h-8 flex items-center justify-center text-xs text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">—</div>
                           ))}
-                          <div className="text-center p-0.5 h-8 flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
-                            <div>{groupStats.totalHours}ч</div>
-                            {groupStats.totalMinutes > 0 && !isMobile && <div className="text-[10px]">{groupStats.totalMinutes}м</div>}
+                          <div className={cn(
+                            "text-center p-0.5 h-8 flex flex-col items-center justify-center rounded-md text-xs font-bold border-t border-border",
+                            groupFactTotal.hasData 
+                              ? "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-700 dark:to-blue-800 text-blue-900 dark:text-blue-100"
+                              : "bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100"
+                          )}>
+                            {groupFactTotal.hasData ? (
+                              <>
+                                <div className="flex items-center gap-0.5">
+                                  <ClipboardCheck className="h-3 w-3" />
+                                  <span>{groupFactTotal.hours}ч</span>
+                                </div>
+                                <div className="text-[9px] opacity-80">
+                                  п: {groupStats.totalHours}ч{groupStats.totalMinutes > 0 && !isMobile ? ` ${groupStats.totalMinutes}м` : ''}
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div>{groupStats.totalHours}ч</div>
+                                {groupStats.totalMinutes > 0 && !isMobile && <div className="text-[10px]">{groupStats.totalMinutes}м</div>}
+                              </>
+                            )}
                           </div>
                         </>
                       );
