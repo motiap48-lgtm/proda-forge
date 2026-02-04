@@ -127,28 +127,34 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   // Check if "Fill by plan" should be restricted - MUST be before functions that use it
   const settings = getTimesheetSettings();
-  const today = new Date();
-  const lastDayOfMonth = endOfMonth(endDate);
-  const isLastDayOfMonth = isSameDay(today, lastDayOfMonth);
+  const today = useMemo(() => new Date(), []);
+  const lastDayOfMonth = useMemo(() => endOfMonth(endDate), [endDate]);
+  const isLastDayOfMonth = useMemo(() => isSameDay(today, lastDayOfMonth), [today, lastDayOfMonth]);
   
   // Check if we're viewing a past month (restriction shouldn't apply to past months)
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-  const viewingMonth = endDate.getMonth();
-  const viewingYear = endDate.getFullYear();
-  const isPastMonth = viewingYear < currentYear || (viewingYear === currentYear && viewingMonth < currentMonth);
+  const isPastMonth = useMemo(() => {
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const viewingMonth = endDate.getMonth();
+    const viewingYear = endDate.getFullYear();
+    return viewingYear < currentYear || (viewingYear === currentYear && viewingMonth < currentMonth);
+  }, [today, endDate]);
   
   // Check if last day of the month is already filled (has actual minutes > 0)
-  const lastDayStr = format(lastDayOfMonth, "yyyy-MM-dd");
-  const lastDayTimesheet = getTimesheetForDate(timesheetMap, operatorId, lastDayOfMonth);
-  const lastDayCurrentValue = edits[lastDayStr] !== undefined ? edits[lastDayStr] : (lastDayTimesheet?.actual_minutes || 0);
-  const isLastDayFilled = lastDayCurrentValue > 0;
+  // ONLY check saved timesheet data, NOT edits - to prevent button state flickering
+  const isLastDayFilled = useMemo(() => {
+    const lastDayTimesheet = getTimesheetForDate(timesheetMap, operatorId, lastDayOfMonth);
+    return (lastDayTimesheet?.actual_minutes || 0) > 0;
+  }, [timesheetMap, operatorId, lastDayOfMonth]);
   
   // Allow fill by plan if: setting is off, OR (it's last day of current month AND not yet filled), OR (viewing past month AND last day is not filled)
   // Key: for past months the restriction is lifted, BUT if last day is already filled, button should be disabled
-  const canFillByPlan = !settings.restrictFillByPlanToLastDay || 
-    (isLastDayOfMonth && !isLastDayFilled) || 
-    (isPastMonth && !isLastDayFilled);
+  const canFillByPlan = useMemo(() => {
+    if (!settings.restrictFillByPlanToLastDay) return true;
+    if (isPastMonth && !isLastDayFilled) return true;
+    if (isLastDayOfMonth && !isLastDayFilled) return true;
+    return false;
+  }, [settings.restrictFillByPlanToLastDay, isPastMonth, isLastDayOfMonth, isLastDayFilled]);
   
   // Days with plan > 0 AND not in the future
   const todayStart = startOfDay(today);
