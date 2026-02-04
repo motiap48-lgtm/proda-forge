@@ -1,5 +1,5 @@
 import React from "react";
-import { format, getDay } from "date-fns";
+import { format, getDay, startOfDay, isAfter } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   ABSENCE_TYPE_LABELS,
@@ -306,6 +306,40 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
     };
   }, [days, operatorId, timesheetMap]);
   
+  // Calculate unfilled working days (plan > 0, no timesheet, not in future)
+  const unfilledDaysData = React.useMemo(() => {
+    const today = startOfDay(new Date());
+    let unfilledCount = 0;
+    let unfilledMinutes = 0;
+    
+    days.forEach(day => {
+      // Skip future days
+      if (isAfter(startOfDay(day), today)) return;
+      
+      // Get planned minutes for this day
+      const plannedMinutes = getPlannedDayMinutes?.(operator, day) || 0;
+      
+      // Skip non-working days (no plan)
+      if (plannedMinutes === 0) return;
+      
+      // Check if there's a timesheet entry for this day
+      const ts = getTimesheetForDate(timesheetMap, operatorId, day);
+      const hasTimesheetEntry = ts && ts.actual_minutes > 0;
+      
+      // If there's plan but no fact, it's unfilled
+      if (!hasTimesheetEntry) {
+        unfilledCount += 1;
+        unfilledMinutes += plannedMinutes;
+      }
+    });
+    
+    return {
+      count: unfilledCount,
+      hours: Math.floor(unfilledMinutes / 60),
+      minutes: unfilledMinutes % 60,
+    };
+  }, [days, operatorId, timesheetMap, getPlannedDayMinutes, operator]);
+  
   // Plan from parent = plan with absences deducted (annual_leave, maternity_leave, unpaid_leave, etc.)
   // This is the ACTUAL expected work hours after accounting for plan-reducing absences
   const passedPlanMinutes = planHours * 60 + planMinutes;
@@ -494,6 +528,16 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
           <div className="flex justify-between items-center text-rose-500 font-medium">
             <span>Осталось к отработке:</span>
             <span>{formatMinutesAsTime(remainingToCompensate)}</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Unfilled days warning */}
+      {unfilledDaysData.count > 0 && (
+        <div className="border-t border-border/50 pt-2">
+          <div className="flex justify-between items-center text-amber-500 font-medium">
+            <span>⚠️ Не заполнено дней:</span>
+            <span>{unfilledDaysData.count} ({formatTime(unfilledDaysData.hours, unfilledDaysData.minutes)})</span>
           </div>
         </div>
       )}

@@ -1,12 +1,12 @@
 import React, { memo, useMemo, useState, useCallback, useEffect } from "react";
-import { format, getDay, isToday, isSameMonth, differenceInCalendarDays } from "date-fns";
+import { format, getDay, isToday, isSameMonth, differenceInCalendarDays, startOfDay, isAfter } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck, Hammer, Check, TrendingDown } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck, Hammer, Check, TrendingDown, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { OperatorInfoCard } from "./OperatorInfoCard";
@@ -321,6 +321,29 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
       minutes: totalMinutes % 60
     };
   }, [days, getOvertimeForDate]);
+
+  // Check if operator has unfilled working days up to today
+  const hasUnfilledDays = useCallback((operatorId: string): boolean => {
+    const today = startOfDay(new Date());
+    
+    return days.some(day => {
+      // Skip future days
+      if (isAfter(startOfDay(day), today)) return false;
+      
+      // Get planned minutes for this day
+      const plannedMinutes = getPlannedDayMinutes?.(operators.find(op => op.id === operatorId), day) || 0;
+      
+      // Skip non-working days (no plan)
+      if (plannedMinutes === 0) return false;
+      
+      // Check if there's a timesheet entry for this day
+      const ts = getTimesheetForDate(timesheetMap, operatorId, day);
+      const hasTimesheetEntry = ts && ts.actual_minutes > 0;
+      
+      // If there's plan but no fact, it's unfilled
+      return !hasTimesheetEntry;
+    });
+  }, [days, timesheetMap, getPlannedDayMinutes, operators]);
 
   // Calculate group fact total (all operators' actual + overtime + compensation)
   const groupFactTotal = useMemo(() => {
@@ -1456,6 +1479,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const overtimeHours = calculateOvertimeHours(operator.id);
                             const hasOvertimeTotal = overtimeHours.hours > 0 || overtimeHours.minutes > 0;
                             
+                            // Check if operator has unfilled working days
+                            const hasUnfilled = hasUnfilledDays(operator.id);
+                            
                             // fullPlanHours = полный план по графику без вычетов (для отображения в ячейке)
                             const fullPlanData = calculateFullPlanHours(operator);
                             const fullPlanMinutes = fullPlanData.hours * 60 + fullPlanData.minutes;
@@ -1502,6 +1528,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     {hasActual ? (
                                       <>
                                         <div className="flex items-center gap-0.5">
+                                          {hasUnfilled && (
+                                            <AlertCircle className="h-3 w-3 text-amber-500 animate-pulse" />
+                                          )}
                                           <ClipboardCheck className="h-3 w-3" />
                                           {hasOvertimeTotal && <Clock className="h-3 w-3" />}
                                           {/* Факт = фактические часы + подтвержденные переработки */}
@@ -1515,6 +1544,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     ) : (
                                       <>
                                         <div className="flex items-center gap-0.5">
+                                          {hasUnfilled && (
+                                            <AlertCircle className="h-3 w-3 text-amber-500 animate-pulse" />
+                                          )}
                                           {hasCompensationTotal && <Hammer className="h-3 w-3" />}
                                           {hasOvertimeTotal && <Clock className="h-3 w-3" />}
                                           {/* Без данных табеля показываем план с вычетом отсутствий */}
