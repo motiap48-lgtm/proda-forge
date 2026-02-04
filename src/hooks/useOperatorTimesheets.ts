@@ -39,6 +39,8 @@ export const useOperatorTimesheets = (startDate: Date, endDate: Date, operatorId
       if (error) throw error;
       return data as OperatorTimesheet[];
     },
+    // Force fresh data fetch when records change for immediate UI updates
+    staleTime: 0,
   });
 };
 
@@ -79,7 +81,10 @@ export const useUpsertTimesheet = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
+      queryClient.invalidateQueries({ 
+        queryKey: ["operator-timesheets"],
+        refetchType: 'all'
+      });
     },
   });
 };
@@ -145,7 +150,10 @@ export const useBulkUpsertTimesheets = () => {
       return upsertedData;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
+      queryClient.invalidateQueries({ 
+        queryKey: ["operator-timesheets"],
+        refetchType: 'all'
+      });
     },
   });
 };
@@ -164,7 +172,10 @@ export const useDeleteTimesheet = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
+      queryClient.invalidateQueries({ 
+        queryKey: ["operator-timesheets"],
+        refetchType: 'all'
+      });
     },
   });
 };
