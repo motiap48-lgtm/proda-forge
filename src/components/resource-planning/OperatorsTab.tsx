@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X, FileText, UserX, Archive, UserCheck } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X, FileText, UserX, Archive, UserCheck, History } from "lucide-react";
 import { useOperators, useDeleteOperator, useFixInvalidRotations } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
 import { BulkOperatorDialog } from "./BulkOperatorDialog";
@@ -13,6 +13,7 @@ import { CompensationReportDialog } from "./CompensationReportDialog";
 import { TerminateOperatorDialog } from "./TerminateOperatorDialog";
 import { useReinstateOperator } from "@/hooks/useEmploymentHistory";
 import { ArchivedOperatorsTab } from "./ArchivedOperatorsTab";
+import { EmploymentHistoryViewDialog } from "./EmploymentHistoryViewDialog";
 import { exportOperatorsToExcel, printOperators } from "./OperatorsPrintExport";
 import { differenceInWeeks } from "date-fns";
 import {
@@ -103,6 +104,8 @@ export const OperatorsTab = () => {
   const [operatorToTerminate, setOperatorToTerminate] = useState<any>(null);
   const [reinstateDialogOpen, setReinstateDialogOpen] = useState(false);
   const [operatorToReinstate, setOperatorToReinstate] = useState<any>(null);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [operatorForHistory, setOperatorForHistory] = useState<any>(null);
   const [showArchive, setShowArchive] = useState(false);
  
   const reinstateOperator = useReinstateOperator();
@@ -312,6 +315,11 @@ export const OperatorsTab = () => {
         }
       );
     }
+  };
+
+  const handleViewHistory = (operator: any) => {
+    setOperatorForHistory(operator);
+    setHistoryDialogOpen(true);
   };
 
   const confirmDelete = () => {
@@ -580,6 +588,9 @@ export const OperatorsTab = () => {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(operator)}>
                             <Edit className="h-3 w-3" />
                           </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewHistory(operator)} title="История занятости">
+                            <History className="h-3 w-3" />
+                          </Button>
                           {operator.is_active ? (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleTerminate(operator)} title="Уволить">
                               <UserX className="h-3 w-3 text-orange-500" />
@@ -645,6 +656,9 @@ export const OperatorsTab = () => {
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(operator)}>
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleViewHistory(operator)} title="История занятости">
+                          <History className="h-4 w-4" />
                         </Button>
                         {operator.is_active ? (
                           <Button variant="ghost" size="icon" onClick={() => handleTerminate(operator)} title="Уволить">
@@ -818,6 +832,20 @@ export const OperatorsTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Employment history view dialog */}
+      <EmploymentHistoryViewDialog
+        open={historyDialogOpen}
+        onOpenChange={(open) => {
+          setHistoryDialogOpen(open);
+          if (!open) setOperatorForHistory(null);
+        }}
+        operator={operatorForHistory ? {
+          id: operatorForHistory.id,
+          full_name: operatorForHistory.full_name,
+          code: operatorForHistory.code,
+        } : null}
+      />
     </div>
   );
 };

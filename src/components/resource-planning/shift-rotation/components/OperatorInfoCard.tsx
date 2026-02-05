@@ -3,11 +3,12 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall, UserX, Clock, History } from "lucide-react";
+import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall, UserX, Clock, History, FileText } from "lucide-react";
 import { parseDateOnly } from "../utils";
 import { toast } from "sonner";
 import { CompensationBalanceBadge } from "../../CompensationBalanceBadge";
 import { OperatorScheduleHistoryDialog } from "../../OperatorScheduleHistoryDialog";
+import { EmploymentHistoryViewDialog } from "../../EmploymentHistoryViewDialog";
 
 interface OperatorInfoCardProps {
   operator: any;
@@ -23,6 +24,7 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
   onOpenCompensation 
 }) => {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [showEmploymentHistoryDialog, setShowEmploymentHistoryDialog] = useState(false);
   
   const schedule = operator.work_schedules;
   const isCyclic = schedule?.schedule_type === 'cyclic';
@@ -64,6 +66,11 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
   const handleOpenHistory = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowHistoryDialog(true);
+  };
+
+  const handleOpenEmploymentHistory = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowEmploymentHistoryDialog(true);
   };
 
   const handleOpenCompensation = (e: React.MouseEvent) => {
@@ -188,6 +195,15 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
       >
         <History className="h-3.5 w-3.5" />
       </Button>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="h-8 px-2" 
+        onClick={handleOpenEmploymentHistory}
+        title="История занятости"
+      >
+        <FileText className="h-3.5 w-3.5" />
+      </Button>
       {operator.phone && (
         <>
           <Button variant="outline" size="sm" className="h-8 px-2" onClick={handleCall} title="Позвонить">
@@ -208,6 +224,17 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
         id: operator.id,
         name: operator.full_name,
         work_schedule: operator.work_schedules,
+      } : null}
+    />
+
+    {/* Employment History Dialog */}
+    <EmploymentHistoryViewDialog
+      open={showEmploymentHistoryDialog}
+      onOpenChange={setShowEmploymentHistoryDialog}
+      operator={operator ? {
+        id: operator.id,
+        full_name: operator.full_name,
+        code: operator.code,
       } : null}
     />
     </div>
