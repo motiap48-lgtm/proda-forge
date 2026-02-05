@@ -66,15 +66,38 @@ export const ArchivedOperatorsTab = () => {
     const interval = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(interval);
   }, []);
- 
-   const filteredOperators = useMemo(() => {
-     return operators?.filter((op: any) => {
-       const matchesSearch = op.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         op.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         op.position?.toLowerCase().includes(searchQuery.toLowerCase());
-       return matchesSearch;
-     }) || [];
-   }, [operators, searchQuery]);
+
+  // Find the reinstatement date for a termination event (to stop the counter)
+  const getTerminationEndDate = (terminationRecord: EmploymentHistoryRecord): string | null => {
+    if (!employmentHistory) return null;
+    
+    // Sort history by event_date ascending to find next event
+    const sortedHistory = [...employmentHistory].sort(
+      (a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
+    );
+    
+    const terminationIndex = sortedHistory.findIndex(r => r.id === terminationRecord.id);
+    if (terminationIndex === -1) return null;
+    
+    // Look for the next reinstated event after this termination
+    for (let i = terminationIndex + 1; i < sortedHistory.length; i++) {
+      if (sortedHistory[i].event_type === "reinstated") {
+        return sortedHistory[i].created_at;
+      }
+    }
+    
+    // No reinstatement found - still terminated (counter continues)
+    return null;
+  };
+
+  const filteredOperators = useMemo(() => {
+    return operators?.filter((op: any) => {
+      const matchesSearch = op.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        op.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        op.position?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    }) || [];
+  }, [operators, searchQuery]);
  
    const handleReinstate = (operator: any) => {
      setOperatorToReinstate(operator);
@@ -361,14 +384,20 @@ export const ArchivedOperatorsTab = () => {
                                   {format(new Date(event.event_date), "d MMMM yyyy", { locale: ru })}
                                 </span>
                               </div>
-                              {event.event_type === "terminated" && (
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground/80">
-                                  <Clock className="h-3 w-3" />
-                                  <span title={getTimeAgo(event.created_at).formatted}>
-                                    {getTimeAgo(event.created_at).shortFormatted}
-                                  </span>
-                                </div>
-                              )}
+                              {event.event_type === "terminated" && (() => {
+                                const endDate = getTerminationEndDate(event);
+                                const timeAgo = getTimeAgo(event.created_at, endDate);
+                                const isOngoing = !endDate;
+                                return (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground/80">
+                                    <Clock className="h-3 w-3" />
+                                    <span title={timeAgo.formatted}>
+                                      {timeAgo.shortFormatted}
+                                      {!isOngoing && <span className="text-muted-foreground/60 ml-1">(до восстановления)</span>}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div className="flex gap-1">
                               <Tooltip>
