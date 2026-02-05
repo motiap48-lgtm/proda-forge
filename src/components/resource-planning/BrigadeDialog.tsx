@@ -21,6 +21,22 @@ import {
 } from "@/components/ui/select";
 import { Wand2, Plus, X, Crown, User } from "lucide-react";
 import { UserMinus } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   useCreateBrigade, 
   useUpdateBrigade, 
@@ -64,6 +80,8 @@ export const BrigadeDialog = ({
   });
 
   const [selectedOperator, setSelectedOperator] = useState("");
+  const [demoteConfirmOpen, setDemoteConfirmOpen] = useState(false);
+  const [memberToDemote, setMemberToDemote] = useState<string | null>(null);
 
   useEffect(() => {
     if (brigade) {
@@ -147,7 +165,16 @@ export const BrigadeDialog = ({
   };
 
   const handleDemoteLeader = (memberId: string) => {
-    updateMemberRole.mutate({ memberId, role: "member" });
+    setMemberToDemote(memberId);
+    setDemoteConfirmOpen(true);
+  };
+
+  const confirmDemoteLeader = () => {
+    if (memberToDemote) {
+      updateMemberRole.mutate({ memberId: memberToDemote, role: "member" });
+    }
+    setDemoteConfirmOpen(false);
+    setMemberToDemote(null);
   };
 
   const activeMembers = brigade?.brigade_members?.filter((m: any) => m.is_active) || [];
@@ -306,24 +333,29 @@ export const BrigadeDialog = ({
                           {member.operators?.full_name}
                         </span>
                         {member.role === "leader" && (
-                          <Badge className="text-xs bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 shadow-sm">
-                            Бригадир
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge 
+                                  className="text-xs bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 shadow-sm cursor-pointer hover:from-amber-500 hover:to-orange-600 transition-all duration-200 group"
+                                  onClick={() => handleDemoteLeader(member.id)}
+                                >
+                                  <span className="group-hover:hidden">Бригадир</span>
+                                  <span className="hidden group-hover:inline-flex items-center gap-1">
+                                    <UserMinus className="h-3 w-3" />
+                                    Снять
+                                  </span>
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Снять роль бригадира</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </div>
                       <div className="flex items-center gap-1">
-                        {member.role === "leader" ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDemoteLeader(member.id)}
-                            title="Снять роль бригадира"
-                            disabled={updateMemberRole.isPending}
-                          >
-                            <UserMinus className="h-4 w-4 text-amber-600" />
-                          </Button>
-                        ) : (
+                        {member.role !== "leader" && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -385,6 +417,23 @@ export const BrigadeDialog = ({
             </Button>
           </div>
         </form>
+
+        <AlertDialog open={demoteConfirmOpen} onOpenChange={setDemoteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Снять роль бригадира?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Сотрудник останется в бригаде, но больше не будет её бригадиром.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDemoteLeader}>
+                Снять роль
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
