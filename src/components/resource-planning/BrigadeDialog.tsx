@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Wand2, Plus, X, Crown, User } from "lucide-react";
+import { UserMinus } from "lucide-react";
 import { 
   useCreateBrigade, 
   useUpdateBrigade, 
@@ -143,6 +144,10 @@ export const BrigadeDialog = ({
       // No current leader, just promote the selected member
       updateMemberRole.mutate({ memberId, role: "leader" });
     }
+  };
+
+  const handleDemoteLeader = (memberId: string) => {
+    updateMemberRole.mutate({ memberId, role: "member" });
   };
 
   const activeMembers = brigade?.brigade_members?.filter((m: any) => m.is_active) || [];
@@ -307,7 +312,18 @@ export const BrigadeDialog = ({
                         )}
                       </div>
                       <div className="flex items-center gap-1">
-                        {member.role !== "leader" && (
+                        {member.role === "leader" ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDemoteLeader(member.id)}
+                            title="Снять роль бригадира"
+                            disabled={updateMemberRole.isPending}
+                          >
+                            <UserMinus className="h-4 w-4 text-amber-600" />
+                          </Button>
+                        ) : (
                           <Button
                             type="button"
                             variant="ghost"
