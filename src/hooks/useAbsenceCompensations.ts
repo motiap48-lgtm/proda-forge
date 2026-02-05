@@ -40,6 +40,21 @@ export interface OperatorCompensationBalance {
   totalPendingHours: number;
 }
 
+export interface OperatorCompensationBalanceByPeriod {
+  operatorId: string;
+  // Previous months of current year
+  previousMonthsHours: number;
+  previousMonthsAbsences: AbsenceCompensation[];
+  // Current month
+  currentMonthHours: number;
+  currentMonthAbsences: AbsenceCompensation[];
+  // Total
+  totalPendingHours: number;
+  // Year info
+  year: number;
+  currentMonth: number;
+}
+
 export const COMPENSATION_STATUS_LABELS = {
   pending: { label: "Ожидание отработки", color: "text-amber-600", bgColor: "bg-amber-100 dark:bg-amber-900/30" },
   partial: { label: "Частично отработано", color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30" },
@@ -204,6 +219,84 @@ export const useOperatorCompensationBalance = (operatorId: string, year?: number
     },
     enabled: !!operatorId,
     staleTime: 0, // Always refetch on invalidation
+  });
+};
+
+// Calculate compensation balance with breakdown by period (previous months vs current month)
+export const useOperatorCompensationBalanceByPeriod = (operatorId: string, viewDate?: Date) => {
+  const date = viewDate ?? new Date();
+  const currentYear = date.getFullYear();
+  const currentMonth = date.getMonth() + 1; // 1-12
+  
+  return useQuery({
+    queryKey: ["operator-compensation-balance-by-period", operatorId, currentYear, currentMonth],
+    queryFn: async () => {
+      const startOfYear = `${currentYear}-01-01`;
+      const endOfYear = `${currentYear}-12-31`;
+      const startOfCurrentMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+      const endOfCurrentMonth = currentMonth === 12 
+        ? `${currentYear}-12-31`
+        : `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
+      
+      // Fetch all absence compensations for the year
+      const { data: compensations, error: compError } = await supabase
+        .from("absence_compensations")
+        .select(`*, compensation_records (*)`)
+        .eq("operator_id", operatorId)
+        .neq("status", "cancelled")
+        .gte("absence_date", startOfYear)
+        .lte("absence_date", endOfYear);
+
+      if (compError) throw compError;
+
+      const absenceCompensations = compensations as AbsenceCompensation[];
+      
+      let previousMonthsHours = 0;
+      let currentMonthHours = 0;
+      const previousMonthsAbsences: AbsenceCompensation[] = [];
+      const currentMonthAbsences: AbsenceCompensation[] = [];
+
+      absenceCompensations.forEach((comp) => {
+        const absenceMonth = new Date(comp.absence_date).getMonth() + 1;
+        const absenceHours = Number(comp.absence_hours);
+        
+        // Calculate confirmed hours for this absence
+        const confirmedHours = comp.compensation_records?.reduce(
+          (sum, record) => {
+            if (record.status === "confirmed") {
+              return sum + Number(record.hours_worked);
+            }
+            return sum;
+          },
+          0
+        ) || 0;
+        
+        const remainingHours = Math.max(0, absenceHours - confirmedHours);
+        
+        if (remainingHours > 0) {
+          if (absenceMonth < currentMonth) {
+            previousMonthsHours += remainingHours;
+            previousMonthsAbsences.push(comp);
+          } else if (absenceMonth === currentMonth) {
+            currentMonthHours += remainingHours;
+            currentMonthAbsences.push(comp);
+          }
+        }
+      });
+
+      return {
+        operatorId,
+        previousMonthsHours: Math.round(previousMonthsHours * 100) / 100,
+        previousMonthsAbsences,
+        currentMonthHours: Math.round(currentMonthHours * 100) / 100,
+        currentMonthAbsences,
+        totalPendingHours: Math.round((previousMonthsHours + currentMonthHours) * 100) / 100,
+        year: currentYear,
+        currentMonth,
+      } as OperatorCompensationBalanceByPeriod;
+    },
+    enabled: !!operatorId,
+    staleTime: 0,
   });
 };
 

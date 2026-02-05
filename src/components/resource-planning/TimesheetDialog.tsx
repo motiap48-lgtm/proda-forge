@@ -35,7 +35,7 @@ import {
 import { type OperatorAbsence, isAbsenceReducingPlan, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
 import { useOvertimeEntries, createOvertimeMap } from "@/hooks/useOvertimeEntries";
 import { getTimesheetSettings } from "@/hooks/useTimesheetSettings";
-import { useOperatorCompensationBalance } from "@/hooks/useAbsenceCompensations";
+import { useOperatorCompensationBalanceByPeriod } from "@/hooks/useAbsenceCompensations";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Extended compensation record with absence_date from parent
@@ -105,7 +105,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   // Get real compensation balance (absence_hours - confirmed hours)
   const year = startDate.getFullYear();
-  const { data: compensationBalance } = useOperatorCompensationBalance(operatorId, year);
+  const { data: compensationBalanceByPeriod } = useOperatorCompensationBalanceByPeriod(operatorId, startDate);
   
   const timesheetMap = useMemo(() => createTimesheetMap(timesheets), [timesheets]);
   const overtimeMap = useMemo(() => createOvertimeMap(overtimeEntries), [overtimeEntries]);
@@ -808,20 +808,37 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               <div>
                 <span className="text-muted-foreground">План: </span>
                 <span className="font-medium">{formatMinutes(totals.basePlanned)}</span>
-                {/* Show real compensation balance from absence_compensations (not just pending records) */}
-                {compensationBalance && compensationBalance.pendingHours > 0 && (
+                {/* Show compensation balance breakdown by period */}
+                {compensationBalanceByPeriod && compensationBalanceByPeriod.totalPendingHours > 0 && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="ml-1 text-xs text-amber-600">
-                        (недоработка: {Math.round(compensationBalance.pendingHours * 10) / 10}ч)
+                        (недоработка: {Math.round(compensationBalanceByPeriod.totalPendingHours * 10) / 10}ч)
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
                       <div className="text-xs space-y-1">
-                        <p>Требуется отработать за прогулы/отсутствия:</p>
-                        <p>Всего: {compensationBalance.totalAbsenceHours}ч</p>
-                        <p>Отработано: {Math.round(compensationBalance.totalCompensatedHours * 10) / 10}ч</p>
-                        <p className="font-medium">Осталось: {Math.round(compensationBalance.pendingHours * 10) / 10}ч</p>
+                        <p className="font-medium border-b pb-1 mb-1">Недоработка к отработке:</p>
+                        {compensationBalanceByPeriod.previousMonthsHours > 0 && (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Прошлые месяцы:</span>
+                            <span className="text-orange-600 font-medium">
+                              {Math.round(compensationBalanceByPeriod.previousMonthsHours * 10) / 10}ч
+                            </span>
+                          </div>
+                        )}
+                        {compensationBalanceByPeriod.currentMonthHours > 0 && (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Текущий месяц:</span>
+                            <span className="text-amber-600 font-medium">
+                              {Math.round(compensationBalanceByPeriod.currentMonthHours * 10) / 10}ч
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between gap-4 border-t pt-1 mt-1 font-semibold">
+                          <span>Итого:</span>
+                          <span>{Math.round(compensationBalanceByPeriod.totalPendingHours * 10) / 10}ч</span>
+                        </div>
                       </div>
                     </TooltipContent>
                   </Tooltip>
