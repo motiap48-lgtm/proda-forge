@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { syncHireDateWithHistory } from "./useEmploymentHistory";
 
 // Brigade Member History
 export const useBrigadeMemberHistory = (brigadeId: string | null) => {
@@ -204,6 +205,9 @@ export const useCreateOperator = () => {
 
   return useMutation({
     mutationFn: async (operator: any) => {
+      // Get current user for history record
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from("operators")
         .insert(operator)
@@ -211,10 +215,17 @@ export const useCreateOperator = () => {
         .single();
 
       if (error) throw error;
+
+      // Sync hire_date with employment_history
+      if (data.hire_date) {
+        await syncHireDateWithHistory(data.id, data.hire_date, user?.id);
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["operators"] });
+      queryClient.invalidateQueries({ queryKey: ["employment-history"] });
       toast.success("Оператор создан");
     },
     onError: (error: any) => {
@@ -228,6 +239,9 @@ export const useUpdateOperator = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: any) => {
+      // Get current user for history record
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from("operators")
         .update(updates)
@@ -236,10 +250,17 @@ export const useUpdateOperator = () => {
         .single();
 
       if (error) throw error;
+
+      // Sync hire_date with employment_history if it was updated
+      if (updates.hire_date !== undefined) {
+        await syncHireDateWithHistory(id, updates.hire_date, user?.id);
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["operators"] });
+      queryClient.invalidateQueries({ queryKey: ["employment-history"] });
       toast.success("Оператор обновлён");
     },
     onError: (error: any) => {
