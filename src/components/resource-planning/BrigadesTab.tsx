@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,9 +25,15 @@ export const BrigadesTab = () => {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingBrigade, setEditingBrigade] = useState<any>(null);
+  const [editingBrigadeId, setEditingBrigadeId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [brigadeToDelete, setBrigadeToDelete] = useState<any>(null);
+
+  // Get the actual brigade data from the query cache (reactive to updates)
+  const editingBrigade = useMemo(() => {
+    if (!editingBrigadeId || !brigades) return null;
+    return brigades.find((b: any) => b.id === editingBrigadeId) || null;
+  }, [editingBrigadeId, brigades]);
 
   const filteredBrigades = brigades?.filter((b: any) =>
     b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -58,7 +65,7 @@ export const BrigadesTab = () => {
   };
 
   const handleEdit = (brigade: any) => {
-    setEditingBrigade(brigade);
+    setEditingBrigadeId(brigade.id);
     setDialogOpen(true);
   };
 
@@ -77,7 +84,7 @@ export const BrigadesTab = () => {
 
   const handleDialogClose = () => {
     setDialogOpen(false);
-    setEditingBrigade(null);
+    setEditingBrigadeId(null);
   };
 
   if (isLoading) {
