@@ -1,4 +1,5 @@
 import { useState } from "react";
+ import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const MRPPlanning = () => {
+   const [activeTab, setActiveTab] = useTabPersistence("purchase");
   const [planningHorizon, setPlanningHorizon] = useState(30);
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [purchaseAlphaFilter, setPurchaseAlphaFilter] = useState<string | null>(null);
@@ -436,7 +438,7 @@ const MRPPlanning = () => {
         )}
 
         {/* Results */}
-        <Tabs defaultValue="purchase" className="space-y-4">
+         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="purchase" className="flex items-center justify-center gap-1 px-1 sm:px-2 text-xs sm:text-sm">
               <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />

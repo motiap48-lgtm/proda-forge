@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Header } from "@/components/layout/Header";
+ import { useState } from "react";
+ import { useTabPersistence } from "@/hooks/useTabPersistence";
+ import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -29,9 +30,9 @@ import { OperatorHoursReport } from "@/components/resource-planning/OperatorHour
 import { OvertimeEntriesTab } from "@/components/resource-planning/OvertimeEntriesTab";
 import { cn } from "@/lib/utils";
 
-const ResourcePlanning = () => {
-  const [activeTab, setActiveTab] = useState("shift-tasks");
-  const [helpOpen, setHelpOpen] = useState(false);
+ const ResourcePlanning = () => {
+   const [activeTab, setActiveTab] = useTabPersistence("shift-tasks");
+   const [helpOpen, setHelpOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+ import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -348,7 +349,7 @@ const Features = () => {
   const { getStatus, updateStatus } = useFeatureStatuses();
   const { getCommentsCount } = useFeatureComments();
   
-  const [activeTab, setActiveTab] = useState("features");
+   const [activeTab, setActiveTab] = useTabPersistence("features");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<FeatureStatus | "all">("all");
   const [favorites, setFavorites] = useState<string[]>(() => {
