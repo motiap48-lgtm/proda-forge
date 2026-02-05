@@ -16,7 +16,6 @@ import { useOvertimeEntries, createOvertimeMap, type OvertimeEntry } from "@/hoo
 import { useOvertimeMedalSettings, useCurrentOvertimeRankings } from "@/hooks/useOvertimeMedals";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import * as XLSX from "xlsx";
 
 import {
   useScrollSync,
@@ -37,6 +36,7 @@ import { BulkAbsenceDialog } from "./BulkAbsenceDialog";
 import { BulkDeleteAbsenceDialog } from "./BulkDeleteAbsenceDialog";
 import { AbsenceExportDialog } from "./AbsenceExportDialog";
 import { YearlyMedalRankingDialog } from "./YearlyMedalRankingDialog";
+import { exportToExcel, printCalendar, exportToPdf, type ExportData } from "./shift-rotation/exports/ShiftRotationExport";
 
 interface ShiftRotationCalendarProps {
   operators: any[];
@@ -466,295 +466,59 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
 
   // Export to Excel
   const handleExportToExcel = () => {
-    const wb = XLSX.utils.book_new();
-    const exportData: any[] = [];
-    
-    const headerRow = ['Сотрудник', 'График', ...days.map(day => format(day, 'dd.MM.yyyy')), 'Итого'];
-    exportData.push(headerRow);
-    
-    let grandTotalMinutes = 0;
-
-    Array.from(groupedBySchedule.entries()).forEach(([scheduleName, ops]) => {
-      exportData.push([`--- ${scheduleName} (${ops.length}) ---`]);
-      
-      let groupTotalMinutes = 0;
-
-      ops.forEach(operator => {
-        let operatorTotalMinutes = 0;
-        const dayValues = days.map(day => {
-          const shift = getShiftForDate(operator, day);
-          if (shift) {
-            const netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
-            operatorTotalMinutes += netMinutes;
-            const hours = Math.floor(netMinutes / 60);
-            const mins = netMinutes % 60;
-            return `${shift.shift_name} (${hours}ч${mins > 0 ? ` ${mins}м` : ''})`;
-          }
-          return 'Выходной';
-        });
-
-        const totalHours = Math.floor(operatorTotalMinutes / 60);
-        const totalMins = operatorTotalMinutes % 60;
-        groupTotalMinutes += operatorTotalMinutes;
-
-        const row = [
-          operator.full_name,
-          operator.work_schedules?.name || 'Без графика',
-          ...dayValues,
-          `${totalHours}ч${totalMins > 0 ? ` ${totalMins}м` : ''}`
-        ];
-        exportData.push(row);
-      });
-
-      const groupHours = Math.floor(groupTotalMinutes / 60);
-      const groupMins = groupTotalMinutes % 60;
-      grandTotalMinutes += groupTotalMinutes;
-      
-      exportData.push([
-        `Итого по группе "${scheduleName}":`,
-        '',
-        ...days.map(() => ''),
-        `${groupHours}ч${groupMins > 0 ? ` ${groupMins}м` : ''}`
-      ]);
-      exportData.push([]);
-    });
-
-    const grandHours = Math.floor(grandTotalMinutes / 60);
-    const grandMins = grandTotalMinutes % 60;
-    exportData.push([]);
-    exportData.push([
-      'ОБЩИЙ ИТОГ:',
-      '',
-      ...days.map(() => ''),
-      `${grandHours}ч${grandMins > 0 ? ` ${grandMins}м` : ''}`
-    ]);
-    
-    const ws = XLSX.utils.aoa_to_sheet(exportData);
-    ws['!cols'] = [
-      { wch: 30 },
-      { wch: 25 },
-      ...days.map(() => ({ wch: 18 })),
-      { wch: 12 }
-    ];
-    
-    XLSX.utils.book_append_sheet(wb, ws, 'График ротации');
-    
-    const startDateStr = format(days[0], 'dd.MM.yyyy');
-    const endDateStr = format(days[days.length - 1], 'dd.MM.yyyy');
-    XLSX.writeFile(wb, `График_ротации_${startDateStr}-${endDateStr}.xlsx`);
+    const data: ExportData = {
+      days,
+      operators: filteredOperators,
+      groupedBySchedule,
+      timesheets,
+      overtimeEntries,
+      compensations,
+      absences,
+      shiftColorMap,
+      grandTotal,
+      grandTotalFact,
+      calculateTotalHours,
+      calculateGroupStats,
+    };
+    exportToExcel(data);
   };
 
   // Print handler
   const handlePrint = () => {
-    const startDateStr = format(days[0], 'dd.MM.yyyy');
-    const endDateStr = format(days[days.length - 1], 'dd.MM.yyyy');
-    
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>График ротации смен ${startDateStr} - ${endDateStr}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          h1 { font-size: 18px; margin-bottom: 10px; }
-          h2 { font-size: 14px; color: #666; margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; font-size: 11px; }
-          th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
-          th { background: #f5f5f5; font-weight: 600; }
-          td:first-child { text-align: left; font-weight: 500; }
-          .group-header { background: #eee; font-weight: 600; text-align: left; }
-          .day-off { color: #999; }
-          .shift-1 { background: #dbeafe; }
-          .shift-2 { background: #fef3c7; }
-          .shift-3 { background: #d1fae5; }
-          .shift-4 { background: #ede9fe; }
-          .today { background: #fef08a !important; font-weight: bold; }
-          .weekend { background: #fee2e2; }
-          .cycle-day { font-size: 9px; color: #888; }
-          .group-stats { background: #f8fafc; font-style: italic; }
-        </style>
-      </head>
-      <body>
-        <h1>📅 График ротации смен</h1>
-        <h2>Период: ${startDateStr} — ${endDateStr} | Операторов: ${filteredOperators.length}</h2>
-        
-        <table>
-          <thead>
-            <tr>
-              <th>Сотрудник</th>
-              ${days.map(day => `
-                <th class="${isToday(day) ? 'today' : ''} ${getDay(day) === 0 || getDay(day) === 6 ? 'weekend' : ''}">
-                  ${format(day, 'EEE', { locale: ru })}<br/>${format(day, 'd MMM', { locale: ru })}
-                </th>
-              `).join('')}
-              <th>Итого</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
-              const groupStats = calculateGroupStats(ops);
-              return `
-                <tr class="group-header">
-                  <td colspan="${days.length + 2}">${scheduleName} (${ops.length} чел.)</td>
-                </tr>
-                ${ops.map(operator => {
-                  const shiftNameToIndex = new Map<string, number>();
-                  Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
-                  const opTotal = calculateTotalHours(operator);
-                  
-                  return `
-                    <tr>
-                      <td>${operator.full_name}</td>
-                      ${days.map(day => {
-                        const shift = getShiftForDate(operator, day);
-                        const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                        const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
-                        const netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
-                        const hours = Math.floor(netMinutes / 60);
-                        const mins = netMinutes % 60;
-                        const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
-                        
-                        return `
-                          <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'}">
-                            ${shift ? `${shift.shift_name.split(' ')[0]}<br/>${hours}ч${mins > 0 ? ' ' + mins + 'м' : ''}` : '—'}
-                            ${cycleInfo ? '<br/><span class="cycle-day">Д' + cycleInfo.dayInCycle + '</span>' : ''}
-                          </td>
-                        `;
-                      }).join('')}
-                      <td>${opTotal.hours}ч${opTotal.minutes > 0 ? ' ' + opTotal.minutes + 'м' : ''}</td>
-                    </tr>
-                  `;
-                }).join('')}
-                <tr class="group-stats">
-                  <td colspan="2" style="text-align: left; font-weight: 500;">
-                    Итого: ✓${groupStats.workingDays} раб. | ✗${groupStats.offDays} вых. | ${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? ' ' + groupStats.totalMinutes + 'м' : ''}
-                  </td>
-                  <td colspan="${days.length}"></td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-        
-        <script>window.onload = function() { window.print(); }</script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
+    const data: ExportData = {
+      days,
+      operators: filteredOperators,
+      groupedBySchedule,
+      timesheets,
+      overtimeEntries,
+      compensations,
+      absences,
+      shiftColorMap,
+      grandTotal,
+      grandTotalFact,
+      calculateTotalHours,
+      calculateGroupStats,
+    };
+    printCalendar(data);
   };
 
   // PDF export
   const handleExportToPdf = () => {
-    const startDateStr = format(days[0], 'dd.MM.yyyy');
-    const endDateStr = format(days[days.length - 1], 'dd.MM.yyyy');
-    
-    const pdfWindow = window.open('', '_blank');
-    if (!pdfWindow) return;
-
-    pdfWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>График ротации смен ${startDateStr} - ${endDateStr}</title>
-        <style>
-          @page { size: landscape; margin: 10mm; }
-          body { font-family: Arial, sans-serif; padding: 15px; font-size: 10px; }
-          h1 { font-size: 16px; margin-bottom: 8px; color: #1f2937; }
-          h2 { font-size: 12px; color: #666; margin-bottom: 15px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-          th, td { border: 1px solid #e5e7eb; padding: 4px 3px; text-align: center; }
-          th { background: #f3f4f6; font-weight: 600; font-size: 9px; }
-          td:first-child { text-align: left; font-weight: 500; min-width: 100px; }
-          .group-header { background: #1f2937; color: white; font-weight: 600; text-align: left; font-size: 11px; }
-          .shift-1 { background: #fef3c7; color: #92400e; }
-          .shift-2 { background: #d1fae5; color: #065f46; }
-          .shift-3 { background: #ddd6fe; color: #5b21b6; }
-          .shift-4 { background: #dbeafe; color: #1e40af; }
-          .day-off { background: #fef2f2; color: #991b1b; }
-          .weekend { background: #fee2e2; }
-          .today { background: #fef08a !important; font-weight: bold; }
-          .total-col { background: #d1fae5; color: #065f46; font-weight: 600; }
-          .summary { margin-top: 10px; padding: 10px; background: #f3f4f6; border-radius: 4px; }
-          @media print { body { padding: 0; } }
-        </style>
-      </head>
-      <body>
-        <h1>📅 График ротации смен</h1>
-        <h2>Период: ${startDateStr} — ${endDateStr} | Операторов: ${filteredOperators.length}</h2>
-        
-        ${Array.from(groupedBySchedule.entries()).map(([scheduleName, ops]) => {
-          const groupStats = calculateGroupStats(ops);
-          const schedule = ops[0]?.work_schedules;
-          const isCyclic = schedule?.schedule_type === 'cyclic';
-          
-          return `
-          <table>
-            <thead>
-              <tr>
-                <th colspan="${days.length + 2}" class="group-header">
-                  ${scheduleName} (${ops.length} чел.)
-                  ${isCyclic ? ' — Циклический ' + (schedule?.cycle_days_on || 2) + '/' + (schedule?.cycle_days_off || 2) : ''}
-                </th>
-              </tr>
-              <tr>
-                <th style="text-align: left;">Сотрудник</th>
-                ${days.map(day => `
-                  <th class="${isToday(day) ? 'today' : ''} ${getDay(day) === 0 || getDay(day) === 6 ? 'weekend' : ''}">
-                    ${format(day, 'EEE', { locale: ru })}<br/>${format(day, 'd')}
-                  </th>
-                `).join('')}
-                <th>Итого</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${ops.map(operator => {
-                const shiftNameToIndex = new Map<string, number>();
-                Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
-                const opTotal = calculateTotalHours(operator);
-                
-                return `
-                  <tr>
-                    <td>${operator.full_name}${operator.shift_rotation_enabled ? ' 🔄' : ''}</td>
-                    ${days.map(day => {
-                      const shift = getShiftForDate(operator, day);
-                      const isWeekend = getDay(day) === 0 || getDay(day) === 6;
-                      const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
-                      const netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
-                      const hours = Math.floor(netMinutes / 60);
-                      const mins = netMinutes % 60;
-                      
-                      return `
-                        <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'}">
-                          ${shift ? hours + 'ч' + (mins > 0 ? mins + 'м' : '') : '—'}
-                        </td>
-                      `;
-                    }).join('')}
-                    <td class="total-col">${opTotal.hours}ч${opTotal.minutes > 0 ? opTotal.minutes + 'м' : ''}</td>
-                  </tr>
-                `;
-              }).join('')}
-              <tr style="background: #f9fafb; font-weight: 500;">
-                <td style="text-align: left;"><strong>Итого:</strong></td>
-                <td colspan="${days.length}">✅ Рабочих: ${groupStats.workingDays} | ⛔ Выходных: ${groupStats.offDays}</td>
-                <td class="total-col">${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? groupStats.totalMinutes + 'м' : ''}</td>
-              </tr>
-            </tbody>
-          </table>
-        `;
-        }).join('')}
-        
-        <div class="summary">
-          <strong>ОБЩИЙ ИТОГ:</strong> ${filteredOperators.length} операторов, ${grandTotal.hours}ч${grandTotal.minutes > 0 ? ' ' + grandTotal.minutes + 'м' : ''}
-        </div>
-        
-        <script>window.onload = function() { window.print(); }</script>
-      </body>
-      </html>
-    `);
-    pdfWindow.document.close();
+    const data: ExportData = {
+      days,
+      operators: filteredOperators,
+      groupedBySchedule,
+      timesheets,
+      overtimeEntries,
+      compensations,
+      absences,
+      shiftColorMap,
+      grandTotal,
+      grandTotalFact,
+      calculateTotalHours,
+      calculateGroupStats,
+    };
+    exportToPdf(data);
   };
 
   const toggleFullscreen = () => {
