@@ -258,7 +258,7 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Период" />
             </SelectTrigger>
-            <SelectContent className="z-[9999] bg-popover">
+            <SelectContent className="z-[10000] bg-popover">
               <SelectItem value="current_year">{currentYear} (текущий)</SelectItem>
               {availableYears
                 .filter((y) => y !== currentYear)
