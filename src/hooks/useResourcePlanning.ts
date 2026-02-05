@@ -436,6 +436,21 @@ export const useAddBrigadeMember = () => {
 
   return useMutation({
     mutationFn: async (member: { brigade_id: string; operator_id: string; role?: string }) => {
+      // Check if operator is already in another active brigade
+      const { data: existingMembership, error: checkError } = await supabase
+        .from("brigade_members")
+        .select("id, brigades:brigade_id(name)")
+        .eq("operator_id", member.operator_id)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (checkError) throw checkError;
+      
+      if (existingMembership) {
+        const brigadeName = (existingMembership.brigades as any)?.name || "другой бригаде";
+        throw new Error(`Оператор уже состоит в ${brigadeName}`);
+      }
+      
       const { data, error } = await supabase
         .from("brigade_members")
         .insert(member)
