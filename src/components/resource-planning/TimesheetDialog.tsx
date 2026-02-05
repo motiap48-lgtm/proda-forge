@@ -140,21 +140,47 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     return viewingYear < currentYear || (viewingYear === currentYear && viewingMonth < currentMonth);
   }, [today, endDate]);
   
-  // Check if last day of the month is already filled (has actual minutes > 0)
+  // Check if there are any unfilled working days (plan > 0) up to today
   // ONLY check saved timesheet data, NOT edits - to prevent button state flickering
-  const isLastDayFilled = useMemo(() => {
-    const lastDayTimesheet = getTimesheetForDate(timesheetMap, operatorId, lastDayOfMonth);
-    return (lastDayTimesheet?.actual_minutes || 0) > 0;
-  }, [timesheetMap, operatorId, lastDayOfMonth]);
+  const hasUnfilledWorkingDays = useMemo(() => {
+    const todayStart = startOfDay(today);
+    
+    for (const day of days) {
+      // Skip future days
+      if (isAfter(startOfDay(day), todayStart)) continue;
+      
+      // Get planned minutes for this day
+      const planned = plannedMinutesPerDay(day);
+      if (planned <= 0) continue; // Skip non-working days
+      
+      // Check if this day is filled in saved timesheets
+      const timesheet = getTimesheetForDate(timesheetMap, operatorId, day);
+      const actualMinutes = timesheet?.actual_minutes || 0;
+      
+      if (actualMinutes === 0) {
+        return true; // Found an unfilled working day
+      }
+    }
+    return false; // All working days are filled
+  }, [days, today, plannedMinutesPerDay, timesheetMap, operatorId]);
   
   // Allow fill by plan if: setting is off, OR (it's last day of current month AND not yet filled), OR (viewing past month AND last day is not filled)
-  // Key: for past months the restriction is lifted, BUT if last day is already filled, button should be disabled
+  // Key: for past months the restriction is lifted, BUT if all working days are filled, button should be disabled
   const canFillByPlan = useMemo(() => {
+    // If all working days up to today are filled, disable the button
+    if (!hasUnfilledWorkingDays) return false;
+    
+    // If restriction is off, allow fill
     if (!settings.restrictFillByPlanToLastDay) return true;
-    if (isPastMonth && !isLastDayFilled) return true;
-    if (isLastDayOfMonth && !isLastDayFilled) return true;
+    
+    // For past months, allow fill
+    if (isPastMonth) return true;
+    
+    // For current month, only allow on last day
+    if (isLastDayOfMonth) return true;
+    
     return false;
-  }, [settings.restrictFillByPlanToLastDay, isPastMonth, isLastDayOfMonth, isLastDayFilled]);
+  }, [settings.restrictFillByPlanToLastDay, isPastMonth, isLastDayOfMonth, hasUnfilledWorkingDays]);
   
   // Days with plan > 0 AND not in the future
   const todayStart = startOfDay(today);
