@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Briefcase, UserCheck, UserX, Calendar, FileText, Pencil, Trash2, Clock } from "lucide-react";
+import { Briefcase, UserCheck, UserX, Calendar, FileText, Pencil, Trash2, Clock, Timer, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -33,8 +34,10 @@ import {
   useBulkDeleteEmploymentHistory,
   type EmploymentHistoryRecord 
 } from "@/hooks/useEmploymentHistory";
+import { useOperatorAbsences } from "@/hooks/useOperatorAbsences";
 import { EmploymentHistoryDialog } from "./EmploymentHistoryDialog";
 import { getTimeAgo } from "@/utils/timeAgoUtils";
+import { calculateEmploymentSummary, formatDuration, formatShortDuration } from "@/utils/employmentDurationUtils";
 
 interface EmploymentHistoryViewDialogProps {
   open: boolean;
@@ -87,6 +90,7 @@ export const EmploymentHistoryViewDialog = ({
   operator,
 }: EmploymentHistoryViewDialogProps) => {
   const { data: history, isLoading } = useEmploymentHistory(operator?.id || null);
+  const { data: absences } = useOperatorAbsences(operator?.id);
   const deleteHistory = useDeleteEmploymentHistory();
   const bulkDeleteHistory = useBulkDeleteEmploymentHistory();
 
@@ -98,11 +102,28 @@ export const EmploymentHistoryViewDialog = ({
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [, setTick] = useState(0);
 
-  // Update time ago every second
+  // Update time every second for live duration
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Calculate employment summary
+  const employmentSummary = useMemo(() => {
+    if (!history || history.length === 0) return null;
+    return calculateEmploymentSummary(
+      history.map(h => ({
+        event_type: h.event_type,
+        event_date: h.event_date,
+        created_at: h.created_at,
+      })),
+      absences?.map(a => ({
+        start_date: a.start_date,
+        end_date: a.end_date,
+        status: a.status,
+      })) || []
+    );
+  }, [history, absences, setTick]);
 
   const handleEditRecord = (record: EmploymentHistoryRecord) => {
     setRecordToEdit(record);
@@ -162,7 +183,7 @@ export const EmploymentHistoryViewDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -175,7 +196,7 @@ export const EmploymentHistoryViewDialog = ({
             )}
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-hidden flex flex-col gap-4">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Загрузка...
@@ -187,100 +208,205 @@ export const EmploymentHistoryViewDialog = ({
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between border-b pb-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={history && selectedHistoryIds.size === history.length && history.length > 0}
-                      onCheckedChange={toggleSelectAll}
-                    />
-                    <span className="text-sm text-muted-foreground">
-                      {selectedHistoryIds.size > 0 ? `Выбрано: ${selectedHistoryIds.size}` : "Выбрать все"}
-                    </span>
-                  </div>
-                  {selectedHistoryIds.size > 0 && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={handleBulkDelete}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Удалить ({selectedHistoryIds.size})
-                    </Button>
-                  )}
-                </div>
-                <ScrollArea className="flex-1 max-h-[50vh] pr-4">
-                  <div className="space-y-3">
-                    {history.map((record: any) => (
-                      <div
-                        key={record.id}
-                        className="flex items-start gap-3 p-3 rounded-lg border bg-card"
-                      >
-                        <Checkbox
-                          checked={selectedHistoryIds.has(record.id)}
-                          onCheckedChange={() => toggleSelectHistory(record.id)}
-                          className="mt-0.5"
-                        />
-                        <div className="mt-0.5">
-                          {getEventIcon(record.event_type)}
+                {/* Employment Duration Summary */}
+                {employmentSummary && (
+                  <Card className="bg-muted/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Timer className="h-4 w-4 text-primary" />
+                        Стаж работы на предприятии
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3 space-y-3">
+                      {/* Total summary */}
+                      <div className="flex items-center justify-between bg-background rounded-lg p-3 border">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-primary" />
+                          <span className="font-medium">Общий стаж:</span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant={getEventVariant(record.event_type)}>
-                              {getEventLabel(record.event_type)}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                              {format(new Date(record.event_date), "d MMMM yyyy", { locale: ru })}
-                            </span>
+                        <div className="text-right">
+                          <div className="font-bold text-primary">
+                            {formatDuration(employmentSummary.totalDuration)}
                           </div>
-                          {record.event_type === "terminated" && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
-                              <Clock className="h-3 w-3" />
-                              <span title={getTimeAgo(record.created_at).formatted}>
-                                {getTimeAgo(record.created_at).shortFormatted}
+                          <div className="text-xs text-muted-foreground">
+                            {employmentSummary.totalDuration.netDays} раб. дн.
+                            {employmentSummary.totalAbsenceDays > 0 && (
+                              <span className="ml-1">
+                                (−{employmentSummary.totalAbsenceDays} дн. отсутствий)
                               </span>
-                            </div>
-                          )}
-                          {record.reason && (
-                            <p className="text-sm mt-1">{record.reason}</p>
-                          )}
-                          {record.notes && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {record.notes}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex gap-1 shrink-0">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => handleEditRecord(record)}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Редактировать</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-destructive hover:text-destructive"
-                                onClick={() => handleDeleteRecord(record)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Удалить</TooltipContent>
-                          </Tooltip>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    ))}
+
+                      {/* Individual periods */}
+                      {employmentSummary.periods.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                            Периоды работы ({employmentSummary.periods.length})
+                          </div>
+                          {employmentSummary.periods.map((period, index) => (
+                            <div
+                              key={index}
+                              className={`flex items-center justify-between rounded-lg p-2 text-sm border ${
+                                period.isCurrent ? "bg-green-500/10 border-green-500/30" : "bg-background"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground font-mono text-xs">
+                                  #{employmentSummary.periods.length - index}
+                                </span>
+                                <div>
+                                  <div className="flex items-center gap-1">
+                                    <span>{format(period.startDate, "dd.MM.yyyy")}</span>
+                                    <span className="text-muted-foreground">→</span>
+                                    <span>
+                                      {period.endDate 
+                                        ? format(period.endDate, "dd.MM.yyyy")
+                                        : <Badge variant="outline" className="text-xs h-5 bg-green-500/20 border-green-500/50 text-green-600">по н.в.</Badge>
+                                      }
+                                    </span>
+                                  </div>
+                                  {period.duration.absenceDays > 0 && (
+                                    <div className="text-xs text-muted-foreground">
+                                      Отсутствий: {period.duration.absenceDays} дн.
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className={`font-medium ${period.isCurrent ? "text-green-600" : ""}`}>
+                                      {formatShortDuration(period.duration)}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left">
+                                    <div className="text-sm">
+                                      <div>{formatDuration(period.duration)}</div>
+                                      <div className="text-muted-foreground">
+                                        Всего дней: {period.duration.totalDays}
+                                      </div>
+                                      <div className="text-muted-foreground">
+                                        Рабочих дней: {period.duration.netDays}
+                                      </div>
+                                      {period.duration.absenceDays > 0 && (
+                                        <div className="text-orange-400">
+                                          Отсутствий: {period.duration.absenceDays} дн.
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                                <div className="text-xs text-muted-foreground">
+                                  {period.duration.netDays} раб. дн.
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* History records section */}
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="flex items-center justify-between border-b pb-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={history && selectedHistoryIds.size === history.length && history.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {selectedHistoryIds.size > 0 ? `Выбрано: ${selectedHistoryIds.size}` : "Выбрать все"}
+                      </span>
+                    </div>
+                    {selectedHistoryIds.size > 0 && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDelete}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Удалить ({selectedHistoryIds.size})
+                      </Button>
+                    )}
                   </div>
-                </ScrollArea>
+                  <ScrollArea className="flex-1 max-h-[35vh] pr-4">
+                    <div className="space-y-3">
+                      {history.map((record: any) => (
+                        <div
+                          key={record.id}
+                          className="flex items-start gap-3 p-3 rounded-lg border bg-card"
+                        >
+                          <Checkbox
+                            checked={selectedHistoryIds.has(record.id)}
+                            onCheckedChange={() => toggleSelectHistory(record.id)}
+                            className="mt-0.5"
+                          />
+                          <div className="mt-0.5">
+                            {getEventIcon(record.event_type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant={getEventVariant(record.event_type)}>
+                                {getEventLabel(record.event_type)}
+                              </Badge>
+                              <span className="text-sm text-muted-foreground">
+                                {format(new Date(record.event_date), "d MMMM yyyy", { locale: ru })}
+                              </span>
+                            </div>
+                            {record.event_type === "terminated" && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
+                                <Clock className="h-3 w-3" />
+                                <span title={getTimeAgo(record.created_at).formatted}>
+                                  {getTimeAgo(record.created_at).shortFormatted}
+                                </span>
+                              </div>
+                            )}
+                            {record.reason && (
+                              <p className="text-sm mt-1">{record.reason}</p>
+                            )}
+                            {record.notes && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {record.notes}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => handleEditRecord(record)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Редактировать</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteRecord(record)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Удалить</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
               </>
             )}
           </div>
