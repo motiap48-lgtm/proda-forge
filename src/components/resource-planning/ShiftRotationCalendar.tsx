@@ -478,6 +478,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       grandTotal,
       grandTotalFact,
       calculateTotalHours,
+      calculatePlanHours,
       calculateGroupStats,
     };
     exportToExcel(data);
@@ -497,6 +498,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       grandTotal,
       grandTotalFact,
       calculateTotalHours,
+      calculatePlanHours,
       calculateGroupStats,
     };
     printCalendar(data);
@@ -516,6 +518,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       grandTotal,
       grandTotalFact,
       calculateTotalHours,
+      calculatePlanHours,
       calculateGroupStats,
     };
     exportToPdf(data);
