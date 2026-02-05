@@ -2,6 +2,38 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Brigade Member History
+export const useBrigadeMemberHistory = (brigadeId: string | null) => {
+  return useQuery({
+    queryKey: ["brigade-member-history", brigadeId],
+    queryFn: async () => {
+      if (!brigadeId) return [];
+      
+      const { data, error } = await supabase
+        .from("brigade_member_history")
+        .select(`
+          *,
+          operators:operator_id (
+            id,
+            full_name,
+            code
+          ),
+          brigades:brigade_id (
+            id,
+            name,
+            code
+          )
+        `)
+        .eq("brigade_id", brigadeId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!brigadeId,
+  });
+};
+
 // Work Schedules
 export const useWorkSchedules = () => {
   return useQuery({

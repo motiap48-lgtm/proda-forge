@@ -115,6 +115,54 @@ export type Database = {
           },
         ]
       }
+      brigade_member_history: {
+        Row: {
+          action_type: string
+          brigade_id: string
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_role: string | null
+          old_role: string | null
+          operator_id: string
+        }
+        Insert: {
+          action_type: string
+          brigade_id: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_role?: string | null
+          old_role?: string | null
+          operator_id: string
+        }
+        Update: {
+          action_type?: string
+          brigade_id?: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_role?: string | null
+          old_role?: string | null
+          operator_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brigade_member_history_brigade_id_fkey"
+            columns: ["brigade_id"]
+            isOneToOne: false
+            referencedRelation: "brigades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brigade_member_history_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brigade_members: {
         Row: {
           brigade_id: string
