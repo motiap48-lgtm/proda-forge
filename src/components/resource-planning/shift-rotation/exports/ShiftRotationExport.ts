@@ -15,6 +15,7 @@
    grandTotal: { hours: number; minutes: number };
    grandTotalFact: { hours: number; minutes: number };
    calculateTotalHours: (operator: any) => { hours: number; minutes: number };
+  calculatePlanHours: (operator: any) => { hours: number; minutes: number };
    calculateGroupStats: (ops: any[]) => { 
      workingDays: number; 
      offDays: number; 
@@ -115,7 +116,7 @@
  export const exportToExcel = (data: ExportData) => {
    const { 
      days, operators, groupedBySchedule, timesheets, overtimeEntries, 
-     compensations, absences, calculateTotalHours 
+    compensations, absences, calculatePlanHours 
    } = data;
    
    const wb = XLSX.utils.book_new();
@@ -167,7 +168,9 @@
              new Date(a.end_date) >= day
            );
            if (absence) {
-             const nonCompensableTypes = ['sick_leave', 'annual_leave', 'unpaid_leave', 'maternity_leave'];
+              // Only these absence types reduce plan (vacations, unpaid leave)
+              // Sick leave, business trips, compensable absences do NOT reduce plan
+              const nonCompensableTypes = ['annual_leave', 'unpaid_leave', 'maternity_leave', 'administrative_leave_without_compensation'];
              if (nonCompensableTypes.includes(absence.absence_type)) {
                planMinutes = 0;
              }
@@ -186,11 +189,15 @@
        groupTotalMinutes += operatorTotalMinutes;
        groupTotalFactMinutes += operatorTotalFactMinutes;
  
+        // Use calculatePlanHours for accurate totals that match UI
+        const opPlan = calculatePlanHours(operator);
+        const opPlanFormatted = formatMinutes(opPlan.hours * 60 + opPlan.minutes);
+
        const row = [
          operator.full_name,
          operator.work_schedules?.name || 'Без графика',
          ...dayValues,
-         formatMinutes(operatorTotalMinutes),
+          opPlanFormatted,
          formatMinutes(operatorTotalFactMinutes)
        ];
        exportData.push(row);
@@ -251,7 +258,7 @@
    const { 
      days, operators, groupedBySchedule, timesheets, overtimeEntries, 
      compensations, shiftColorMap, grandTotal, grandTotalFact,
-     calculateTotalHours, calculateGroupStats 
+    calculateTotalHours, calculatePlanHours, calculateGroupStats 
    } = data;
    
    const startDateStr = format(days[0], 'dd.MM.yyyy');
@@ -267,7 +274,7 @@
      const operatorsHtml = ops.map(operator => {
        const shiftNameToIndex = new Map<string, number>();
        Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
-       const opTotal = calculateTotalHours(operator);
+        const opTotal = calculatePlanHours(operator);
        const opFact = getOperatorFactTotal(operator.id, days, timesheets, overtimeEntries, compensations);
        
        const daysHtml = days.map(day => {
@@ -390,7 +397,7 @@
    const { 
      days, operators, groupedBySchedule, timesheets, overtimeEntries, 
      compensations, shiftColorMap, grandTotal, grandTotalFact,
-     calculateTotalHours, calculateGroupStats 
+    calculateTotalHours, calculatePlanHours, calculateGroupStats 
    } = data;
    
    const startDateStr = format(days[0], 'dd.MM.yyyy');
@@ -414,7 +421,7 @@
      const operatorsHtml = ops.map(operator => {
        const shiftNameToIndex = new Map<string, number>();
        Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
-       const opTotal = calculateTotalHours(operator);
+        const opTotal = calculatePlanHours(operator);
        const opFact = getOperatorFactTotal(operator.id, days, timesheets, overtimeEntries, compensations);
        
        const daysHtml = days.map(day => {
