@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X, FileText, UserX, Archive } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X, FileText, UserX, Archive, UserCheck } from "lucide-react";
 import { useOperators, useDeleteOperator, useFixInvalidRotations } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
 import { BulkOperatorDialog } from "./BulkOperatorDialog";
 import { ShiftRotationCalendar } from "./ShiftRotationCalendar";
 import { CompensationReportDialog } from "./CompensationReportDialog";
 import { TerminateOperatorDialog } from "./TerminateOperatorDialog";
+import { useReinstateOperator } from "@/hooks/useEmploymentHistory";
 import { ArchivedOperatorsTab } from "./ArchivedOperatorsTab";
 import { exportOperatorsToExcel, printOperators } from "./OperatorsPrintExport";
 import { differenceInWeeks } from "date-fns";
@@ -100,8 +101,12 @@ export const OperatorsTab = () => {
   const [compensationReportOpen, setCompensationReportOpen] = useState(false);
   const [terminateDialogOpen, setTerminateDialogOpen] = useState(false);
   const [operatorToTerminate, setOperatorToTerminate] = useState<any>(null);
+  const [reinstateDialogOpen, setReinstateDialogOpen] = useState(false);
+  const [operatorToReinstate, setOperatorToReinstate] = useState<any>(null);
   const [showArchive, setShowArchive] = useState(false);
  
+  const reinstateOperator = useReinstateOperator();
+
   const { data: archivedOperators } = useArchivedOperators();
   const archivedCount = archivedOperators?.length || 0;
 
@@ -288,6 +293,25 @@ export const OperatorsTab = () => {
   const handleTerminate = (operator: any) => {
     setOperatorToTerminate(operator);
     setTerminateDialogOpen(true);
+  };
+
+  const handleReinstate = (operator: any) => {
+    setOperatorToReinstate(operator);
+    setReinstateDialogOpen(true);
+  };
+
+  const confirmReinstate = () => {
+    if (operatorToReinstate) {
+      reinstateOperator.mutate(
+        { operatorId: operatorToReinstate.id },
+        {
+          onSuccess: () => {
+            setReinstateDialogOpen(false);
+            setOperatorToReinstate(null);
+          },
+        }
+      );
+    }
   };
 
   const confirmDelete = () => {
@@ -556,9 +580,15 @@ export const OperatorsTab = () => {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(operator)}>
                             <Edit className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleTerminate(operator)} title="Уволить">
-                            <UserX className="h-3 w-3 text-orange-500" />
-                          </Button>
+                          {operator.is_active ? (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleTerminate(operator)} title="Уволить">
+                              <UserX className="h-3 w-3 text-orange-500" />
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleReinstate(operator)} title="Восстановить">
+                              <UserCheck className="h-3 w-3 text-green-500" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(operator)}>
                             <Trash2 className="h-3 w-3 text-destructive" />
                           </Button>
@@ -616,9 +646,15 @@ export const OperatorsTab = () => {
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(operator)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleTerminate(operator)} title="Уволить">
-                          <UserX className="h-4 w-4 text-orange-500" />
-                        </Button>
+                        {operator.is_active ? (
+                          <Button variant="ghost" size="icon" onClick={() => handleTerminate(operator)} title="Уволить">
+                            <UserX className="h-4 w-4 text-orange-500" />
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="icon" onClick={() => handleReinstate(operator)} title="Восстановить">
+                            <UserCheck className="h-4 w-4 text-green-500" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => handleDelete(operator)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -759,6 +795,29 @@ export const OperatorsTab = () => {
           operator={operatorToTerminate}
         />
       )}
+
+      {/* Reinstate operator dialog */}
+      <AlertDialog open={reinstateDialogOpen} onOpenChange={setReinstateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Восстановить сотрудника?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {operatorToReinstate?.full_name} будет восстановлен на работу.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setOperatorToReinstate(null)}>
+              Отмена
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmReinstate}
+              disabled={reinstateOperator.isPending}
+            >
+              {reinstateOperator.isPending ? "Восстановление..." : "Восстановить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
