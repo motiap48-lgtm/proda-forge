@@ -560,6 +560,47 @@ export type Database = {
           },
         ]
       }
+      employment_history: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_date: string
+          event_type: string
+          id: string
+          notes: string | null
+          operator_id: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_date: string
+          event_type: string
+          id?: string
+          notes?: string | null
+          operator_id: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          notes?: string | null
+          operator_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employment_history_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipment: {
         Row: {
           code: string
@@ -1321,6 +1362,7 @@ export type Database = {
           shift_rotation_enabled: boolean | null
           shift_rotation_start_date: string | null
           termination_date: string | null
+          termination_reason: string | null
           updated_at: string
           work_schedule_id: string | null
         }
@@ -1341,6 +1383,7 @@ export type Database = {
           shift_rotation_enabled?: boolean | null
           shift_rotation_start_date?: string | null
           termination_date?: string | null
+          termination_reason?: string | null
           updated_at?: string
           work_schedule_id?: string | null
         }
@@ -1361,6 +1404,7 @@ export type Database = {
           shift_rotation_enabled?: boolean | null
           shift_rotation_start_date?: string | null
           termination_date?: string | null
+          termination_reason?: string | null
           updated_at?: string
           work_schedule_id?: string | null
         }
