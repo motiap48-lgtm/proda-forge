@@ -250,11 +250,20 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     const newEdits: Record<string, number> = {};
     days.forEach(day => {
       const dateStr = format(day, "yyyy-MM-dd");
-      newEdits[dateStr] = 0;
+      // Only clear days that already have saved data in the database
+      const existingTimesheet = getTimesheetForDate(timesheetMap, operatorId, day);
+      if (existingTimesheet && existingTimesheet.actual_minutes > 0) {
+        newEdits[dateStr] = 0;
+      }
     });
     setEdits(newEdits);
     setShowClearConfirm(false);
-    toast.success("Все фактические значения обнулены");
+    const clearedCount = Object.keys(newEdits).length;
+    if (clearedCount > 0) {
+      toast.success(`Обнулено ${clearedCount} записей`);
+    } else {
+      toast.info("Нет заполненных записей для обнуления");
+    }
   };
   
   const handleResetChanges = () => {
