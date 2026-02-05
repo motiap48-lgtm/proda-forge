@@ -125,7 +125,28 @@ export const EmploymentHistoryViewDialog = ({
     );
   }, [history, absences, setTick]);
 
-  const handleEditRecord = (record: EmploymentHistoryRecord) => {
+  // Find the reinstatement date for a termination event (to stop the counter)
+  const getTerminationEndDate = (terminationRecord: EmploymentHistoryRecord): string | null => {
+    if (!history) return null;
+    
+    // Sort history by event_date ascending to find next event
+    const sortedHistory = [...history].sort(
+      (a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
+    );
+    
+    const terminationIndex = sortedHistory.findIndex(r => r.id === terminationRecord.id);
+    if (terminationIndex === -1) return null;
+    
+    // Look for the next reinstated event after this termination
+    for (let i = terminationIndex + 1; i < sortedHistory.length; i++) {
+      if (sortedHistory[i].event_type === "reinstated") {
+        return sortedHistory[i].created_at;
+      }
+    }
+    
+    // No reinstatement found - still terminated (counter continues)
+    return null;
+  };
     setRecordToEdit(record);
     setEditDialogOpen(true);
   };
@@ -357,14 +378,20 @@ export const EmploymentHistoryViewDialog = ({
                                 {format(new Date(record.event_date), "d MMMM yyyy", { locale: ru })}
                               </span>
                             </div>
-                            {record.event_type === "terminated" && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
-                                <Clock className="h-3 w-3" />
-                                <span title={getTimeAgo(record.created_at).formatted}>
-                                  {getTimeAgo(record.created_at).shortFormatted}
-                                </span>
-                              </div>
-                            )}
+                            {record.event_type === "terminated" && (() => {
+                              const endDate = getTerminationEndDate(record);
+                              const timeAgo = getTimeAgo(record.created_at, endDate);
+                              const isOngoing = !endDate;
+                              return (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span title={timeAgo.formatted}>
+                                    {timeAgo.shortFormatted}
+                                    {!isOngoing && <span className="text-muted-foreground/60 ml-1">(до восстановления)</span>}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                             {record.reason && (
                               <p className="text-sm mt-1">{record.reason}</p>
                             )}

@@ -15,17 +15,19 @@ export interface TimeAgoResult {
 /**
  * Calculate detailed time elapsed since a given date
  */
-export const getTimeAgo = (date: Date | string): TimeAgoResult => {
+export const getTimeAgo = (date: Date | string, endDate?: Date | string | null): TimeAgoResult => {
   const targetDate = typeof date === "string" ? new Date(date) : date;
-  const now = new Date();
+  const end = endDate 
+    ? (typeof endDate === "string" ? new Date(endDate) : endDate) 
+    : new Date();
 
-  const totalSeconds = differenceInSeconds(now, targetDate);
-  const totalMinutes = differenceInMinutes(now, targetDate);
-  const totalHours = differenceInHours(now, targetDate);
-  const totalDays = differenceInDays(now, targetDate);
-  const totalWeeks = differenceInWeeks(now, targetDate);
-  const totalMonths = differenceInMonths(now, targetDate);
-  const totalYears = differenceInYears(now, targetDate);
+  const totalSeconds = differenceInSeconds(end, targetDate);
+  const totalMinutes = differenceInMinutes(end, targetDate);
+  const totalHours = differenceInHours(end, targetDate);
+  const totalDays = differenceInDays(end, targetDate);
+  const totalWeeks = differenceInWeeks(end, targetDate);
+  const totalMonths = differenceInMonths(end, targetDate);
+  const totalYears = differenceInYears(end, targetDate);
 
   // Calculate remaining values after subtracting larger units
   const years = totalYears;
@@ -37,8 +39,9 @@ export const getTimeAgo = (date: Date | string): TimeAgoResult => {
   const seconds = totalSeconds - totalMinutes * 60;
 
   // Format a human-readable string
+  const isOngoing = !endDate;
   const formatted = formatTimeAgo(years, months, weeks, days, hours, minutes, seconds);
-  const shortFormatted = formatShortTimeAgo(totalYears, totalMonths, totalDays, totalHours, totalMinutes);
+  const shortFormatted = formatShortTimeAgo(totalYears, totalMonths, totalDays, totalHours, totalMinutes, isOngoing);
 
   return {
     years: Math.max(0, years),
@@ -86,24 +89,27 @@ const formatShortTimeAgo = (
   totalMonths: number,
   totalDays: number,
   totalHours: number,
-  totalMinutes: number
+  totalMinutes: number,
+  isOngoing: boolean = true
 ): string => {
+  const suffix = isOngoing ? " назад" : "";
+  
   if (totalYears > 0) {
-    return `${totalYears} ${pluralize(totalYears, "год", "года", "лет")} назад`;
+    return `${totalYears} ${pluralize(totalYears, "год", "года", "лет")}${suffix}`;
   }
   if (totalMonths > 0) {
-    return `${totalMonths} ${pluralize(totalMonths, "месяц", "месяца", "месяцев")} назад`;
+    return `${totalMonths} ${pluralize(totalMonths, "месяц", "месяца", "месяцев")}${suffix}`;
   }
   if (totalDays > 0) {
-    return `${totalDays} ${pluralize(totalDays, "день", "дня", "дней")} назад`;
+    return `${totalDays} ${pluralize(totalDays, "день", "дня", "дней")}${suffix}`;
   }
   if (totalHours > 0) {
-    return `${totalHours} ${pluralize(totalHours, "час", "часа", "часов")} назад`;
+    return `${totalHours} ${pluralize(totalHours, "час", "часа", "часов")}${suffix}`;
   }
   if (totalMinutes > 0) {
-    return `${totalMinutes} ${pluralize(totalMinutes, "минуту", "минуты", "минут")} назад`;
+    return `${totalMinutes} ${pluralize(totalMinutes, "минуту", "минуты", "минут")}${suffix}`;
   }
-  return "только что";
+  return isOngoing ? "только что" : "менее минуты";
 };
 
 /**
