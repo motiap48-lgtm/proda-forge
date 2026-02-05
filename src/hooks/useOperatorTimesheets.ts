@@ -81,9 +81,10 @@ export const useUpsertTimesheet = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
+      // Force immediate refetch of ALL operator-timesheets queries
+      queryClient.refetchQueries({ 
         queryKey: ["operator-timesheets"],
-        refetchType: 'all'
+        type: 'all'
       });
     },
   });
@@ -150,9 +151,11 @@ export const useBulkUpsertTimesheets = () => {
       return upsertedData;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
+      // Force immediate refetch of ALL operator-timesheets queries
+      // Using refetchQueries instead of invalidateQueries to ensure data updates immediately
+      queryClient.refetchQueries({ 
         queryKey: ["operator-timesheets"],
-        refetchType: 'all'
+        type: 'all'
       });
     },
   });
@@ -172,9 +175,10 @@ export const useDeleteTimesheet = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
+      // Force immediate refetch of ALL operator-timesheets queries
+      queryClient.refetchQueries({ 
         queryKey: ["operator-timesheets"],
-        refetchType: 'all'
+        type: 'all'
       });
     },
   });
