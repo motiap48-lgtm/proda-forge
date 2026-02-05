@@ -124,6 +124,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   
   const hasEdits = Object.keys(edits).length > 0;
+
+  const editablePlannedMinutesPerDay = editableMinutesPerDay ?? plannedMinutesPerDay;
   
   // Check if "Fill by plan" should be restricted - MUST be before functions that use it
   const settings = getTimesheetSettings();
@@ -149,8 +151,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       // Skip future days
       if (isAfter(startOfDay(day), todayStart)) continue;
       
-      // Get planned minutes for this day
-      const planned = plannedMinutesPerDay(day);
+      // Get editable planned minutes for this day (e.g. absences can make day non-editable)
+      const planned = editablePlannedMinutesPerDay(day);
       if (planned <= 0) continue; // Skip non-working days
       
       // Check if this day is filled in saved timesheets
@@ -162,7 +164,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       }
     }
     return false; // All working days are filled
-  }, [days, today, plannedMinutesPerDay, timesheetMap, operatorId]);
+  }, [days, today, editablePlannedMinutesPerDay, timesheetMap, operatorId]);
   
   // Allow fill by plan if: setting is off, OR (it's last day of current month AND not yet filled), OR (viewing past month AND last day is not filled)
   // Key: for past months the restriction is lifted, BUT if all working days are filled, button should be disabled
@@ -184,8 +186,6 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   // Days with plan > 0 AND not in the future
   const todayStart = startOfDay(today);
-
-  const editablePlannedMinutesPerDay = editableMinutesPerDay ?? plannedMinutesPerDay;
   
   // Check if a date is in the future (cannot be filled)
   const isFutureDate = (day: Date) => isAfter(startOfDay(day), todayStart);
@@ -223,6 +223,9 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     const newEdits: Record<string, number> = { ...edits };
     let filledCount = 0;
     days.forEach(day => {
+      // Never fill future days
+      if (isFutureDate(day)) return;
+
       const dateStr = format(day, "yyyy-MM-dd");
       const planned = editablePlannedMinutesPerDay(day);
       // Only fill if: has plan > 0 AND not already filled (in edits or in saved timesheets)
