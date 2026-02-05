@@ -1,7 +1,7 @@
- import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
- import { supabase } from "@/integrations/supabase/client";
- import { toast } from "sonner";
- 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
 export interface EmploymentHistoryRecord {
   id: string;
   operator_id: string;
@@ -12,6 +12,52 @@ export interface EmploymentHistoryRecord {
   created_by: string | null;
   created_at: string;
 }
+
+// Helper to sync hire date with employment history
+export const syncHireDateWithHistory = async (
+  operatorId: string,
+  hireDate: string | null,
+  userId?: string | null
+) => {
+  if (!hireDate) return;
+
+  // Check if there's already a "hired" record for this operator
+  const { data: existingHired, error: fetchError } = await supabase
+    .from("employment_history")
+    .select("id, event_date")
+    .eq("operator_id", operatorId)
+    .eq("event_type", "hired")
+    .order("event_date", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (fetchError) throw fetchError;
+
+  if (existingHired) {
+    // Update existing hired record if date changed
+    if (existingHired.event_date !== hireDate) {
+      const { error: updateError } = await supabase
+        .from("employment_history")
+        .update({ event_date: hireDate })
+        .eq("id", existingHired.id);
+
+      if (updateError) throw updateError;
+    }
+  } else {
+    // Create new hired record
+    const { error: insertError } = await supabase
+      .from("employment_history")
+      .insert({
+        operator_id: operatorId,
+        event_type: "hired",
+        event_date: hireDate,
+        reason: "Приём на работу",
+        created_by: userId,
+      });
+
+    if (insertError) throw insertError;
+  }
+};
 
  // Get archived (terminated) operators
  export const useArchivedOperators = () => {
