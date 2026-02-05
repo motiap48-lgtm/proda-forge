@@ -235,8 +235,8 @@ export const EmploymentHistoryViewDialog = ({
                           {record.event_type === "terminated" && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
                               <Clock className="h-3 w-3" />
-                              <span title={getTimeAgo(record.event_date).formatted}>
-                                {getTimeAgo(record.event_date).shortFormatted}
+                              <span title={getTimeAgo(record.created_at).formatted}>
+                                {getTimeAgo(record.created_at).shortFormatted}
                               </span>
                             </div>
                           )}
