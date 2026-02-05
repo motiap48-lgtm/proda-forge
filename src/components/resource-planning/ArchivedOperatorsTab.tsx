@@ -1,11 +1,11 @@
- import { useState, useMemo } from "react";
- import { Button } from "@/components/ui/button";
- import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
- import { Badge } from "@/components/ui/badge";
- import { Input } from "@/components/ui/input";
+import { useState, useMemo, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Archive, UserCheck, History, X, Calendar, Briefcase, Pencil, Trash2 } from "lucide-react";
+import { Search, Archive, UserCheck, History, X, Calendar, Briefcase, Pencil, Trash2, Clock } from "lucide-react";
 import { 
   useArchivedOperators, 
   useEmploymentHistory, 
@@ -14,8 +14,9 @@ import {
   useBulkDeleteEmploymentHistory,
   type EmploymentHistoryRecord 
 } from "@/hooks/useEmploymentHistory";
- import { format } from "date-fns";
- import { ru } from "date-fns/locale";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+import { getTimeAgo } from "@/utils/timeAgoUtils";
  import {
    AlertDialog,
    AlertDialogAction,
@@ -39,25 +40,32 @@ import {
  } from "@/components/ui/tooltip";
 import { EmploymentHistoryDialog } from "./EmploymentHistoryDialog";
  
- export const ArchivedOperatorsTab = () => {
-   const { data: operators, isLoading } = useArchivedOperators();
-   const reinstateOperator = useReinstateOperator();
+export const ArchivedOperatorsTab = () => {
+  const { data: operators, isLoading } = useArchivedOperators();
+  const reinstateOperator = useReinstateOperator();
   const deleteHistory = useDeleteEmploymentHistory();
   const bulkDeleteHistory = useBulkDeleteEmploymentHistory();
-   
-   const [searchQuery, setSearchQuery] = useState("");
-   const [reinstateDialogOpen, setReinstateDialogOpen] = useState(false);
-   const [operatorToReinstate, setOperatorToReinstate] = useState<any>(null);
-   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
-   const [selectedOperatorId, setSelectedOperatorId] = useState<string | null>(null);
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [reinstateDialogOpen, setReinstateDialogOpen] = useState(false);
+  const [operatorToReinstate, setOperatorToReinstate] = useState<any>(null);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedOperatorId, setSelectedOperatorId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [recordToEdit, setRecordToEdit] = useState<EmploymentHistoryRecord | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<EmploymentHistoryRecord | null>(null);
   const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
- 
-   const { data: employmentHistory } = useEmploymentHistory(selectedOperatorId);
+  const [, setTick] = useState(0);
+
+  const { data: employmentHistory } = useEmploymentHistory(selectedOperatorId);
+
+  // Update time ago every second
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
  
    const filteredOperators = useMemo(() => {
      return operators?.filter((op: any) => {
@@ -224,17 +232,25 @@ import { EmploymentHistoryDialog } from "./EmploymentHistoryDialog";
                        <span>{operator.position}</span>
                      </div>
                    )}
-                   {operator.termination_date && (
-                     <div className="flex items-center gap-2">
-                       <Calendar className="h-3.5 w-3.5" />
-                       <span>Уволен: {format(new Date(operator.termination_date), "d MMMM yyyy", { locale: ru })}</span>
-                     </div>
-                   )}
-                   {operator.termination_reason && (
-                     <div className="text-xs bg-muted/50 p-2 rounded mt-2">
-                       {operator.termination_reason}
-                     </div>
-                   )}
+                    {operator.termination_date && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3.5 w-3.5" />
+                          <span>Уволен: {format(new Date(operator.termination_date), "d MMMM yyyy", { locale: ru })}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <Clock className="h-3 w-3" />
+                          <span className="text-muted-foreground/80" title={getTimeAgo(operator.termination_date).formatted}>
+                            {getTimeAgo(operator.termination_date).shortFormatted}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {operator.termination_reason && (
+                      <div className="text-xs bg-muted/50 p-2 rounded mt-2">
+                        {operator.termination_reason}
+                      </div>
+                    )}
                  </div>
                  
                  <div className="flex gap-2">
@@ -338,11 +354,21 @@ import { EmploymentHistoryDialog } from "./EmploymentHistoryDialog";
                               checked={selectedHistoryIds.has(event.id)}
                               onCheckedChange={() => toggleSelectHistory(event.id)}
                             />
-                            <div className="flex-1 flex items-center justify-between">
-                              {getEventTypeBadge(event.event_type)}
-                              <span className="text-sm text-muted-foreground">
-                                {format(new Date(event.event_date), "d MMMM yyyy", { locale: ru })}
-                              </span>
+                            <div className="flex-1 flex flex-col gap-1">
+                              <div className="flex items-center justify-between">
+                                {getEventTypeBadge(event.event_type)}
+                                <span className="text-sm text-muted-foreground">
+                                  {format(new Date(event.event_date), "d MMMM yyyy", { locale: ru })}
+                                </span>
+                              </div>
+                              {event.event_type === "terminated" && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground/80">
+                                  <Clock className="h-3 w-3" />
+                                  <span title={getTimeAgo(event.event_date).formatted}>
+                                    {getTimeAgo(event.event_date).shortFormatted}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex gap-1">
                               <Tooltip>
