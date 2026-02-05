@@ -981,6 +981,17 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             
                             // Check for shortened day (calendar exception)
                             const dateStr = format(day, "yyyy-MM-dd");
+                            // Check for holiday (calendar exception) - important for 5/2 schedules
+                            const holidayException = calendarExceptions.find(
+                              ex => ex.exception_date === dateStr && 
+                                   ex.exception_type === 'holiday' && 
+                                   !ex.is_working_day
+                            );
+                            // For 5/2 schedules, holidays are non-working days
+                            const scheduleType = operator.work_schedules?.schedule_type;
+                            const is52Schedule = scheduleType === '5/2' || scheduleType === 'weekly' || scheduleType === 'shift';
+                            const isHolidayForSchedule = is52Schedule && !!holidayException && !effectiveIsWorking;
+                            
                             const shortenedException = calendarExceptions.find(
                               ex => ex.exception_date === dateStr && 
                                    ex.exception_type === 'shortened_day' && 
@@ -1268,6 +1279,21 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   <div className="absolute top-0.5 left-0.5">
                                     <Timer className="h-2.5 w-2.5 text-orange-500 dark:text-orange-400" />
                                   </div>
+                                )}
+                                
+                                {/* Holiday indicator for 5/2 schedules */}
+                                {isHolidayForSchedule && !hasOverride && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="absolute top-0.5 right-0.5">
+                                        <span className="text-[10px]">🎉</span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs max-w-xs">
+                                      <div className="font-medium">{holidayException?.name || 'Праздничный день'}</div>
+                                      <div className="text-muted-foreground mt-0.5">Нерабочий день для графика 5/2</div>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 )}
                                 
                                 {/* Underage indicator - show when worked less than planned */}
