@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, addDays, endOfMonth, isSameDay, startOfDay, isAfter } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info } from "lucide-react";
+import { UserX } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,7 @@ import {
   createTimesheetMap,
   getTimesheetForDate,
 } from "@/hooks/useOperatorTimesheets";
-import { type OperatorAbsence, isAbsenceReducingPlan } from "@/hooks/useOperatorAbsences";
+import { type OperatorAbsence, isAbsenceReducingPlan, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
 import { useOvertimeEntries, createOvertimeMap } from "@/hooks/useOvertimeEntries";
 import { getTimesheetSettings } from "@/hooks/useTimesheetSettings";
 import { useOperatorCompensationBalance } from "@/hooks/useAbsenceCompensations";
@@ -495,7 +496,37 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       
                       {/* Date */}
                       <td className="p-1 align-top whitespace-nowrap">
-                        {format(day, "EEE, d MMM", { locale: ru })}
+                        <div className="flex items-center gap-1">
+                          <span>{format(day, "EEE, d MMM", { locale: ru })}</span>
+                          {dayAbsence && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-muted text-[10px] cursor-help">
+                                  {ABSENCE_TYPE_LABELS[dayAbsence.absence_type]?.icon || "📋"}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                <div className="text-xs space-y-1">
+                                  <div className="font-medium flex items-center gap-1">
+                                    <UserX className="h-3 w-3" />
+                                    {ABSENCE_TYPE_LABELS[dayAbsence.absence_type]?.label || "Отсутствие"}
+                                  </div>
+                                  {dayAbsence.notes && (
+                                    <div className="text-muted-foreground whitespace-pre-line">
+                                      {dayAbsence.notes}
+                                    </div>
+                                  )}
+                                  {isAbsenceReducingPlan(dayAbsence.absence_type) && (
+                                    <div className="text-blue-600">Уменьшает план</div>
+                                  )}
+                                  {!isAbsenceReducingPlan(dayAbsence.absence_type) && (
+                                    <div className="text-amber-600">Считается недоработкой</div>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       </td>
                       
                       {/* Plan */}
