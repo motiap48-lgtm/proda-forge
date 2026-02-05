@@ -78,6 +78,7 @@ export const OperatorsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [shiftFilter, setShiftFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "terminated">("active");
    const [searchParams, setSearchParams] = useSearchParams();
    const viewFromUrl = searchParams.get("view") as "cards" | "grouped" | "calendar" | null;
    const [viewMode, setViewModeState] = useState<"cards" | "grouped" | "calendar">(viewFromUrl || "cards");
@@ -140,6 +141,14 @@ export const OperatorsTab = () => {
         op.position?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = typeFilter === "all" || op.employee_type === typeFilter;
       
+      // Status filter
+      let matchesStatus = true;
+      if (statusFilter === "active") {
+        matchesStatus = op.is_active === true;
+      } else if (statusFilter === "terminated") {
+        matchesStatus = op.is_active === false;
+      }
+      
       // Shift filter
       let matchesShift = true;
       if (shiftFilter !== "all") {
@@ -147,9 +156,9 @@ export const OperatorsTab = () => {
         matchesShift = currentShift?.shift_name === shiftFilter;
       }
       
-      return matchesSearch && matchesType && matchesShift;
+      return matchesSearch && matchesType && matchesShift && matchesStatus;
     }) || [];
-  }, [operators, searchQuery, typeFilter, shiftFilter]);
+  }, [operators, searchQuery, typeFilter, shiftFilter, statusFilter]);
 
   const totalOperators = operators?.length || 0;
   const activeOperators = operators?.filter((op: any) => op.is_active).length || 0;
@@ -335,7 +344,7 @@ export const OperatorsTab = () => {
     setEditingOperator(null);
   };
 
-  const hasActiveFilters = typeFilter !== "all" || shiftFilter !== "all" || searchQuery.length > 0;
+  const hasActiveFilters = typeFilter !== "all" || shiftFilter !== "all" || statusFilter !== "active" || searchQuery.length > 0;
 
   if (isLoading) {
     return <div className="text-center py-8 text-muted-foreground">Загрузка...</div>;
@@ -405,6 +414,17 @@ export const OperatorsTab = () => {
                   {shift.name} ({shift.count})
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "active" | "terminated")}>
+            <SelectTrigger className="w-[130px] sm:w-[180px] h-8 sm:h-9 text-xs sm:text-sm">
+              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <SelectValue placeholder="Статус" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все статусы</SelectItem>
+              <SelectItem value="active">Активные</SelectItem>
+              <SelectItem value="terminated">Уволенные</SelectItem>
             </SelectContent>
           </Select>
         </div>
