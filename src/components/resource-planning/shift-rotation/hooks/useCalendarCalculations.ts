@@ -368,8 +368,8 @@ export const useCalendarCalculations = ({
       
       const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
       
-      // Apply shortened day reduction if applicable - cyclic schedules ignore shortened days
-      if (exception && exception.exception_type === "shortened_day" && !isCyclic) {
+       // Apply shortened day reduction if applicable for ALL schedules including cyclic
+       if (exception && exception.exception_type === "shortened_day") {
         const scheduleReductionHours = schedule?.reduction_hours;
         const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
         const reductionMinutes = reductionHours * 60;
@@ -406,8 +406,8 @@ export const useCalendarCalculations = ({
       
       const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
       
-      // Apply shortened day reduction if applicable - cyclic schedules ignore shortened days
-      if (exception && exception.exception_type === "shortened_day" && !isCyclic) {
+       // Apply shortened day reduction if applicable for ALL schedules including cyclic
+       if (exception && exception.exception_type === "shortened_day") {
         const scheduleReductionHours = schedule?.reduction_hours;
         const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
         const reductionMinutes = reductionHours * 60;
