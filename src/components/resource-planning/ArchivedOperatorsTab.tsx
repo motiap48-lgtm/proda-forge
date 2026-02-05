@@ -240,8 +240,8 @@ export const ArchivedOperatorsTab = () => {
                         </div>
                         <div className="flex items-center gap-2 text-xs">
                           <Clock className="h-3 w-3" />
-                          <span className="text-muted-foreground/80" title={getTimeAgo(operator.termination_date).formatted}>
-                            {getTimeAgo(operator.termination_date).shortFormatted}
+                          <span className="text-muted-foreground/80" title={getTimeAgo(operator.updated_at).formatted}>
+                            {getTimeAgo(operator.updated_at).shortFormatted}
                           </span>
                         </div>
                       </>
@@ -364,8 +364,8 @@ export const ArchivedOperatorsTab = () => {
                               {event.event_type === "terminated" && (
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground/80">
                                   <Clock className="h-3 w-3" />
-                                  <span title={getTimeAgo(event.event_date).formatted}>
-                                    {getTimeAgo(event.event_date).shortFormatted}
+                                  <span title={getTimeAgo(event.created_at).formatted}>
+                                    {getTimeAgo(event.created_at).shortFormatted}
                                   </span>
                                 </div>
                               )}
