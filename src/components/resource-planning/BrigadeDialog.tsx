@@ -27,6 +27,7 @@ import {
   useActiveOperators,
   useAddBrigadeMember,
   useRemoveBrigadeMember,
+  useUpdateBrigadeMemberRole,
 } from "@/hooks/useResourcePlanning";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
 
@@ -45,6 +46,7 @@ export const BrigadeDialog = ({
   const updateBrigade = useUpdateBrigade();
   const addMember = useAddBrigadeMember();
   const removeMember = useRemoveBrigadeMember();
+  const updateMemberRole = useUpdateBrigadeMemberRole();
   const { data: workCenters } = useActiveWorkCenters();
   const { data: workSchedules } = useActiveWorkSchedules();
   const { data: operators } = useActiveOperators();
@@ -124,31 +126,22 @@ export const BrigadeDialog = ({
     removeMember.mutate(memberId);
   };
 
-  const handleSetLeader = (memberId: string, operatorId: string) => {
-    // Remove current leader
+  const handleSetLeader = (memberId: string) => {
+    if (!brigade) return;
+    
+    // Find and demote current leader to member
     const currentLeader = brigade?.brigade_members?.find((m: any) => m.role === "leader" && m.is_active);
     if (currentLeader) {
-      removeMember.mutate(currentLeader.id, {
+      updateMemberRole.mutate({ memberId: currentLeader.id, role: "member" }, {
         onSuccess: () => {
-          addMember.mutate({
-            brigade_id: brigade.id,
-            operator_id: currentLeader.operators.id,
-            role: "member",
-          });
+          // Promote the selected member to leader
+          updateMemberRole.mutate({ memberId, role: "leader" });
         },
       });
+    } else {
+      // No current leader, just promote the selected member
+      updateMemberRole.mutate({ memberId, role: "leader" });
     }
-    
-    // Set new leader
-    removeMember.mutate(memberId, {
-      onSuccess: () => {
-        addMember.mutate({
-          brigade_id: brigade.id,
-          operator_id: operatorId,
-          role: "leader",
-        });
-      },
-    });
   };
 
   const activeMembers = brigade?.brigade_members?.filter((m: any) => m.is_active) || [];
@@ -316,8 +309,9 @@ export const BrigadeDialog = ({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleSetLeader(member.id, member.operator_id)}
+                            onClick={() => handleSetLeader(member.id)}
                             title="Назначить бригадиром"
+                            disabled={updateMemberRole.isPending}
                           >
                             <Crown className="h-4 w-4" />
                           </Button>
