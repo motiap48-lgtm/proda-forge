@@ -5,7 +5,11 @@ import { format, addDays, getDaysInMonth, getDay, isToday, getMonth, getYear } f
 import { ru } from "date-fns/locale";
 import { useUpdateOperator, useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useAllOperatorAbsences, isDateInAbsence } from "@/hooks/useOperatorAbsences";
-import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
+import {
+  useScheduleOverrides,
+  getScheduleOverride,
+  isWorkingDayWithOverride,
+} from "@/hooks/useScheduleOverrides";
 import { useOperatorTimesheets } from "@/hooks/useOperatorTimesheets";
 import { useAbsenceCompensations, type CompensationRecord } from "@/hooks/useAbsenceCompensations";
 import { useOvertimeEntries, createOvertimeMap, type OvertimeEntry } from "@/hooks/useOvertimeEntries";
@@ -143,10 +147,12 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           if (absence) return false;
           
           // Check if today is a working day according to operator's schedule
-          const schedule = op.work_schedule;
-          if (!schedule) return true; // No schedule = assume available
-          
-          return isWorkingDay(schedule, today, op);
+          const schedule = op.work_schedules;
+          if (!schedule) return true; // Safety fallback
+
+          const baseIsWorking = isWorkingDay(schedule, today, op);
+          const override = getScheduleOverride(scheduleOverrides, op.id, today);
+          return isWorkingDayWithOverride(baseIsWorking, override);
         }
         return true;
       });
@@ -751,17 +757,6 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     pdfWindow.document.close();
   };
 
-  if (operatorsWithSchedules.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>Нет операторов с назначенными графиками</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const toggleFullscreen = () => {
     if (!isFullscreen) {
       calendarContainerRef.current?.requestFullscreen?.();
@@ -791,6 +786,17 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isFullscreen]);
+
+  if (operatorsWithSchedules.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>Нет операторов с назначенными графиками</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card 
