@@ -477,6 +477,35 @@ export const useRemoveBrigadeMember = () => {
   });
 };
 
+export const useUpdateBrigadeMemberRole = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
+      const { data, error } = await supabase
+        .from("brigade_members")
+        .update({ role })
+        .eq("id", memberId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["brigades"] });
+      if (variables.role === "leader") {
+        toast.success("Участник назначен бригадиром");
+      } else {
+        toast.success("Роль участника изменена");
+      }
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};
+
 // Operator Skills
 export const useAddOperatorSkill = () => {
   const queryClient = useQueryClient();
