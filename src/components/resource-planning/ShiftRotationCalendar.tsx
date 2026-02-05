@@ -48,7 +48,28 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const { data: absences = [] } = useAllOperatorAbsences();
   const { data: calendarExceptions = [] } = useCalendarExceptions();
   const { data: medalSettings } = useOvertimeMedalSettings();
-  const operatorIds = useMemo(() => operators.filter(op => op.is_active).map(op => op.id), [operators]);
+
+  // Base set of operators that can appear in the calendar (have schedules)
+  // NOTE: We must include terminated operators here too, because they remain visible until the end
+  // of their termination month, and the calendar still needs their timesheets/overrides to compute
+  // “Не заполнено”.
+  const operatorsWithSchedulesBase = useMemo(() => {
+    return operators.filter(op => {
+      // Must have schedule with shifts
+      if (!op.work_schedules?.work_schedule_shifts?.length) return false;
+      // Include active and terminated operators (we'll filter terminated by date later)
+      return op.is_active || !!op.termination_date;
+    });
+  }, [operators]);
+
+  // Important: fetch data (overrides/timesheets/compensations/overtime) for ALL operators that might
+  // be displayed, including terminated ones. Otherwise timesheets are missing and days are
+  // incorrectly marked as “unfilled”.
+  const operatorIds = useMemo(
+    () => operatorsWithSchedulesBase.map(op => op.id),
+    [operatorsWithSchedulesBase]
+  );
+
   const { data: scheduleOverrides = [] } = useScheduleOverrides(operatorIds);
   const [period, setPeriod] = useState<PeriodType>(() => {
     const saved = localStorage.getItem("shiftRotationCalendarPeriod");
@@ -99,16 +120,6 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   } = useResizableColumn();
 
   const updateOperator = useUpdateOperator();
-
-  // First pass: filter active operators and all terminated with schedules  
-  const operatorsWithSchedulesBase = useMemo(() => {
-    return operators.filter(op => {
-      // Must have schedule with shifts
-      if (!op.work_schedules?.work_schedule_shifts?.length) return false;
-      // Include active and terminated operators (we'll filter terminated by date later)
-      return op.is_active || !!op.termination_date;
-    });
-  }, [operators]);
 
   // Get unique schedule names for filter
   const uniqueSchedules = useMemo(() => {
