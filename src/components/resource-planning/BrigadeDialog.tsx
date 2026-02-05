@@ -301,7 +301,9 @@ export const BrigadeDialog = ({
                           {member.operators?.full_name}
                         </span>
                         {member.role === "leader" && (
-                          <Badge variant="outline" className="text-xs">Бригадир</Badge>
+                          <Badge className="text-xs bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 shadow-sm">
+                            Бригадир
+                          </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-1">
