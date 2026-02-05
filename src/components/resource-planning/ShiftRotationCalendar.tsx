@@ -23,6 +23,7 @@ import {
   GrandTotalRow,
   getShiftForDate,
   getCycleDayNumber,
+  isWorkingDay,
   type PeriodType,
   type AbsenceStatusFilter,
   type AbsenceTypeFilter,
@@ -138,7 +139,14 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           return absence && absence.absence_type === 'sick_leave';
         }
         if (absenceStatusFilter === "available") {
-          return !absence;
+          // Check both: no absence AND is a working day according to schedule
+          if (absence) return false;
+          
+          // Check if today is a working day according to operator's schedule
+          const schedule = op.work_schedule;
+          if (!schedule) return true; // No schedule = assume available
+          
+          return isWorkingDay(schedule, today, op);
         }
         return true;
       });
