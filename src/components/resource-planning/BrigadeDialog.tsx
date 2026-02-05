@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/ui/search-input";
 import {
   Select,
   SelectContent,
@@ -60,6 +61,7 @@ export const BrigadeDialog = ({
   });
 
   const [selectedOperator, setSelectedOperator] = useState("");
+  const [operatorSearch, setOperatorSearch] = useState("");
 
   useEffect(() => {
     if (brigade) {
@@ -84,6 +86,7 @@ export const BrigadeDialog = ({
       });
     }
     setSelectedOperator("");
+    setOperatorSearch("");
   }, [brigade, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -152,7 +155,15 @@ export const BrigadeDialog = ({
 
   const activeMembers = brigade?.brigade_members?.filter((m: any) => m.is_active) || [];
   const memberOperatorIds = activeMembers.map((m: any) => m.operator_id);
-  const availableOperators = operators?.filter((op: any) => !memberOperatorIds.includes(op.id)) || [];
+  const availableOperators = operators?.filter((op: any) => {
+    if (memberOperatorIds.includes(op.id)) return false;
+    if (!operatorSearch) return true;
+    const searchLower = operatorSearch.toLowerCase();
+    return (
+      op.code?.toLowerCase().includes(searchLower) ||
+      op.full_name?.toLowerCase().includes(searchLower)
+    );
+  }) || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -263,12 +274,24 @@ export const BrigadeDialog = ({
             <div className="space-y-2 border-t pt-4">
               <Label>Состав бригады</Label>
               
+              <SearchInput
+                placeholder="Поиск оператора..."
+                value={operatorSearch}
+                onChange={setOperatorSearch}
+                className="mb-2"
+              />
+              
               <div className="flex gap-2">
                 <Select value={selectedOperator} onValueChange={setSelectedOperator}>
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Выберите оператора" />
                   </SelectTrigger>
                   <SelectContent>
+                    {availableOperators.length === 0 && (
+                      <div className="py-2 px-3 text-sm text-muted-foreground">
+                        {operatorSearch ? "Операторы не найдены" : "Нет доступных операторов"}
+                      </div>
+                    )}
                     {availableOperators.map((op: any) => (
                       <SelectItem key={op.id} value={op.id}>
                         {op.code} - {op.full_name}
