@@ -326,17 +326,24 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   // Check if operator has unfilled working days up to today
   const hasUnfilledDays = useCallback((operatorId: string): boolean => {
     const today = startOfDay(new Date());
+    const operator = operators.find(op => op.id === operatorId);
+
+    if (!operator) return false;
     
     return days.some(day => {
       // Skip future days
       if (isAfter(startOfDay(day), today)) return false;
+
+      // Skip days outside employment period (not hired yet / already terminated)
+      if (isOperatorTerminated(operator, day)) return false;
+      if (isBeforeHireDate(operator, day)) return false;
       
       // Skip days with any absence (vacation, sick leave, etc.) - those are NOT unfilled
       const absence = isDateInAbsence(day, absences, operatorId);
       if (absence) return false;
       
       // Get planned minutes for this day
-      const plannedMinutes = getPlannedDayMinutes?.(operators.find(op => op.id === operatorId), day) || 0;
+      const plannedMinutes = getPlannedDayMinutes?.(operator, day) || 0;
       
       // Skip non-working days (no plan)
       if (plannedMinutes === 0) return false;
