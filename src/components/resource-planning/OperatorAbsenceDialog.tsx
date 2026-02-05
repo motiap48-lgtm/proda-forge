@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { parseDateOnly } from "@/components/resource-planning/shift-rotation/utils";
 import {
@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle, Merge, Clock, RotateCcw } from "lucide-react";
+import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle, Merge, Clock, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useOperatorAbsences,
   useCreateOperatorAbsence,
@@ -101,6 +101,9 @@ export const OperatorAbsenceDialog = ({
     
     return map;
   }, [absences, compensations]);
+
+  // Period filter - default to current month
+  const [selectedMonth, setSelectedMonth] = useState<Date>(() => startOfMonth(new Date()));
 
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState<OperatorAbsence | null>(null);
@@ -425,13 +428,49 @@ export const OperatorAbsenceDialog = ({
           {/* Form */}
           {(isAddingNew || editingAbsence) && renderForm()}
 
+          {/* Period filter */}
+          {!isAddingNew && !editingAbsence && (
+            <div className="flex items-center justify-center gap-2 py-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7"
+                onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium min-w-[120px] text-center">
+                {format(selectedMonth, "LLLL yyyy", { locale: ru })}
+              </span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7"
+                onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
           {/* List of absences */}
           <ScrollArea className="flex-1 min-h-0">
             <div className="space-y-2 pr-4">
               {isLoading ? (
                 <div className="text-center text-muted-foreground py-4">Загрузка...</div>
-              ) : absences && absences.length > 0 ? (
-                absences.map((absence) => {
+              ) : (() => {
+                // Filter absences by selected period
+                const filteredAbsences = absences?.filter((absence) => {
+                  const startDate = new Date(absence.start_date);
+                  const endDate = new Date(absence.end_date);
+                  const monthStart = startOfMonth(selectedMonth);
+                  const monthEnd = endOfMonth(selectedMonth);
+                  // Include if absence overlaps with selected month
+                  return startDate <= monthEnd && endDate >= monthStart;
+                }) || [];
+                
+                return filteredAbsences.length > 0 ? (
+                  filteredAbsences.map((absence) => {
                   const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type];
                   const statusInfo = ABSENCE_STATUS_LABELS[absence.status];
 
@@ -527,13 +566,14 @@ export const OperatorAbsenceDialog = ({
                       </div>
                     </div>
                   );
-                })
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  <UserX className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Нет записей об отсутствиях</p>
-                </div>
-              )}
+                  })
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    <UserX className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Нет записей за {format(selectedMonth, "LLLL yyyy", { locale: ru })}</p>
+                  </div>
+                );
+              })()}
             </div>
           </ScrollArea>
         </div>

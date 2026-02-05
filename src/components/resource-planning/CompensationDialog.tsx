@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   Dialog,
@@ -16,7 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
-import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban, Info, EyeOff, Eye } from "lucide-react";
+import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban, Info, EyeOff, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -133,6 +133,9 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   
   const [bulkCompensationFor, setBulkCompensationFor] = useState<AbsenceCompensation | null>(null);
   const [showCancelled, setShowCancelled] = useState(false);
+  
+  // Period filter - default to current month
+  const [selectedMonth, setSelectedMonth] = useState<Date>(() => startOfMonth(new Date()));
 
   // Update absenceHours when scheduleHours is loaded
   useEffect(() => {
@@ -408,8 +411,29 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
           </div>
         )}
 
-            {/* Show cancelled toggle */}
+            {/* Period filter and cancelled toggle */}
             <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7"
+                  onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium min-w-[120px] text-center">
+                  {format(selectedMonth, "LLLL yyyy", { locale: ru })}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7"
+                  onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
               <div className="flex items-center gap-2">
                 {showCancelled ? (
                   <Eye className="h-4 w-4 text-muted-foreground" />
@@ -417,19 +441,37 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                   <EyeOff className="h-4 w-4 text-muted-foreground" />
                 )}
                 <span className="text-sm text-muted-foreground">Показывать отменённые</span>
+                <Switch checked={showCancelled} onCheckedChange={setShowCancelled} />
               </div>
-              <Switch checked={showCancelled} onCheckedChange={setShowCancelled} />
             </div>
 
             {/* List of compensations */}
             <div className="space-y-3">
               {isLoading ? (
                 <p className="text-center text-muted-foreground py-4">Загрузка...</p>
-              ) : compensations.filter((c) => showCancelled || c.status !== "cancelled").length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">Нет записей</p>
+              ) : compensations.filter((c) => {
+                // Period filter
+                const absenceDate = new Date(c.absence_date);
+                const monthStart = startOfMonth(selectedMonth);
+                const monthEnd = endOfMonth(selectedMonth);
+                if (absenceDate < monthStart || absenceDate > monthEnd) return false;
+                // Cancelled filter
+                return showCancelled || c.status !== "cancelled";
+              }).length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">
+                  Нет записей за {format(selectedMonth, "LLLL yyyy", { locale: ru })}
+                </p>
               ) : (
                 compensations
-                  .filter((c) => showCancelled || c.status !== "cancelled")
+                  .filter((c) => {
+                    // Period filter
+                    const absenceDate = new Date(c.absence_date);
+                    const monthStart = startOfMonth(selectedMonth);
+                    const monthEnd = endOfMonth(selectedMonth);
+                    if (absenceDate < monthStart || absenceDate > monthEnd) return false;
+                    // Cancelled filter
+                    return showCancelled || c.status !== "cancelled";
+                  })
                   .map((comp) => {
                    // Only count CONFIRMED records for display
                    const compensatedHours = roundHours(comp.compensation_records?.reduce(
