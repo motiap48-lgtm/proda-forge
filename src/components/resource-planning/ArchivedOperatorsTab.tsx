@@ -3,8 +3,17 @@
  import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
  import { Badge } from "@/components/ui/badge";
  import { Input } from "@/components/ui/input";
- import { Search, Archive, UserCheck, History, X, Calendar, Briefcase } from "lucide-react";
- import { useArchivedOperators, useEmploymentHistory, useReinstateOperator } from "@/hooks/useEmploymentHistory";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, Archive, UserCheck, History, X, Calendar, Briefcase, Pencil, Trash2 } from "lucide-react";
+import { 
+  useArchivedOperators, 
+  useEmploymentHistory, 
+  useReinstateOperator,
+  useDeleteEmploymentHistory,
+  useBulkDeleteEmploymentHistory,
+  type EmploymentHistoryRecord 
+} from "@/hooks/useEmploymentHistory";
  import { format } from "date-fns";
  import { ru } from "date-fns/locale";
  import {
@@ -28,16 +37,25 @@
    TooltipContent,
    TooltipTrigger,
  } from "@/components/ui/tooltip";
+import { EmploymentHistoryDialog } from "./EmploymentHistoryDialog";
  
  export const ArchivedOperatorsTab = () => {
    const { data: operators, isLoading } = useArchivedOperators();
    const reinstateOperator = useReinstateOperator();
+  const deleteHistory = useDeleteEmploymentHistory();
+  const bulkDeleteHistory = useBulkDeleteEmploymentHistory();
    
    const [searchQuery, setSearchQuery] = useState("");
    const [reinstateDialogOpen, setReinstateDialogOpen] = useState(false);
    const [operatorToReinstate, setOperatorToReinstate] = useState<any>(null);
    const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
    const [selectedOperatorId, setSelectedOperatorId] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [recordToEdit, setRecordToEdit] = useState<EmploymentHistoryRecord | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<EmploymentHistoryRecord | null>(null);
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
  
    const { data: employmentHistory } = useEmploymentHistory(selectedOperatorId);
  
@@ -74,6 +92,61 @@
      setHistoryDialogOpen(true);
    };
  
+  const handleEditRecord = (record: EmploymentHistoryRecord) => {
+    setRecordToEdit(record);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteRecord = (record: EmploymentHistoryRecord) => {
+    setRecordToDelete(record);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteRecord = () => {
+    if (recordToDelete) {
+      deleteHistory.mutate(recordToDelete.id, {
+        onSuccess: () => {
+          setDeleteDialogOpen(false);
+          setRecordToDelete(null);
+        },
+      });
+    }
+  };
+
+  const toggleSelectHistory = (id: string) => {
+    const newSelected = new Set(selectedHistoryIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedHistoryIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (!employmentHistory) return;
+    if (selectedHistoryIds.size === employmentHistory.length) {
+      setSelectedHistoryIds(new Set());
+    } else {
+      setSelectedHistoryIds(new Set(employmentHistory.map((e: any) => e.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedHistoryIds.size > 0) {
+      setBulkDeleteDialogOpen(true);
+    }
+  };
+
+  const confirmBulkDelete = () => {
+    bulkDeleteHistory.mutate(Array.from(selectedHistoryIds), {
+      onSuccess: () => {
+        setBulkDeleteDialogOpen(false);
+        setSelectedHistoryIds(new Set());
+      },
+    });
+  };
+
    const getEventTypeLabel = (type: string) => {
      switch (type) {
        case "hired": return "Приём на работу";
@@ -222,7 +295,7 @@
  
        {/* Employment history dialog */}
        <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
-         <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
            <DialogHeader>
              <DialogTitle className="flex items-center gap-2">
                <History className="h-5 w-5" />
@@ -230,32 +303,140 @@
              </DialogTitle>
            </DialogHeader>
            
-           <div className="space-y-4">
+            <div className="flex-1 overflow-hidden flex flex-col space-y-3">
              {employmentHistory?.length === 0 ? (
                <p className="text-center text-muted-foreground py-4">История пуста</p>
              ) : (
-               <div className="space-y-3">
-                 {employmentHistory?.map((event: any) => (
-                   <div key={event.id} className="border rounded-lg p-3 space-y-2">
-                     <div className="flex items-center justify-between">
-                       {getEventTypeBadge(event.event_type)}
-                       <span className="text-sm text-muted-foreground">
-                         {format(new Date(event.event_date), "d MMMM yyyy", { locale: ru })}
-                       </span>
-                     </div>
-                     {event.reason && (
-                       <p className="text-sm">{event.reason}</p>
-                     )}
-                     {event.notes && (
-                       <p className="text-xs text-muted-foreground">{event.notes}</p>
-                     )}
-                   </div>
-                 ))}
-               </div>
+                <>
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={employmentHistory && selectedHistoryIds.size === employmentHistory.length && employmentHistory.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {selectedHistoryIds.size > 0 ? `Выбрано: ${selectedHistoryIds.size}` : "Выбрать все"}
+                      </span>
+                    </div>
+                    {selectedHistoryIds.size > 0 && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDelete}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Удалить ({selectedHistoryIds.size})
+                      </Button>
+                    )}
+                  </div>
+                  <ScrollArea className="flex-1 max-h-[50vh]">
+                    <div className="space-y-3 pr-4">
+                      {employmentHistory?.map((event: any) => (
+                        <div key={event.id} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedHistoryIds.has(event.id)}
+                              onCheckedChange={() => toggleSelectHistory(event.id)}
+                            />
+                            <div className="flex-1 flex items-center justify-between">
+                              {getEventTypeBadge(event.event_type)}
+                              <span className="text-sm text-muted-foreground">
+                                {format(new Date(event.event_date), "d MMMM yyyy", { locale: ru })}
+                              </span>
+                            </div>
+                            <div className="flex gap-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => handleEditRecord(event)}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Редактировать</TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-destructive hover:text-destructive"
+                                    onClick={() => handleDeleteRecord(event)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Удалить</TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </div>
+                          {event.reason && (
+                            <p className="text-sm ml-6">{event.reason}</p>
+                          )}
+                          {event.notes && (
+                            <p className="text-xs text-muted-foreground ml-6">{event.notes}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </>
              )}
            </div>
          </DialogContent>
        </Dialog>
+
+        {/* Edit history record dialog */}
+        <EmploymentHistoryDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          record={recordToEdit}
+        />
+
+        {/* Delete single record confirmation */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить запись?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Эта запись истории занятости будет удалена безвозвратно.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmDeleteRecord}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Удалить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Bulk delete confirmation */}
+        <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить выбранные записи?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Будет удалено записей: <strong>{selectedHistoryIds.size}</strong>. Это действие необратимо.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmBulkDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Удалить все
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
      </div>
    );
  };
