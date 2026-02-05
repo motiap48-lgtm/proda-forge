@@ -990,7 +990,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             // For 5/2 schedules, holidays are non-working days
                             const scheduleType = operator.work_schedules?.schedule_type;
                             const is52Schedule = scheduleType === '5/2' || scheduleType === 'weekly' || scheduleType === 'shift';
-                            const isHolidayForSchedule = is52Schedule && !!holidayException && !effectiveIsWorking;
+                            // Show holiday icon for 5/2 schedules when there's a holiday exception
+                            // (even if base schedule says it's a working day, holidays override for 5/2)
+                            const isHolidayForSchedule = is52Schedule && !!holidayException;
                             
                             const shortenedException = calendarExceptions.find(
                               ex => ex.exception_date === dateStr && 
