@@ -316,6 +316,12 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       // Skip future days
       if (isAfter(startOfDay(day), today)) return;
       
+      // Skip days after termination - employee no longer works
+      if (isOperatorTerminated(operator, day)) return;
+      
+      // Skip days before hire - employee wasn't yet hired
+      if (isBeforeHireDate(operator, day)) return;
+      
       // Skip days with any absence (vacation, sick leave, etc.) - those are NOT unfilled
       const absence = isDateInAbsence(day, absences, operatorId);
       if (absence) return;
