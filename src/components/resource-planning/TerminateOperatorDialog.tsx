@@ -48,13 +48,21 @@
    
    const [formData, setFormData] = useState({
      termination_date: format(new Date(), "yyyy-MM-dd"),
-     reason: "resignation",
+    reason: "",
      notes: "",
    });
+
+  const [reasonError, setReasonError] = useState(false);
  
    const handleSubmit = (e: React.FormEvent) => {
      e.preventDefault();
      
+    // Validate reason is selected
+    if (!formData.reason) {
+      setReasonError(true);
+      return;
+    }
+    
      const reasonLabel = TERMINATION_REASONS.find(r => r.value === formData.reason)?.label || formData.reason;
      
      terminateOperator.mutate(
@@ -109,10 +117,13 @@
              <Label htmlFor="reason">Причина увольнения *</Label>
              <Select
                value={formData.reason}
-               onValueChange={(value) => setFormData({ ...formData, reason: value })}
+              onValueChange={(value) => {
+                setFormData({ ...formData, reason: value });
+                setReasonError(false);
+              }}
              >
-               <SelectTrigger>
-                 <SelectValue />
+              <SelectTrigger className={reasonError ? "border-destructive" : ""}>
+                <SelectValue placeholder="Выберите причину..." />
                </SelectTrigger>
                <SelectContent>
                  {TERMINATION_REASONS.map((reason) => (
@@ -122,6 +133,9 @@
                  ))}
                </SelectContent>
              </Select>
+            {reasonError && (
+              <p className="text-sm text-destructive">Укажите причину увольнения</p>
+            )}
            </div>
  
            <div className="space-y-2">
