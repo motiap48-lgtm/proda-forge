@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Briefcase, UserCheck, UserX, Calendar, FileText, Pencil, Trash2 } from "lucide-react";
+import { Briefcase, UserCheck, UserX, Calendar, FileText, Pencil, Trash2, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,6 +34,7 @@ import {
   type EmploymentHistoryRecord 
 } from "@/hooks/useEmploymentHistory";
 import { EmploymentHistoryDialog } from "./EmploymentHistoryDialog";
+import { getTimeAgo } from "@/utils/timeAgoUtils";
 
 interface EmploymentHistoryViewDialogProps {
   open: boolean;
@@ -95,6 +96,13 @@ export const EmploymentHistoryViewDialog = ({
   const [recordToDelete, setRecordToDelete] = useState<EmploymentHistoryRecord | null>(null);
   const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [, setTick] = useState(0);
+
+  // Update time ago every second
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleEditRecord = (record: EmploymentHistoryRecord) => {
     setRecordToEdit(record);
@@ -224,6 +232,14 @@ export const EmploymentHistoryViewDialog = ({
                               {format(new Date(record.event_date), "d MMMM yyyy", { locale: ru })}
                             </span>
                           </div>
+                          {record.event_type === "terminated" && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
+                              <Clock className="h-3 w-3" />
+                              <span title={getTimeAgo(record.event_date).formatted}>
+                                {getTimeAgo(record.event_date).shortFormatted}
+                              </span>
+                            </div>
+                          )}
                           {record.reason && (
                             <p className="text-sm mt-1">{record.reason}</p>
                           )}
