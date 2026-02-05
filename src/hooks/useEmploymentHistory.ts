@@ -2,6 +2,17 @@
  import { supabase } from "@/integrations/supabase/client";
  import { toast } from "sonner";
  
+export interface EmploymentHistoryRecord {
+  id: string;
+  operator_id: string;
+  event_type: string;
+  event_date: string;
+  reason: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
  // Get archived (terminated) operators
  export const useArchivedOperators = () => {
    return useQuery({
@@ -99,6 +110,106 @@
    });
  };
  
+// Update employment history record
+export const useUpdateEmploymentHistory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      event_type,
+      event_date,
+      reason,
+      notes,
+    }: {
+      id: string;
+      event_type: string;
+      event_date: string;
+      reason?: string;
+      notes?: string;
+    }) => {
+      const { error } = await supabase
+        .from("employment_history")
+        .update({
+          event_type,
+          event_date,
+          reason,
+          notes,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employment-history"] });
+      queryClient.invalidateQueries({ queryKey: ["operators"] });
+      toast.success("Запись истории обновлена");
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};
+
+// Delete single employment history record
+export const useDeleteEmploymentHistory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("employment_history")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employment-history"] });
+      queryClient.invalidateQueries({ queryKey: ["operators"] });
+      toast.success("Запись удалена");
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};
+
+// Bulk delete employment history records
+export const useBulkDeleteEmploymentHistory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      // Process in batches of 100
+      const batchSize = 100;
+      const batches = [];
+      for (let i = 0; i < ids.length; i += batchSize) {
+        batches.push(ids.slice(i, i + batchSize));
+      }
+
+      await Promise.all(
+        batches.map(async (batch) => {
+          const { error } = await supabase
+            .from("employment_history")
+            .delete()
+            .in("id", batch);
+
+          if (error) throw error;
+        })
+      );
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["employment-history"] });
+      queryClient.invalidateQueries({ queryKey: ["operators"] });
+      toast.success(`Удалено записей: ${ids.length}`);
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+};
+
  // Reinstate operator
  export const useReinstateOperator = () => {
    const queryClient = useQueryClient();
