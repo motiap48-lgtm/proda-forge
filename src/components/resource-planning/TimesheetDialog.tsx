@@ -586,9 +586,15 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       {/* Status */}
                       <td className="p-1 align-top">
                         <div className="flex items-center gap-0.5 flex-wrap justify-end">
-                          {/* Show deficit if fact < base plan, but NOT for holidays/weekends */}
-                          {/* Show deficit for operator absences (admin leave with compensation, etc.) */}
-                          {!isHolidayOrWeekend && basePlanned > 0 && totalFactMinutes < basePlanned && (
+                          {/* Show deficit ONLY for past days where fact < plan */}
+                          {/* Conditions: 
+                               1. Not a future date (day has passed or is today)
+                               2. Not a holiday/weekend WITHOUT absence 
+                               3. Has plan > 0
+                               4. Total fact is less than plan
+                               5. OR has absence that requires compensation (pending compensation)
+                          */}
+                          {!isFuture && !isHolidayOrWeekend && basePlanned > 0 && totalFactMinutes < basePlanned && (
                             <span className="text-destructive font-medium text-[10px]">
                               -{formatMinutes(basePlanned - totalFactMinutes)}
                             </span>
