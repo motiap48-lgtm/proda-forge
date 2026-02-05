@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X, FileText } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X, FileText, UserX, Archive } from "lucide-react";
 import { useOperators, useDeleteOperator, useFixInvalidRotations } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
 import { BulkOperatorDialog } from "./BulkOperatorDialog";
 import { ShiftRotationCalendar } from "./ShiftRotationCalendar";
 import { CompensationReportDialog } from "./CompensationReportDialog";
+import { TerminateOperatorDialog } from "./TerminateOperatorDialog";
+import { ArchivedOperatorsTab } from "./ArchivedOperatorsTab";
 import { exportOperatorsToExcel, printOperators } from "./OperatorsPrintExport";
 import { differenceInWeeks } from "date-fns";
 import {
@@ -31,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useArchivedOperators } from "@/hooks/useEmploymentHistory";
 
 // Helper to calculate current shift based on rotation
 const getCurrentShiftForOperator = (operator: any) => {
@@ -95,6 +98,12 @@ export const OperatorsTab = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [operatorToDelete, setOperatorToDelete] = useState<any>(null);
   const [compensationReportOpen, setCompensationReportOpen] = useState(false);
+  const [terminateDialogOpen, setTerminateDialogOpen] = useState(false);
+  const [operatorToTerminate, setOperatorToTerminate] = useState<any>(null);
+  const [showArchive, setShowArchive] = useState(false);
+ 
+  const { data: archivedOperators } = useArchivedOperators();
+  const archivedCount = archivedOperators?.length || 0;
 
   // Collect all unique shift names for filter
   const availableShifts = useMemo(() => {
@@ -276,6 +285,11 @@ export const OperatorsTab = () => {
     setDeleteDialogOpen(true);
   };
 
+  const handleTerminate = (operator: any) => {
+    setOperatorToTerminate(operator);
+    setTerminateDialogOpen(true);
+  };
+
   const confirmDelete = () => {
     if (operatorToDelete) {
       deleteOperator.mutate(operatorToDelete.id);
@@ -443,7 +457,14 @@ export const OperatorsTab = () => {
 
       {/* View mode tabs */}
       <div className="flex items-center">
-        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
+        <Tabs value={showArchive ? "archive" : viewMode} onValueChange={(v) => {
+          if (v === "archive") {
+            setShowArchive(true);
+          } else {
+            setShowArchive(false);
+            setViewMode(v as any);
+          }
+        }}>
           <TabsList className="h-8 sm:h-9">
             <TabsTrigger value="cards" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
               <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -457,12 +478,22 @@ export const OperatorsTab = () => {
               <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Ротация</span>
             </TabsTrigger>
+            <TabsTrigger value="archive" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+              <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Архив</span>
+              {archivedCount > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{archivedCount}</Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
+      {/* Archive view */}
+      {showArchive && <ArchivedOperatorsTab />}
+
       {/* Calendar view */}
-      {viewMode === "calendar" && (
+      {!showArchive && viewMode === "calendar" && (
         <ShiftRotationCalendar 
           operators={operators || []} 
           onEditOperator={(operator) => {
@@ -473,7 +504,7 @@ export const OperatorsTab = () => {
       )}
 
       {/* Grouped by shift view */}
-      {viewMode === "grouped" && (
+      {!showArchive && viewMode === "grouped" && (
         <div className="space-y-6">
           {groupedOperators.map((group) => {
             const hours = Math.floor(group.totalMinutes / 60);
@@ -525,6 +556,9 @@ export const OperatorsTab = () => {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(operator)}>
                             <Edit className="h-3 w-3" />
                           </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleTerminate(operator)} title="Уволить">
+                            <UserX className="h-3 w-3 text-orange-500" />
+                          </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(operator)}>
                             <Trash2 className="h-3 w-3 text-destructive" />
                           </Button>
@@ -549,7 +583,7 @@ export const OperatorsTab = () => {
       )}
 
       {/* Cards view */}
-      {viewMode === "cards" && (
+      {!showArchive && viewMode === "cards" && (
         <>
           {filteredOperators.length === 0 ? (
             <Card>
@@ -581,6 +615,9 @@ export const OperatorsTab = () => {
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(operator)}>
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleTerminate(operator)} title="Уволить">
+                          <UserX className="h-4 w-4 text-orange-500" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDelete(operator)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -710,6 +747,18 @@ export const OperatorsTab = () => {
         open={compensationReportOpen}
         onOpenChange={setCompensationReportOpen}
       />
+
+      {/* Terminate operator dialog */}
+      {operatorToTerminate && (
+        <TerminateOperatorDialog
+          open={terminateDialogOpen}
+          onOpenChange={(open) => {
+            setTerminateDialogOpen(open);
+            if (!open) setOperatorToTerminate(null);
+          }}
+          operator={operatorToTerminate}
+        />
+      )}
     </div>
   );
 };

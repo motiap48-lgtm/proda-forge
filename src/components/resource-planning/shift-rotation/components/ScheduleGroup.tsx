@@ -7,6 +7,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck, Hammer, Check, TrendingDown, AlertCircle } from "lucide-react";
+import { DoorOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { OperatorInfoCard } from "./OperatorInfoCard";
@@ -1027,10 +1028,11 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               return (
                                 <div 
                                   key={day.toISOString()} 
-                                  className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800 text-gray-600 dark:text-gray-400"
-                                  title="Уволен"
+                                  className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-amber-100 to-amber-200 dark:from-amber-900/30 dark:to-amber-900/50 text-amber-700 dark:text-amber-400 border border-dashed border-amber-400"
+                                  title={`Уволен: ${operator.termination_date ? format(new Date(operator.termination_date), "dd.MM.yyyy") : ''}${operator.termination_reason ? `\nПричина: ${operator.termination_reason}` : ''}`}
                                 >
-                                  <UserMinus className="h-3 w-3 opacity-60" />
+                                  <DoorOpen className="h-3.5 w-3.5" />
+                                  <span className="text-[8px] mt-0.5 opacity-75">Увол.</span>
                                 </div>
                               );
                             }

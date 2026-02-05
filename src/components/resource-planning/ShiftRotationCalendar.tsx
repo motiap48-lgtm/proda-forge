@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { User } from "lucide-react";
 import { format, addDays, getDaysInMonth, getDay, isToday, getMonth, getYear } from "date-fns";
+import { endOfMonth, isBefore, isAfter, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useUpdateOperator, useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useAllOperatorAbsences, isDateInAbsence } from "@/hooks/useOperatorAbsences";
@@ -99,25 +100,30 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
 
   const updateOperator = useUpdateOperator();
 
-  // Only show operators with schedules
-  const operatorsWithSchedules = operators.filter(op => 
-    op.is_active && op.work_schedules?.work_schedule_shifts?.length > 0
-  );
+  // First pass: filter active operators and all terminated with schedules  
+  const operatorsWithSchedulesBase = useMemo(() => {
+    return operators.filter(op => {
+      // Must have schedule with shifts
+      if (!op.work_schedules?.work_schedule_shifts?.length) return false;
+      // Include active and terminated operators (we'll filter terminated by date later)
+      return op.is_active || !!op.termination_date;
+    });
+  }, [operators]);
 
   // Get unique schedule names for filter
   const uniqueSchedules = useMemo(() => {
     const schedules = new Set<string>();
-    operatorsWithSchedules.forEach(op => {
+    operatorsWithSchedulesBase.forEach(op => {
       if (op.work_schedules?.name) {
         schedules.add(op.work_schedules.name);
       }
     });
     return Array.from(schedules).sort();
-  }, [operatorsWithSchedules]);
+  }, [operatorsWithSchedulesBase]);
 
   // Filter operators by selected schedule, cyclic filter, rotation filter, absence status, and absence type
   const filteredOperators = useMemo(() => {
-    let result = operatorsWithSchedules;
+    let result = operatorsWithSchedulesBase;
     if (scheduleFilter !== "all") {
       result = result.filter(op => op.work_schedules?.name === scheduleFilter);
     }
@@ -168,7 +174,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     }
     
     return result;
-  }, [operatorsWithSchedules, scheduleFilter, showOnlyCyclic, rotationFilter, absenceStatusFilter, absenceTypeFilter, absences]);
+  }, [operatorsWithSchedulesBase, scheduleFilter, showOnlyCyclic, rotationFilter, absenceStatusFilter, absenceTypeFilter, absences, scheduleOverrides]);
 
   const {
     daysCount,
@@ -293,7 +299,24 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const groupedBySchedule = useMemo(() => {
     const groups = new Map<string, any[]>();
     
-    filteredOperators.forEach(op => {
+    // Filter terminated operators by period - show only if period overlaps with their employment
+    const operatorsToShow = filteredOperators.filter(op => {
+      // Active operators always shown
+      if (op.is_active) return true;
+      
+      // Terminated operators: show only if period starts before end of termination month
+      if (op.termination_date && days.length > 0) {
+        const terminationDate = parseISO(op.termination_date);
+        const terminationMonthEnd = endOfMonth(terminationDate);
+        const periodStart = days[0];
+        
+        return !isAfter(periodStart, terminationMonthEnd);
+      }
+      
+      return false;
+    });
+    
+    operatorsToShow.forEach(op => {
       const scheduleName = op.work_schedules?.name || "Без графика";
       if (!groups.has(scheduleName)) {
         groups.set(scheduleName, []);
@@ -302,7 +325,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     });
     
     return groups;
-  }, [filteredOperators]);
+  }, [filteredOperators, days]);
 
   // Track expand/collapse state
   const allGroupNames = Array.from(groupedBySchedule.keys());
@@ -554,7 +577,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     };
   }, [isFullscreen]);
 
-  if (operatorsWithSchedules.length === 0) {
+  if (operatorsWithSchedulesBase.length === 0) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
