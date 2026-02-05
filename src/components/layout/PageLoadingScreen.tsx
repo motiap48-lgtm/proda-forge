@@ -1,4 +1,5 @@
 import { useNavigationLoading } from "@/contexts/NavigationLoadingContext";
+import { Z_INDEX_CLASSES } from "@/lib/z-index";
 
 export const PageLoadingScreen = () => {
   const { isLoading } = useNavigationLoading();
@@ -7,7 +8,7 @@ export const PageLoadingScreen = () => {
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-sm transition-all duration-300 ${
+      className={`fixed inset-0 ${Z_INDEX_CLASSES.loadingScreen} flex items-center justify-center bg-background/95 backdrop-blur-sm transition-all duration-300 ${
         isLoading ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
     >

@@ -20,6 +20,9 @@ export const Z_INDEX = {
   scrollFade: 70,
   headerFade: 90,
   
+  // Loading screens (above regular content but below modals)
+  loadingScreen: 100,
+  
   // HoverCards (close when modals open, so lower z-index is fine)
   hoverCard: 50,
   
@@ -43,6 +46,7 @@ export const Z_INDEX = {
 // Tailwind class equivalents for use in className
 export const Z_INDEX_CLASSES = {
   hoverCard: "z-50",
+  loadingScreen: "z-[100]",
   modalOverlay: "z-[9998]",
   modalContent: "z-[9999]",
   popover: "z-[10000]",

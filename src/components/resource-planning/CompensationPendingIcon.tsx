@@ -5,6 +5,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useOperatorCompensationBalance } from "@/hooks/useAbsenceCompensations";
+import { Z_INDEX_CLASSES } from "@/lib/z-index";
+import { cn } from "@/lib/utils";
 
 interface CompensationPendingIconProps {
   operatorId: string;
@@ -51,7 +53,7 @@ export const CompensationPendingIcon: React.FC<CompensationPendingIconProps> = (
       </PopoverTrigger>
       <PopoverContent 
         side="top" 
-        className="w-auto p-2 z-[100000]"
+        className={cn("w-auto p-2", Z_INDEX_CLASSES.popover)}
         onMouseEnter={() => setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}
       >

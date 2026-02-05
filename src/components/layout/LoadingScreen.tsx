@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Z_INDEX_CLASSES } from "@/lib/z-index";
 
 export const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
   const [fadeOut, setFadeOut] = useState(false);
@@ -14,7 +15,7 @@ export const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-background transition-opacity duration-500 ${
+      className={`fixed inset-0 ${Z_INDEX_CLASSES.loadingScreen} flex items-center justify-center bg-background transition-opacity duration-500 ${
         fadeOut ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
     >
