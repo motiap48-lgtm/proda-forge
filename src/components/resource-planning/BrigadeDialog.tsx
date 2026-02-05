@@ -126,18 +126,19 @@ export const BrigadeDialog = ({
     removeMember.mutate(memberId);
   };
 
-  const handleSetLeader = (memberId: string) => {
+  const handleSetLeader = async (memberId: string) => {
     if (!brigade) return;
     
     // Find and demote current leader to member
     const currentLeader = brigade?.brigade_members?.find((m: any) => m.role === "leader" && m.is_active);
     if (currentLeader) {
-      updateMemberRole.mutate({ memberId: currentLeader.id, role: "member" }, {
-        onSuccess: () => {
-          // Promote the selected member to leader
-          updateMemberRole.mutate({ memberId, role: "leader" });
-        },
-      });
+      // First demote the current leader, then promote the new one
+      try {
+        await updateMemberRole.mutateAsync({ memberId: currentLeader.id, role: "member" });
+        await updateMemberRole.mutateAsync({ memberId, role: "leader" });
+      } catch (error) {
+        // Error is already handled by the mutation's onError
+      }
     } else {
       // No current leader, just promote the selected member
       updateMemberRole.mutate({ memberId, role: "leader" });
