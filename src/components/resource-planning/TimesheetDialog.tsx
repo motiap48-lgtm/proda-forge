@@ -35,6 +35,7 @@ import { type OperatorAbsence, isAbsenceReducingPlan } from "@/hooks/useOperator
 import { useOvertimeEntries, createOvertimeMap } from "@/hooks/useOvertimeEntries";
 import { getTimesheetSettings } from "@/hooks/useTimesheetSettings";
 import { useOperatorCompensationBalance } from "@/hooks/useAbsenceCompensations";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Extended compensation record with absence_date from parent
 interface ExtendedCompensationRecord {
@@ -413,6 +414,18 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
           </div>
           
           <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
+            {isLoading ? (
+              <div className="space-y-2 py-2">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Skeleton className="h-6 w-20" />
+                    <Skeleton className="h-6 w-12" />
+                    <Skeleton className="h-8 w-14" />
+                    <Skeleton className="h-6 w-10" />
+                  </div>
+                ))}
+              </div>
+            ) : (
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-background border-b z-10 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.1)] before:absolute before:content-[''] before:h-1 before:-top-1 before:left-0 before:right-0 before:bg-background">
                 <tr>
@@ -749,6 +762,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               })}
               </tbody>
             </table>
+            )}
           </div>
           
           <div className="flex items-center justify-between pt-4 border-t">
