@@ -200,12 +200,13 @@ export const useCalendarCalculations = ({
     }
     
    // Check for calendar exception that makes a non-working day into a working day
-   // This handles "extra_working_day" and "shortened_day" with is_working_day=true
+   // This handles ONLY "extra_working_day" - shortened days on weekends should be ignored for 5/2 schedules
    const isCyclic = isCyclicSchedule(operator);
    if (!isCyclic) {
      const exception = getExceptionForDate(date);
-     if (exception && exception.is_working_day) {
-       // This is either a shortened_day or extra_working_day
+     if (exception && exception.is_working_day && exception.exception_type === 'extra_working_day') {
+       // Only extra_working_day should turn a weekend into a working day
+       // Shortened days on weekends should be ignored for 5/2 schedules
        // Check if normally this would be a non-working day
        const normallyWorkingDay = isWorkingDay(operator.work_schedules, date, operator);
        if (!normallyWorkingDay) {
