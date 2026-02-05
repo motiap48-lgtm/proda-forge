@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import { PageLoadingScreen } from "@/components/layout/PageLoadingScreen";
 import { UpdatesNotificationDialog } from "@/components/features/UpdatesNotificationDialog";
+import { FullscreenPortal } from "@/components/layout/FullscreenPortal";
 import Index from "./pages/Index";
 import ProductionOrders from "./pages/ProductionOrders";
 import NewProductionOrder from "./pages/NewProductionOrder";
@@ -77,8 +78,10 @@ const App = () => {
       <QueryClientProvider client={queryClient}>
         <HoverCardProvider>
           <TooltipProvider>
-            <Toaster />
-            <Sonner />
+            <FullscreenPortal>
+              <Toaster />
+              <Sonner />
+            </FullscreenPortal>
             <BrowserRouter>
               <AuthProvider>
                 <AppRoutes />
