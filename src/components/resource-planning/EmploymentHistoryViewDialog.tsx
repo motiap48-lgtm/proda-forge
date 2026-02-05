@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Briefcase, UserCheck, UserX, Calendar, FileText, Pencil, Trash2, Clock, Timer, TrendingUp } from "lucide-react";
+import { Briefcase, UserCheck, UserX, Calendar, FileText, Pencil, Trash2, Clock, Timer, TrendingUp, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,7 +42,7 @@ import { calculateEmploymentSummary, formatDuration, formatShortDuration } from 
 interface EmploymentHistoryViewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  operator: { id: string; full_name: string; code: string } | null;
+  operator: { id: string; full_name: string; code: string; hire_date?: string | null } | null;
 }
 
 const getEventIcon = (eventType: string) => {
@@ -225,9 +225,17 @@ export const EmploymentHistoryViewDialog = ({
                 Загрузка...
               </div>
             ) : !history || history.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>История занятости пуста</p>
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 mx-auto mb-2 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4">История занятости пуста</p>
+                {!operator?.hire_date && (
+                  <div className="inline-flex items-center gap-2 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-sm text-amber-700 dark:text-amber-300">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <span>
+                      Укажите дату приёма в карточке сотрудника для учёта стажа
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               <>

@@ -235,6 +235,7 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
         id: operator.id,
         full_name: operator.full_name,
         code: operator.code,
+        hire_date: operator.hire_date,
       } : null}
     />
     </div>
