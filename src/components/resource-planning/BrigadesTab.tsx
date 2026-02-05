@@ -3,11 +3,11 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
-import { Plus, UsersRound, Edit, Trash2, Wand2, Factory, Calendar, User, Crown } from "lucide-react";
+import { Plus, UsersRound, Edit, Trash2, Wand2, Factory, Calendar, User, Crown, History } from "lucide-react";
 import { useBrigades, useDeleteBrigade } from "@/hooks/useResourcePlanning";
 import { BrigadeDialog } from "./BrigadeDialog";
+import { BrigadeMemberHistoryDialog } from "./BrigadeMemberHistoryDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +28,8 @@ export const BrigadesTab = () => {
   const [editingBrigadeId, setEditingBrigadeId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [brigadeToDelete, setBrigadeToDelete] = useState<any>(null);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [historyBrigade, setHistoryBrigade] = useState<{ id: string; name: string } | null>(null);
 
   // Get the actual brigade data from the query cache (reactive to updates)
   const editingBrigade = useMemo(() => {
@@ -87,6 +89,11 @@ export const BrigadesTab = () => {
     setEditingBrigadeId(null);
   };
 
+  const handleShowHistory = (brigade: any) => {
+    setHistoryBrigade({ id: brigade.id, name: brigade.name });
+    setHistoryDialogOpen(true);
+  };
+
   if (isLoading) {
     return <div className="text-center py-8 text-muted-foreground">Загрузка...</div>;
   }
@@ -136,6 +143,9 @@ export const BrigadesTab = () => {
                       <CardTitle className="text-lg">{brigade.name}</CardTitle>
                     </div>
                     <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleShowHistory(brigade)} title="История изменений">
+                        <History className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(brigade)}>
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -228,6 +238,13 @@ export const BrigadesTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BrigadeMemberHistoryDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        brigadeId={historyBrigade?.id || null}
+        brigadeName={historyBrigade?.name || ""}
+      />
     </div>
   );
 };
