@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+ import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +73,22 @@ export const OperatorsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [shiftFilter, setShiftFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"cards" | "grouped" | "calendar">("cards");
+   const [searchParams, setSearchParams] = useSearchParams();
+   const viewFromUrl = searchParams.get("view") as "cards" | "grouped" | "calendar" | null;
+   const [viewMode, setViewModeState] = useState<"cards" | "grouped" | "calendar">(viewFromUrl || "cards");
+   
+   const setViewMode = (value: "cards" | "grouped" | "calendar") => {
+     setViewModeState(value);
+     setSearchParams((prev) => {
+       const newParams = new URLSearchParams(prev);
+       if (value === "cards") {
+         newParams.delete("view");
+       } else {
+         newParams.set("view", value);
+       }
+       return newParams;
+     }, { replace: true });
+   };
   const [dialogOpen, setDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [editingOperator, setEditingOperator] = useState<any>(null);

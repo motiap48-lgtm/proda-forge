@@ -1,4 +1,5 @@
 import { useState } from "react";
+ import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
@@ -63,6 +64,9 @@ const Products = () => {
   const { data: categories } = useMaterialCategories();
   const deleteMutation = useDeleteProduct();
   const bulkDeleteMutation = useBulkDeleteProducts();
+ 
+   // Persist active tab in URL
+   const [activeTab, setActiveTab] = useTabPersistence("all", "type");
 
   // Возвращаем только активную спецификацию, которая не помечена как "нет спецификации"
   const getProductSpecification = (productId: string) => {
@@ -349,7 +353,7 @@ const Products = () => {
           </Collapsible>
         </div>
 
-        <Tabs defaultValue="all" className="space-y-4">
+         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="flex flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="all" className="text-xs sm:text-sm">Все ({filteredProducts?.length || 0})</TabsTrigger>
             <TabsTrigger value="materials" className="text-xs sm:text-sm">Материалы ({materials.length})</TabsTrigger>

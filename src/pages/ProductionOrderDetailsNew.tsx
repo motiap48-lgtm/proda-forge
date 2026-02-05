@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
+ import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,7 @@ const ProductionOrderDetailsNew = () => {
   const [pauseReason, setPauseReason] = useState("");
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
+   const [activeTab, setActiveTab] = useTabPersistence("operations");
   
   const { data: order, isLoading } = useProductionOrder(id || "");
   const { data: operations } = useProductionOrderOperations(order?.id || "");
@@ -350,7 +352,7 @@ const ProductionOrderDetailsNew = () => {
           <OrderHierarchyCard orderId={order.id} />
         </div>
 
-        <Tabs defaultValue="operations" className="space-y-6">
+         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="operations">Операции</TabsTrigger>
             <TabsTrigger value="info">Общая информация</TabsTrigger>

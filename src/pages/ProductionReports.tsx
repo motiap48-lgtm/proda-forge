@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from "react";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+ import { useSearchParams } from "react-router-dom";
+ import { useTabPersistence } from "@/hooks/useTabPersistence";
+ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Header } from "@/components/layout/Header";
 import { Navigation } from "@/components/layout/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -105,6 +107,7 @@ const getProductTypeBadge = (type: string) => {
 };
 
 const ProductionReportsContent = () => {
+   const [activeTab, setActiveTab] = useTabPersistence("plan-fact");
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [expandedWorkCenters, setExpandedWorkCenters] = useState<Set<string>>(new Set());
@@ -701,7 +704,7 @@ const ProductionReportsContent = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="plan-fact" className="space-y-4 sm:space-y-6">
+         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
           <TabsList className="flex flex-wrap h-auto gap-1 p-1 lg:w-auto">
             <TabsTrigger value="plan-fact" className="gap-2">
               <BarChart3 className="h-4 w-4" />
