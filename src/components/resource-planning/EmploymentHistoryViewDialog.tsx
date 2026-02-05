@@ -147,6 +147,8 @@ export const EmploymentHistoryViewDialog = ({
     // No reinstatement found - still terminated (counter continues)
     return null;
   };
+
+  const handleEditRecord = (record: EmploymentHistoryRecord) => {
     setRecordToEdit(record);
     setEditDialogOpen(true);
   };
