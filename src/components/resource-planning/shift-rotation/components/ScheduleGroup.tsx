@@ -330,6 +330,10 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
       // Skip future days
       if (isAfter(startOfDay(day), today)) return false;
       
+      // Skip days with any absence (vacation, sick leave, etc.) - those are NOT unfilled
+      const absence = isDateInAbsence(day, absences, operatorId);
+      if (absence) return false;
+      
       // Get planned minutes for this day
       const plannedMinutes = getPlannedDayMinutes?.(operators.find(op => op.id === operatorId), day) || 0;
       
@@ -343,7 +347,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
       // If there's plan but no fact, it's unfilled
       return !hasTimesheetEntry;
     });
-  }, [days, timesheetMap, getPlannedDayMinutes, operators]);
+  }, [days, timesheetMap, getPlannedDayMinutes, operators, absences]);
 
   // Calculate group fact total (all operators' actual + overtime + compensation)
   const groupFactTotal = useMemo(() => {

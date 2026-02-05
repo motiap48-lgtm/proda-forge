@@ -316,6 +316,10 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       // Skip future days
       if (isAfter(startOfDay(day), today)) return;
       
+      // Skip days with any absence (vacation, sick leave, etc.) - those are NOT unfilled
+      const absence = isDateInAbsence(day, absences, operatorId);
+      if (absence) return;
+      
       // Get planned minutes for this day
       const plannedMinutes = getPlannedDayMinutes?.(operator, day) || 0;
       
@@ -338,7 +342,7 @@ export const OperatorTotalTooltip: React.FC<OperatorTotalTooltipProps> = ({
       hours: Math.floor(unfilledMinutes / 60),
       minutes: unfilledMinutes % 60,
     };
-  }, [days, operatorId, timesheetMap, getPlannedDayMinutes, operator]);
+  }, [days, operatorId, timesheetMap, getPlannedDayMinutes, operator, absences]);
   
   // Plan from parent = plan with absences deducted (annual_leave, maternity_leave, unpaid_leave, etc.)
   // This is the ACTUAL expected work hours after accounting for plan-reducing absences
