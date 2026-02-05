@@ -343,13 +343,13 @@
      <head>
        <title>График ротации смен ${startDateStr} - ${endDateStr}</title>
        <style>
-         body { font-family: Arial, sans-serif; padding: 20px; }
-         h1 { font-size: 18px; margin-bottom: 10px; }
-         h2 { font-size: 14px; color: #666; margin-bottom: 20px; }
-         table { width: 100%; border-collapse: collapse; font-size: 10px; }
-         th, td { border: 1px solid #ddd; padding: 4px; text-align: center; }
-         th { background: #f5f5f5; font-weight: 600; }
-         td:first-child { text-align: left; font-weight: 500; }
+        body { font-family: Arial, sans-serif; padding: 10px; font-size: 7px; }
+        h1 { font-size: 14px; margin-bottom: 6px; }
+        h2 { font-size: 10px; color: #666; margin-bottom: 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 7px; }
+        th, td { border: 1px solid #ddd; padding: 2px 3px; text-align: center; white-space: nowrap; }
+        th { background: #f5f5f5; font-weight: 600; font-size: 7px; }
+        td:first-child { text-align: left; font-weight: 500; white-space: normal; max-width: 120px; }
          .group-header { background: #eee; font-weight: 600; text-align: left; }
          .day-off { color: #999; }
          .shift-1 { background: #dbeafe; }
@@ -358,14 +358,14 @@
          .shift-4 { background: #ede9fe; }
          .today { background: #fef08a !important; font-weight: bold; }
          .weekend { background: #fee2e2; }
-         .cycle-day { font-size: 8px; color: #888; }
+        .cycle-day { font-size: 6px; color: #888; }
          .group-stats { background: #f8fafc; font-style: italic; }
-         .plan { color: #1d4ed8; }
-         .fact { color: #16a34a; }
+        .plan { color: #1d4ed8; font-size: 7px; }
+        .fact { color: #16a34a; font-size: 7px; }
          .fact-zero { color: #9ca3af; }
-         .total-cell { font-weight: 600; }
-         .total-plan { color: #1d4ed8; }
-         .total-fact { color: #16a34a; }
+        .total-cell { font-weight: 600; white-space: nowrap; }
+        .total-plan { color: #1d4ed8; font-size: 7px; }
+        .total-fact { color: #16a34a; font-size: 7px; }
          @media print { @page { size: landscape; margin: 10mm; } }
        </style>
      </head>
