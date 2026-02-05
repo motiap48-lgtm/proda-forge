@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { addDays, getDaysInMonth, differenceInDays, startOfMonth, format } from "date-fns";
-import { getShiftForDate, getShiftColor, type PeriodType, type ShiftColors } from "../utils";
+import { getShiftForDate, getShiftColor, isWorkingDay, type PeriodType, type ShiftColors } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence, isAbsenceReducingPlan } from "@/hooks/useOperatorAbsences";
 import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -172,6 +172,12 @@ export const useCalendarCalculations = ({
     );
   };
 
+  // Helper to check if schedule is cyclic (2/2, 3/3, etc.) - holidays don't apply to cyclic schedules
+  const isCyclicSchedule = (operator: any): boolean => {
+    const schedule = operator.work_schedules;
+    return schedule?.schedule_type === 'cyclic';
+  };
+
   // Get shift for date considering overrides
   const getShiftForDateWithOverride = (operator: any, date: Date) => {
     const override = getOverrideForDate(operator.id, date);
@@ -193,14 +199,33 @@ export const useCalendarCalculations = ({
       return getShiftForDate(operator, date) || shifts[0];
     }
     
+   // Check for calendar exception that makes a non-working day into a working day
+   // This handles "extra_working_day" and "shortened_day" with is_working_day=true
+   const isCyclic = isCyclicSchedule(operator);
+   if (!isCyclic) {
+     const exception = getExceptionForDate(date);
+     if (exception && exception.is_working_day) {
+       // This is either a shortened_day or extra_working_day
+       // Check if normally this would be a non-working day
+       const normallyWorkingDay = isWorkingDay(operator.work_schedules, date, operator);
+       if (!normallyWorkingDay) {
+         // This is a transferred working day (e.g., Saturday before a holiday)
+         // Return the first shift as default for this extra working day
+         const schedule = operator.work_schedules;
+         const shifts = schedule?.work_schedule_shifts;
+         if (shifts && shifts.length > 0) {
+           // Use assigned shift or first available
+           if (operator.assigned_shift_number) {
+             return shifts.find((s: any) => s.shift_number === operator.assigned_shift_number) || shifts[0];
+           }
+           return shifts[0];
+         }
+       }
+     }
+   }
+   
     // No override, use normal logic
     return getShiftForDate(operator, date);
-  };
-
-  // Helper to check if schedule is cyclic (2/2, 3/3, etc.) - holidays don't apply to cyclic schedules
-  const isCyclicSchedule = (operator: any): boolean => {
-    const schedule = operator.work_schedules;
-    return schedule?.schedule_type === 'cyclic';
   };
 
   // Calculate working minutes for a specific day, considering calendar exceptions
