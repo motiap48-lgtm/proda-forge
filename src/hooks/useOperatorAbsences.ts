@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, differenceInCalendarDays, addDays } from "date-fns";
+import { format, differenceInCalendarDays, addDays, parseISO, startOfDay } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -544,13 +544,15 @@ export const isDateInAbsence = (
 // Helper to check if operator is terminated
 export const isOperatorTerminated = (operator: any, date: Date): boolean => {
   if (!operator.termination_date) return false;
-  const terminationDate = new Date(operator.termination_date);
-  return date > terminationDate;
+  // Use date-only comparison to avoid timezone edge cases (YYYY-MM-DD parsed as UTC by Date())
+  const terminationDate = startOfDay(parseISO(operator.termination_date));
+  return startOfDay(date) > terminationDate;
 };
 
 // Helper to check if date is before hire date
 export const isBeforeHireDate = (operator: any, date: Date): boolean => {
   if (!operator.hire_date) return false;
-  const hireDate = new Date(operator.hire_date);
-  return date < hireDate;
+  // Use date-only comparison to avoid timezone edge cases
+  const hireDate = startOfDay(parseISO(operator.hire_date));
+  return startOfDay(date) < hireDate;
 };
