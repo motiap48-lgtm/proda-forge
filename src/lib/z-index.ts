@@ -35,6 +35,9 @@ export const Z_INDEX = {
   dropdown: 10000,
   contextMenu: 10000,
   select: 10000,
+  
+  // Toast notifications (must be above everything including fullscreen)
+  toast: 10001,
 } as const;
 
 // Tailwind class equivalents for use in className
@@ -47,4 +50,5 @@ export const Z_INDEX_CLASSES = {
   dropdown: "z-[10000]",
   contextMenu: "z-[10000]",
   select: "z-[10000]",
+  toast: "z-[10001]",
 } as const;
