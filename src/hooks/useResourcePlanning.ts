@@ -537,8 +537,10 @@ export const useAddBrigadeMember = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["brigades"] });
+      // Refetch history for real-time update
+      queryClient.refetchQueries({ queryKey: ["brigade-member-history", data.brigade_id] });
       toast.success("Участник добавлен в бригаду");
     },
     onError: (error: any) => {
@@ -552,15 +554,27 @@ export const useRemoveBrigadeMember = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Get brigade_id before deleting for history refresh
+      const { data: member } = await supabase
+        .from("brigade_members")
+        .select("brigade_id")
+        .eq("id", id)
+        .single();
+      
       const { error } = await supabase
         .from("brigade_members")
         .delete()
         .eq("id", id);
 
       if (error) throw error;
+      return member?.brigade_id;
     },
-    onSuccess: () => {
+    onSuccess: (brigadeId) => {
       queryClient.invalidateQueries({ queryKey: ["brigades"] });
+      // Refetch history for real-time update
+      if (brigadeId) {
+        queryClient.refetchQueries({ queryKey: ["brigade-member-history", brigadeId] });
+      }
       toast.success("Участник удалён из бригады");
     },
     onError: (error: any) => {
@@ -584,8 +598,10 @@ export const useUpdateBrigadeMemberRole = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["brigades"] });
+      // Refetch history for real-time update
+      queryClient.refetchQueries({ queryKey: ["brigade-member-history", data.brigade_id] });
       if (variables.role === "leader") {
         toast.success("Участник назначен бригадиром");
       } else {
