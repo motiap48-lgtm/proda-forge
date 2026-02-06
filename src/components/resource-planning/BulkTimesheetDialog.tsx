@@ -132,7 +132,7 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2 flex-1 min-h-0 overflow-hidden">
+        <div className="space-y-4 py-2 flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Date and group info */}
           <div className="p-3 rounded-lg bg-muted/50 space-y-1">
             <div className="flex items-center gap-2">
@@ -182,7 +182,7 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
           </div>
 
           {/* Operators list */}
-          <div className="space-y-2 flex-1 min-h-0">
+          <div className="flex-1 min-h-0 flex flex-col space-y-2">
             <div className="flex items-center justify-between">
               <Label>Сотрудники ({selectedIds.size} выбрано)</Label>
               <Button variant="ghost" size="sm" onClick={toggleSelectAll}>
@@ -190,8 +190,8 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
               </Button>
             </div>
 
-            <ScrollArea className="flex-1 min-h-0 w-full max-w-full border rounded-lg overflow-x-hidden">
-              <div className="p-2 space-y-1 w-full max-w-full overflow-x-hidden pr-3">
+            <ScrollArea className="flex-1 min-h-[200px] max-h-[40vh] w-full border rounded-lg">
+              <div className="p-2 space-y-1">
                 {operators.map((op) => {
                   const isSelected = selectedIds.has(op.id);
                   const hasExisting = op.currentActualMinutes > 0;
@@ -200,14 +200,14 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
                     <div
                       key={op.id}
                       className={cn(
-                        "flex w-full max-w-full items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors overflow-hidden box-border",
+                        "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors",
                         isSelected ? "bg-primary/10" : "hover:bg-muted/50",
                         hasExisting && "opacity-75"
                       )}
                       onClick={() => toggleSelect(op.id)}
                     >
                       <Checkbox checked={isSelected} className="shrink-0" />
-                      <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-center gap-2">
                           <span className="font-medium truncate flex-1 min-w-0">{op.full_name}</span>
                           <Badge variant="outline" className="text-xs shrink-0 ml-auto">
