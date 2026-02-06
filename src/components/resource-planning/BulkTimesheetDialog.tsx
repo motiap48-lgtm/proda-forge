@@ -200,21 +200,21 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
                     <div
                       key={op.id}
                       className={cn(
-                        "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors",
+                        "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors overflow-hidden",
                         isSelected ? "bg-primary/10" : "hover:bg-muted/50",
                         hasExisting && "opacity-75"
                       )}
                       onClick={() => toggleSelect(op.id)}
                     >
-                      <Checkbox checked={isSelected} />
-                      <div className="flex-1 min-w-0">
+                      <Checkbox checked={isSelected} className="shrink-0" />
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{op.full_name}</span>
-                          <Badge variant="outline" className="text-xs shrink-0">
+                          <span className="font-medium truncate flex-1 min-w-0">{op.full_name}</span>
+                          <Badge variant="outline" className="text-xs shrink-0 ml-auto">
                             {op.code}
                           </Badge>
                         </div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                           <span>План: {formatMinutes(op.plannedMinutes)}</span>
                           {hasExisting && (
                             <span className="flex items-center gap-1 text-amber-600">
