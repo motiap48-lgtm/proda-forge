@@ -96,21 +96,21 @@ export const BrigadeMemberHistoryDialog = ({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl h-[85vh] max-h-[85vh] flex flex-col overflow-hidden">
-          <DialogHeader className="shrink-0">
-            <div className="flex items-center justify-between">
-              <DialogTitle>История изменений: {brigadeName}</DialogTitle>
-              {history && history.length > 0 && (
+          <DialogHeader className="shrink-0 pr-8">
+            <DialogTitle>История изменений: {brigadeName}</DialogTitle>
+            {history && history.length > 0 && (
+              <div className="flex items-center pt-2">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="text-destructive hover:text-destructive"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
                   onClick={() => setConfirmClearOpen(true)}
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
-                  Очистить
+                  Очистить историю
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </DialogHeader>
           
           <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
