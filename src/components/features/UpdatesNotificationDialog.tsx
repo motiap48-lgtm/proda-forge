@@ -71,7 +71,7 @@ export const UpdatesNotificationDialog = () => {
               <div key={entry.id} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="font-mono">
-                    v{entry.version}
+                    {entry.version.startsWith('v') ? entry.version : `v${entry.version}`}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
                     {formatDate(entry.date)}

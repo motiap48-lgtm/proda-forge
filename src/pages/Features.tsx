@@ -828,7 +828,7 @@ const Features = () => {
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 flex-wrap">
                               <Badge variant="outline" className="font-mono text-xs">
-                                v{entry.version}
+                                {entry.version.startsWith('v') ? entry.version : `v${entry.version}`}
                               </Badge>
                               <span className="text-sm text-muted-foreground">
                                 {new Date(entry.date).toLocaleDateString('ru-RU', {
