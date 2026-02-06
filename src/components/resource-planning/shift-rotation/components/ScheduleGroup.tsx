@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck, Hammer, Check, TrendingDown, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, RefreshCcw, Pencil, Clock, CalendarCheck, CalendarX, Users, Plane, Stethoscope, Briefcase, UserMinus, GripVertical, Ban, FileText, ArrowRightLeft, Timer, ClipboardCheck, Hammer, Check, TrendingDown, AlertCircle, ClipboardList } from "lucide-react";
 import { DoorOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -22,6 +22,7 @@ import { ScheduleOverrideDialog } from "@/components/resource-planning/ScheduleO
 import { BulkScheduleOverrideDialog } from "@/components/resource-planning/BulkScheduleOverrideDialog";
 import { CompensationDialog } from "@/components/resource-planning/CompensationDialog";
 import { TimesheetDialog } from "@/components/resource-planning/TimesheetDialog";
+import { BulkTimesheetDialog } from "@/components/resource-planning/BulkTimesheetDialog";
 import { OvertimeMedalBadge } from "@/components/resource-planning/OvertimeMedalBadge";
 import { useAbsenceDragDrop } from "../hooks/useAbsenceDragDrop";
 import { toast } from "sonner";
@@ -186,6 +187,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   
   // State for timesheet dialog
   const [timesheetOperator, setTimesheetOperator] = useState<{ id: string; name: string } | null>(null);
+  
+  // State for bulk timesheet dialog
+  const [bulkTimesheetDate, setBulkTimesheetDate] = useState<Date | null>(null);
   
   // Create timesheet map for fast lookup
   const timesheetMap = useMemo(() => createTimesheetMap(timesheets), [timesheets]);
@@ -578,6 +582,29 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+          )}
+          
+          {/* Bulk fill today button */}
+          {period !== "year" && days.some(d => isToday(d)) && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs gap-1.5"
+                  onClick={() => {
+                    const todayDate = days.find(d => isToday(d));
+                    if (todayDate) setBulkTimesheetDate(todayDate);
+                  }}
+                >
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  Групп. табель
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Заполнить табель для всей группы за сегодня</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -1887,6 +1914,23 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Bulk Timesheet Dialog */}
+      {bulkTimesheetDate && (
+        <BulkTimesheetDialog
+          open={!!bulkTimesheetDate}
+          onOpenChange={(open) => !open && setBulkTimesheetDate(null)}
+          date={bulkTimesheetDate}
+          operators={operators.map(op => ({
+            id: op.id,
+            full_name: op.full_name,
+            code: op.code,
+            plannedMinutes: getPlannedDayMinutes?.(op, bulkTimesheetDate) || 0,
+            currentActualMinutes: getTimesheetForDate(timesheetMap, op.id, bulkTimesheetDate)?.actual_minutes || 0,
+          }))}
+          groupName={scheduleName}
+        />
+      )}
     </div>
   );
 };
