@@ -128,7 +128,8 @@ export const BrigadesTab = () => {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredBrigades.map((brigade: any) => {
-            const activeMembers = brigade.brigade_members?.filter((m: any) => m.is_active) || [];
+            const activeMembers = (brigade.brigade_members?.filter((m: any) => m.is_active) || [])
+              .sort((a: any, b: any) => (a.role === 'leader' ? -1 : b.role === 'leader' ? 1 : 0));
             const leader = activeMembers.find((m: any) => m.role === "leader");
             
             return (
