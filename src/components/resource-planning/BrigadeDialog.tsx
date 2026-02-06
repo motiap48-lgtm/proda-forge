@@ -177,7 +177,8 @@ export const BrigadeDialog = ({
     setMemberToDemote(null);
   };
 
-  const activeMembers = brigade?.brigade_members?.filter((m: any) => m.is_active) || [];
+  const activeMembers = (brigade?.brigade_members?.filter((m: any) => m.is_active) || [])
+    .sort((a: any, b: any) => (a.role === 'leader' ? -1 : b.role === 'leader' ? 1 : 0));
   const memberOperatorIds = activeMembers.map((m: any) => m.operator_id);
   const availableOperators = operators?.filter((op: any) => !memberOperatorIds.includes(op.id)) || [];
   
