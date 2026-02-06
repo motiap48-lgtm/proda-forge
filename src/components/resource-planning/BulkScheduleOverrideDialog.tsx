@@ -30,12 +30,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CalendarCheck, CalendarX, Calendar, AlertTriangle } from "lucide-react";
+import { CalendarCheck, CalendarX, Calendar, AlertTriangle, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   OVERRIDE_REASON_LABELS,
   useBulkCreateScheduleOverrides,
 } from "@/hooks/useScheduleOverrides";
+import { type OperatorTimesheet } from "@/hooks/useOperatorTimesheets";
 
 interface BulkScheduleOverrideDialogProps {
   open: boolean;
@@ -44,6 +45,7 @@ interface BulkScheduleOverrideDialogProps {
   operatorName: string;
   startDate: Date;
   endDate: Date;
+  timesheetMap?: Map<string, OperatorTimesheet>;
 }
 
 export const BulkScheduleOverrideDialog: React.FC<BulkScheduleOverrideDialogProps> = ({
@@ -53,6 +55,7 @@ export const BulkScheduleOverrideDialog: React.FC<BulkScheduleOverrideDialogProp
   operatorName,
   startDate,
   endDate,
+  timesheetMap,
 }) => {
   const [isWorkingDay, setIsWorkingDay] = useState(false);
   const [reason, setReason] = useState("production_need");
@@ -62,12 +65,32 @@ export const BulkScheduleOverrideDialog: React.FC<BulkScheduleOverrideDialogProp
   const bulkCreate = useBulkCreateScheduleOverrides();
 
   // Calculate the dates in the range
-  const dates = useMemo(() => {
+  const allDates = useMemo(() => {
     if (startDate > endDate) {
       return eachDayOfInterval({ start: endDate, end: startDate });
     }
     return eachDayOfInterval({ start: startDate, end: endDate });
   }, [startDate, endDate]);
+
+  // Filter out dates with filled timesheets
+  const { validDates, skippedDates } = useMemo(() => {
+    const valid: Date[] = [];
+    const skipped: Date[] = [];
+    
+    allDates.forEach(date => {
+      const dateStr = format(date, "yyyy-MM-dd");
+      const key = `${operatorId}_${dateStr}`;
+      const ts = timesheetMap?.get(key);
+      
+      if (ts && ts.actual_minutes > 0) {
+        skipped.push(date);
+      } else {
+        valid.push(date);
+      }
+    });
+    
+    return { validDates: valid, skippedDates: skipped };
+  }, [allDates, operatorId, timesheetMap]);
 
   const handleSaveClick = () => {
     setShowConfirmation(true);
@@ -76,7 +99,8 @@ export const BulkScheduleOverrideDialog: React.FC<BulkScheduleOverrideDialogProp
   const handleConfirmedSave = () => {
     setShowConfirmation(false);
     
-    const overrides = dates.map(date => ({
+    // Only save valid dates (without filled timesheets)
+    const overrides = validDates.map(date => ({
       operator_id: operatorId,
       override_date: format(date, "yyyy-MM-dd"),
       is_working_day: isWorkingDay,
@@ -105,15 +129,46 @@ export const BulkScheduleOverrideDialog: React.FC<BulkScheduleOverrideDialogProp
             <p className="text-sm font-medium">{operatorName}</p>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Badge variant="outline" className="text-primary">
-                {format(dates[0], "d MMM", { locale: ru })}
+                {format(allDates[0], "d MMM", { locale: ru })}
               </Badge>
               <span>→</span>
               <Badge variant="outline" className="text-primary">
-                {format(dates[dates.length - 1], "d MMM", { locale: ru })}
+                {format(allDates[allDates.length - 1], "d MMM", { locale: ru })}
               </Badge>
-              <span className="text-xs">({dates.length} дн.)</span>
+              <span className="text-xs">({allDates.length} дн.)</span>
             </div>
           </div>
+
+          {/* Warning about skipped dates */}
+          {skippedDates.length > 0 && (
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-2">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <ClipboardCheck className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {skippedDates.length} {skippedDates.length === 1 ? 'день пропущен' : 'дней пропущено'}
+                </span>
+              </div>
+              <p className="text-xs text-amber-600 dark:text-amber-500">
+                На эти даты уже есть записи табеля, изменение графика невозможно:
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {skippedDates.slice(0, 7).map((date) => (
+                  <Badge 
+                    key={date.toISOString()} 
+                    variant="outline" 
+                    className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300"
+                  >
+                    {format(date, "d MMM", { locale: ru })}
+                  </Badge>
+                ))}
+                {skippedDates.length > 7 && (
+                  <Badge variant="outline" className="text-xs text-amber-600">
+                    +{skippedDates.length - 7}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Working day toggle */}
           <div className="flex items-center justify-between">
@@ -147,24 +202,28 @@ export const BulkScheduleOverrideDialog: React.FC<BulkScheduleOverrideDialogProp
             </Select>
           </div>
 
-          {/* Preview of dates */}
+          {/* Preview of valid dates */}
           <div className="space-y-2">
-            <Label>Дни для изменения</Label>
+            <Label>Дни для изменения ({validDates.length})</Label>
             <div className="flex flex-wrap gap-1 p-2 rounded-lg border max-h-24 overflow-y-auto">
-              {dates.map((date) => (
-                <Badge 
-                  key={date.toISOString()} 
-                  variant="outline" 
-                  className={cn(
-                    "text-xs",
-                    isWorkingDay 
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                      : "bg-rose-50 text-rose-700 border-rose-200"
-                  )}
-                >
-                  {format(date, "d MMM", { locale: ru })}
-                </Badge>
-              ))}
+              {validDates.length === 0 ? (
+                <span className="text-sm text-muted-foreground">Нет доступных дней для изменения</span>
+              ) : (
+                validDates.map((date) => (
+                  <Badge 
+                    key={date.toISOString()} 
+                    variant="outline" 
+                    className={cn(
+                      "text-xs",
+                      isWorkingDay 
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                        : "bg-rose-50 text-rose-700 border-rose-200"
+                    )}
+                  >
+                    {format(date, "d MMM", { locale: ru })}
+                  </Badge>
+                ))
+              )}
             </div>
           </div>
 
@@ -185,8 +244,11 @@ export const BulkScheduleOverrideDialog: React.FC<BulkScheduleOverrideDialogProp
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
-          <Button onClick={handleSaveClick} disabled={bulkCreate.isPending}>
-            {bulkCreate.isPending ? "Сохранение..." : `Применить к ${dates.length} дням`}
+          <Button 
+            onClick={handleSaveClick} 
+            disabled={bulkCreate.isPending || validDates.length === 0}
+          >
+            {bulkCreate.isPending ? "Сохранение..." : `Применить к ${validDates.length} дням`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -207,13 +269,19 @@ export const BulkScheduleOverrideDialog: React.FC<BulkScheduleOverrideDialogProp
                 <p>
                   <span className="text-muted-foreground">Период:</span>{" "}
                   <strong>
-                    {format(dates[0], "d MMMM", { locale: ru })} — {format(dates[dates.length - 1], "d MMMM yyyy", { locale: ru })}
+                    {format(validDates[0], "d MMMM", { locale: ru })} — {format(validDates[validDates.length - 1], "d MMMM yyyy", { locale: ru })}
                   </strong>
                 </p>
                 <p>
                   <span className="text-muted-foreground">Количество дней:</span>{" "}
-                  <strong>{dates.length}</strong>
+                  <strong>{validDates.length}</strong>
                 </p>
+                {skippedDates.length > 0 && (
+                  <p className="text-amber-600 dark:text-amber-400">
+                    <span className="text-muted-foreground">Пропущено (табель заполнен):</span>{" "}
+                    <strong>{skippedDates.length}</strong>
+                  </p>
+                )}
                 <p>
                   <span className="text-muted-foreground">Новый статус:</span>{" "}
                   <Badge variant="outline" className={isWorkingDay ? "text-emerald-600" : "text-rose-500"}>

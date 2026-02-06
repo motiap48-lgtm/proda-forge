@@ -1170,7 +1170,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             }
                             
                             // dateStr already defined above for shortened day check
-                            const canCreateAbsence = !terminated && !beforeHire;
+                            // Block actions on days with filled timesheet
+                            const canCreateAbsence = !terminated && !beforeHire && !hasTimesheetForDay;
+                            const canChangeSchedule = !terminated && !beforeHire && !hasTimesheetForDay;
                             const inPreview = isInDragPreview(day, operator.id);
                             const overrideInfo = override ? OVERRIDE_REASON_LABELS[override.reason || 'other'] : null;
                             
@@ -1178,6 +1180,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const handleContextMenu = (e: React.MouseEvent) => {
                               if (terminated || beforeHire) return;
                               e.preventDefault();
+                              
+                              // Block if timesheet is filled for this day
+                              if (hasTimesheetForDay) {
+                                toast.info("На эту дату уже есть записи табеля. Изменение графика невозможно.");
+                                return;
+                              }
                               
                               // If shift is held, start or complete range selection
                               if (e.shiftKey && rangeSelection && rangeSelection.operatorId === operator.id) {
@@ -1775,6 +1783,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           operatorName={bulkOverrideDialog.operatorName}
           startDate={bulkOverrideDialog.startDate}
           endDate={bulkOverrideDialog.endDate}
+          timesheetMap={timesheetMap}
         />
       )}
       
