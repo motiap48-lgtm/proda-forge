@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
-import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban, Info, EyeOff, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban, Info, EyeOff, Eye, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,8 +35,10 @@ import {
   useForceDeleteAbsenceCompensation,
   COMPENSATION_STATUS_LABELS,
   AbsenceCompensation,
+  CompensationRecord,
 } from "@/hooks/useAbsenceCompensations";
 import { BulkCompensationDialog } from "./BulkCompensationDialog";
+import { EditCompensationRecordDialog } from "./EditCompensationRecordDialog";
 import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
 
 interface CompensationDialogProps {
@@ -133,6 +136,11 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   
   const [bulkCompensationFor, setBulkCompensationFor] = useState<AbsenceCompensation | null>(null);
   const [showCancelled, setShowCancelled] = useState(false);
+  
+  // Edit compensation record state
+  const [editingRecord, setEditingRecord] = useState<CompensationRecord | null>(null);
+  const [editingForCompensation, setEditingForCompensation] = useState<string>("");
+  const [existingDatesForEdit, setExistingDatesForEdit] = useState<string[]>([]);
   
   // Period filter - default to current month
   const [selectedMonth, setSelectedMonth] = useState<Date>(() => startOfMonth(new Date()));
@@ -253,9 +261,16 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
     });
   };
 
-  const handleAddCompensation = (absenceCompensationId: string, defaultHours: number) => {
+  const handleAddCompensation = (absenceCompensationId: string, defaultHours: number, existingRecords?: CompensationRecord[]) => {
     if (!compensationDate) return;
     if (!timeValidation.isValid) return;
+    
+    // Check for duplicate date within the same absence compensation
+    const dateStr = format(compensationDate, "yyyy-MM-dd");
+    if (existingRecords?.some(r => r.compensation_date === dateStr)) {
+      toast.error("На эту дату уже назначена отработка");
+      return;
+    }
     
     const hoursToAdd = compensationHoursFromTime > 0 ? compensationHoursFromTime : defaultHours;
     if (!hoursToAdd || hoursToAdd <= 0) return;
@@ -266,7 +281,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
     addCompensation.mutate({
       absence_compensation_id: absenceCompensationId,
       operator_id: operatorId,
-      compensation_date: format(compensationDate, "yyyy-MM-dd"),
+      compensation_date: dateStr,
       hours_worked: roundHours(hoursToAdd),
       notes: fullNotes,
     }, {
@@ -276,6 +291,17 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
         setCompensationNotes("");
       },
     });
+  };
+
+  const handleEditRecord = (record: CompensationRecord, compensationId: string, allRecords: CompensationRecord[]) => {
+    // Get all existing dates except the one being edited
+    const existingDates = allRecords
+      .filter(r => r.id !== record.id)
+      .map(r => r.compensation_date);
+    
+    setEditingRecord(record);
+    setEditingForCompensation(compensationId);
+    setExistingDatesForEdit(existingDates);
   };
 
   const handleDeleteAbsence = (id: string) => {
@@ -617,6 +643,18 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                                 </div>
                                 {!isCancelled && (
                                   <div className="flex gap-1">
+                                    {/* Edit button - only for non-confirmed records */}
+                                    {!isConfirmed && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                        onClick={() => handleEditRecord(record, comp.id, comp.compensation_records || [])}
+                                        title="Редактировать"
+                                      >
+                                        <Pencil className="h-3 w-3" />
+                                      </Button>
+                                    )}
                                     {isConfirmed ? (
                                       <Button
                                         size="sm"
@@ -658,7 +696,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      className="h-6 w-6 p-0 text-muted-foreground hover:text-rose-600"
+                                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                                       onClick={() =>
                                         deleteRecord.mutate({
                                           id: record.id,
@@ -800,7 +838,7 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => handleAddCompensation(comp.id, remaining)}
+                              onClick={() => handleAddCompensation(comp.id, remaining, comp.compensation_records)}
                               disabled={addCompensation.isPending || !timeValidation.isValid}
                             >
                               Добавить
@@ -822,6 +860,22 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
           onOpenChange={(open) => !open && setBulkCompensationFor(null)}
           compensation={bulkCompensationFor}
           operatorId={operatorId}
+        />
+
+        {/* Edit compensation record dialog */}
+        <EditCompensationRecordDialog
+          open={!!editingRecord}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingRecord(null);
+              setEditingForCompensation("");
+              setExistingDatesForEdit([]);
+            }
+          }}
+          record={editingRecord}
+          absenceCompensationId={editingForCompensation}
+          operatorId={operatorId}
+          existingDates={existingDatesForEdit}
         />
       </DialogContent>
     </Dialog>
