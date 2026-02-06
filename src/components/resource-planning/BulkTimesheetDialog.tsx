@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, Clock, Check, AlertTriangle } from "lucide-react";
+import { Users, Clock, Check, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -48,13 +48,26 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
   const [fillValue, setFillValue] = useState<"plan" | "custom">("plan");
   const [customMinutes, setCustomMinutes] = useState<string>("");
 
+  // Filter only operators scheduled to work today (have planned minutes > 0)
+  const workingOperators = useMemo(() => {
+    return operators.filter((op) => op.plannedMinutes > 0);
+  }, [operators]);
+
+  // Check how many already have filled timesheets
+  const filledCount = useMemo(() => {
+    return workingOperators.filter((op) => op.currentActualMinutes > 0).length;
+  }, [workingOperators]);
+
+  const allFilled = workingOperators.length > 0 && filledCount === workingOperators.length;
+  const noWorkersToday = workingOperators.length === 0;
+
   // Reset state when dialog opens
   React.useEffect(() => {
     if (open) {
       // Pre-select operators with plan > 0 and no current data
       const toSelect = new Set<string>();
-      operators.forEach((op) => {
-        if (op.plannedMinutes > 0 && op.currentActualMinutes === 0) {
+      workingOperators.forEach((op) => {
+        if (op.currentActualMinutes === 0) {
           toSelect.add(op.id);
         }
       });
@@ -62,7 +75,7 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
       setFillValue("plan");
       setCustomMinutes("");
     }
-  }, [open, operators]);
+  }, [open, workingOperators]);
 
   const toggleSelect = (id: string) => {
     const newSelected = new Set(selectedIds);
@@ -75,16 +88,16 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === operators.length) {
+    if (selectedIds.size === workingOperators.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(operators.map((op) => op.id)));
+      setSelectedIds(new Set(workingOperators.map((op) => op.id)));
     }
   };
 
   const selectedOperators = useMemo(() => {
-    return operators.filter((op) => selectedIds.has(op.id));
-  }, [operators, selectedIds]);
+    return workingOperators.filter((op) => selectedIds.has(op.id));
+  }, [workingOperators, selectedIds]);
 
   const handleSave = async () => {
     if (selectedOperators.length === 0) {
@@ -148,53 +161,86 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
             )}
           </div>
 
-          {/* Fill value selector */}
-          <div className="space-y-2">
-            <Label>Значение для заполнения</Label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={fillValue === "plan" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFillValue("plan")}
-              >
-                <Check className="h-4 w-4 mr-1" />
-                По плану
-              </Button>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  placeholder="Минуты"
-                  className={cn(
-                    "w-24 h-9",
-                    fillValue !== "plan" && "ring-2 ring-primary"
-                  )}
-                  value={customMinutes}
-                  onChange={(e) => {
-                    setCustomMinutes(e.target.value);
-                    setFillValue("custom");
-                  }}
-                  onFocus={() => setFillValue("custom")}
-                />
-                <span className="text-sm text-muted-foreground">мин</span>
+          {/* Warning if no workers today */}
+          {noWorkersToday && (
+            <div className="p-4 rounded-lg bg-muted/50 border border-muted text-center space-y-2">
+              <Info className="h-8 w-8 mx-auto text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                На сегодня нет сотрудников с рабочим графиком в этой группе
+              </p>
+            </div>
+          )}
+
+          {/* Warning if all already filled */}
+          {!noWorkersToday && allFilled && (
+            <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-center space-y-2">
+              <CheckCircle className="h-8 w-8 mx-auto text-emerald-600 dark:text-emerald-400" />
+              <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
+                Табель на сегодня полностью заполнен
+              </p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                Все {workingOperators.length} сотрудников уже имеют записи в табеле
+              </p>
+            </div>
+          )}
+
+          {/* Fill value selector - only show if there are unfilled operators */}
+          {!noWorkersToday && !allFilled && (
+            <div className="space-y-2">
+              <Label>Значение для заполнения</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={fillValue === "plan" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFillValue("plan")}
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  По плану
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Минуты"
+                    className={cn(
+                      "w-24 h-9",
+                      fillValue !== "plan" && "ring-2 ring-primary"
+                    )}
+                    value={customMinutes}
+                    onChange={(e) => {
+                      setCustomMinutes(e.target.value);
+                      setFillValue("custom");
+                    }}
+                    onFocus={() => setFillValue("custom")}
+                  />
+                  <span className="text-sm text-muted-foreground">мин</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Operators list */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Сотрудники ({selectedIds.size} выбрано)</Label>
-              <Button variant="ghost" size="sm" onClick={toggleSelectAll}>
-                {selectedIds.size === operators.length ? "Снять все" : "Выбрать все"}
-              </Button>
-            </div>
+          {/* Operators list - only show if not all filled */}
+          {!noWorkersToday && !allFilled && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Сотрудники ({selectedIds.size} выбрано)</Label>
+                <Button variant="ghost" size="sm" onClick={toggleSelectAll}>
+                  {selectedIds.size === workingOperators.length ? "Снять все" : "Выбрать все"}
+                </Button>
+              </div>
 
-            <ScrollArea className="h-[220px] w-full border rounded-lg">
-              <div className="p-2 space-y-1">
-                {operators.map((op) => {
-                  const isSelected = selectedIds.has(op.id);
-                  const hasExisting = op.currentActualMinutes > 0;
+              {filledCount > 0 && (
+                <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  <span>{filledCount} из {workingOperators.length} уже заполнено</span>
+                </div>
+              )}
+
+              <ScrollArea className="h-[220px] w-full border rounded-lg">
+                <div className="p-2 space-y-1">
+                  {workingOperators.map((op) => {
+                    const isSelected = selectedIds.has(op.id);
+                    const hasExisting = op.currentActualMinutes > 0;
 
                   return (
                     <div
@@ -228,22 +274,25 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
                   );
                 })}
               </div>
-            </ScrollArea>
-          </div>
+              </ScrollArea>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Отмена
+            {noWorkersToday || allFilled ? "Закрыть" : "Отмена"}
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={bulkUpsert.isPending || selectedIds.size === 0}
-          >
-            {bulkUpsert.isPending
-              ? "Сохранение..."
-              : `Заполнить (${selectedIds.size})`}
-          </Button>
+          {!noWorkersToday && !allFilled && (
+            <Button
+              onClick={handleSave}
+              disabled={bulkUpsert.isPending || selectedIds.size === 0}
+            >
+              {bulkUpsert.isPending
+                ? "Сохранение..."
+                : `Заполнить (${selectedIds.size})`}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
