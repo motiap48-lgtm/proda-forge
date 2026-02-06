@@ -368,7 +368,7 @@ export const ArchivedOperatorsTab = () => {
                        </Button>
                      )}
                    </div>
-                   <ScrollArea className="flex-1 min-h-0">
+                   <ScrollArea className="h-[50vh]">
                      <div className="space-y-3 pr-4">
                       {employmentHistory?.map((event: any) => (
                         <div key={event.id} className="border rounded-lg p-3 space-y-2">
