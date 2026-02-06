@@ -669,8 +669,10 @@ export const useConfirmCompensationRecord = () => {
       return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
-      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      // Use refetchQueries for immediate UI update
+      queryClient.refetchQueries({ queryKey: ["absence-compensations"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance-by-period"], type: "all" });
       queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
       toast.success("Отработка подтверждена");
     },
@@ -718,8 +720,10 @@ export const useUnconfirmCompensationRecord = () => {
       return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
-      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      // Use refetchQueries for immediate UI update
+      queryClient.refetchQueries({ queryKey: ["absence-compensations"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance-by-period"], type: "all" });
       queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
       toast.success("Подтверждение отработки отменено");
     },

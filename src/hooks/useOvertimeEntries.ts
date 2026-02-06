@@ -127,7 +127,8 @@ export const useCreateOvertimeEntry = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["overtime-entries"] });
+      // Use refetchQueries for immediate UI update
+      queryClient.refetchQueries({ queryKey: ["overtime-entries"], type: "all" });
     },
   });
 };
@@ -167,7 +168,8 @@ export const useUpdateOvertimeEntry = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["overtime-entries"] });
+      // Use refetchQueries for immediate UI update
+      queryClient.refetchQueries({ queryKey: ["overtime-entries"], type: "all" });
     },
   });
 };
@@ -186,7 +188,8 @@ export const useDeleteOvertimeEntry = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["overtime-entries"] });
+      // Use refetchQueries for immediate UI update
+      queryClient.refetchQueries({ queryKey: ["overtime-entries"], type: "all" });
     },
   });
 };
@@ -227,7 +230,8 @@ export const useApproveOvertimeEntry = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["overtime-entries"] });
+      // Use refetchQueries for immediate UI update
+      queryClient.refetchQueries({ queryKey: ["overtime-entries"], type: "all" });
     },
   });
 };
