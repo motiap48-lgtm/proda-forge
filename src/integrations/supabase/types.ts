@@ -2310,6 +2310,60 @@ export type Database = {
           },
         ]
       }
+      timesheet_history: {
+        Row: {
+          action_type: string
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_actual_minutes: number | null
+          new_notes: string | null
+          new_planned_minutes: number | null
+          new_status: string | null
+          old_actual_minutes: number | null
+          old_notes: string | null
+          old_planned_minutes: number | null
+          old_status: string | null
+          operator_id: string
+          timesheet_id: string
+          work_date: string
+        }
+        Insert: {
+          action_type: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_actual_minutes?: number | null
+          new_notes?: string | null
+          new_planned_minutes?: number | null
+          new_status?: string | null
+          old_actual_minutes?: number | null
+          old_notes?: string | null
+          old_planned_minutes?: number | null
+          old_status?: string | null
+          operator_id: string
+          timesheet_id: string
+          work_date: string
+        }
+        Update: {
+          action_type?: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_actual_minutes?: number | null
+          new_notes?: string | null
+          new_planned_minutes?: number | null
+          new_status?: string | null
+          old_actual_minutes?: number | null
+          old_notes?: string | null
+          old_planned_minutes?: number | null
+          old_status?: string | null
+          operator_id?: string
+          timesheet_id?: string
+          work_date?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
