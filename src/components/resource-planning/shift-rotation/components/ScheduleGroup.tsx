@@ -1572,7 +1572,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           {hasUnfilled && (
                                             <AlertCircle className="h-3 w-3 text-amber-500 animate-pulse" />
                                           )}
-                                          <ClipboardCheck className="h-3 w-3" />
+                                          <ClipboardCheck className="h-3 w-3 -ml-[3px]" />
                                           {hasOvertimeTotal && <Clock className="h-3 w-3" />}
                                           {/* Факт = фактические часы + подтвержденные переработки */}
                                           <span>{Math.floor(factMinutes / 60)}ч{factMinutes % 60 > 0 ? ` ${factMinutes % 60}м` : ''}</span>
