@@ -1183,7 +1183,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               
                               // Block if timesheet is filled for this day
                               if (hasTimesheetForDay) {
-                                toast.info("На эту дату уже есть записи табеля. Изменение графика невозможно.");
+                                toast.info("На эту дату уже есть записи табеля. Изменение графика и создание отсутствия невозможно.");
                                 return;
                               }
                               
