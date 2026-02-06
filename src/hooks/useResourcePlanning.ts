@@ -35,6 +35,28 @@ export const useBrigadeMemberHistory = (brigadeId: string | null) => {
   });
 };
 
+export const useClearBrigadeMemberHistory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (brigadeId: string) => {
+      const { error } = await supabase
+        .from("brigade_member_history")
+        .delete()
+        .eq("brigade_id", brigadeId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, brigadeId) => {
+      queryClient.invalidateQueries({ queryKey: ["brigade-member-history", brigadeId] });
+      toast.success("История изменений очищена");
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка при очистке истории: " + error.message);
+    },
+  });
+};
+
 // Work Schedules
 export const useWorkSchedules = () => {
   return useQuery({
