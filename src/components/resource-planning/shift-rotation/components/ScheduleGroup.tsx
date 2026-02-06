@@ -996,8 +996,16 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                    !ex.is_working_day
                             );
                             // For 5/2 schedules, holidays are non-working days
+                            // IMPORTANT: Check both schedule_type AND cycle pattern to correctly identify 5/2 schedules
+                            // 'shift' type with 2/2 or 3/3 pattern should NOT be treated as 5/2
                             const scheduleType = operator.work_schedules?.schedule_type;
-                            const is52Schedule = scheduleType === '5/2' || scheduleType === 'weekly' || scheduleType === 'shift';
+                            const cycleDaysOn = operator.work_schedules?.cycle_days_on || 5;
+                            const cycleDaysOff = operator.work_schedules?.cycle_days_off || 2;
+                            const is52Schedule = 
+                              scheduleType === '5/2' || 
+                              scheduleType === 'weekly' || 
+                              (scheduleType === 'shift' && cycleDaysOn === 5 && cycleDaysOff === 2) ||
+                              (cycleDaysOn === 5 && cycleDaysOff === 2 && scheduleType !== 'cyclic');
                             // Show holiday icon for 5/2 schedules when there's a holiday exception
                             // (even if base schedule says it's a working day, holidays override for 5/2)
                             const isHolidayForSchedule = is52Schedule && !!holidayException;
