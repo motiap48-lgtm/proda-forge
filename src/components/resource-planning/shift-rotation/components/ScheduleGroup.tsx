@@ -1323,10 +1323,17 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                         <TrendingDown className="h-2.5 w-2.5 text-red-500 dark:text-red-400" />
                                       </div>
                                     </TooltipTrigger>
-                                    <TooltipContent side="top" className="text-xs">
-                                      <span className="text-red-500 font-medium">
-                                        Недоработка: -{Math.floor(underageMinutes / 60)}ч{underageMinutes % 60 > 0 ? ` ${underageMinutes % 60}м` : ''}
-                                      </span>
+                                    <TooltipContent side="top" className="text-xs max-w-xs">
+                                      <div className="space-y-1">
+                                        <span className="text-red-500 font-medium block">
+                                          Недоработка: -{Math.floor(underageMinutes / 60)}ч{underageMinutes % 60 > 0 ? ` ${underageMinutes % 60}м` : ''}
+                                        </span>
+                                        {dayTimesheet?.notes && (
+                                          <span className="text-muted-foreground block">
+                                            Причина: {dayTimesheet.notes}
+                                          </span>
+                                        )}
+                                      </div>
                                     </TooltipContent>
                                   </Tooltip>
                                 )}

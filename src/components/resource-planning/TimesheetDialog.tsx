@@ -21,9 +21,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays, endOfMonth, isSameDay, startOfDay, isAfter } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info } from "lucide-react";
+import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info, TrendingDown, AlertCircle } from "lucide-react";
 import { UserX } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { 
@@ -123,6 +124,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   // Local state for edits
   const [edits, setEdits] = useState<Record<string, number>>({});
+  // Local state for deficit notes (reason for working less than plan)
+  const [deficitNotes, setDeficitNotes] = useState<Record<string, string>>({});
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   
   const hasEdits = Object.keys(edits).length > 0;
@@ -192,12 +195,48 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   // Check if a date is in the future (cannot be filled)
   const isFutureDate = (day: Date) => isAfter(startOfDay(day), todayStart);
   
+  // Check if save is blocked due to missing deficit notes
+  const missingDeficitNotes = useMemo(() => {
+    const missing: string[] = [];
+    Object.entries(edits).forEach(([dateStr, actualMinutes]) => {
+      const day = new Date(dateStr);
+      const basePlanned = plannedMinutesPerDay(day);
+      const isFuture = isFutureDate(day);
+      const isCalendarHol = isCalendarHoliday?.(day) ?? false;
+      const dayAbsence = getAbsenceForDay?.(day);
+      const isNonWorkingDayForEdit = (editablePlannedMinutesPerDay ?? plannedMinutesPerDay)(day) === 0;
+      const isHolidayOrWeekend = (isNonWorkingDayForEdit && !dayAbsence) || (isCalendarHol && !dayAbsence);
+      
+      // Only check for deficit notes on past/present working days where actual < plan
+      if (!isFuture && !isHolidayOrWeekend && basePlanned > 0 && actualMinutes < basePlanned) {
+        // Check if notes are missing
+        if (!deficitNotes[dateStr] || deficitNotes[dateStr].trim() === '') {
+          // Also check if there's an existing timesheet with notes
+          const ts = getTimesheetForDate(timesheetMap, operatorId, day);
+          if (!ts?.notes || ts.notes.trim() === '') {
+            missing.push(dateStr);
+          }
+        }
+      }
+    });
+    return missing;
+  }, [edits, deficitNotes, plannedMinutesPerDay, isFutureDate, isCalendarHoliday, getAbsenceForDay, editablePlannedMinutesPerDay, timesheetMap, operatorId]);
+  
+  const hasMissingDeficitNotes = missingDeficitNotes.length > 0;
+  
   const handleSave = async () => {
+    // Block save if missing deficit notes
+    if (hasMissingDeficitNotes) {
+      toast.error("Укажите причину недоработки для всех дней");
+      return;
+    }
+    
     const entries = Object.entries(edits).map(([dateStr, actualMinutes]) => ({
       operator_id: operatorId,
       work_date: dateStr,
       planned_minutes: Math.round(plannedMinutesPerDay(new Date(dateStr))),
       actual_minutes: Math.round(actualMinutes),
+      notes: deficitNotes[dateStr] || undefined,
     }));
     
     if (entries.length === 0) {
@@ -209,6 +248,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       await bulkUpsert.mutateAsync(entries);
       toast.success(`Сохранено ${entries.length} записей`);
       setEdits({});
+      setDeficitNotes({});
       onOpenChange(false);
     } catch (error: any) {
       toast.error("Ошибка сохранения: " + error.message);
@@ -634,11 +674,42 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                                4. Total fact is less than plan
                                5. OR has absence that requires compensation (pending compensation)
                           */}
-                          {!isFuture && !isHolidayOrWeekend && basePlanned > 0 && totalFactMinutes < basePlanned && (
-                            <span className="text-destructive font-medium text-[10px]">
-                              -{formatMinutes(basePlanned - totalFactMinutes)}
-                            </span>
-                          )}
+                          {(() => {
+                            // Calculate deficit for this row
+                            const currentActual = edits[dateStr] ?? ts?.actual_minutes ?? 0;
+                            const hasDeficit = !isFuture && !isHolidayOrWeekend && basePlanned > 0 && currentActual < basePlanned;
+                            const deficitMinutes = basePlanned - currentActual;
+                            const hasDeficitNote = deficitNotes[dateStr]?.trim() || ts?.notes?.trim();
+                            const needsNote = hasDeficit && hasEdit && !hasDeficitNote;
+                            
+                            if (hasDeficit) {
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className={cn(
+                                      "flex items-center gap-0.5 font-medium text-[10px]",
+                                      needsNote ? "text-destructive animate-pulse" : "text-destructive"
+                                    )}>
+                                      <TrendingDown className="h-3 w-3" />
+                                      -{formatMinutes(deficitMinutes)}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <div className="text-xs space-y-1">
+                                      <p className="font-medium text-destructive">Недоработка: -{formatMinutes(deficitMinutes)}</p>
+                                      {hasDeficitNote && (
+                                        <p className="text-muted-foreground">{deficitNotes[dateStr] || ts?.notes}</p>
+                                      )}
+                                      {needsNote && (
+                                        <p className="text-destructive">⚠️ Укажите причину</p>
+                                      )}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            }
+                            return null;
+                          })()}
                           {hasEdit && (
                             <Badge className="text-[9px] px-0.5 py-0 bg-amber-100 text-amber-700 h-4">
                               изм
@@ -647,6 +718,40 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         </div>
                       </td>
                     </tr>
+                    
+                    {/* Deficit reason row - shown when editing with deficit */}
+                    {(() => {
+                      const currentActual = edits[dateStr] ?? ts?.actual_minutes ?? 0;
+                      const hasDeficit = !isFuture && !isHolidayOrWeekend && basePlanned > 0 && currentActual < basePlanned && hasEdit;
+                      const existingNote = ts?.notes || '';
+                      
+                      if (hasDeficit) {
+                        return (
+                          <tr className="bg-rose-50/30 dark:bg-rose-900/10">
+                            <td className="p-1 pl-2 text-rose-600/70 text-[10px]" colSpan={2}>
+                              <div className="flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3 text-rose-500" />
+                                <span>Причина недоработки:</span>
+                              </div>
+                            </td>
+                            <td className="p-1" colSpan={4}>
+                              <Textarea
+                                value={deficitNotes[dateStr] ?? existingNote}
+                                onChange={(e) => setDeficitNotes(prev => ({ ...prev, [dateStr]: e.target.value }))}
+                                placeholder="Укажите причину (обязательно)"
+                                className={cn(
+                                  "h-8 min-h-8 text-xs resize-none",
+                                  !(deficitNotes[dateStr]?.trim() || existingNote?.trim()) && 
+                                    "border-rose-400 bg-rose-50 dark:bg-rose-900/20 focus:border-rose-500 focus:ring-rose-500/20"
+                                )}
+                                rows={1}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      }
+                      return null;
+                    })()}
                     
                     {/* Pending compensation row */}
                     {hasPendingCompensation && (
@@ -904,14 +1009,25 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
             </div>
 
             
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Отмена
-              </Button>
-              <Button onClick={handleSave} disabled={bulkUpsert.isPending || !hasEdits}>
-                <Save className="h-4 w-4 mr-1" />
-                Сохранить
-              </Button>
+            <div className="flex flex-col gap-2 items-end">
+              {hasMissingDeficitNotes && (
+                <div className="flex items-center gap-1 text-xs text-destructive">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>Укажите причину недоработки ({missingDeficitNotes.length})</span>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Отмена
+                </Button>
+                <Button 
+                  onClick={handleSave} 
+                  disabled={bulkUpsert.isPending || !hasEdits || hasMissingDeficitNotes}
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  Сохранить
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
