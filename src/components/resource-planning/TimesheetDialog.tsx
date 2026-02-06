@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays, endOfMonth, isSameDay, startOfDay, isAfter } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info, TrendingDown, AlertCircle } from "lucide-react";
+import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info, TrendingDown, AlertCircle, AlertTriangle } from "lucide-react";
 import { UserX } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
@@ -728,24 +728,27 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                       if (hasDeficit) {
                         return (
                           <tr className="bg-rose-50/30 dark:bg-rose-900/10">
-                            <td className="p-1 pl-2 text-rose-600/70 text-[10px]" colSpan={2}>
-                              <div className="flex items-center gap-1">
-                                <AlertCircle className="h-3 w-3 text-rose-500" />
-                                <span>Причина недоработки:</span>
+                            <td className="p-1 pl-2" colSpan={6}>
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1 text-rose-600/70 text-[10px] shrink-0">
+                                  <AlertCircle className="h-3 w-3 text-rose-500" />
+                                  <span>Укажите причину</span>
+                                  {!(deficitNotes[dateStr]?.trim() || existingNote?.trim()) && (
+                                    <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                  )}
+                                </div>
+                                <Textarea
+                                  value={deficitNotes[dateStr] ?? existingNote}
+                                  onChange={(e) => setDeficitNotes(prev => ({ ...prev, [dateStr]: e.target.value }))}
+                                  placeholder="Причина недоработки..."
+                                  className={cn(
+                                    "h-7 min-h-7 text-xs resize-none flex-1",
+                                    !(deficitNotes[dateStr]?.trim() || existingNote?.trim()) && 
+                                      "border-rose-400 bg-rose-50 dark:bg-rose-900/20 focus:border-rose-500 focus:ring-rose-500/20"
+                                  )}
+                                  rows={1}
+                                />
                               </div>
-                            </td>
-                            <td className="p-1" colSpan={4}>
-                              <Textarea
-                                value={deficitNotes[dateStr] ?? existingNote}
-                                onChange={(e) => setDeficitNotes(prev => ({ ...prev, [dateStr]: e.target.value }))}
-                                placeholder="Укажите причину (обязательно)"
-                                className={cn(
-                                  "h-8 min-h-8 text-xs resize-none",
-                                  !(deficitNotes[dateStr]?.trim() || existingNote?.trim()) && 
-                                    "border-rose-400 bg-rose-50 dark:bg-rose-900/20 focus:border-rose-500 focus:ring-rose-500/20"
-                                )}
-                                rows={1}
-                              />
                             </td>
                           </tr>
                         );
