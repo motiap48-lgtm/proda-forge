@@ -333,43 +333,43 @@ export const ArchivedOperatorsTab = () => {
        </AlertDialog>
  
        {/* Employment history dialog */}
-       <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
-          <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
-           <DialogHeader>
-             <DialogTitle className="flex items-center gap-2">
-               <History className="h-5 w-5" />
-               История занятости
-             </DialogTitle>
-           </DialogHeader>
-           
-            <div className="flex-1 overflow-hidden flex flex-col space-y-3">
-             {employmentHistory?.length === 0 ? (
-               <p className="text-center text-muted-foreground py-4">История пуста</p>
-             ) : (
-                <>
-                  <div className="flex items-center justify-between border-b pb-2">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={employmentHistory && selectedHistoryIds.size === employmentHistory.length && employmentHistory.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {selectedHistoryIds.size > 0 ? `Выбрано: ${selectedHistoryIds.size}` : "Выбрать все"}
-                      </span>
-                    </div>
-                    {selectedHistoryIds.size > 0 && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleBulkDelete}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Удалить ({selectedHistoryIds.size})
-                      </Button>
-                    )}
-                  </div>
-                  <ScrollArea className="flex-1 max-h-[50vh]">
-                    <div className="space-y-3 pr-4">
+        <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+           <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                История занятости
+              </DialogTitle>
+            </DialogHeader>
+            
+             <div className="flex-1 min-h-0 flex flex-col space-y-3">
+              {employmentHistory?.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">История пуста</p>
+              ) : (
+                 <>
+                   <div className="flex items-center justify-between border-b pb-2 flex-shrink-0">
+                     <div className="flex items-center gap-2">
+                       <Checkbox
+                         checked={employmentHistory && selectedHistoryIds.size === employmentHistory.length && employmentHistory.length > 0}
+                         onCheckedChange={toggleSelectAll}
+                       />
+                       <span className="text-sm text-muted-foreground">
+                         {selectedHistoryIds.size > 0 ? `Выбрано: ${selectedHistoryIds.size}` : "Выбрать все"}
+                       </span>
+                     </div>
+                     {selectedHistoryIds.size > 0 && (
+                       <Button
+                         variant="destructive"
+                         size="sm"
+                         onClick={handleBulkDelete}
+                       >
+                         <Trash2 className="h-4 w-4 mr-1" />
+                         Удалить ({selectedHistoryIds.size})
+                       </Button>
+                     )}
+                   </div>
+                   <ScrollArea className="flex-1 min-h-0">
+                     <div className="space-y-3 pr-4">
                       {employmentHistory?.map((event: any) => (
                         <div key={event.id} className="border rounded-lg p-3 space-y-2">
                           <div className="flex items-center gap-2">
