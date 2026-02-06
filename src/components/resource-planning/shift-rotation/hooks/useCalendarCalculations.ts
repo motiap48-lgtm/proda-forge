@@ -94,6 +94,7 @@ export const useCalendarCalculations = ({
   };
 
   // Get all unique shift names for color mapping
+  // IMPORTANT: Sort shift names to ensure consistent colors across filters/views
   const shiftColorMap = useMemo(() => {
     const shiftNames = new Set<string>();
     operators.forEach(op => {
@@ -101,7 +102,8 @@ export const useCalendarCalculations = ({
       shifts?.forEach((s: any) => shiftNames.add(s.shift_name));
     });
     const map = new Map<string, ShiftColors>();
-    Array.from(shiftNames).forEach((name, index) => {
+    // Sort alphabetically to ensure consistent color assignment
+    Array.from(shiftNames).sort().forEach((name, index) => {
       map.set(name, getShiftColor(name, index));
     });
     return map;
