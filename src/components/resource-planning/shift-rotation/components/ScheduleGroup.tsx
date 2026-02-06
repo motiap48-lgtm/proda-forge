@@ -1397,8 +1397,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           )} />
                                           {/* Success checkmark animation */}
                                           {isAnimating && (
-                                            <div className="absolute -top-1 -right-1 bg-emerald-500 rounded-full p-0.5 animate-scale-in">
-                                              <Check className="h-2 w-2 text-white" />
+                                            <div className="absolute inset-0 flex items-center justify-center bg-emerald-500 rounded-full animate-scale-in">
+                                              <Check className="h-2.5 w-2.5 text-white" />
                                             </div>
                                           )}
                                         </div>
@@ -1485,8 +1485,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                             )} />
                                             {/* Success checkmark animation */}
                                             {isAnimating && (
-                                              <div className="absolute -top-1 -right-1 bg-emerald-500 rounded-full p-0.5 animate-scale-in">
-                                                <Check className="h-2 w-2 text-white" />
+                                              <div className="absolute inset-0 flex items-center justify-center bg-emerald-500 rounded-full animate-scale-in">
+                                                <Check className="h-3 w-3 text-white" />
                                               </div>
                                             )}
                                           </div>
