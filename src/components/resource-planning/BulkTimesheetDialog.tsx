@@ -190,7 +190,7 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
               </Button>
             </div>
 
-            <ScrollArea className="h-[300px] w-full border rounded-lg">
+            <ScrollArea className="h-[220px] w-full border rounded-lg">
               <div className="p-2 space-y-1">
                 {operators.map((op) => {
                   const isSelected = selectedIds.has(op.id);
