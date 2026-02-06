@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays, endOfMonth, isSameDay, startOfDay, isAfter } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info, TrendingDown, AlertCircle, AlertTriangle } from "lucide-react";
+import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info, TrendingDown, AlertCircle, AlertTriangle, History } from "lucide-react";
 import { UserX } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +38,7 @@ import { useOvertimeEntries, createOvertimeMap } from "@/hooks/useOvertimeEntrie
 import { getTimesheetSettings } from "@/hooks/useTimesheetSettings";
 import { useOperatorCompensationBalanceByPeriod } from "@/hooks/useAbsenceCompensations";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TimesheetHistoryDialog } from "./TimesheetHistoryDialog";
 
 // Extended compensation record with absence_date from parent
 interface ExtendedCompensationRecord {
@@ -127,6 +128,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   // Local state for deficit notes (reason for working less than plan)
   const [deficitNotes, setDeficitNotes] = useState<Record<string, string>>({});
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   
   const hasEdits = Object.keys(edits).length > 0;
 
@@ -411,6 +413,21 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 </span>
               </div>
               <div className="flex gap-1 flex-wrap justify-end">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setShowHistory(true)} 
+                      className="h-7 px-2 text-xs"
+                    >
+                      <History className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">История изменений</p>
+                  </TooltipContent>
+                </Tooltip>
                 {hasEdits && (
                   <Button variant="ghost" size="sm" onClick={handleResetChanges} className="h-7 px-2 text-xs">
                     <Undo2 className="h-3 w-3 mr-1" />
@@ -1053,6 +1070,15 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <TimesheetHistoryDialog
+        open={showHistory}
+        onOpenChange={setShowHistory}
+        operatorId={operatorId}
+        operatorName={operatorName}
+        startDate={startDate}
+        endDate={endDate}
+      />
     </>
   );
 };

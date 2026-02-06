@@ -204,3 +204,68 @@ export const getTimesheetForDate = (
   const key = `${operatorId}_${dateStr}`;
   return timesheetMap.get(key);
 };
+
+// Update timesheet status
+export const useUpdateTimesheetStatus = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: {
+      operator_id: string;
+      work_date: string;
+      status: 'pending' | 'on_review' | 'confirmed' | 'approved';
+    }) => {
+      const { data: result, error } = await supabase
+        .from("operator_timesheets")
+        .update({ status: data.status })
+        .eq("operator_id", data.operator_id)
+        .eq("work_date", data.work_date)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ 
+        queryKey: ["operator-timesheets"],
+        type: 'all'
+      });
+    },
+  });
+};
+
+// Bulk update timesheet status for multiple entries
+export const useBulkUpdateTimesheetStatus = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: {
+      entries: Array<{ operator_id: string; work_date: string }>;
+      status: 'pending' | 'on_review' | 'confirmed' | 'approved';
+    }) => {
+      // Update each entry
+      const results = await Promise.all(
+        data.entries.map(async (entry) => {
+          const { data: result, error } = await supabase
+            .from("operator_timesheets")
+            .update({ status: data.status })
+            .eq("operator_id", entry.operator_id)
+            .eq("work_date", entry.work_date)
+            .select()
+            .single();
+          
+          if (error) throw error;
+          return result;
+        })
+      );
+      return results;
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ 
+        queryKey: ["operator-timesheets"],
+        type: 'all'
+      });
+    },
+  });
+};
