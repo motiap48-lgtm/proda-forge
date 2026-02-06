@@ -46,9 +46,11 @@ export const useClearBrigadeMemberHistory = () => {
         .eq("brigade_id", brigadeId);
 
       if (error) throw error;
+      return brigadeId;
     },
-    onSuccess: (_, brigadeId) => {
-      queryClient.invalidateQueries({ queryKey: ["brigade-member-history", brigadeId] });
+    onSuccess: (brigadeId) => {
+      // Use refetchQueries for immediate UI update
+      queryClient.refetchQueries({ queryKey: ["brigade-member-history", brigadeId] });
       toast.success("История изменений очищена");
     },
     onError: (error: any) => {
