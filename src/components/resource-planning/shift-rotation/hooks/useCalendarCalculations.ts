@@ -450,16 +450,15 @@ export const useCalendarCalculations = ({
       const isCyclic = isCyclicSchedule(operator);
       
       days.forEach(day => {
+        // Skip days outside employment period - they should not be counted in stats at all
+        if (isOperatorTerminated(operator, day) || isBeforeHireDate(operator, day)) {
+          return; // Don't count as working or off days
+        }
+        
         // Check if operator is on leave
         const absence = isDateInAbsence(day, absences, operator.id);
         if (absence) {
           totalAbsenceDays++;
-          return;
-        }
-        
-        // Check if terminated or not hired yet
-        if (isOperatorTerminated(operator, day) || isBeforeHireDate(operator, day)) {
-          totalOffDays++;
           return;
         }
         
