@@ -219,7 +219,8 @@ export const EmploymentHistoryViewDialog = ({
             )}
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden flex flex-col gap-4">
+          <ScrollArea className="flex-1 max-h-[70vh] pr-4">
+            <div className="flex flex-col gap-4">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Загрузка...
@@ -342,7 +343,7 @@ export const EmploymentHistoryViewDialog = ({
                 )}
 
                 {/* History records section */}
-                <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex flex-col min-h-0">
                   <div className="flex items-center justify-between border-b pb-2 mb-3">
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -364,89 +365,88 @@ export const EmploymentHistoryViewDialog = ({
                       </Button>
                     )}
                   </div>
-                  <ScrollArea className="flex-1 max-h-[35vh] pr-4">
-                    <div className="space-y-3">
-                      {history.map((record: any) => (
-                        <div
-                          key={record.id}
-                          className="flex items-start gap-3 p-3 rounded-lg border bg-card"
-                        >
-                          <Checkbox
-                            checked={selectedHistoryIds.has(record.id)}
-                            onCheckedChange={() => toggleSelectHistory(record.id)}
-                            className="mt-0.5"
-                          />
-                          <div className="mt-0.5">
-                            {getEventIcon(record.event_type)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant={getEventVariant(record.event_type)}>
-                                {getEventLabel(record.event_type)}
-                              </Badge>
-                              <span className="text-sm text-muted-foreground">
-                                {format(new Date(record.event_date), "d MMMM yyyy", { locale: ru })}
-                              </span>
-                            </div>
-                            {record.event_type === "terminated" && (() => {
-                              const endDate = getTerminationEndDate(record);
-                              const timeAgo = getTimeAgo(record.created_at, endDate);
-                              const isOngoing = !endDate;
-                              return (
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
-                                  <Clock className="h-3 w-3" />
-                                  <span title={timeAgo.formatted}>
-                                    {timeAgo.shortFormatted}
-                                    {!isOngoing && <span className="text-muted-foreground/60 ml-1">(до восстановления)</span>}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                            {record.reason && (
-                              <p className="text-sm mt-1">{record.reason}</p>
-                            )}
-                            {record.notes && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {record.notes}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-1 shrink-0">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={() => handleEditRecord(record)}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Редактировать</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteRecord(record)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Удалить</TooltipContent>
-                            </Tooltip>
-                          </div>
+                  <div className="space-y-3">
+                    {history.map((record: any) => (
+                      <div
+                        key={record.id}
+                        className="flex items-start gap-3 p-3 rounded-lg border bg-card"
+                      >
+                        <Checkbox
+                          checked={selectedHistoryIds.has(record.id)}
+                          onCheckedChange={() => toggleSelectHistory(record.id)}
+                          className="mt-0.5"
+                        />
+                        <div className="mt-0.5">
+                          {getEventIcon(record.event_type)}
                         </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant={getEventVariant(record.event_type)}>
+                              {getEventLabel(record.event_type)}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                              {format(new Date(record.event_date), "d MMMM yyyy", { locale: ru })}
+                            </span>
+                          </div>
+                          {record.event_type === "terminated" && (() => {
+                            const endDate = getTerminationEndDate(record);
+                            const timeAgo = getTimeAgo(record.created_at, endDate);
+                            const isOngoing = !endDate;
+                            return (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
+                                <Clock className="h-3 w-3" />
+                                <span title={timeAgo.formatted}>
+                                  {timeAgo.shortFormatted}
+                                  {!isOngoing && <span className="text-muted-foreground/60 ml-1">(до восстановления)</span>}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                          {record.reason && (
+                            <p className="text-sm mt-1">{record.reason}</p>
+                          )}
+                          {record.notes && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {record.notes}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => handleEditRecord(record)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Редактировать</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteRecord(record)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Удалить</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
-          </div>
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
