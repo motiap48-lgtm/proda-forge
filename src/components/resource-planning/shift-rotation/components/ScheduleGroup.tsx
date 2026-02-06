@@ -1870,18 +1870,36 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
 // Memoized component for performance optimization with many operators
 export const ScheduleGroup = memo(ScheduleGroupComponent, (prevProps, nextProps) => {
   // Custom comparison - skip re-render if key props haven't changed
+  // IMPORTANT: must include derived data maps (compensations/overtime), otherwise UI updates only after hover.
   return (
     prevProps.isCollapsed === nextProps.isCollapsed &&
     prevProps.scheduleName === nextProps.scheduleName &&
-    prevProps.operators.length === nextProps.operators.length &&
     prevProps.period === nextProps.period &&
     prevProps.daysCount === nextProps.daysCount &&
     prevProps.employeeColumnWidth === nextProps.employeeColumnWidth &&
     prevProps.isTodayColumnHovered === nextProps.isTodayColumnHovered &&
     prevProps.isResizing === nextProps.isResizing &&
     prevProps.syncingScheduleId === nextProps.syncingScheduleId &&
-    prevProps.days.length === nextProps.days.length &&
+
+    // Data that affects icons/indicators and totals
+    prevProps.compensationRecordsMap === nextProps.compensationRecordsMap &&
+    prevProps.overtimeMap === nextProps.overtimeMap &&
+    prevProps.overtimeRankings === nextProps.overtimeRankings &&
+    prevProps.medalsEnabled === nextProps.medalsEnabled &&
+
+    // Calendar inputs
+    prevProps.days === nextProps.days &&
+    prevProps.months === nextProps.months &&
+    prevProps.absences === nextProps.absences &&
+    prevProps.scheduleOverrides === nextProps.scheduleOverrides &&
+    prevProps.calendarExceptions === nextProps.calendarExceptions &&
+
+    // Operator/timesheet data
     prevProps.operators === nextProps.operators &&
-    prevProps.timesheets === nextProps.timesheets
+    prevProps.timesheets === nextProps.timesheets &&
+
+    // Layout/calculation props
+    prevProps.shiftColorMap === nextProps.shiftColorMap &&
+    prevProps.calendarGridStyle === nextProps.calendarGridStyle
   );
 });
