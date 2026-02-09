@@ -4,21 +4,45 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useOperatorCompensationBalance } from "@/hooks/useAbsenceCompensations";
+import { useOperatorCompensationBalance, useOperatorCompensationBalanceByDateRange } from "@/hooks/useAbsenceCompensations";
 import { Z_INDEX_CLASSES } from "@/lib/z-index";
 import { cn } from "@/lib/utils";
 
 interface CompensationPendingIconProps {
   operatorId: string;
   year?: number;
+  // New: date range for multi-year periods
+  dateRange?: { startDate: Date; endDate: Date };
 }
 
 export const CompensationPendingIcon: React.FC<CompensationPendingIconProps> = ({
   operatorId,
   year,
+  dateRange,
 }) => {
-  const { data: balance, isLoading } = useOperatorCompensationBalance(operatorId, year);
+  // Determine if we need to use date range (spans multiple years) or single year
+  const useRangeQuery = dateRange && 
+    dateRange.startDate.getFullYear() !== dateRange.endDate.getFullYear();
+  
+  // Use range query for multi-year periods
+  const { data: rangeBalance, isLoading: rangeLoading } = useOperatorCompensationBalanceByDateRange(
+    operatorId, 
+    useRangeQuery ? dateRange : undefined
+  );
+  
+  // Use year query for single year (fallback to year from dateRange or passed year)
+  const effectiveYear = !useRangeQuery && dateRange 
+    ? dateRange.startDate.getFullYear() 
+    : year;
+  const { data: yearBalance, isLoading: yearLoading } = useOperatorCompensationBalance(
+    operatorId, 
+    !useRangeQuery ? effectiveYear : undefined
+  );
+  
   const [isOpen, setIsOpen] = useState(false);
+
+  const isLoading = useRangeQuery ? rangeLoading : yearLoading;
+  const balance = useRangeQuery ? rangeBalance : yearBalance;
 
   if (isLoading || !balance) return null;
   
