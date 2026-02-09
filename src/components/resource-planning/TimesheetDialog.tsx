@@ -480,8 +480,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                   <TimesheetStatusBadge
                     status={periodStatus}
                     onStatusChange={handlePeriodStatusChange}
-                    editable={!hasEdits && !isPeriodLocked}
-                    showActions={!hasEdits && !isPeriodLocked}
+                    editable={!hasEdits}
+                    showActions={!hasEdits}
                   />
                 </div>
               )}
