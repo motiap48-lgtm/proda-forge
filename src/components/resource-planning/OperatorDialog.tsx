@@ -169,8 +169,21 @@ export const OperatorDialog = ({
     }
   }, [operator, open]);
 
+  // Validation: cycle start date cannot be before hire date
+  const cycleStartDateError = useMemo(() => {
+    if (!formData.shift_rotation_start_date || !formData.hire_date) return null;
+    if (formData.shift_rotation_start_date < formData.hire_date) {
+      return "Дата начала цикла не может быть раньше даты приёма";
+    }
+    return null;
+  }, [formData.shift_rotation_start_date, formData.hire_date]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (cycleStartDateError) {
+      return;
+    }
 
     // Validate: disable rotation for schedules with single shift
     const canEnableRotation = scheduleShifts.length > 1 && !isCyclicSchedule;
@@ -407,8 +420,15 @@ export const OperatorDialog = ({
                     id="shift_rotation_start_date"
                     type="date"
                     value={formData.shift_rotation_start_date}
+                    min={formData.hire_date || undefined}
                     onChange={(e) => setFormData({ ...formData, shift_rotation_start_date: e.target.value })}
                   />
+                  {cycleStartDateError && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {cycleStartDateError}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Укажите первый рабочий день оператора в текущем или предыдущем цикле
                     {selectedSchedule?.cycle_start_date && (
@@ -430,8 +450,15 @@ export const OperatorDialog = ({
                     id="shift_rotation_start_date"
                     type="date"
                     value={formData.shift_rotation_start_date}
+                    min={formData.hire_date || undefined}
                     onChange={(e) => setFormData({ ...formData, shift_rotation_start_date: e.target.value })}
                   />
+                  {cycleStartDateError && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {cycleStartDateError}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Укажите дату начала недели, когда оператор работал на выбранной смене
                   </p>
