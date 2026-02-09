@@ -15,13 +15,15 @@ interface OperatorInfoCardProps {
   onEdit?: (operator: any) => void;
   onManageAbsences?: (operator: any) => void;
   onOpenCompensation?: (operator: any) => void;
+  dateRange?: { startDate: Date; endDate: Date };
 }
 
 export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({ 
   operator, 
   onEdit, 
   onManageAbsences,
-  onOpenCompensation 
+  onOpenCompensation,
+  dateRange,
 }) => {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showEmploymentHistoryDialog, setShowEmploymentHistoryDialog] = useState(false);
@@ -127,7 +129,7 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
             Смена {operator.assigned_shift_number}
           </Badge>
         )}
-        <CompensationBalanceBadge operatorId={operator.id} compact />
+        <CompensationBalanceBadge operatorId={operator.id} compact dateRange={dateRange} />
       </div>
     
     {/* Additional info */}

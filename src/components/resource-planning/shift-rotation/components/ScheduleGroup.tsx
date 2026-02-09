@@ -721,6 +721,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                           onEdit={onEditOperator} 
                           onManageAbsences={onManageAbsences}
                           onOpenCompensation={(op) => setCompensationOperator({ id: op.id, name: op.full_name })}
+                          dateRange={days.length > 0 ? { startDate: days[0], endDate: days[days.length - 1] } : undefined}
                         />
                       </HoverCardContent>
                     </HoverCard>
