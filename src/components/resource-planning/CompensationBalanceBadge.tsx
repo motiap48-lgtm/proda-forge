@@ -7,18 +7,41 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useOperatorCompensationBalance } from "@/hooks/useAbsenceCompensations";
+import { useOperatorCompensationBalance, useOperatorCompensationBalanceByDateRange } from "@/hooks/useAbsenceCompensations";
 
 interface CompensationBalanceBadgeProps {
   operatorId: string;
   compact?: boolean;
+  // New: date range for multi-year periods
+  dateRange?: { startDate: Date; endDate: Date };
 }
 
 export const CompensationBalanceBadge: React.FC<CompensationBalanceBadgeProps> = ({
   operatorId,
   compact = false,
+  dateRange,
 }) => {
-  const { data: balance, isLoading } = useOperatorCompensationBalance(operatorId);
+  // Determine if we need to use date range (spans multiple years) or single year
+  const useRangeQuery = dateRange && 
+    dateRange.startDate.getFullYear() !== dateRange.endDate.getFullYear();
+  
+  // Use range query for multi-year periods
+  const { data: rangeBalance, isLoading: rangeLoading } = useOperatorCompensationBalanceByDateRange(
+    operatorId, 
+    useRangeQuery ? dateRange : undefined
+  );
+  
+  // Use year query for single year (fallback to year from dateRange or current year)
+  const effectiveYear = !useRangeQuery && dateRange 
+    ? dateRange.startDate.getFullYear() 
+    : undefined;
+  const { data: yearBalance, isLoading: yearLoading } = useOperatorCompensationBalance(
+    operatorId, 
+    !useRangeQuery ? effectiveYear : undefined
+  );
+
+  const isLoading = useRangeQuery ? rangeLoading : yearLoading;
+  const balance = useRangeQuery ? rangeBalance : yearBalance;
 
   if (isLoading || !balance) return null;
   
