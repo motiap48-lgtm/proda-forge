@@ -12,9 +12,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FileEdit, Eye, CheckCircle, ChevronDown } from "lucide-react";
+import { FileEdit, Eye, CheckCircle, ChevronDown, Send, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TIMESHEET_STATUS_LABELS } from "@/hooks/useTimesheetHistory";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type TimesheetStatus = 'pending' | 'draft' | 'on_review' | 'confirmed' | 'approved';
 
@@ -23,6 +23,7 @@ interface TimesheetStatusBadgeProps {
   onStatusChange?: (newStatus: TimesheetStatus) => void;
   editable?: boolean;
   compact?: boolean;
+  showActions?: boolean;
 }
 
 const STATUS_CONFIG: Record<TimesheetStatus, {
@@ -63,13 +64,30 @@ const STATUS_CONFIG: Record<TimesheetStatus, {
   },
 };
 
-// Status transition rules: who can move to what
-const STATUS_TRANSITIONS: Record<TimesheetStatus, TimesheetStatus[]> = {
-  pending: ['on_review'],
-  draft: ['on_review'],
-  on_review: ['pending', 'confirmed'],
-  confirmed: ['on_review', 'approved'],
-  approved: ['confirmed'],
+// Status transition rules with role requirements
+const STATUS_TRANSITIONS: Record<TimesheetStatus, { 
+  nextStatus: TimesheetStatus; 
+  label: string;
+  icon: React.ReactNode;
+  requiredRoles: string[]; // empty = any authenticated user
+}[]> = {
+  pending: [
+    { nextStatus: 'on_review', label: 'Отправить на проверку', icon: <Send className="h-3 w-3" />, requiredRoles: [] },
+  ],
+  draft: [
+    { nextStatus: 'on_review', label: 'Отправить на проверку', icon: <Send className="h-3 w-3" />, requiredRoles: [] },
+  ],
+  on_review: [
+    { nextStatus: 'pending', label: 'Вернуть в черновик', icon: <ArrowLeft className="h-3 w-3" />, requiredRoles: ['admin', 'production_manager'] },
+    { nextStatus: 'confirmed', label: 'Подтвердить', icon: <CheckCircle className="h-3 w-3" />, requiredRoles: ['admin', 'production_manager'] },
+  ],
+  confirmed: [
+    { nextStatus: 'on_review', label: 'Вернуть на проверку', icon: <ArrowLeft className="h-3 w-3" />, requiredRoles: ['admin', 'production_manager'] },
+    { nextStatus: 'approved', label: 'Утвердить', icon: <CheckCircle className="h-3 w-3" />, requiredRoles: ['admin'] },
+  ],
+  approved: [
+    { nextStatus: 'confirmed', label: 'Отменить утверждение', icon: <ArrowLeft className="h-3 w-3" />, requiredRoles: ['admin'] },
+  ],
 };
 
 export const TimesheetStatusBadge: React.FC<TimesheetStatusBadgeProps> = ({
@@ -77,11 +95,21 @@ export const TimesheetStatusBadge: React.FC<TimesheetStatusBadgeProps> = ({
   onStatusChange,
   editable = false,
   compact = false,
+  showActions = true,
 }) => {
+  const { hasRole, userRoles } = useAuth();
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-  const allowedTransitions = STATUS_TRANSITIONS[status] || [];
+  
+  // Filter allowed transitions based on user roles
+  const allowedTransitions = (STATUS_TRANSITIONS[status] || []).filter(transition => {
+    if (transition.requiredRoles.length === 0) return true;
+    return transition.requiredRoles.some(role => hasRole(role));
+  });
 
-  if (!editable || !onStatusChange) {
+  // Check if user can edit status at all
+  const canEditStatus = editable && onStatusChange && allowedTransitions.length > 0 && showActions;
+
+  if (!canEditStatus) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -109,7 +137,7 @@ export const TimesheetStatusBadge: React.FC<TimesheetStatusBadgeProps> = ({
           variant="ghost"
           size="sm"
           className={cn(
-            "h-6 px-2 gap-1 text-xs font-normal",
+            "h-6 px-2 gap-1 text-xs font-normal border",
             config.className
           )}
         >
@@ -119,16 +147,16 @@ export const TimesheetStatusBadge: React.FC<TimesheetStatusBadgeProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {allowedTransitions.map((nextStatus) => {
-          const nextConfig = STATUS_CONFIG[nextStatus];
+        {allowedTransitions.map((transition) => {
+          const nextConfig = STATUS_CONFIG[transition.nextStatus];
           return (
             <DropdownMenuItem
-              key={nextStatus}
-              onClick={() => onStatusChange(nextStatus)}
+              key={transition.nextStatus}
+              onClick={() => onStatusChange(transition.nextStatus)}
               className="gap-2"
             >
-              {nextConfig.icon}
-              <span>{nextConfig.label}</span>
+              {transition.icon}
+              <span>{transition.label}</span>
             </DropdownMenuItem>
           );
         })}
@@ -140,4 +168,17 @@ export const TimesheetStatusBadge: React.FC<TimesheetStatusBadgeProps> = ({
 // Helper to get status display info
 export const getTimesheetStatusInfo = (status: TimesheetStatus) => {
   return STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+};
+
+// Helper to check if user can change to a specific status
+export const canUserChangeStatus = (
+  currentStatus: TimesheetStatus, 
+  targetStatus: TimesheetStatus, 
+  hasRoleFn: (role: string) => boolean
+): boolean => {
+  const transitions = STATUS_TRANSITIONS[currentStatus] || [];
+  const transition = transitions.find(t => t.nextStatus === targetStatus);
+  if (!transition) return false;
+  if (transition.requiredRoles.length === 0) return true;
+  return transition.requiredRoles.some(role => hasRoleFn(role));
 };

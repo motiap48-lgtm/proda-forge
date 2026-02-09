@@ -213,7 +213,7 @@ export const useUpdateTimesheetStatus = () => {
     mutationFn: async (data: {
       operator_id: string;
       work_date: string;
-      status: 'pending' | 'on_review' | 'confirmed' | 'approved';
+      status: 'pending' | 'draft' | 'on_review' | 'confirmed' | 'approved';
     }) => {
       const { data: result, error } = await supabase
         .from("operator_timesheets")
@@ -242,7 +242,7 @@ export const useBulkUpdateTimesheetStatus = () => {
   return useMutation({
     mutationFn: async (data: {
       entries: Array<{ operator_id: string; work_date: string }>;
-      status: 'pending' | 'on_review' | 'confirmed' | 'approved';
+      status: 'pending' | 'draft' | 'on_review' | 'confirmed' | 'approved';
     }) => {
       // Update each entry
       const results = await Promise.all(

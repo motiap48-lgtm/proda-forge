@@ -20,6 +20,7 @@ import { CalendarLegend } from "./CalendarLegend";
 
 export type AbsenceStatusFilter = "all" | "on_leave" | "sick" | "available";
 export type AbsenceTypeFilter = "all" | "annual_leave" | "sick_leave" | "administrative_leave_with_compensation" | "administrative_leave_without_compensation" | "maternity_leave" | "unpaid_leave" | "business_trip" | "unauthorized_absence" | "other";
+export type TimesheetStatusFilter = "all" | "pending" | "on_review" | "confirmed" | "approved" | "unfilled";
 
 interface CalendarToolbarProps {
   period: PeriodType;
@@ -39,6 +40,8 @@ interface CalendarToolbarProps {
   onAbsenceStatusFilterChange?: (filter: AbsenceStatusFilter) => void;
   absenceTypeFilter?: AbsenceTypeFilter;
   onAbsenceTypeFilterChange?: (filter: AbsenceTypeFilter) => void;
+  timesheetStatusFilter?: TimesheetStatusFilter;
+  onTimesheetStatusFilterChange?: (filter: TimesheetStatusFilter) => void;
   filteredOperatorsCount: number;
   grandTotal: { hours: number; minutes: number };
   grandTotalFact?: { hours: number; minutes: number };
@@ -88,6 +91,8 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onAbsenceStatusFilterChange,
   absenceTypeFilter,
   onAbsenceTypeFilterChange,
+  timesheetStatusFilter,
+  onTimesheetStatusFilterChange,
   filteredOperatorsCount,
   grandTotal,
   grandTotalFact,
@@ -632,6 +637,29 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
               <SelectItem value="business_trip">✈️ Командировка</SelectItem>
               <SelectItem value="unauthorized_absence">🚫 Прогул</SelectItem>
               <SelectItem value="other">📝 Другое</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Timesheet status filter */}
+        {onTimesheetStatusFilterChange && (
+          <Select 
+            value={timesheetStatusFilter || "all"} 
+            onValueChange={(v) => onTimesheetStatusFilterChange(v as TimesheetStatusFilter)}
+          >
+            <SelectTrigger className={cn(
+              "w-[180px]",
+              timesheetStatusFilter && timesheetStatusFilter !== "all" && "border-blue-400 bg-blue-50 dark:bg-blue-900/20"
+            )}>
+              <SelectValue placeholder="Статус табеля" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все статусы табеля</SelectItem>
+              <SelectItem value="unfilled">⚠️ Не заполнен</SelectItem>
+              <SelectItem value="pending">✏️ Черновик</SelectItem>
+              <SelectItem value="on_review">👁️ На проверке</SelectItem>
+              <SelectItem value="confirmed">✓ Подтверждён</SelectItem>
+              <SelectItem value="approved">✅ Утверждён</SelectItem>
             </SelectContent>
           </Select>
         )}

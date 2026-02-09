@@ -31,6 +31,7 @@ import {
   type PeriodType,
   type AbsenceStatusFilter,
   type AbsenceTypeFilter,
+  type TimesheetStatusFilter,
 } from "./shift-rotation";
 import { OperatorAbsenceDialog } from "./OperatorAbsenceDialog";
 import { BulkAbsenceDialog } from "./BulkAbsenceDialog";
@@ -81,6 +82,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const [rotationFilter, setRotationFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [absenceStatusFilter, setAbsenceStatusFilter] = useState<AbsenceStatusFilter>("all");
   const [absenceTypeFilter, setAbsenceTypeFilter] = useState<AbsenceTypeFilter>("all");
+  const [timesheetStatusFilter, setTimesheetStatusFilter] = useState<TimesheetStatusFilter>("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
@@ -260,6 +262,33 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     return map;
   }, [compensations]);
 
+  // Filter operators by timesheet status (needs timesheets data, so done after fetch)
+  const operatorsFilteredByTimesheetStatus = useMemo(() => {
+    if (timesheetStatusFilter === "all") return filteredOperators;
+    
+    return filteredOperators.filter(op => {
+      const operatorTimesheets = timesheets.filter(ts => ts.operator_id === op.id && ts.actual_minutes > 0);
+      
+      if (timesheetStatusFilter === "unfilled") {
+        // Operator has working days in period but no timesheet entries
+        const hasWorkingDays = days.some(day => {
+          const schedule = op.work_schedules;
+          if (!schedule) return false;
+          const baseIsWorking = isWorkingDay(schedule, day, op);
+          const override = getScheduleOverride(scheduleOverrides, op.id, day);
+          return isWorkingDayWithOverride(baseIsWorking, override);
+        });
+        return hasWorkingDays && operatorTimesheets.length === 0;
+      }
+      
+      // Check if any timesheet matches the status filter
+      return operatorTimesheets.some(ts => {
+        const status = ts.status || 'pending';
+        return status === timesheetStatusFilter;
+      });
+    });
+  }, [filteredOperators, timesheets, timesheetStatusFilter, days, scheduleOverrides]);
+
   // Generate shift details with time info
   const shiftDetails = useMemo(() => {
     const details = new Map<string, { 
@@ -310,8 +339,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const groupedBySchedule = useMemo(() => {
     const groups = new Map<string, any[]>();
     
+    // Use operators filtered by timesheet status if filter is active
+    const baseOperators = operatorsFilteredByTimesheetStatus;
+    
     // Filter terminated operators by period - show only if period overlaps with their employment
-    const operatorsToShow = filteredOperators.filter(op => {
+    const operatorsToShow = baseOperators.filter(op => {
       // Active operators always shown
       if (op.is_active) return true;
       
@@ -336,7 +368,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     });
     
     return groups;
-  }, [filteredOperators, days]);
+  }, [operatorsFilteredByTimesheetStatus, days]);
 
   // Track expand/collapse state
   const allGroupNames = Array.from(groupedBySchedule.keys());
@@ -373,8 +405,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     if (rotationFilter !== "all") count++;
     if (absenceStatusFilter !== "all") count++;
     if (absenceTypeFilter !== "all") count++;
+    if (timesheetStatusFilter !== "all") count++;
     return count;
-  }, [scheduleFilter, showOnlyCyclic, rotationFilter, absenceStatusFilter, absenceTypeFilter]);
+  }, [scheduleFilter, showOnlyCyclic, rotationFilter, absenceStatusFilter, absenceTypeFilter, timesheetStatusFilter]);
 
   // Reset all filters
   const resetFilters = () => {
@@ -383,6 +416,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     setRotationFilter("all");
     setAbsenceStatusFilter("all");
     setAbsenceTypeFilter("all");
+    setTimesheetStatusFilter("all");
   };
 
   // Handle period change
@@ -629,7 +663,9 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
           onAbsenceStatusFilterChange={setAbsenceStatusFilter}
           absenceTypeFilter={absenceTypeFilter}
           onAbsenceTypeFilterChange={setAbsenceTypeFilter}
-          filteredOperatorsCount={filteredOperators.length}
+          timesheetStatusFilter={timesheetStatusFilter}
+          onTimesheetStatusFilterChange={setTimesheetStatusFilter}
+          filteredOperatorsCount={operatorsFilteredByTimesheetStatus.length}
           grandTotal={grandTotal}
           grandTotalFact={grandTotalFact}
           comparisonPeriod={comparisonPeriod}
