@@ -470,17 +470,17 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Табель: {operatorName}
+            <DialogTitle className="flex items-center justify-between gap-2 pr-8">
+              <div className="flex items-center gap-2 min-w-0">
+                <Clock className="h-5 w-5 shrink-0" />
+                <span className="truncate">Табель: {operatorName}</span>
               </div>
               {periodStatus && (
                 <TimesheetStatusBadge
                   status={periodStatus}
                   onStatusChange={handlePeriodStatusChange}
-                  editable={!hasEdits}
-                  showActions={!hasEdits}
+                  editable={!hasEdits && !isPeriodLocked}
+                  showActions={!hasEdits && !isPeriodLocked}
                 />
               )}
             </DialogTitle>
