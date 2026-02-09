@@ -434,6 +434,10 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
                     operatorsWithUnfilled.map((op) => {
                       const isSelected = selectedIds.has(op.id);
                       const totalPlanMinutes = op.unfilledDays.reduce((s, d) => s + d.plannedMinutes, 0);
+                      // Format unfilled dates for display
+                      const unfilledDatesStr = op.unfilledDays
+                        .map(d => format(d.date, "d.MM"))
+                        .join(", ");
 
                       return (
                         <div
@@ -452,11 +456,16 @@ export const BulkTimesheetDialog: React.FC<BulkTimesheetDialogProps> = ({
                                 {op.code}
                               </Badge>
                             </div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                              <span className="text-amber-600 dark:text-amber-400">
-                                {op.unfilledDays.length} дней не заполнено
-                              </span>
-                              <span>• План: {formatMinutes(totalPlanMinutes)}</span>
+                            <div className="text-xs text-muted-foreground space-y-0.5">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-amber-600 dark:text-amber-400">
+                                  {op.unfilledDays.length} {op.unfilledDays.length === 1 ? "день" : op.unfilledDays.length < 5 ? "дня" : "дней"}
+                                </span>
+                                <span>• План: {formatMinutes(totalPlanMinutes)}</span>
+                              </div>
+                              <div className="text-muted-foreground/70 truncate" title={unfilledDatesStr}>
+                                Даты: {unfilledDatesStr}
+                              </div>
                             </div>
                           </div>
                         </div>

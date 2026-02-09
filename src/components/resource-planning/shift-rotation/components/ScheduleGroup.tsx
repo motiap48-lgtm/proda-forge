@@ -1937,6 +1937,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
               .filter(day => {
                 // Only past days (before today) or today
                 if (isAfter(startOfDay(day), today)) return false;
+                // Skip days with approved absence - those don't require timesheet fill
+                if (isDateInAbsence(day, absences, op.id)) return false;
                 const plannedMins = getPlannedDayMinutes?.(op, day) || 0;
                 if (plannedMins <= 0) return false;
                 const ts = getTimesheetForDate(timesheetMap, op.id, day);
