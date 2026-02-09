@@ -222,6 +222,110 @@ export const useOperatorCompensationBalance = (operatorId: string, year?: number
   });
 };
 
+// Calculate compensation balance for an operator for a date range (can span multiple years)
+// Includes both absence_compensations (pending hours) and timesheet deficit (actual < planned)
+export const useOperatorCompensationBalanceByDateRange = (
+  operatorId: string, 
+  dateRange?: { startDate: Date; endDate: Date }
+) => {
+  const startDate = dateRange?.startDate;
+  const endDate = dateRange?.endDate;
+  
+  const startDateStr = startDate ? startDate.toISOString().split("T")[0] : null;
+  const endDateStr = endDate ? endDate.toISOString().split("T")[0] : null;
+  
+  return useQuery({
+    queryKey: ["operator-compensation-balance-range", operatorId, startDateStr, endDateStr],
+    queryFn: async () => {
+      if (!startDateStr || !endDateStr) {
+        return null;
+      }
+      
+      // 1. Fetch absence compensations for the date range
+      const { data: compensations, error: compError } = await supabase
+        .from("absence_compensations")
+        .select(`*, compensation_records (*)`)
+        .eq("operator_id", operatorId)
+        .neq("status", "cancelled")
+        .gte("absence_date", startDateStr)
+        .lte("absence_date", endDateStr);
+
+      if (compError) throw compError;
+
+      // 2. Fetch timesheets for the date range to calculate deficit
+      const { data: timesheets, error: tsError } = await supabase
+        .from("operator_timesheets")
+        .select("work_date, planned_minutes, actual_minutes")
+        .eq("operator_id", operatorId)
+        .gte("work_date", startDateStr)
+        .lte("work_date", endDateStr);
+
+      if (tsError) throw tsError;
+
+      const absenceCompensations = compensations as AbsenceCompensation[];
+      
+      let totalAbsenceHours = 0;
+      let totalCompensatedHours = 0;
+      const pendingCompensations: AbsenceCompensation[] = [];
+
+      absenceCompensations.forEach((comp) => {
+        totalAbsenceHours += Number(comp.absence_hours);
+        
+        // Only count confirmed compensation records
+        const compensatedHours = comp.compensation_records?.reduce(
+          (sum, record) => {
+            // Only count confirmed records in the balance
+            if (record.status === "confirmed") {
+              return sum + Number(record.hours_worked);
+            }
+            return sum;
+          },
+          0
+        ) || 0;
+        
+        totalCompensatedHours += compensatedHours;
+        
+        if (comp.status === "pending" || comp.status === "partial") {
+          pendingCompensations.push(comp);
+        }
+      });
+
+      // 3. Calculate timesheet deficit: sum of (planned - actual) where actual < planned
+      // Exclude dates that already have absence_compensations (to avoid double counting)
+      const compensationDates = new Set(absenceCompensations.map(c => c.absence_date));
+      
+      let timesheetDeficitMinutes = 0;
+      (timesheets || []).forEach((ts: { work_date: string; planned_minutes: number; actual_minutes: number }) => {
+        // Skip if this date already has an absence compensation
+        if (compensationDates.has(ts.work_date)) return;
+        
+        const planned = Number(ts.planned_minutes) || 0;
+        const actual = Number(ts.actual_minutes) || 0;
+        
+        if (actual < planned) {
+          timesheetDeficitMinutes += (planned - actual);
+        }
+      });
+
+      const timesheetDeficitHours = Math.round((timesheetDeficitMinutes / 60) * 100) / 100;
+      const pendingHours = totalAbsenceHours - totalCompensatedHours;
+      const totalPendingHours = pendingHours + timesheetDeficitHours;
+
+      return {
+        operatorId,
+        totalAbsenceHours,
+        totalCompensatedHours,
+        pendingHours,
+        pendingCompensations,
+        timesheetDeficitHours,
+        totalPendingHours,
+      } as OperatorCompensationBalance;
+    },
+    enabled: !!operatorId && !!startDateStr && !!endDateStr,
+    staleTime: 0, // Always refetch on invalidation
+  });
+};
+
 // Calculate compensation balance with breakdown by period (previous months vs current month)
 export const useOperatorCompensationBalanceByPeriod = (operatorId: string, viewDate?: Date) => {
   const date = viewDate ?? new Date();
