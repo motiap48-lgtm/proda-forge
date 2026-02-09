@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Wand2, RefreshCw, CalendarDays, AlertTriangle, Link2 } from "lucide-react";
+import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCreateOperator, useUpdateOperator, useWorkSchedules } from "@/hooks/useResourcePlanning";
 import { useActiveWorkCenters } from "@/hooks/useWorkCenters";
@@ -182,6 +183,7 @@ export const OperatorDialog = ({
     e.preventDefault();
 
     if (cycleStartDateError) {
+      toast.error(cycleStartDateError);
       return;
     }
 
@@ -421,12 +423,13 @@ export const OperatorDialog = ({
                     type="date"
                     value={formData.shift_rotation_start_date}
                     min={formData.hire_date || undefined}
+                    className={cycleStartDateError ? "border-destructive" : ""}
                     onChange={(e) => setFormData({ ...formData, shift_rotation_start_date: e.target.value })}
                   />
                   {cycleStartDateError && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" />
-                      {cycleStartDateError}
+                    <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                      <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                      <span>{cycleStartDateError}</span>
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
@@ -451,12 +454,13 @@ export const OperatorDialog = ({
                     type="date"
                     value={formData.shift_rotation_start_date}
                     min={formData.hire_date || undefined}
+                    className={cycleStartDateError ? "border-destructive" : ""}
                     onChange={(e) => setFormData({ ...formData, shift_rotation_start_date: e.target.value })}
                   />
                   {cycleStartDateError && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" />
-                      {cycleStartDateError}
+                    <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                      <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                      <span>{cycleStartDateError}</span>
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
