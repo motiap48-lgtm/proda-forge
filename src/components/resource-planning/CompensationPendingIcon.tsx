@@ -10,12 +10,14 @@ import { cn } from "@/lib/utils";
 
 interface CompensationPendingIconProps {
   operatorId: string;
+  year?: number;
 }
 
 export const CompensationPendingIcon: React.FC<CompensationPendingIconProps> = ({
   operatorId,
+  year,
 }) => {
-  const { data: balance, isLoading } = useOperatorCompensationBalance(operatorId);
+  const { data: balance, isLoading } = useOperatorCompensationBalance(operatorId, year);
   const [isOpen, setIsOpen] = useState(false);
 
   if (isLoading || !balance) return null;
