@@ -103,16 +103,11 @@ function calculateDurationBreakdown(
   const totalDays = differenceInDays(endDate, startDate) + 1;
   const netDays = Math.max(0, totalDays - absenceDays);
 
-  // Calculate time components from net days
-  const netEndDate = addDays(startDate, netDays - 1);
-  
-  const years = differenceInYears(netEndDate, startDate);
-  const afterYears = addDays(startDate, years * 365);
-  
-  const months = differenceInMonths(netEndDate, afterYears);
-  const afterMonths = addDays(afterYears, months * 30);
-  
-  const days = Math.max(0, differenceInDays(netEndDate, afterMonths));
+  // Convert net days into years, months, days
+  const years = Math.floor(netDays / 365);
+  const remainingAfterYears = netDays % 365;
+  const months = Math.floor(remainingAfterYears / 30);
+  const days = remainingAfterYears % 30;
 
   // For current employment, calculate precise time
   const now = new Date();
