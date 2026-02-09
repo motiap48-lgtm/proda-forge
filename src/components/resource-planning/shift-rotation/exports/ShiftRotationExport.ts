@@ -3,6 +3,15 @@ import { format, getDay, isToday, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly } from "../utils";
 
+export interface CalendarException {
+  id: string;
+  exception_date: string;
+  exception_type: string;
+  is_working_day: boolean;
+  name: string;
+  reduction_hours?: number | null;
+}
+
 export interface ExportData {
   days: Date[];
   operators: any[];
@@ -11,6 +20,7 @@ export interface ExportData {
   overtimeEntries: any[];
   compensations: any[];
   absences: any[];
+  calendarExceptions?: CalendarException[];
   shiftColorMap: Map<string, any>;
   grandTotal: { hours: number; minutes: number };
   grandTotalFact: { hours: number; minutes: number };
@@ -67,6 +77,38 @@ const getAbsenceForDate = (operatorId: string, date: Date, absences: any[]): any
     
     return dateOnly >= startDate && dateOnly <= endDate;
   }) || null;
+};
+
+// Helper to check if schedule is 5/2 type (affected by holidays)
+const is52ScheduleType = (operator: any): boolean => {
+  const scheduleType = operator.work_schedules?.schedule_type;
+  const cycleDaysOn = operator.work_schedules?.cycle_days_on || 5;
+  const cycleDaysOff = operator.work_schedules?.cycle_days_off || 2;
+  
+  return (
+    scheduleType === '5/2' || 
+    scheduleType === 'weekly' || 
+    (scheduleType === 'shift' && cycleDaysOn === 5 && cycleDaysOff === 2) ||
+    (cycleDaysOn === 5 && cycleDaysOff === 2 && scheduleType !== 'cyclic')
+  );
+};
+
+// Helper to get holiday exception for a date
+const getHolidayException = (dateStr: string, calendarExceptions: CalendarException[]): CalendarException | null => {
+  return calendarExceptions.find(
+    ex => ex.exception_date === dateStr && 
+         ex.exception_type === 'holiday' && 
+         !ex.is_working_day
+  ) || null;
+};
+
+// Helper to get shortened day exception
+const getShortenedDayException = (dateStr: string, calendarExceptions: CalendarException[]): CalendarException | null => {
+  return calendarExceptions.find(
+    ex => ex.exception_date === dateStr && 
+         ex.exception_type === 'shortened_day' && 
+         ex.is_working_day
+  ) || null;
 };
 
 // Helper function to get fact minutes for a specific operator and date
@@ -161,7 +203,7 @@ const formatMinutes = (minutes: number): string => {
 export const exportToExcel = (data: ExportData) => {
   const { 
     days, operators, groupedBySchedule, timesheets, overtimeEntries, 
-    compensations, absences, calculatePlanHours 
+    compensations, absences, calendarExceptions = [], calculatePlanHours 
   } = data;
   
   const wb = XLSX.utils.book_new();
@@ -171,7 +213,19 @@ export const exportToExcel = (data: ExportData) => {
   const headerRow1 = ['Сотрудник', 'График'];
   const headerRow2 = ['', ''];
   days.forEach(day => {
-    headerRow1.push(format(day, 'dd.MM.yyyy'));
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const holidayEx = getHolidayException(dateStr, calendarExceptions);
+    const shortenedEx = getShortenedDayException(dateStr, calendarExceptions);
+    
+    // Add holiday/shortened indicator to header
+    let dateHeader = format(day, 'dd.MM.yyyy');
+    if (holidayEx) {
+      dateHeader += ' 🎉';
+    } else if (shortenedEx) {
+      dateHeader += ' ⏰';
+    }
+    
+    headerRow1.push(dateHeader);
     headerRow1.push('');
     headerRow2.push('План');
     headerRow2.push('Факт');
@@ -204,6 +258,9 @@ export const exportToExcel = (data: ExportData) => {
         ? `${operator.full_name} (уволен ${format(parseDateOnly(operator.termination_date)!, 'dd.MM.yy')})`
         : operator.full_name;
       
+      // Check if 5/2 schedule (affected by holidays)
+      const is52 = is52ScheduleType(operator);
+      
       days.forEach(day => {
         const dateStr = format(day, "yyyy-MM-dd");
         const shift = getShiftForDate(operator, day);
@@ -215,6 +272,11 @@ export const exportToExcel = (data: ExportData) => {
         // Get absence for this day
         const absence = getAbsenceForDate(operator.id, day, absences);
         const absenceInfo = absence ? ABSENCE_LABELS[absence.absence_type] : null;
+        
+        // Get holiday/shortened day exceptions
+        const holidayEx = getHolidayException(dateStr, calendarExceptions);
+        const shortenedEx = getShortenedDayException(dateStr, calendarExceptions);
+        const isHolidayForSchedule = is52 && !!holidayEx;
         
         // Get planned minutes
         let planMinutes = 0;
@@ -237,9 +299,24 @@ export const exportToExcel = (data: ExportData) => {
             // Plan remains for sick leave, business trip, etc.
             planMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
           }
+        } else if (isHolidayForSchedule) {
+          // Holiday for 5/2 schedule - no work
+          planText = '🎉';
+          planMinutes = 0;
         } else if (shift) {
-          planMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
-          planText = formatMinutes(planMinutes);
+          let netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+          
+          // Apply shortened day reduction
+          if (shortenedEx) {
+            const scheduleReductionHours = operator.work_schedules?.reduction_hours;
+            const reductionHours = scheduleReductionHours ?? shortenedEx.reduction_hours ?? 1;
+            netMinutes = Math.max(0, netMinutes - (reductionHours * 60));
+            planText = formatMinutes(netMinutes) + '⏰';
+          } else {
+            planText = formatMinutes(netMinutes);
+          }
+          
+          planMinutes = netMinutes;
         }
         
         operatorTotalMinutes += planMinutes;
@@ -301,6 +378,7 @@ export const exportToExcel = (data: ExportData) => {
   exportData.push(['ЛЕГЕНДА:']);
   exportData.push(['🏖️ - Отпуск', '🏥 - Больничный', '✈️ - Командировка', '📋 - Административный']);
   exportData.push(['👶 - Декрет', '💰 - Без сохранения ЗП', '🚫 - Прогул', '🚪 - Уволен']);
+  exportData.push(['🎉 - Праздничный день', '⏰ - Сокращенный день']);
   
   const ws = XLSX.utils.aoa_to_sheet(exportData);
   
@@ -330,7 +408,7 @@ export const exportToExcel = (data: ExportData) => {
 export const printCalendar = (data: ExportData) => {
   const { 
     days, operators, groupedBySchedule, timesheets, overtimeEntries, 
-    compensations, absences, shiftColorMap, grandTotal, grandTotalFact,
+    compensations, absences, calendarExceptions = [], shiftColorMap, grandTotal, grandTotalFact,
     calculateTotalHours, calculatePlanHours, calculateGroupStats 
   } = data;
   
@@ -357,13 +435,13 @@ export const printCalendar = (data: ExportData) => {
         ? `${operator.full_name} <span class="terminated-badge">уволен ${format(terminationDate!, 'd.MM')}</span>`
         : operator.full_name;
       
+      // Check if 5/2 schedule
+      const is52 = is52ScheduleType(operator);
+      
       const daysHtml = days.map(day => {
         const shift = getShiftForDate(operator, day);
         const isWeekend = getDay(day) === 0 || getDay(day) === 6;
         const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
-        const netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
-        const hours = Math.floor(netMinutes / 60);
-        const mins = netMinutes % 60;
         const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
         const dateStr = format(day, "yyyy-MM-dd");
         const factMins = getFactMinutesForDay(operator.id, dateStr, timesheets, overtimeEntries, compensations);
@@ -377,6 +455,11 @@ export const printCalendar = (data: ExportData) => {
         // Get absence for this day
         const absence = getAbsenceForDate(operator.id, day, absences);
         const absenceInfo = absence ? ABSENCE_LABELS[absence.absence_type] : null;
+        
+        // Get holiday/shortened day exceptions
+        const holidayEx = getHolidayException(dateStr, calendarExceptions);
+        const shortenedEx = getShortenedDayException(dateStr, calendarExceptions);
+        const isHolidayForSchedule = is52 && !!holidayEx;
         
         if (terminatedOnDate) {
           return `<td class="terminated"><span class="termination-icon">🚪</span></td>`;
@@ -401,9 +484,30 @@ export const printCalendar = (data: ExportData) => {
           `;
         }
         
+        if (isHolidayForSchedule) {
+          return `
+            <td class="holiday" title="${holidayEx?.name || 'Праздничный день'}">
+              <span class="holiday-icon">🎉</span>
+              ${factMins > 0 ? `<br/><span class="fact">${factH}ч${factM > 0 ? factM + 'м' : ''}</span>` : ''}
+            </td>
+          `;
+        }
+        
+        // Calculate actual hours with shortened day reduction
+        let netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
+        if (shortenedEx && shift) {
+          const scheduleReductionHours = operator.work_schedules?.reduction_hours;
+          const reductionHours = scheduleReductionHours ?? shortenedEx.reduction_hours ?? 1;
+          netMinutes = Math.max(0, netMinutes - (reductionHours * 60));
+        }
+        const hours = Math.floor(netMinutes / 60);
+        const mins = netMinutes % 60;
+        
+        const shortenedIndicator = shortenedEx && shift ? '<span class="shortened-icon">⏰</span>' : '';
+        
         return `
-          <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'}">
-            <span class="plan">${shift ? `${hours}ч${mins > 0 ? mins + 'м' : ''}` : '—'}</span>
+          <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'} ${shortenedEx ? 'shortened' : ''}">
+            <span class="plan">${shift ? `${hours}ч${mins > 0 ? mins + 'м' : ''}` : '—'}</span>${shortenedIndicator}
             <span class="${factMins > 0 ? 'fact' : 'fact-zero'}"> / ${factMins > 0 ? factH + 'ч' + (factM > 0 ? factM + 'м' : '') : '—'}</span>
             ${cycleInfo ? '<br/><span class="cycle-day">Д' + cycleInfo.dayInCycle + '</span>' : ''}
           </td>
@@ -442,11 +546,25 @@ export const printCalendar = (data: ExportData) => {
     `;
   }).join('');
 
-  const daysHeaderHtml = days.map(day => `
-    <th class="${isToday(day) ? 'today' : ''} ${getDay(day) === 0 || getDay(day) === 6 ? 'weekend' : ''}">
-      ${format(day, 'EEE', { locale: ru })}<br/>${format(day, 'd MMM', { locale: ru })}
-    </th>
-  `).join('');
+  const daysHeaderHtml = days.map(day => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const holidayEx = getHolidayException(dateStr, calendarExceptions);
+    const shortenedEx = getShortenedDayException(dateStr, calendarExceptions);
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+    
+    let headerClass = isToday(day) ? 'today' : '';
+    if (holidayEx) headerClass += ' holiday-header';
+    else if (isWeekend) headerClass += ' weekend';
+    
+    const holidayIcon = holidayEx ? '<br/><span class="holiday-badge">🎉</span>' : '';
+    const shortenedIcon = shortenedEx ? '<br/><span class="shortened-badge">⏰</span>' : '';
+    
+    return `
+      <th class="${headerClass}" title="${holidayEx?.name || ''}">
+        ${format(day, 'EEE', { locale: ru })}<br/>${format(day, 'd MMM', { locale: ru })}${holidayIcon}${shortenedIcon}
+      </th>
+    `;
+  }).join('');
 
   printWindow.document.write(`
     <!DOCTYPE html>
@@ -485,6 +603,15 @@ export const printCalendar = (data: ExportData) => {
         .absence-unauthorized { background: #fda4af; }
         .absence-other { background: #fef3c7; }
         .absence-icon { font-size: 10px; }
+        
+        /* Holiday & shortened day styles */
+        .holiday { background: #fef3c7; }
+        .holiday-icon { font-size: 10px; }
+        .holiday-header { background: #fef3c7 !important; }
+        .holiday-badge { font-size: 8px; }
+        .shortened { border: 1px dashed #f59e0b; }
+        .shortened-icon { font-size: 6px; color: #d97706; }
+        .shortened-badge { font-size: 8px; }
         
         /* Termination styles */
         .terminated { background: #e5e7eb; color: #6b7280; }
@@ -533,6 +660,8 @@ export const printCalendar = (data: ExportData) => {
         <span class="legend-item">💰 Без ЗП</span>
         <span class="legend-item">🚫 Прогул</span>
         <span class="legend-item">🚪 Уволен</span>
+        <span class="legend-item">🎉 Праздник</span>
+        <span class="legend-item">⏰ Сокр. день</span>
       </div>
       
       <script>window.onload = function() { window.print(); }</script>
@@ -545,7 +674,7 @@ export const printCalendar = (data: ExportData) => {
 export const exportToPdf = (data: ExportData) => {
   const { 
     days, operators, groupedBySchedule, timesheets, overtimeEntries, 
-    compensations, absences, shiftColorMap, grandTotal, grandTotalFact,
+    compensations, absences, calendarExceptions = [], shiftColorMap, grandTotal, grandTotalFact,
     calculateTotalHours, calculatePlanHours, calculateGroupStats 
   } = data;
   
@@ -561,11 +690,25 @@ export const exportToPdf = (data: ExportData) => {
     const schedule = ops[0]?.work_schedules;
     const isCyclic = schedule?.schedule_type === 'cyclic';
     
-    const daysHeaderHtml = days.map(day => `
-      <th class="${isToday(day) ? 'today' : ''} ${getDay(day) === 0 || getDay(day) === 6 ? 'weekend' : ''}">
-        ${format(day, 'EEE', { locale: ru })}<br/>${format(day, 'd')}
-      </th>
-    `).join('');
+    const daysHeaderHtml = days.map(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const holidayEx = getHolidayException(dateStr, calendarExceptions);
+      const shortenedEx = getShortenedDayException(dateStr, calendarExceptions);
+      const isWeekend = getDay(day) === 0 || getDay(day) === 6;
+      
+      let headerClass = isToday(day) ? 'today' : '';
+      if (holidayEx) headerClass += ' holiday-header';
+      else if (isWeekend) headerClass += ' weekend';
+      
+      const holidayIcon = holidayEx ? ' 🎉' : '';
+      const shortenedIcon = shortenedEx ? ' ⏰' : '';
+      
+      return `
+        <th class="${headerClass}" title="${holidayEx?.name || ''}">
+          ${format(day, 'EEE', { locale: ru })}<br/>${format(day, 'd')}${holidayIcon}${shortenedIcon}
+        </th>
+      `;
+    }).join('');
     
     const operatorsHtml = ops.map(operator => {
       const shiftNameToIndex = new Map<string, number>();
@@ -580,13 +723,13 @@ export const exportToPdf = (data: ExportData) => {
         ? `${operator.full_name} <span class="terminated-badge">уволен</span>`
         : operator.full_name + (operator.shift_rotation_enabled ? ' 🔄' : '');
       
+      // Check if 5/2 schedule
+      const is52 = is52ScheduleType(operator);
+      
       const daysHtml = days.map(day => {
         const shift = getShiftForDate(operator, day);
         const isWeekend = getDay(day) === 0 || getDay(day) === 6;
         const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
-        const netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
-        const hours = Math.floor(netMinutes / 60);
-        const mins = netMinutes % 60;
         const dateStr = format(day, "yyyy-MM-dd");
         const factMins = getFactMinutesForDay(operator.id, dateStr, timesheets, overtimeEntries, compensations);
         const factH = Math.floor(factMins / 60);
@@ -599,6 +742,11 @@ export const exportToPdf = (data: ExportData) => {
         // Get absence for this day
         const absence = getAbsenceForDate(operator.id, day, absences);
         const absenceInfo = absence ? ABSENCE_LABELS[absence.absence_type] : null;
+        
+        // Get holiday/shortened day exceptions
+        const holidayEx = getHolidayException(dateStr, calendarExceptions);
+        const shortenedEx = getShortenedDayException(dateStr, calendarExceptions);
+        const isHolidayForSchedule = is52 && !!holidayEx;
         
         if (terminatedOnDate) {
           return `<td class="terminated"><span class="termination-icon">🚪</span></td>`;
@@ -625,10 +773,33 @@ export const exportToPdf = (data: ExportData) => {
           `;
         }
         
+        if (isHolidayForSchedule) {
+          return `
+            <td class="holiday" title="${holidayEx?.name || 'Праздничный день'}">
+              <div class="cell-content">
+                <span class="holiday-icon">🎉</span>
+                ${factMins > 0 ? `<br/><span class="fact">${factH}ч${factM > 0 ? factM + 'м' : ''}</span>` : ''}
+              </div>
+            </td>
+          `;
+        }
+        
+        // Calculate actual hours with shortened day reduction
+        let netMinutes = shift ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes)) : 0;
+        if (shortenedEx && shift) {
+          const scheduleReductionHours = operator.work_schedules?.reduction_hours;
+          const reductionHours = scheduleReductionHours ?? shortenedEx.reduction_hours ?? 1;
+          netMinutes = Math.max(0, netMinutes - (reductionHours * 60));
+        }
+        const hours = Math.floor(netMinutes / 60);
+        const mins = netMinutes % 60;
+        
+        const shortenedIndicator = shortenedEx && shift ? '<span class="shortened-icon">⏰</span>' : '';
+        
         return `
-          <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'}">
+          <td class="${isToday(day) ? 'today' : ''} ${shift ? 'shift-' + shiftIdx : isWeekend ? 'weekend' : 'day-off'} ${shortenedEx ? 'shortened' : ''}">
             <div class="cell-content">
-              <span class="plan">${shift ? hours + 'ч' + (mins > 0 ? mins + 'м' : '') : '—'}</span>
+              <span class="plan">${shift ? hours + 'ч' + (mins > 0 ? mins + 'м' : '') : '—'}</span>${shortenedIndicator}
               <br/>
               <span class="${factMins > 0 ? 'fact' : 'fact-zero'}">${factMins > 0 ? factH + 'ч' + (factM > 0 ? factM + 'м' : '') : '—'}</span>
             </div>
@@ -717,6 +888,13 @@ export const exportToPdf = (data: ExportData) => {
         .absence-other { background: #fef3c7; }
         .absence-icon { font-size: 12px; }
         
+        /* Holiday & shortened day styles */
+        .holiday { background: #fef3c7; }
+        .holiday-icon { font-size: 12px; }
+        .holiday-header { background: #fef3c7 !important; }
+        .shortened { border: 1px dashed #f59e0b; }
+        .shortened-icon { font-size: 7px; color: #d97706; }
+        
         /* Termination styles */
         .terminated { background: #e5e7eb; color: #6b7280; }
         .termination-icon { font-size: 12px; }
@@ -767,6 +945,8 @@ export const exportToPdf = (data: ExportData) => {
         <span class="legend-item">💰 Без сохранения ЗП</span>
         <span class="legend-item">🚫 Прогул</span>
         <span class="legend-item">🚪 Уволен</span>
+        <span class="legend-item">🎉 Праздник</span>
+        <span class="legend-item">⏰ Сокр. день</span>
       </div>
       
       <script>window.onload = function() { window.print(); }</script>
