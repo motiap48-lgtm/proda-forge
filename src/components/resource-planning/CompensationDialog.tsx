@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
+import { format, startOfYear, endOfYear } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 import {
@@ -17,7 +17,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
-import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban, Info, EyeOff, Eye, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { Clock, Plus, Trash2, CalendarIcon, CheckCircle, AlertCircle, CalendarDays, Check, RotateCcw, Ban, Info, EyeOff, Eye, Pencil } from "lucide-react";
+import { PeriodRangePicker, PeriodRange, getDefaultYearRange } from "./PeriodRangePicker";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -142,8 +143,8 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
   const [editingForCompensation, setEditingForCompensation] = useState<string>("");
   const [existingDatesForEdit, setExistingDatesForEdit] = useState<string[]>([]);
   
-  // Period filter - default to current month
-  const [selectedMonth, setSelectedMonth] = useState<Date>(() => startOfMonth(new Date()));
+  // Period filter - default to current year
+  const [periodRange, setPeriodRange] = useState<PeriodRange>(getDefaultYearRange);
 
   // Update absenceHours when scheduleHours is loaded
   useEffect(() => {
@@ -320,7 +321,16 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
     forceDeleteAbsence.mutate(id);
   };
 
-  const totalPending = roundHours(compensations
+  // Filter compensations by period range for display and totals
+  const filteredCompensations = useMemo(() => {
+    return compensations.filter((c) => {
+      const absenceDate = new Date(c.absence_date);
+      if (absenceDate < periodRange.startDate || absenceDate > periodRange.endDate) return false;
+      return showCancelled || c.status !== "cancelled";
+    });
+  }, [compensations, periodRange, showCancelled]);
+
+  const totalPending = roundHours(filteredCompensations
     .filter((c) => c.status === "pending" || c.status === "partial")
     .reduce((sum, c) => {
        // Only count CONFIRMED records for balance calculation
@@ -438,29 +448,9 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
         )}
 
             {/* Period filter and cancelled toggle */}
-            <div className="flex items-center justify-between py-1">
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7"
-                  onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-medium min-w-[120px] text-center">
-                  {format(selectedMonth, "LLLL yyyy", { locale: ru })}
-                </span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7"
-                  onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-3 py-1">
+              <PeriodRangePicker value={periodRange} onChange={setPeriodRange} />
+              <div className="flex items-center justify-end gap-2">
                 {showCancelled ? (
                   <Eye className="h-4 w-4 text-muted-foreground" />
                 ) : (
@@ -475,29 +465,12 @@ export const CompensationDialog: React.FC<CompensationDialogProps> = ({
             <div className="space-y-3">
               {isLoading ? (
                 <p className="text-center text-muted-foreground py-4">Загрузка...</p>
-              ) : compensations.filter((c) => {
-                // Period filter
-                const absenceDate = new Date(c.absence_date);
-                const monthStart = startOfMonth(selectedMonth);
-                const monthEnd = endOfMonth(selectedMonth);
-                if (absenceDate < monthStart || absenceDate > monthEnd) return false;
-                // Cancelled filter
-                return showCancelled || c.status !== "cancelled";
-              }).length === 0 ? (
+              ) : filteredCompensations.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">
-                  Нет записей за {format(selectedMonth, "LLLL yyyy", { locale: ru })}
+                  Нет записей за выбранный период
                 </p>
               ) : (
-                compensations
-                  .filter((c) => {
-                    // Period filter
-                    const absenceDate = new Date(c.absence_date);
-                    const monthStart = startOfMonth(selectedMonth);
-                    const monthEnd = endOfMonth(selectedMonth);
-                    if (absenceDate < monthStart || absenceDate > monthEnd) return false;
-                    // Cancelled filter
-                    return showCancelled || c.status !== "cancelled";
-                  })
+                filteredCompensations
                   .map((comp) => {
                    // Only count CONFIRMED records for display
                    const compensatedHours = roundHours(comp.compensation_records?.reduce(

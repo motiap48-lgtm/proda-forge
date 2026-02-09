@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
+import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { parseDateOnly } from "@/components/resource-planning/shift-rotation/utils";
+import { PeriodRangePicker, PeriodRange, getDefaultYearRange } from "./PeriodRangePicker";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle, Merge, Clock, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, Plus, Trash2, Edit2, CalendarRange, UserX, AlertCircle, Merge, Clock, RotateCcw } from "lucide-react";
 import {
   useOperatorAbsences,
   useCreateOperatorAbsence,
@@ -102,8 +103,8 @@ export const OperatorAbsenceDialog = ({
     return map;
   }, [absences, compensations]);
 
-  // Period filter - default to current month
-  const [selectedMonth, setSelectedMonth] = useState<Date>(() => startOfMonth(new Date()));
+  // Period filter - default to current year
+  const [periodRange, setPeriodRange] = useState<PeriodRange>(getDefaultYearRange);
 
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState<OperatorAbsence | null>(null);
@@ -430,27 +431,7 @@ export const OperatorAbsenceDialog = ({
 
           {/* Period filter */}
           {!isAddingNew && !editingAbsence && (
-            <div className="flex items-center justify-center gap-2 py-1">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-7 w-7"
-                onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-medium min-w-[120px] text-center">
-                {format(selectedMonth, "LLLL yyyy", { locale: ru })}
-              </span>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-7 w-7"
-                onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+            <PeriodRangePicker value={periodRange} onChange={setPeriodRange} />
           )}
 
           {/* List of absences */}
@@ -463,10 +444,8 @@ export const OperatorAbsenceDialog = ({
                 const filteredAbsences = absences?.filter((absence) => {
                   const startDate = new Date(absence.start_date);
                   const endDate = new Date(absence.end_date);
-                  const monthStart = startOfMonth(selectedMonth);
-                  const monthEnd = endOfMonth(selectedMonth);
-                  // Include if absence overlaps with selected month
-                  return startDate <= monthEnd && endDate >= monthStart;
+                  // Include if absence overlaps with selected period
+                  return startDate <= periodRange.endDate && endDate >= periodRange.startDate;
                 }) || [];
                 
                 return filteredAbsences.length > 0 ? (
@@ -570,7 +549,7 @@ export const OperatorAbsenceDialog = ({
                 ) : (
                   <div className="text-center text-muted-foreground py-8">
                     <UserX className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Нет записей за {format(selectedMonth, "LLLL yyyy", { locale: ru })}</p>
+                    <p>Нет записей за выбранный период</p>
                   </div>
                 );
               })()}
