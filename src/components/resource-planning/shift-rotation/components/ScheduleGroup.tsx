@@ -1929,6 +1929,36 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             currentActualMinutes: getTimesheetForDate(timesheetMap, op.id, bulkTimesheetDate)?.actual_minutes || 0,
           }))}
           groupName={scheduleName}
+          // Data for "all unfilled days" mode
+          operatorsWithHistory={operators.map(op => {
+            const today = startOfDay(new Date());
+            // Collect unfilled days for this operator (past days with plan > 0 and no actual)
+            const unfilledDays = days
+              .filter(day => {
+                // Only past days (before today) or today
+                if (isAfter(startOfDay(day), today)) return false;
+                const plannedMins = getPlannedDayMinutes?.(op, day) || 0;
+                if (plannedMins <= 0) return false;
+                const ts = getTimesheetForDate(timesheetMap, op.id, day);
+                return !ts || ts.actual_minutes === 0;
+              })
+              .map(day => ({
+                date: day,
+                plannedMinutes: getPlannedDayMinutes?.(op, day) || 0,
+                actualMinutes: getTimesheetForDate(timesheetMap, op.id, day)?.actual_minutes || 0,
+              }));
+
+            return {
+              id: op.id,
+              full_name: op.full_name,
+              code: op.code,
+              plannedMinutes: getPlannedDayMinutes?.(op, bulkTimesheetDate) || 0,
+              currentActualMinutes: getTimesheetForDate(timesheetMap, op.id, bulkTimesheetDate)?.actual_minutes || 0,
+              unfilledDays,
+            };
+          })}
+          monthStart={days[0]}
+          monthEnd={days[days.length - 1]}
         />
       )}
     </div>
