@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { 
   useOperatorTimesheets, 
   useBulkUpsertTimesheets,
+  useBulkUpdateTimesheetStatus,
   createTimesheetMap,
   getTimesheetForDate,
 } from "@/hooks/useOperatorTimesheets";
@@ -39,6 +40,7 @@ import { getTimesheetSettings } from "@/hooks/useTimesheetSettings";
 import { useOperatorCompensationBalanceByPeriod } from "@/hooks/useAbsenceCompensations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TimesheetHistoryDialog } from "./TimesheetHistoryDialog";
+import { TimesheetStatusBadge, type TimesheetStatus } from "./TimesheetStatusBadge";
 
 // Extended compensation record with absence_date from parent
 interface ExtendedCompensationRecord {
@@ -104,6 +106,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   const { data: timesheets = [], isLoading } = useOperatorTimesheets(startDate, endDate, [operatorId]);
   const { data: overtimeEntries = [] } = useOvertimeEntries(startDate, endDate, [operatorId]);
   const bulkUpsert = useBulkUpsertTimesheets();
+  const bulkUpdateStatus = useBulkUpdateTimesheetStatus();
   
   // Get real compensation balance (absence_hours - confirmed hours)
   const year = startDate.getFullYear();
@@ -111,6 +114,57 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   const timesheetMap = useMemo(() => createTimesheetMap(timesheets), [timesheets]);
   const overtimeMap = useMemo(() => createOvertimeMap(overtimeEntries), [overtimeEntries]);
+  
+  // Calculate aggregated period status (lowest status among all timesheets with data)
+  const periodStatus = useMemo((): TimesheetStatus | null => {
+    const statusPriority: Record<TimesheetStatus, number> = {
+      pending: 0,
+      draft: 0,
+      on_review: 1,
+      confirmed: 2,
+      approved: 3,
+    };
+    
+    const timesheetsWithData = timesheets.filter(ts => ts.actual_minutes > 0);
+    if (timesheetsWithData.length === 0) return null;
+    
+    // Find minimum status (lowest priority = earliest in workflow)
+    let minPriority = 999;
+    let minStatus: TimesheetStatus = 'pending';
+    
+    for (const ts of timesheetsWithData) {
+      const status = (ts.status || 'pending') as TimesheetStatus;
+      const priority = statusPriority[status] ?? 0;
+      if (priority < minPriority) {
+        minPriority = priority;
+        minStatus = status;
+      }
+    }
+    
+    return minStatus;
+  }, [timesheets]);
+  
+  // Handle bulk status change for entire period
+  const handlePeriodStatusChange = async (newStatus: TimesheetStatus) => {
+    const timesheetsWithData = timesheets.filter(ts => ts.actual_minutes > 0);
+    if (timesheetsWithData.length === 0) {
+      toast.error("Нет записей для изменения статуса");
+      return;
+    }
+    
+    try {
+      await bulkUpdateStatus.mutateAsync({
+        entries: timesheetsWithData.map(ts => ({
+          operator_id: ts.operator_id,
+          work_date: ts.work_date,
+        })),
+        status: newStatus,
+      });
+      toast.success(`Статус изменён на "${newStatus === 'on_review' ? 'На проверке' : newStatus === 'confirmed' ? 'Подтверждён' : newStatus === 'approved' ? 'Утверждён' : 'Черновик'}"`);
+    } catch (error: any) {
+      toast.error("Ошибка смены статуса: " + error.message);
+    }
+  };
 
   // Generate days array
   const days = useMemo(() => {
@@ -398,9 +452,19 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Табель: {operatorName}
+            <DialogTitle className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Табель: {operatorName}
+              </div>
+              {periodStatus && (
+                <TimesheetStatusBadge
+                  status={periodStatus}
+                  onStatusChange={handlePeriodStatusChange}
+                  editable={!hasEdits}
+                  showActions={!hasEdits}
+                />
+              )}
             </DialogTitle>
           </DialogHeader>
           
