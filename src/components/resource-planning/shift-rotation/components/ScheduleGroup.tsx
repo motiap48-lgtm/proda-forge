@@ -688,7 +688,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               <span className="text-sm">{absenceInfo.icon}</span>
                             </span>
                           )}
-                          <CompensationPendingIcon operatorId={operator.id} />
+                          <CompensationPendingIcon operatorId={operator.id} year={days[0]?.getFullYear()} />
                           {hasPersonalCycleDate && (
                             <span title="Персональная дата цикла">
                               <CalendarCheck className="h-3 w-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
