@@ -390,7 +390,9 @@ export const EmploymentHistoryViewDialog = ({
                           </div>
                           {record.event_type === "terminated" && (() => {
                             const endDate = getTerminationEndDate(record);
-                            const timeAgo = getTimeAgo(record.event_date, endDate);
+                            const today = new Date().toISOString().split("T")[0];
+                            const isBackdated = record.event_date < today;
+                            const timeAgo = getTimeAgo(isBackdated ? record.event_date : record.created_at, endDate);
                             const isOngoing = !endDate;
                             return (
                               <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
