@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays, endOfMonth, isSameDay, startOfDay, isAfter } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info, TrendingDown, AlertCircle, AlertTriangle, History } from "lucide-react";
+import { Clock, Check, Save, RotateCcw, Undo2, Hammer, ArrowRight, Info, TrendingDown, AlertCircle, AlertTriangle, History, Lock } from "lucide-react";
 import { UserX } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
@@ -143,6 +143,24 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
     
     return minStatus;
   }, [timesheets]);
+  
+  // Check if period is locked (all records are confirmed or approved)
+  const isPeriodLocked = useMemo(() => {
+    const timesheetsWithData = timesheets.filter(ts => ts.actual_minutes > 0);
+    if (timesheetsWithData.length === 0) return false;
+    
+    // Period is locked if ALL records have status 'confirmed' or 'approved'
+    return timesheetsWithData.every(ts => 
+      ts.status === 'confirmed' || ts.status === 'approved'
+    );
+  }, [timesheets]);
+  
+  // Check if a specific day is locked
+  const isDayLocked = (dateStr: string): boolean => {
+    const ts = timesheets.find(t => t.operator_id === operatorId && t.work_date === dateStr);
+    if (!ts || ts.actual_minutes === 0) return false;
+    return ts.status === 'confirmed' || ts.status === 'approved';
+  };
   
   // Handle bulk status change for entire period
   const handlePeriodStatusChange = async (newStatus: TimesheetStatus) => {
@@ -492,16 +510,33 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     <p className="text-xs">История изменений</p>
                   </TooltipContent>
                 </Tooltip>
-                {hasEdits && (
+                {hasEdits && !isPeriodLocked && (
                   <Button variant="ghost" size="sm" onClick={handleResetChanges} className="h-7 px-2 text-xs">
                     <Undo2 className="h-3 w-3 mr-1" />
                     Сбросить
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => setShowClearConfirm(true)} className="h-7 px-2 text-xs">
-                  <RotateCcw className="h-3 w-3 mr-1" />
-                  Обнулить
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowClearConfirm(true)} 
+                        className="h-7 px-2 text-xs"
+                        disabled={isPeriodLocked}
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1" />
+                        Обнулить
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {isPeriodLocked && (
+                    <TooltipContent>
+                      <p className="text-xs">Табель заблокирован (подтверждён/утверждён)</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="inline-flex">
@@ -510,16 +545,21 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         size="sm" 
                         onClick={handleFillPlan} 
                         className="h-7 px-2 text-xs"
-                        disabled={!canFillByPlan}
+                        disabled={!canFillByPlan || isPeriodLocked}
                       >
                         <Check className="h-3 w-3 mr-1" />
                         По плану
                       </Button>
                     </span>
                   </TooltipTrigger>
-                  {!canFillByPlan && (
+                  {(isPeriodLocked || !canFillByPlan) && (
                     <TooltipContent>
-                      <p className="text-xs">Заполнение по плану доступно только в последний день текущего месяца</p>
+                      <p className="text-xs">
+                        {isPeriodLocked 
+                          ? "Табель заблокирован (подтверждён/утверждён)" 
+                          : "Заполнение по плану доступно только в последний день текущего месяца"
+                        }
+                      </p>
                     </TooltipContent>
                   )}
                 </Tooltip>
@@ -543,6 +583,14 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
               </div>
             )}
           </div>
+          
+          {/* Lock warning banner */}
+          {isPeriodLocked && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 border border-muted-foreground/20 px-3 py-2 rounded-md mb-2">
+              <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>Табель заблокирован — редактирование недоступно (статус: подтверждён/утверждён)</span>
+            </div>
+          )}
           
           <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto">
             {isLoading ? (
@@ -612,7 +660,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 // то недоработку нужно показывать даже в календарный праздник.
                 // Поэтому праздники/выходные скрывают недоработку только когда НЕТ отсутствия.
                 const isHolidayOrWeekend = (isNonWorkingDay && !dayAbsence) || (isHoliday && !dayAbsence);
-                const isDisabled = isFuture || isNonWorkingDay;
+                const isDayLockedStatus = isDayLocked(dateStr);
+                const isDisabled = isFuture || isNonWorkingDay || isDayLockedStatus;
                 
                 const hasExtraRows = hasPendingCompensation || hasConfirmedCompensation || approvedMinutes > 0;
                 
@@ -704,11 +753,13 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                               {(isDisabled || shouldHighlight) && (
                                 <TooltipContent>
                                   <p className="text-xs">
-                                    {isFuture 
-                                      ? "Нельзя заполнять будущие даты" 
-                                      : isNonWorkingDay 
-                                        ? "Нерабочий день"
-                                        : "Не заполнено (план: " + formatMinutes(basePlanned) + ")"
+                                    {isDayLockedStatus
+                                      ? "Заблокировано (подтверждён/утверждён)"
+                                      : isFuture 
+                                        ? "Нельзя заполнять будущие даты" 
+                                        : isNonWorkingDay 
+                                          ? "Нерабочий день"
+                                          : "Не заполнено (план: " + formatMinutes(basePlanned) + ")"
                                     }
                                   </p>
                                 </TooltipContent>
@@ -791,6 +842,16 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                             }
                             return null;
                           })()}
+                          {isDayLockedStatus && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Lock className="h-3 w-3 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Заблокировано</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                           {hasEdit && (
                             <Badge className="text-[9px] px-0.5 py-0 bg-amber-100 text-amber-700 h-4">
                               изм
