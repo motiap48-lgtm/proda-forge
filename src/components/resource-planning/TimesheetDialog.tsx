@@ -739,8 +739,13 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                                     if (isDisabled) return;
                                     const rawValue = e.target.value;
                                     if (rawValue === '' || /^\d+$/.test(rawValue)) {
-                                      const val = parseInt(rawValue) || 0;
-                                      setEdits(prev => ({ ...prev, [dateStr]: Math.max(0, val) }));
+                                      let val = parseInt(rawValue) || 0;
+                                      val = Math.max(0, val);
+                                      if (basePlanned > 0 && val > basePlanned) {
+                                        val = basePlanned;
+                                        toast.info("Время сверх плана необходимо оформлять как переработку");
+                                      }
+                                      setEdits(prev => ({ ...prev, [dateStr]: val }));
                                     }
                                   }}
                                   onKeyDown={(e) => {
