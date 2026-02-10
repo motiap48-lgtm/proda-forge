@@ -111,6 +111,7 @@ export const OvertimeEntryDialog = ({
     };
   }, [currentOperator, localDate]);
 
+  // Reset form when entry or open state changes
   useEffect(() => {
     if (entry) {
       setStartTime(entry.start_time?.slice(0, 5) || scheduledEndTime);
@@ -119,20 +120,23 @@ export const OvertimeEntryDialog = ({
       setWorkOrderId(entry.work_order_id || "");
       setLocalDate(entry.work_date ? new Date(entry.work_date) : date);
     } else {
-      // For new entries on working days, default to end of shift
-      if (shiftInfo?.isWorkingDay && shiftInfo?.shiftEnd) {
-        setStartTime(shiftInfo.shiftEnd);
-        const endHour = parseInt(shiftInfo.shiftEnd.split(':')[0]) + 2;
-        setEndTime(`${String(Math.min(endHour, 23)).padStart(2, '0')}:00`);
-      } else {
-        setStartTime(scheduledEndTime);
-        setEndTime("21:00");
-      }
+      setStartTime(scheduledEndTime);
+      setEndTime("21:00");
       setDescription("");
       setWorkOrderId("");
       setLocalDate(date);
     }
-  }, [entry, scheduledEndTime, open, date, shiftInfo]);
+  }, [entry, scheduledEndTime, open, date]);
+
+  // Set smart defaults for new entries based on shift info
+  useEffect(() => {
+    if (!entry && shiftInfo?.isWorkingDay && shiftInfo?.shiftEnd) {
+      setStartTime(shiftInfo.shiftEnd);
+      const endHour = parseInt(shiftInfo.shiftEnd.split(':')[0]) + 2;
+      setEndTime(`${String(Math.min(endHour, 23)).padStart(2, '0')}:00`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entry, shiftInfo?.isWorkingDay, shiftInfo?.shiftEnd]);
 
   const calculateDuration = (): number => {
     try {
