@@ -996,7 +996,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="flex items-center gap-1 text-purple-600">
-                                <span className="text-[10px]">Перераб.:</span>
+                                <span className="text-[10px]">Перераб. {format(day, "d MMM", { locale: ru })}:</span>
                                 <span className="font-medium">+{formatMinutes(approvedMinutes)}</span>
                               </div>
                             </TooltipTrigger>
