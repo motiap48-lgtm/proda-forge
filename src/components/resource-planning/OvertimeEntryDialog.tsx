@@ -619,25 +619,52 @@ export const OvertimeEntryDialog = ({
           
           {/* For cancelled entries */}
           {entry?.status === 'cancelled' && (
-            <div className="flex justify-between items-center w-full">
-              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-                Закрыть
-              </Button>
-              {onDelete && (
+            <div className="flex flex-col gap-2 w-full">
+              {/* Restore and save */}
+              <div className="grid grid-cols-2 gap-2">
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    onOpenChange(false);
-                    onDelete(entry);
+                  variant="outline"
+                  onClick={async () => {
+                    setIsSubmitting(true);
+                    try {
+                      await updateEntry.mutateAsync({ id: entry.id, status: 'pending' });
+                      toast.success("Переработка восстановлена");
+                    } catch (error: any) {
+                      toast.error(error.message || "Ошибка восстановления");
+                    } finally {
+                      setIsSubmitting(false);
+                    }
                   }}
                   disabled={isSubmitting}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 >
-                  <Trash2 className="h-4 w-4 mr-1.5" />
-                  Удалить
+                  <RotateCcw className="h-4 w-4 mr-1.5" />
+                  Восстановить
                 </Button>
-              )}
+                <Button onClick={handleSubmit} disabled={isSubmitting || !timeValidation.isValid}>
+                  Сохранить
+                </Button>
+              </div>
+              {/* Secondary actions */}
+              <div className="flex justify-between items-center">
+                <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+                  Закрыть
+                </Button>
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onDelete(entry);
+                    }}
+                    disabled={isSubmitting}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1.5" />
+                    Удалить
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogFooter>
