@@ -7,15 +7,15 @@ export const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setFadeOut(true);
-      setTimeout(onComplete, 500);
-    }, 1500);
+      setTimeout(onComplete, 300);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [onComplete]);
 
   return (
     <div
-      className={`fixed inset-0 ${Z_INDEX_CLASSES.loadingScreen} flex items-center justify-center bg-background transition-opacity duration-500 ${
+      className={`fixed inset-0 ${Z_INDEX_CLASSES.loadingScreen} flex items-center justify-center bg-background transition-opacity duration-300 ${
         fadeOut ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
     >
