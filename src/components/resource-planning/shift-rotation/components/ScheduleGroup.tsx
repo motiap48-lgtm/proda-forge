@@ -630,7 +630,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             }}
           >
             {/* Employee column */}
-            <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-50" style={{ width: `${mobileEmployeeWidth}px` }}>
+            <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-50" style={{ width: `${mobileEmployeeWidth}px`, boxShadow: '2px 0 4px -2px hsl(var(--foreground) / 0.1)' }}>
               <div
                 className={cn(
                   "flex-shrink-0 bg-muted/30 font-semibold text-foreground py-2 h-[var(--sr-header-h)] flex items-center gap-2 border-b border-border mb-1",
