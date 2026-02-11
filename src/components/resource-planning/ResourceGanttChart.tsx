@@ -219,182 +219,188 @@ export const ResourceGanttChart = () => {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <div className="min-w-[600px] sm:min-w-[800px]">
-              {/* Timeline header */}
-              <div className="flex border-b">
-                <div className="w-[120px] sm:w-[200px] flex-shrink-0 p-2 sm:p-3 font-medium bg-muted/50 text-xs sm:text-sm">
-                  {resourceType === "operators" ? "Оператор" : "Бригада"}
-                </div>
-                <div className="flex-1">
+            <table className="w-full min-w-[600px] sm:min-w-[800px] border-collapse table-fixed">
+              <colgroup>
+                <col className="w-[120px] sm:w-[200px]" style={{ width: viewMode === "day" ? 120 : 200, minWidth: viewMode === "day" ? 120 : 200 }} />
+                {viewMode === "day"
+                  ? hours.map((hour) => (
+                      <col key={hour} style={{ minWidth: HOUR_WIDTH }} />
+                    ))
+                  : days.map((day) => (
+                      <col key={day.toISOString()} style={{ minWidth: HOUR_WIDTH * 4 }} />
+                    ))
+                }
+              </colgroup>
+              <thead>
+                <tr className="border-b">
+                  <th className="p-2 sm:p-3 font-medium bg-muted/50 text-xs sm:text-sm text-left sticky left-0 z-10">
+                    {resourceType === "operators" ? "Оператор" : "Бригада"}
+                  </th>
                   {viewMode === "day" ? (
-                    <div className="flex">
-                      {hours.map((hour) => (
-                        <div 
-                          key={hour} 
-                          className="flex-1 text-center py-2 text-sm text-muted-foreground border-l"
-                          style={{ minWidth: HOUR_WIDTH }}
-                        >
-                          {hour}:00
-                        </div>
-                      ))}
-                    </div>
+                    hours.map((hour) => (
+                      <th
+                        key={hour}
+                        className="text-center py-2 text-sm text-muted-foreground border-l font-normal"
+                      >
+                        {hour}:00
+                      </th>
+                    ))
                   ) : (
-                    <div className="flex">
-                      {days.map((day) => (
-                        <div 
-                          key={day.toISOString()} 
-                          className="flex-1 text-center py-2 text-sm border-l"
-                          style={{ minWidth: HOUR_WIDTH * 4 }}
-                        >
-                          <div className={cn(
-                            "font-medium",
-                            format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") && "text-primary"
-                          )}>
-                            {format(day, "EEE", { locale: ru })}
-                          </div>
-                          <div className="text-muted-foreground">
-                            {format(day, "d MMM", { locale: ru })}
-                          </div>
+                    days.map((day) => (
+                      <th
+                        key={day.toISOString()}
+                        className="text-center py-2 text-sm border-l font-normal"
+                      >
+                        <div className={cn(
+                          "font-medium",
+                          format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") && "text-primary"
+                        )}>
+                          {format(day, "EEE", { locale: ru })}
                         </div>
-                      ))}
-                    </div>
+                        <div className="text-muted-foreground">
+                          {format(day, "d MMM", { locale: ru })}
+                        </div>
+                      </th>
+                    ))
                   )}
-                </div>
-              </div>
+                </tr>
+              </thead>
+              <tbody>
+                {resources.length === 0 ? (
+                  <tr>
+                    <td colSpan={1 + (viewMode === "day" ? hours.length : days.length)} className="p-8 text-center text-muted-foreground">
+                      <Factory className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Нет {resourceType === "operators" ? "операторов" : "бригад"}</p>
+                    </td>
+                  </tr>
+                ) : (
+                  resources.map((resource) => {
+                    const resourceAssignments = resourceType === "operators"
+                      ? (assignments as any[]).filter(a => a.operator_id === resource.id)
+                      : (assignments as any[]).filter(a => a.brigade_id === resource.id);
 
-              {/* Resource rows */}
-              {resources.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  <Factory className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Нет {resourceType === "operators" ? "операторов" : "бригад"}</p>
-                </div>
-              ) : (
-                resources.map((resource) => {
-                  const resourceAssignments = resourceType === "operators"
-                    ? (assignments as any[]).filter(a => a.operator_id === resource.id)
-                    : (assignments as any[]).filter(a => a.brigade_id === resource.id);
-
-                  return (
-                    <div key={resource.id} className="flex border-b hover:bg-muted/30">
-                      <div className="w-[120px] sm:w-[200px] flex-shrink-0 p-2 sm:p-3 flex items-center gap-1 sm:gap-2 bg-muted/20">
-                        {resource.type === "operator" ? (
-                          <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                        ) : (
-                          <UsersIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                        )}
-                        <div className="truncate min-w-0">
-                          <div className="font-medium text-xs sm:text-sm truncate">{resource.name}</div>
-                          <div className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{resource.code}</div>
-                        </div>
-                      </div>
-                      <div className="flex-1 relative" style={{ height: ROW_HEIGHT }}>
+                    return (
+                      <tr key={resource.id} className="border-b hover:bg-muted/30">
+                        <td className="p-2 sm:p-3 bg-muted/20 sticky left-0 z-10">
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            {resource.type === "operator" ? (
+                              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                            ) : (
+                              <UsersIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                            )}
+                            <div className="truncate min-w-0">
+                              <div className="font-medium text-xs sm:text-sm truncate">{resource.name}</div>
+                              <div className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{resource.code}</div>
+                            </div>
+                          </div>
+                        </td>
                         {viewMode === "day" ? (
-                          <>
-                            {/* Hour grid lines */}
-                            {hours.map((hour) => (
-                              <div 
-                                key={hour}
-                                className="absolute top-0 bottom-0 border-l border-border/50"
-                                style={{ left: `${((hour - 8) / 12) * 100}%` }}
-                              />
-                            ))}
-                            {/* Assignments */}
-                            {resourceAssignments.map((assignment) => {
-                              const position = getAssignmentPosition(assignment, startDate);
-                              if (!position) return null;
+                          hours.map((hour, i) => {
+                            // Find assignments that cover this hour
+                            const hourAssignments = resourceAssignments.filter((assignment) => {
+                              if (assignment.assignment_date !== format(startDate, "yyyy-MM-dd")) return false;
+                              let startHour = assignment.shift_number === 1 ? 8 : 20;
+                              let endHour = assignment.shift_number === 1 ? 20 : 8;
+                              if (assignment.planned_start_time) {
+                                const s = parseISO(assignment.planned_start_time);
+                                startHour = s.getHours() + s.getMinutes() / 60;
+                              }
+                              if (assignment.planned_end_time) {
+                                const e = parseISO(assignment.planned_end_time);
+                                endHour = e.getHours() + e.getMinutes() / 60;
+                              }
+                              return hour >= startHour && hour < endHour;
+                            });
 
-                              return (
-                                <Tooltip key={assignment.id}>
-                                  <TooltipTrigger asChild>
-                                    <div
-                                      className={cn(
-                                        "absolute top-1 bottom-1 rounded cursor-pointer transition-all hover:brightness-110",
-                                        getStatusColor(assignment.status)
-                                      )}
-                                      style={{
-                                        left: position.left,
-                                        width: position.width,
-                                      }}
-                                    >
-                                      <span className="text-xs text-white px-1 truncate block">
-                                        Смена {assignment.shift_number}
-                                      </span>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <div className="space-y-1">
-                                      <div className="font-medium">Смена {assignment.shift_number}</div>
-                                      <div className="text-xs">Статус: {assignment.status}</div>
-                                      {assignment.notes && (
-                                        <div className="text-xs text-muted-foreground">{assignment.notes}</div>
-                                      )}
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              );
-                            })}
-                          </>
+                            return (
+                              <td
+                                key={hour}
+                                className="border-l relative"
+                                style={{ height: ROW_HEIGHT }}
+                              >
+                                {hourAssignments.map((assignment) => (
+                                  <Tooltip key={assignment.id}>
+                                    <TooltipTrigger asChild>
+                                      <div
+                                        className={cn(
+                                          "absolute inset-1 rounded cursor-pointer transition-all hover:brightness-110",
+                                          getStatusColor(assignment.status)
+                                        )}
+                                      >
+                                        <span className="text-xs text-white px-1 truncate block">
+                                          С{assignment.shift_number}
+                                        </span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <div className="space-y-1">
+                                        <div className="font-medium">Смена {assignment.shift_number}</div>
+                                        <div className="text-xs">Статус: {assignment.status}</div>
+                                        {assignment.notes && (
+                                          <div className="text-xs text-muted-foreground">{assignment.notes}</div>
+                                        )}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ))}
+                              </td>
+                            );
+                          })
                         ) : (
-                          <>
-                            {/* Day grid lines */}
-                            {days.map((day, i) => (
-                              <div 
+                          days.map((day, i) => {
+                            const dayAssignments = resourceAssignments.filter(
+                              a => a.assignment_date === format(day, "yyyy-MM-dd")
+                            );
+
+                            return (
+                              <td
                                 key={day.toISOString()}
                                 className={cn(
-                                  "absolute top-0 bottom-0 border-l",
-                                  format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") 
-                                    ? "bg-primary/5" 
-                                    : ""
+                                  "border-l relative",
+                                  format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") && "bg-primary/5"
                                 )}
-                                style={{ 
-                                  left: `${(i / days.length) * 100}%`,
-                                  width: `${100 / days.length}%`
-                                }}
+                                style={{ height: ROW_HEIGHT }}
                               >
-                                {/* Assignments for this day */}
-                                {resourceAssignments
-                                  .filter(a => a.assignment_date === format(day, "yyyy-MM-dd"))
-                                  .map((assignment, idx) => (
-                                    <Tooltip key={assignment.id}>
-                                      <TooltipTrigger asChild>
-                                        <div
-                                          className={cn(
-                                            "absolute rounded cursor-pointer transition-all hover:brightness-110",
-                                            getStatusColor(assignment.status)
-                                          )}
-                                          style={{
-                                            top: `${4 + idx * 16}px`,
-                                            left: '4px',
-                                            right: '4px',
-                                            height: '14px',
-                                          }}
-                                        >
-                                          <span className="text-[10px] text-white px-1 truncate block leading-[14px]">
-                                            С{assignment.shift_number}
-                                          </span>
+                                {dayAssignments.map((assignment, idx) => (
+                                  <Tooltip key={assignment.id}>
+                                    <TooltipTrigger asChild>
+                                      <div
+                                        className={cn(
+                                          "absolute rounded cursor-pointer transition-all hover:brightness-110",
+                                          getStatusColor(assignment.status)
+                                        )}
+                                        style={{
+                                          top: `${4 + idx * 16}px`,
+                                          left: '4px',
+                                          right: '4px',
+                                          height: '14px',
+                                        }}
+                                      >
+                                        <span className="text-[10px] text-white px-1 truncate block leading-[14px]">
+                                          С{assignment.shift_number}
+                                        </span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <div className="space-y-1">
+                                        <div className="font-medium">
+                                          {format(day, "d MMM", { locale: ru })} - Смена {assignment.shift_number}
                                         </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <div className="space-y-1">
-                                          <div className="font-medium">
-                                            {format(day, "d MMM", { locale: ru })} - Смена {assignment.shift_number}
-                                          </div>
-                                          <div className="text-xs">Статус: {assignment.status}</div>
-                                        </div>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  ))
-                                }
-                              </div>
-                            ))}
-                          </>
+                                        <div className="text-xs">Статус: {assignment.status}</div>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ))}
+                              </td>
+                            );
+                          })
                         )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
