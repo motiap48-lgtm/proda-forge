@@ -233,7 +233,7 @@ export const ResourceGanttChart = () => {
               </colgroup>
               <thead>
                 <tr className="border-b">
-                  <th className="p-2 sm:p-3 font-medium bg-muted/50 text-xs sm:text-sm text-left sticky left-0 z-10">
+                  <th className="p-2 sm:p-3 font-medium bg-background text-xs sm:text-sm text-left sticky left-0 z-10 border-r">
                     {resourceType === "operators" ? "Оператор" : "Бригада"}
                   </th>
                   {viewMode === "day" ? (
@@ -281,7 +281,7 @@ export const ResourceGanttChart = () => {
 
                     return (
                       <tr key={resource.id} className="border-b hover:bg-muted/30">
-                        <td className="p-2 sm:p-3 bg-muted/20 sticky left-0 z-10">
+                        <td className="p-2 sm:p-3 bg-background sticky left-0 z-10 border-r">
                           <div className="flex items-center gap-1 sm:gap-2">
                             {resource.type === "operator" ? (
                               <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
