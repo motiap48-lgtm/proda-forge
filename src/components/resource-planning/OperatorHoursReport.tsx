@@ -34,6 +34,7 @@ import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { useOvertimeEntries, createOvertimeMap, OvertimeEntry } from "@/hooks/useOvertimeEntries";
 import { useOperatorTimesheets, createTimesheetMap } from "@/hooks/useOperatorTimesheets";
 import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
+import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
 import * as XLSX from "xlsx";
 import { useReactToPrint } from "react-to-print";
 
@@ -190,6 +191,44 @@ export const OperatorHoursReport = () => {
       // Check if this is a cyclic schedule (2/2, etc.) - they ignore holidays
       const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
 
+      // Helper to get shift considering overrides and extra working days (same as rotation calendar)
+      const getShiftWithOverride = (op: any, day: Date) => {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const override = scheduleOverrides.find(
+          (o: ScheduleOverride) => o.operator_id === op.id && o.override_date === dateStr
+        );
+        
+        if (override) {
+          if (!override.is_working_day) return null;
+          const sch = op.work_schedules;
+          const shs = sch?.work_schedule_shifts;
+          if (!shs || shs.length === 0) return null;
+          if (override.shift_number) {
+            return shs.find((s: any) => s.shift_number === override.shift_number) || shs[0];
+          }
+          return getShiftForDate(op, day) || shs[0];
+        }
+        
+        // Handle extra_working_day exceptions for non-cyclic schedules
+        if (!isCyclicSchedule) {
+          const exc = exceptionsMap.get(dateStr);
+          if (exc && exc.is_working_day && exc.exception_type === 'extra_working_day') {
+            const normallyWorking = isWorkingDay(op.work_schedules, day, op);
+            if (!normallyWorking) {
+              const shs = op.work_schedules?.work_schedule_shifts;
+              if (shs && shs.length > 0) {
+                if (op.assigned_shift_number) {
+                  return shs.find((s: any) => s.shift_number === op.assigned_shift_number) || shs[0];
+                }
+                return shs[0];
+              }
+            }
+          }
+        }
+        
+        return getShiftForDate(op, day);
+      };
+
       days.forEach(day => {
         const dateStr = format(day, "yyyy-MM-dd");
         
@@ -198,8 +237,8 @@ export const OperatorHoursReport = () => {
           return;
         }
 
-        // Get shift for this day to determine if working day
-        const shift = getShiftForDate(operator, day);
+        // Get shift for this day considering overrides
+        const shift = getShiftWithOverride(operator, day);
         const exception = exceptionsMap.get(dateStr);
         
         // Determine if this is a working day for overtime tooltip
@@ -256,17 +295,12 @@ export const OperatorHoursReport = () => {
           return;
         }
 
-        // Shortened day - cyclic schedules ignore shortened days
-        if (exception && exception.exception_type === "shortened_day" && shift && !isCyclicSchedule) {
+        // Shortened day - apply to ALL schedules including cyclic (matches rotation calendar)
+        if (exception && exception.exception_type === "shortened_day" && shift) {
           plannedHours += normalHours;
           
-          let reducedHours: number;
-          if (exception.reduced_hours != null && exception.reduced_hours > 0) {
-            reducedHours = Math.min(exception.reduced_hours, normalHours);
-          } else {
-            const reductionHours = schedule?.reduction_hours ?? exception.reduction_hours ?? 1;
-            reducedHours = Math.max(0, normalHours - reductionHours);
-          }
+          const reductionHours = schedule?.reduction_hours ?? exception.reduction_hours ?? 1;
+          const reducedHours = Math.max(0, normalHours - reductionHours);
           
           shortenedDaysCount++;
           shortenedDaysReduction += normalHours - reducedHours;
@@ -321,7 +355,7 @@ export const OperatorHoursReport = () => {
         overtimeDetails,
       };
     });
-  }, [filteredOperators, days, absences, exceptionsMap, overtimeMap, timesheetMap]);
+  }, [filteredOperators, days, absences, exceptionsMap, overtimeMap, timesheetMap, scheduleOverrides]);
 
   // Calculate totals
   const totals = useMemo(() => {
