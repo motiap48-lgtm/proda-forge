@@ -290,17 +290,17 @@ export const OperatorHoursReport = () => {
           if (shift) {
             holidaysCount++;
             holidaysReduction += normalHours;
-            plannedHours += normalHours;
+            // Don't add to plannedHours - holiday is a non-working day
           }
           return;
         }
 
         // Shortened day - apply to ALL schedules including cyclic (matches rotation calendar)
         if (exception && exception.exception_type === "shortened_day" && shift) {
-          plannedHours += normalHours;
-          
           const reductionHours = schedule?.reduction_hours ?? exception.reduction_hours ?? 1;
           const reducedHours = Math.max(0, normalHours - reductionHours);
+          
+          plannedHours += reducedHours; // Add reduced hours, not full
           
           shortenedDaysCount++;
           shortenedDaysReduction += normalHours - reducedHours;
