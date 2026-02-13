@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -29,7 +30,7 @@ import { format, startOfMonth, endOfMonth, addDays, getDaysInMonth, startOfYear,
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useOperators, useCalendarExceptions } from "@/hooks/useResourcePlanning";
-import { useAllOperatorAbsences, isDateInAbsence, isOperatorTerminated, isBeforeHireDate } from "@/hooks/useOperatorAbsences";
+import { useAllOperatorAbsences, isDateInAbsence, isOperatorTerminated, isBeforeHireDate, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
 import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { useOvertimeEntries, createOvertimeMap, OvertimeEntry } from "@/hooks/useOvertimeEntries";
 import { useOperatorTimesheets, createTimesheetMap } from "@/hooks/useOperatorTimesheets";
@@ -46,6 +47,13 @@ interface OvertimeDetail {
   isWorkingDay: boolean;
 }
 
+interface AbsenceDetail {
+  date: string;
+  type: string;
+  label: string;
+  icon: string;
+}
+
 interface OperatorHoursData {
   operator: any;
   plannedHours: number;
@@ -60,6 +68,7 @@ interface OperatorHoursData {
   overtimeHours: number;
   totalDays: number;
   overtimeDetails: OvertimeDetail[];
+  absenceDetails: AbsenceDetail[];
 }
 
 export const OperatorHoursReport = () => {
@@ -191,6 +200,8 @@ export const OperatorHoursReport = () => {
       // Check if this is a cyclic schedule (2/2, etc.) - they ignore holidays
       const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
 
+      const absenceDetailsArr: AbsenceDetail[] = [];
+
       // Helper to get shift considering overrides and extra working days (same as rotation calendar)
       const getShiftWithOverride = (op: any, day: Date) => {
         const dateStr = format(day, "yyyy-MM-dd");
@@ -273,12 +284,8 @@ export const OperatorHoursReport = () => {
           timesheetActualMinutes += timesheet.actual_minutes;
         }
 
-        // Check absence
+        // Check absence - but still count as a scheduled working day
         const absence = isDateInAbsence(day, absences, operator.id);
-        if (absence) {
-          absenceDays++;
-          return;
-        }
 
         const normalNetMinutes = shift 
           ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes))
@@ -306,6 +313,12 @@ export const OperatorHoursReport = () => {
           shortenedDaysReduction += normalHours - reducedHours;
           workingDays++;
           workingDaysSet.add(dateStr);
+
+          if (absence) {
+            absenceDays++;
+            const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type] || ABSENCE_TYPE_LABELS.other;
+            absenceDetailsArr.push({ date: dateStr, type: absence.absence_type, label: typeInfo.label, icon: typeInfo.icon });
+          }
           return;
         }
 
@@ -314,6 +327,12 @@ export const OperatorHoursReport = () => {
           plannedHours += normalHours;
           workingDays++;
           workingDaysSet.add(dateStr);
+
+          if (absence) {
+            absenceDays++;
+            const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type] || ABSENCE_TYPE_LABELS.other;
+            absenceDetailsArr.push({ date: dateStr, type: absence.absence_type, label: typeInfo.label, icon: typeInfo.icon });
+          }
         }
       });
 
@@ -353,6 +372,7 @@ export const OperatorHoursReport = () => {
         overtimeHours,
         totalDays,
         overtimeDetails,
+        absenceDetails: absenceDetailsArr.sort((a, b) => a.date.localeCompare(b.date)),
       };
     });
   }, [filteredOperators, days, absences, exceptionsMap, overtimeMap, timesheetMap, scheduleOverrides]);
@@ -753,7 +773,33 @@ export const OperatorHoursReport = () => {
                       </TableCell>
                       <TableCell className="text-center">
                         {data.absenceDays > 0 ? (
-                          <Badge variant="secondary">{data.absenceDays}</Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block cursor-help">
+                                  <Badge variant="secondary" className="bg-orange-500/10 text-orange-700 dark:text-orange-400">
+                                    {data.absenceDays}
+                                  </Badge>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-xs">
+                                <div className="space-y-1 text-xs">
+                                  <p className="font-medium mb-1">Дни отсутствия:</p>
+                                  {data.absenceDetails.map((detail, idx) => (
+                                    <div key={idx} className="flex justify-between gap-3">
+                                      <span>
+                                        {format(new Date(detail.date), "dd.MM (EE)", { locale: ru })}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <span>{detail.icon}</span>
+                                        <span>{detail.label}</span>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
