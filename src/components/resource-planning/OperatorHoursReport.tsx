@@ -54,6 +54,12 @@ interface AbsenceDetail {
   icon: string;
 }
 
+interface CalendarDayDetail {
+  date: string;
+  name: string;
+  reductionHours?: number;
+}
+
 interface OperatorHoursData {
   operator: any;
   plannedHours: number;
@@ -69,6 +75,8 @@ interface OperatorHoursData {
   totalDays: number;
   overtimeDetails: OvertimeDetail[];
   absenceDetails: AbsenceDetail[];
+  holidayDetails: CalendarDayDetail[];
+  shortenedDayDetails: CalendarDayDetail[];
 }
 
 export const OperatorHoursReport = () => {
@@ -201,6 +209,8 @@ export const OperatorHoursReport = () => {
       const isCyclicSchedule = schedule?.schedule_type === 'cyclic';
 
       const absenceDetailsArr: AbsenceDetail[] = [];
+      const holidayDetailsArr: CalendarDayDetail[] = [];
+      const shortenedDayDetailsArr: CalendarDayDetail[] = [];
 
       // Helper to get shift considering overrides and extra working days (same as rotation calendar)
       const getShiftWithOverride = (op: any, day: Date) => {
@@ -297,7 +307,7 @@ export const OperatorHoursReport = () => {
           if (shift) {
             holidaysCount++;
             holidaysReduction += normalHours;
-            // Don't add to plannedHours - holiday is a non-working day
+            holidayDetailsArr.push({ date: dateStr, name: exception.name || 'Праздник' });
           }
           return;
         }
@@ -311,6 +321,7 @@ export const OperatorHoursReport = () => {
           
           shortenedDaysCount++;
           shortenedDaysReduction += normalHours - reducedHours;
+          shortenedDayDetailsArr.push({ date: dateStr, name: exception.name || 'Сокращённый день', reductionHours: normalHours - reducedHours });
           workingDays++;
           workingDaysSet.add(dateStr);
 
@@ -373,6 +384,8 @@ export const OperatorHoursReport = () => {
         totalDays,
         overtimeDetails,
         absenceDetails: absenceDetailsArr.sort((a, b) => a.date.localeCompare(b.date)),
+        holidayDetails: holidayDetailsArr.sort((a, b) => a.date.localeCompare(b.date)),
+        shortenedDayDetails: shortenedDayDetailsArr.sort((a, b) => a.date.localeCompare(b.date)),
       };
     });
   }, [filteredOperators, days, absences, exceptionsMap, overtimeMap, timesheetMap, scheduleOverrides]);
@@ -755,18 +768,56 @@ export const OperatorHoursReport = () => {
                       <TableCell className="text-center font-medium">{data.totalDays}</TableCell>
                       <TableCell className="text-center">
                         {data.holidaysCount > 0 ? (
-                          <Badge variant="secondary" className="bg-rose-500/10 text-rose-700 dark:text-rose-400">
-                            {data.holidaysCount}
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block cursor-help">
+                                  <Badge variant="secondary" className="bg-rose-500/10 text-rose-700 dark:text-rose-400">
+                                    {data.holidaysCount}
+                                  </Badge>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-xs">
+                                <div className="space-y-1 text-xs">
+                                  <p className="font-medium mb-1">Праздничные дни:</p>
+                                  {data.holidayDetails.map((detail, idx) => (
+                                    <div key={idx} className="flex justify-between gap-3">
+                                      <span>{format(new Date(detail.date), "dd.MM (EE)", { locale: ru })}</span>
+                                      <span className="text-muted-foreground">{detail.name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
                         {data.shortenedDaysCount > 0 ? (
-                          <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
-                            {data.shortenedDaysCount}
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block cursor-help">
+                                  <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                                    {data.shortenedDaysCount}
+                                  </Badge>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-xs">
+                                <div className="space-y-1 text-xs">
+                                  <p className="font-medium mb-1">Сокращённые дни:</p>
+                                  {data.shortenedDayDetails.map((detail, idx) => (
+                                    <div key={idx} className="flex justify-between gap-3">
+                                      <span>{format(new Date(detail.date), "dd.MM (EE)", { locale: ru })}</span>
+                                      <span className="text-muted-foreground">-{detail.reductionHours?.toFixed(1)}ч</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
@@ -787,9 +838,7 @@ export const OperatorHoursReport = () => {
                                   <p className="font-medium mb-1">Дни отсутствия:</p>
                                   {data.absenceDetails.map((detail, idx) => (
                                     <div key={idx} className="flex justify-between gap-3">
-                                      <span>
-                                        {format(new Date(detail.date), "dd.MM (EE)", { locale: ru })}
-                                      </span>
+                                      <span>{format(new Date(detail.date), "dd.MM (EE)", { locale: ru })}</span>
                                       <span className="flex items-center gap-1">
                                         <span>{detail.icon}</span>
                                         <span>{detail.label}</span>
@@ -807,9 +856,36 @@ export const OperatorHoursReport = () => {
                       <TableCell className="text-right">{data.plannedHours.toFixed(1)}ч</TableCell>
                       <TableCell className="text-right">
                         {data.overtimeHours > 0 ? (
-                          <span className="text-purple-600 dark:text-purple-400">
-                            +{data.overtimeHours.toFixed(1)}ч
-                          </span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block cursor-help text-purple-600 dark:text-purple-400">
+                                  +{data.overtimeHours.toFixed(1)}ч
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-xs">
+                                <div className="space-y-1 text-xs">
+                                  <p className="font-medium mb-1">Переработки:</p>
+                                  {data.overtimeDetails.map((detail, idx) => (
+                                    <div key={idx} className="flex justify-between gap-3">
+                                      <span>{format(new Date(detail.date), "dd.MM (EE)", { locale: ru })}</span>
+                                      <span className="flex items-center gap-1.5">
+                                        <span className="font-medium">{detail.hours.toFixed(1)}ч</span>
+                                        <span className={cn(
+                                          "text-[10px] px-1 py-0 border rounded",
+                                          detail.isWorkingDay 
+                                            ? "border-blue-500/30 text-blue-600 dark:text-blue-400" 
+                                            : "border-orange-500/30 text-orange-600 dark:text-orange-400"
+                                        )}>
+                                          {detail.isWorkingDay ? "раб." : "вых."}
+                                        </span>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
