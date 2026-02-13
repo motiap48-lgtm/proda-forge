@@ -344,7 +344,7 @@ export const OperatorHoursReport = () => {
           additionalOvertimeDays++;
         }
       });
-      const totalDays = workingDays + additionalOvertimeDays;
+      const totalDays = workingDays - absenceDays + additionalOvertimeDays;
 
       // Build overtime details array sorted by date
       const overtimeDetails: OvertimeDetail[] = Array.from(overtimeDetailsMap.entries())
