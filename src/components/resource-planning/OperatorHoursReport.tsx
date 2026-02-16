@@ -317,8 +317,6 @@ export const OperatorHoursReport = () => {
           const reductionHours = schedule?.reduction_hours ?? exception.reduction_hours ?? 1;
           const reducedHours = Math.max(0, normalHours - reductionHours);
           
-          plannedHours += reducedHours; // Add reduced hours, not full
-          
           shortenedDaysCount++;
           shortenedDaysReduction += normalHours - reducedHours;
           shortenedDayDetailsArr.push({ date: dateStr, name: exception.name || 'Сокращённый день', reductionHours: normalHours - reducedHours });
@@ -329,13 +327,14 @@ export const OperatorHoursReport = () => {
             absenceDays++;
             const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type] || ABSENCE_TYPE_LABELS.other;
             absenceDetailsArr.push({ date: dateStr, type: absence.absence_type, label: typeInfo.label, icon: typeInfo.icon });
+          } else {
+            plannedHours += reducedHours; // Add reduced hours only if not absent
           }
           return;
         }
 
         // Normal working day
         if (shift) {
-          plannedHours += normalHours;
           workingDays++;
           workingDaysSet.add(dateStr);
 
@@ -343,6 +342,8 @@ export const OperatorHoursReport = () => {
             absenceDays++;
             const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type] || ABSENCE_TYPE_LABELS.other;
             absenceDetailsArr.push({ date: dateStr, type: absence.absence_type, label: typeInfo.label, icon: typeInfo.icon });
+          } else {
+            plannedHours += normalHours;
           }
         }
       });
