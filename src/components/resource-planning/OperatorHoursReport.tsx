@@ -279,9 +279,30 @@ export const OperatorHoursReport = () => {
 
       days.forEach(day => {
         const dateStr = format(day, "yyyy-MM-dd");
-        
-        // Check termination/hire
+
+        // Always count actual hours (timesheets, overtime) regardless of hire/termination
+        // If data exists in the database, it should be reflected in the report
+        const timesheetKey = `${operator.id}_${dateStr}`;
+        const timesheet = timesheetMap.get(timesheetKey);
+        if (timesheet && timesheet.actual_minutes > 0) {
+          timesheetActualMinutes += timesheet.actual_minutes;
+        }
+
+        const overtimeKey = `${operator.id}_${dateStr}`;
+        const dayOvertimeEntries = overtimeMap.get(overtimeKey) || [];
+        const dayOvertimeMinutes = dayOvertimeEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+
+        // Check termination/hire - skip plan/schedule calculations but keep actual hours above
         if (isOperatorTerminated(operator, day) || isBeforeHireDate(operator, day)) {
+          // Still track overtime hours/days even outside hire period
+          if (dayOvertimeMinutes > 0) {
+            overtimeHours += dayOvertimeMinutes / 60;
+            overtimeDaysSet.add(dateStr);
+            overtimeDetailsMap.set(dateStr, {
+              hours: dayOvertimeMinutes / 60,
+              isWorkingDay: false,
+            });
+          }
           return;
         }
 
@@ -300,11 +321,7 @@ export const OperatorHoursReport = () => {
           }
         }
 
-        // Check for overtime on this day
-        const overtimeKey = `${operator.id}_${dateStr}`;
-        const dayOvertimeEntries = overtimeMap.get(overtimeKey) || [];
-        const dayOvertimeMinutes = dayOvertimeEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
-        
+        // Track overtime (update details with working day info now that we know)
         if (dayOvertimeMinutes > 0) {
           overtimeHours += dayOvertimeMinutes / 60;
           overtimeDaysSet.add(dateStr);
@@ -312,13 +329,6 @@ export const OperatorHoursReport = () => {
             hours: dayOvertimeMinutes / 60,
             isWorkingDay: isDayWorkingDay,
           });
-        }
-
-        // Check for timesheet entry - this is the actual hours from calendar
-        const timesheetKey = `${operator.id}_${dateStr}`;
-        const timesheet = timesheetMap.get(timesheetKey);
-        if (timesheet && timesheet.actual_minutes > 0) {
-          timesheetActualMinutes += timesheet.actual_minutes;
         }
 
         // Check absence - count ALL calendar days (not just working days)
