@@ -34,6 +34,7 @@ import { useAllOperatorAbsences, isDateInAbsence, isOperatorTerminated, isBefore
 import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { useOvertimeEntries, createOvertimeMap, OvertimeEntry } from "@/hooks/useOvertimeEntries";
 import { useOperatorTimesheets, createTimesheetMap } from "@/hooks/useOperatorTimesheets";
+import { useAbsenceCompensations } from "@/hooks/useAbsenceCompensations";
 import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
 import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
 import * as XLSX from "xlsx";
@@ -158,12 +159,36 @@ export const OperatorHoursReport = () => {
   
   // Fetch timesheets for the date range
   const { data: timesheets = [] } = useOperatorTimesheets(dateRange.start, dateRange.end, operatorIds);
+
+  // Fetch confirmed compensation records for the date range
+  const { data: compensations = [] } = useAbsenceCompensations(operatorIds, { from: dateRange.start, to: dateRange.end });
   
   // Create overtime map for fast lookup
   const overtimeMap = useMemo(() => createOvertimeMap(overtimeEntries.filter(e => e.status === 'approved')), [overtimeEntries]);
   
   // Create timesheet map for fast lookup
   const timesheetMap = useMemo(() => createTimesheetMap(timesheets), [timesheets]);
+
+  // Create compensation hours map: operator_id -> total confirmed hours in period
+  const compensationHoursMap = useMemo(() => {
+    const map = new Map<string, number>();
+    compensations.forEach((comp: any) => {
+      const records = comp.compensation_records || [];
+      records.forEach((record: any) => {
+        if (record.status === 'confirmed') {
+          const recordDate = record.compensation_date;
+          // Check if compensation date falls within our date range
+          const startStr = format(dateRange.start, 'yyyy-MM-dd');
+          const endStr = format(dateRange.end, 'yyyy-MM-dd');
+          if (recordDate >= startStr && recordDate <= endStr) {
+            const current = map.get(record.operator_id) || 0;
+            map.set(record.operator_id, current + Number(record.hours_worked));
+          }
+        }
+      });
+    });
+    return map;
+  }, [compensations, dateRange]);
 
   // Create exceptions map
   const exceptionsMap = useMemo(() => {
@@ -369,8 +394,9 @@ export const OperatorHoursReport = () => {
         }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
-      // Actual hours = timesheet hours + overtime hours
-      const actualHours = (timesheetActualMinutes / 60) + overtimeHours;
+      // Actual hours = timesheet hours + overtime hours + confirmed compensation hours
+      const compensationHours = compensationHoursMap.get(operator.id) || 0;
+      const actualHours = (timesheetActualMinutes / 60) + overtimeHours + compensationHours;
 
       return {
         operator,
@@ -391,7 +417,7 @@ export const OperatorHoursReport = () => {
         shortenedDayDetails: shortenedDayDetailsArr.sort((a, b) => a.date.localeCompare(b.date)),
       };
     });
-  }, [filteredOperators, days, absences, exceptionsMap, overtimeMap, timesheetMap, scheduleOverrides]);
+  }, [filteredOperators, days, absences, exceptionsMap, overtimeMap, timesheetMap, scheduleOverrides, compensationHoursMap]);
 
   // Calculate totals
   const totals = useMemo(() => {
