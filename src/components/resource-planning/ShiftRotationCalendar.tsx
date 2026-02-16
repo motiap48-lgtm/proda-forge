@@ -449,6 +449,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const grandTotalFact = useMemo(() => {
     let totalMinutes = 0;
     
+    // Date range boundaries for filtering compensation records
+    const periodStartStr = days[0] ? format(days[0], 'yyyy-MM-dd') : '';
+    const periodEndStr = days[days.length - 1] ? format(days[days.length - 1], 'yyyy-MM-dd') : '';
+    
     filteredOperators.forEach(operator => {
       // Sum all timesheet actual minutes for this operator within the period
       const operatorTimesheets = timesheets.filter(ts => ts.operator_id === operator.id);
@@ -464,12 +468,16 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
         totalMinutes += oe.duration_minutes || 0;
       });
       
-      // Add confirmed compensation
+      // Add confirmed compensation - filter by date range to match hours report
       compensations.forEach(comp => {
         if (comp.status === 'cancelled') return;
         comp.compensation_records?.forEach(record => {
           if (record.operator_id === operator.id && record.status === 'confirmed') {
-            totalMinutes += (record.hours_worked || 0) * 60;
+            // Only include compensation records whose date falls within the viewed period
+            const recordDate = record.compensation_date;
+            if (recordDate >= periodStartStr && recordDate <= periodEndStr) {
+              totalMinutes += (record.hours_worked || 0) * 60;
+            }
           }
         });
       });
@@ -479,7 +487,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       hours: Math.floor(totalMinutes / 60),
       minutes: totalMinutes % 60
     };
-  }, [filteredOperators, timesheets, overtimeEntries, compensations]);
+  }, [filteredOperators, timesheets, overtimeEntries, compensations, days]);
 
   // Calculate comparison period total
   const comparisonTotal = useMemo(() => {
