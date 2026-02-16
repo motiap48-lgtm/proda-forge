@@ -196,7 +196,8 @@ export const OperatorHoursReport = () => {
       let shortenedDaysReduction = 0;
       let holidaysCount = 0;
       let holidaysReduction = 0;
-      let absenceDays = 0;
+      let absenceDays = 0; // All calendar days within absence ranges
+      let absenceWorkingDays = 0; // Only working days with absence (for plan/totals)
       let workingDays = 0;
       let overtimeHours = 0;
       const overtimeDaysSet = new Set<string>(); // Track unique overtime days
@@ -294,8 +295,13 @@ export const OperatorHoursReport = () => {
           timesheetActualMinutes += timesheet.actual_minutes;
         }
 
-        // Check absence - but still count as a scheduled working day
+        // Check absence - count ALL calendar days (not just working days)
         const absence = isDateInAbsence(day, absences, operator.id);
+        if (absence) {
+          absenceDays++;
+          const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type] || ABSENCE_TYPE_LABELS.other;
+          absenceDetailsArr.push({ date: dateStr, type: absence.absence_type, label: typeInfo.label, icon: typeInfo.icon });
+        }
 
         const normalNetMinutes = shift 
           ? (shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes))
@@ -324,9 +330,7 @@ export const OperatorHoursReport = () => {
           workingDaysSet.add(dateStr);
 
           if (absence) {
-            absenceDays++;
-            const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type] || ABSENCE_TYPE_LABELS.other;
-            absenceDetailsArr.push({ date: dateStr, type: absence.absence_type, label: typeInfo.label, icon: typeInfo.icon });
+            absenceWorkingDays++;
           } else {
             plannedHours += reducedHours; // Add reduced hours only if not absent
           }
@@ -339,9 +343,7 @@ export const OperatorHoursReport = () => {
           workingDaysSet.add(dateStr);
 
           if (absence) {
-            absenceDays++;
-            const typeInfo = ABSENCE_TYPE_LABELS[absence.absence_type] || ABSENCE_TYPE_LABELS.other;
-            absenceDetailsArr.push({ date: dateStr, type: absence.absence_type, label: typeInfo.label, icon: typeInfo.icon });
+            absenceWorkingDays++;
           } else {
             plannedHours += normalHours;
           }
@@ -356,7 +358,7 @@ export const OperatorHoursReport = () => {
           additionalOvertimeDays++;
         }
       });
-      const totalDays = workingDays - absenceDays + additionalOvertimeDays;
+      const totalDays = workingDays - absenceWorkingDays + additionalOvertimeDays;
 
       // Build overtime details array sorted by date
       const overtimeDetails: OvertimeDetail[] = Array.from(overtimeDetailsMap.entries())
