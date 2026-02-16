@@ -431,18 +431,19 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     }
   };
 
-  // Calculate grand total (plan)
+  // Calculate grand total (plan) - uses calculatePlanHours to match hours report logic
+  // Only plan-reducing absences (annual_leave, maternity_leave, other) decrease the plan
   const grandTotal = useMemo(() => {
     let totalMinutes = 0;
     filteredOperators.forEach(operator => {
-      const opTotal = calculateTotalHours(operator);
+      const opTotal = calculatePlanHours(operator);
       totalMinutes += opTotal.hours * 60 + opTotal.minutes;
     });
     return {
       hours: Math.floor(totalMinutes / 60),
       minutes: totalMinutes % 60
     };
-  }, [filteredOperators, calculateTotalHours]);
+  }, [filteredOperators, calculatePlanHours]);
 
   // Calculate grand total fact (actual hours from timesheets + overtime + compensation)
   const grandTotalFact = useMemo(() => {
