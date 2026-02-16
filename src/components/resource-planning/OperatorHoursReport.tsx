@@ -37,6 +37,7 @@ import { useOperatorTimesheets, createTimesheetMap } from "@/hooks/useOperatorTi
 import { useAbsenceCompensations } from "@/hooks/useAbsenceCompensations";
 import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
 import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
+import { isAbsenceReducingPlan } from "@/hooks/useOperatorAbsences";
 import * as XLSX from "xlsx";
 import { useReactToPrint } from "react-to-print";
 
@@ -357,6 +358,10 @@ export const OperatorHoursReport = () => {
           plannedHours += reducedHours; // Always count in plan regardless of absence
           if (absence) {
             absenceWorkingDays++;
+            // Only reduce plan for plan-reducing absences (annual_leave, maternity_leave, other)
+            if (isAbsenceReducingPlan(absence.absence_type)) {
+              plannedHours -= reducedHours;
+            }
           }
           return;
         }
@@ -369,6 +374,10 @@ export const OperatorHoursReport = () => {
           plannedHours += normalHours; // Always count in plan regardless of absence
           if (absence) {
             absenceWorkingDays++;
+            // Only reduce plan for plan-reducing absences (annual_leave, maternity_leave, other)
+            if (isAbsenceReducingPlan(absence.absence_type)) {
+              plannedHours -= normalHours;
+            }
           }
         }
       });
