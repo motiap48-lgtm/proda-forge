@@ -354,10 +354,9 @@ export const OperatorHoursReport = () => {
           workingDays++;
           workingDaysSet.add(dateStr);
 
+          plannedHours += reducedHours; // Always count in plan regardless of absence
           if (absence) {
             absenceWorkingDays++;
-          } else {
-            plannedHours += reducedHours; // Add reduced hours only if not absent
           }
           return;
         }
@@ -367,10 +366,9 @@ export const OperatorHoursReport = () => {
           workingDays++;
           workingDaysSet.add(dateStr);
 
+          plannedHours += normalHours; // Always count in plan regardless of absence
           if (absence) {
             absenceWorkingDays++;
-          } else {
-            plannedHours += normalHours;
           }
         }
       });
