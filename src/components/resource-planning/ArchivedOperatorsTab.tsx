@@ -134,7 +134,7 @@ export const ArchivedOperatorsTab = () => {
                   <Badge variant="outline" className="text-xs shrink-0">{operator.code}</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 px-4">
                 <div className="text-sm text-muted-foreground space-y-1">
                   {operator.position && (
                     <div className="flex items-center gap-2">
@@ -169,7 +169,7 @@ export const ArchivedOperatorsTab = () => {
                   )}
                 </div>
                 
-                <div className="flex gap-2 px-1">
+                <div className="flex gap-2 pt-1">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
