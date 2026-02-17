@@ -200,9 +200,11 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     calculatePlanHours,
     calculateFullPlanHours,
     calculateGroupTotalHours,
+    calculateGroupPlanHours,
     calculateGroupStats,
     calculateYearlyTotal,
     calculateGroupYearlyTotal,
+    calculateGroupYearlyPlanTotal,
     getDayMinutes,
     getPlannedDayMinutes,
   } = useCalendarCalculations({
@@ -783,8 +785,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 registerScrollContainer={registerScrollContainer}
                 handleSyncScroll={handleSyncScroll}
                 calculateMonthHours={calculateMonthHours}
-                calculateGroupTotalHours={calculateGroupTotalHours}
-                calculateGroupYearlyTotal={calculateGroupYearlyTotal}
+                calculateGroupPlanHours={calculateGroupPlanHours}
+                calculateGroupYearlyPlanTotal={calculateGroupYearlyPlanTotal}
                 grandTotalFact={grandTotalFact}
               />
             </div>

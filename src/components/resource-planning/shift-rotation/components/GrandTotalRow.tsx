@@ -17,8 +17,8 @@ interface GrandTotalRowProps {
   registerScrollContainer: (key: string) => (el: HTMLDivElement | null) => void;
   handleSyncScroll: (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => void;
   calculateMonthHours: (operator: any, month: Date) => { hours: number; minutes: number };
-  calculateGroupTotalHours: (ops: any[]) => { hours: number; minutes: number };
-  calculateGroupYearlyTotal: (ops: any[]) => { hours: number; minutes: number };
+  calculateGroupPlanHours: (ops: any[]) => { hours: number; minutes: number };
+  calculateGroupYearlyPlanTotal: (ops: any[]) => { hours: number; minutes: number };
   grandTotalFact?: { hours: number; minutes: number };
 }
 
@@ -34,8 +34,8 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   registerScrollContainer,
   handleSyncScroll,
   calculateMonthHours,
-  calculateGroupTotalHours,
-  calculateGroupYearlyTotal,
+  calculateGroupPlanHours,
+  calculateGroupYearlyPlanTotal,
   grandTotalFact,
 }) => {
   const isMobile = useIsMobile();
@@ -43,8 +43,8 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   if (filteredOperators.length === 0) return null;
 
   const grandTotalCalc = period === "year" 
-    ? calculateGroupYearlyTotal(filteredOperators)
-    : calculateGroupTotalHours(filteredOperators);
+    ? calculateGroupYearlyPlanTotal(filteredOperators)
+    : calculateGroupPlanHours(filteredOperators);
   
   const hasFactData = grandTotalFact && (grandTotalFact.hours > 0 || grandTotalFact.minutes > 0);
   
