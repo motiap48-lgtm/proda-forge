@@ -1925,7 +1925,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
           open={!!bulkTimesheetDate}
           onOpenChange={(open) => !open && setBulkTimesheetDate(null)}
           date={bulkTimesheetDate}
-          operators={operators.map(op => ({
+          operators={operators
+            .filter(op => !isDateInAbsence(bulkTimesheetDate, absences, op.id))
+            .map(op => ({
             id: op.id,
             full_name: op.full_name,
             code: op.code,
