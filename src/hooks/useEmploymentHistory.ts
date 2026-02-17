@@ -204,6 +204,121 @@ export const syncHireDateWithHistory = async (
       },
     });
   };
+
+  // Update a scheduled termination (change date/reason)
+  export const useUpdateTermination = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+      mutationFn: async ({
+        operatorId,
+        terminationDate,
+        reason,
+        notes,
+      }: {
+        operatorId: string;
+        terminationDate: string;
+        reason: string;
+        notes?: string;
+      }) => {
+        const today = new Date().toISOString().split("T")[0];
+        const isFuture = terminationDate > today;
+
+        // Update operator record
+        const { error: updateError } = await supabase
+          .from("operators")
+          .update({
+            is_active: isFuture ? true : false,
+            termination_date: terminationDate,
+            termination_reason: reason,
+          })
+          .eq("id", operatorId);
+
+        if (updateError) throw updateError;
+
+        // Update the latest terminated history record
+        const { data: historyRecord } = await supabase
+          .from("employment_history")
+          .select("id")
+          .eq("operator_id", operatorId)
+          .eq("event_type", "terminated")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (historyRecord) {
+          const { error: historyError } = await supabase
+            .from("employment_history")
+            .update({
+              event_date: terminationDate,
+              reason,
+              notes,
+            })
+            .eq("id", historyRecord.id);
+
+          if (historyError) throw historyError;
+        }
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["operators"] });
+        queryClient.invalidateQueries({ queryKey: ["operators", "archived"] });
+        queryClient.invalidateQueries({ queryKey: ["employment-history"] });
+        toast.success("Данные увольнения обновлены");
+      },
+      onError: (error: any) => {
+        toast.error("Ошибка: " + error.message);
+      },
+    });
+  };
+
+  // Cancel a scheduled termination
+  export const useCancelTermination = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+      mutationFn: async (operatorId: string) => {
+        // Clear termination from operator
+        const { error: updateError } = await supabase
+          .from("operators")
+          .update({
+            is_active: true,
+            termination_date: null,
+            termination_reason: null,
+          })
+          .eq("id", operatorId);
+
+        if (updateError) throw updateError;
+
+        // Delete the latest terminated history record
+        const { data: historyRecord } = await supabase
+          .from("employment_history")
+          .select("id")
+          .eq("operator_id", operatorId)
+          .eq("event_type", "terminated")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (historyRecord) {
+          const { error: deleteError } = await supabase
+            .from("employment_history")
+            .delete()
+            .eq("id", historyRecord.id);
+
+          if (deleteError) throw deleteError;
+        }
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["operators"] });
+        queryClient.invalidateQueries({ queryKey: ["operators", "archived"] });
+        queryClient.invalidateQueries({ queryKey: ["employment-history"] });
+        toast.success("Увольнение отменено");
+      },
+      onError: (error: any) => {
+        toast.error("Ошибка: " + error.message);
+      },
+    });
+  };
  
 // Update employment history record
 export const useUpdateEmploymentHistory = () => {

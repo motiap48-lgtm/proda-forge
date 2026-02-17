@@ -104,6 +104,7 @@ export const OperatorsTab = () => {
   const [compensationReportOpen, setCompensationReportOpen] = useState(false);
   const [terminateDialogOpen, setTerminateDialogOpen] = useState(false);
   const [operatorToTerminate, setOperatorToTerminate] = useState<any>(null);
+  const [terminateEditMode, setTerminateEditMode] = useState(false);
   const [reinstateDialogOpen, setReinstateDialogOpen] = useState(false);
   const [operatorToReinstate, setOperatorToReinstate] = useState<any>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -319,6 +320,13 @@ export const OperatorsTab = () => {
 
   const handleTerminate = (operator: any) => {
     setOperatorToTerminate(operator);
+    setTerminateEditMode(false);
+    setTerminateDialogOpen(true);
+  };
+
+  const handleEditTermination = (operator: any) => {
+    setOperatorToTerminate(operator);
+    setTerminateEditMode(true);
     setTerminateDialogOpen(true);
   };
 
@@ -734,12 +742,17 @@ export const OperatorsTab = () => {
                       if (operator.termination_date > today) {
                         const daysLeft = differenceInCalendarDays(new Date(operator.termination_date), new Date());
                         return (
-                          <div className="flex items-center gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => handleEditTermination(operator)}
+                            className="flex items-center gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs w-full text-left hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors cursor-pointer"
+                          >
                             <AlertTriangle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
                             <span className="text-amber-700 dark:text-amber-300">
                               Увольнение через <strong>{daysLeft} {pluralize(daysLeft, "день", "дня", "дней")}</strong> ({format(new Date(operator.termination_date), "dd.MM.yyyy")})
+                              <span className="ml-1 underline">изменить</span>
                             </span>
-                          </div>
+                          </button>
                         );
                       }
                       return null;
@@ -867,6 +880,7 @@ export const OperatorsTab = () => {
             if (!open) setOperatorToTerminate(null);
           }}
           operator={operatorToTerminate}
+          editMode={terminateEditMode}
         />
       )}
 
