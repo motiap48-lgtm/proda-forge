@@ -3,14 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, Archive, UserCheck, History, X, Calendar, Briefcase, Clock, Timer } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Search, Archive, UserCheck, History, X, Calendar as CalendarIcon, Briefcase, Clock, Timer } from "lucide-react";
 import { 
   useArchivedOperators, 
   useReinstateOperator,
 } from "@/hooks/useEmploymentHistory";
-import { format } from "date-fns";
+import { format, addDays, isSameDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getTimeAgo } from "@/utils/timeAgoUtils";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +39,7 @@ export const ArchivedOperatorsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [reinstateDialogOpen, setReinstateDialogOpen] = useState(false);
   const [operatorToReinstate, setOperatorToReinstate] = useState<any>(null);
+  const [reinstateDate, setReinstateDate] = useState<Date | undefined>(undefined);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState<any>(null);
   const [, setTick] = useState(0);
@@ -56,17 +61,28 @@ export const ArchivedOperatorsTab = () => {
 
   const handleReinstate = (operator: any) => {
     setOperatorToReinstate(operator);
+    const minDate = operator.termination_date 
+      ? addDays(new Date(operator.termination_date), 1) 
+      : new Date();
+    setReinstateDate(minDate);
     setReinstateDialogOpen(true);
   };
 
+  const getMinReinstateDate = () => {
+    if (!operatorToReinstate?.termination_date) return new Date();
+    return addDays(new Date(operatorToReinstate.termination_date), 1);
+  };
+
   const confirmReinstate = () => {
-    if (operatorToReinstate) {
+    if (operatorToReinstate && reinstateDate) {
+      const hireDateStr = format(reinstateDate, "yyyy-MM-dd");
       reinstateOperator.mutate(
-        { operatorId: operatorToReinstate.id },
+        { operatorId: operatorToReinstate.id, hireDate: hireDateStr },
         {
           onSuccess: () => {
             setReinstateDialogOpen(false);
             setOperatorToReinstate(null);
+            setReinstateDate(undefined);
           },
         }
       );
@@ -223,14 +239,50 @@ export const ArchivedOperatorsTab = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Восстановить сотрудника?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <strong>{operatorToReinstate?.full_name}</strong> будет восстановлен как активный сотрудник. 
-              Информация об увольнении сохранится в истории.
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>
+                  <strong>{operatorToReinstate?.full_name}</strong> будет восстановлен как активный сотрудник. 
+                  Информация об увольнении сохранится в истории.
+                </p>
+                <div className="space-y-2">
+                  <Label>Дата восстановления *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !reinstateDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {reinstateDate ? format(reinstateDate, "d MMMM yyyy", { locale: ru }) : "Выберите дату"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={reinstateDate}
+                        onSelect={setReinstateDate}
+                        disabled={(date) => date < getMinReinstateDate()}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {operatorToReinstate?.termination_date && (
+                    <p className="text-xs text-muted-foreground">
+                      Минимальная дата: {format(getMinReinstateDate(), "d MMMM yyyy", { locale: ru })} (день после увольнения)
+                    </p>
+                  )}
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmReinstate}>
+            <AlertDialogAction onClick={confirmReinstate} disabled={!reinstateDate}>
               Восстановить
             </AlertDialogAction>
           </AlertDialogFooter>
