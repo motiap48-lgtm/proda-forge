@@ -100,61 +100,110 @@ export const syncHireDateWithHistory = async (
    });
  };
  
- // Terminate operator
- export const useTerminateOperator = () => {
-   const queryClient = useQueryClient();
- 
-   return useMutation({
-     mutationFn: async ({
-       operatorId,
-       terminationDate,
-       reason,
-       notes,
-     }: {
-       operatorId: string;
-       terminationDate: string;
-       reason: string;
-       notes?: string;
-     }) => {
-       // Get current user
-       const { data: { user } } = await supabase.auth.getUser();
-       
-       // Update operator
-       const { error: updateError } = await supabase
-         .from("operators")
-         .update({
-           is_active: false,
-           termination_date: terminationDate,
-           termination_reason: reason,
-         })
-         .eq("id", operatorId);
- 
-       if (updateError) throw updateError;
- 
-       // Add history record
-       const { error: historyError } = await supabase
-         .from("employment_history")
-         .insert({
-           operator_id: operatorId,
-           event_type: "terminated",
-           event_date: terminationDate,
-           reason,
-           notes,
-           created_by: user?.id,
-         });
- 
-       if (historyError) throw historyError;
-     },
-     onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["operators"] });
-       queryClient.invalidateQueries({ queryKey: ["employment-history"] });
-       toast.success("Сотрудник уволен и перемещён в архив");
-     },
-     onError: (error: any) => {
-       toast.error("Ошибка: " + error.message);
-     },
-   });
- };
+  // Terminate operator
+  export const useTerminateOperator = () => {
+    const queryClient = useQueryClient();
+  
+    return useMutation({
+      mutationFn: async ({
+        operatorId,
+        terminationDate,
+        reason,
+        notes,
+      }: {
+        operatorId: string;
+        terminationDate: string;
+        reason: string;
+        notes?: string;
+      }) => {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        // Check if termination date is in the future
+        const today = new Date().toISOString().split("T")[0];
+        const isFutureTermination = terminationDate > today;
+        
+        // Update operator - keep active if future date
+        const { error: updateError } = await supabase
+          .from("operators")
+          .update({
+            is_active: isFutureTermination ? true : false,
+            termination_date: terminationDate,
+            termination_reason: reason,
+          })
+          .eq("id", operatorId);
+  
+        if (updateError) throw updateError;
+  
+        // Add history record
+        const { error: historyError } = await supabase
+          .from("employment_history")
+          .insert({
+            operator_id: operatorId,
+            event_type: "terminated",
+            event_date: terminationDate,
+            reason,
+            notes,
+            created_by: user?.id,
+          });
+  
+        if (historyError) throw historyError;
+      },
+      onSuccess: (_, variables) => {
+        const today = new Date().toISOString().split("T")[0];
+        const isFuture = variables.terminationDate > today;
+        queryClient.invalidateQueries({ queryKey: ["operators"] });
+        queryClient.invalidateQueries({ queryKey: ["employment-history"] });
+        if (isFuture) {
+          toast.success(`Увольнение запланировано на ${variables.terminationDate}`);
+        } else {
+          toast.success("Сотрудник уволен и перемещён в архив");
+        }
+      },
+      onError: (error: any) => {
+        toast.error("Ошибка: " + error.message);
+      },
+    });
+  };
+
+  // Auto-deactivate operators with past termination dates
+  export const useAutoDeactivateOperators = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+      mutationFn: async () => {
+        const today = new Date().toISOString().split("T")[0];
+        
+        // Find active operators with termination_date <= today
+        const { data: pendingTerminations, error: fetchError } = await supabase
+          .from("operators")
+          .select("id, full_name")
+          .eq("is_active", true)
+          .not("termination_date", "is", null)
+          .lte("termination_date", today);
+
+        if (fetchError) throw fetchError;
+        if (!pendingTerminations || pendingTerminations.length === 0) return [];
+
+        // Deactivate them
+        const ids = pendingTerminations.map(op => op.id);
+        const { error: updateError } = await supabase
+          .from("operators")
+          .update({ is_active: false })
+          .in("id", ids);
+
+        if (updateError) throw updateError;
+        return pendingTerminations;
+      },
+      onSuccess: (deactivated) => {
+        if (deactivated && deactivated.length > 0) {
+          queryClient.invalidateQueries({ queryKey: ["operators"] });
+          queryClient.invalidateQueries({ queryKey: ["operators", "archived"] });
+          toast.info(`Автоматически уволено: ${deactivated.map(o => o.full_name).join(", ")}`);
+        }
+      },
+    });
+  };
  
 // Update employment history record
 export const useUpdateEmploymentHistory = () => {

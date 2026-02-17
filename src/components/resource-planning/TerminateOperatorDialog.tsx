@@ -94,13 +94,13 @@
          </DialogHeader>
  
          <form onSubmit={handleSubmit} className="space-y-4">
-           <Alert variant="default" className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-             <AlertTriangle className="h-4 w-4 text-amber-600" />
-             <AlertDescription className="text-sm text-amber-700 dark:text-amber-300">
-               <strong>{operator?.full_name}</strong> ({operator?.code}) будет уволен. 
-               В графике смен с даты увольнения до конца месяца будет отображаться иконка увольнения.
-             </AlertDescription>
-           </Alert>
+          <Alert variant="default" className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-sm text-amber-700 dark:text-amber-300">
+                <strong>{operator?.full_name}</strong> ({operator?.code}) будет уволен. 
+                Если дата увольнения в будущем — сотрудник останется активным до наступления указанной даты, после чего будет автоматически перемещён в архив.
+              </AlertDescription>
+            </Alert>
  
            <div className="space-y-2">
              <Label htmlFor="termination_date">Дата увольнения *</Label>

@@ -1,21 +1,21 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
  import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X, FileText, UserX, Archive, UserCheck, History } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2, Wand2, Factory, Calendar, Phone, Clock, Users, FileDown, Printer, RefreshCw, LayoutGrid, List, CalendarDays, X, FileText, UserX, Archive, UserCheck, History, AlertTriangle } from "lucide-react";
 import { useOperators, useDeleteOperator, useFixInvalidRotations } from "@/hooks/useResourcePlanning";
 import { OperatorDialog } from "./OperatorDialog";
 import { BulkOperatorDialog } from "./BulkOperatorDialog";
 import { ShiftRotationCalendar } from "./ShiftRotationCalendar";
 import { CompensationReportDialog } from "./CompensationReportDialog";
 import { TerminateOperatorDialog } from "./TerminateOperatorDialog";
-import { useReinstateOperator } from "@/hooks/useEmploymentHistory";
+import { useReinstateOperator, useAutoDeactivateOperators } from "@/hooks/useEmploymentHistory";
 import { ArchivedOperatorsTab } from "./ArchivedOperatorsTab";
 import { EmploymentHistoryViewDialog } from "./EmploymentHistoryViewDialog";
 import { exportOperatorsToExcel, printOperators } from "./OperatorsPrintExport";
-import { differenceInWeeks } from "date-fns";
+import { differenceInCalendarDays, differenceInWeeks, format } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -36,6 +36,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useArchivedOperators } from "@/hooks/useEmploymentHistory";
+import { pluralize } from "@/utils/timeAgoUtils";
 
 // Helper to calculate current shift based on rotation
 const getCurrentShiftForOperator = (operator: any) => {
@@ -109,10 +110,24 @@ export const OperatorsTab = () => {
   const [operatorForHistory, setOperatorForHistory] = useState<any>(null);
   const [showArchive, setShowArchive] = useState(false);
  
-  const reinstateOperator = useReinstateOperator();
+   const reinstateOperator = useReinstateOperator();
+   const autoDeactivate = useAutoDeactivateOperators();
+   const autoDeactivateRan = useRef(false);
 
-  const { data: archivedOperators } = useArchivedOperators();
-  const archivedCount = archivedOperators?.length || 0;
+   const { data: archivedOperators } = useArchivedOperators();
+   const archivedCount = archivedOperators?.length || 0;
+
+   // Auto-deactivate operators with past termination dates on mount
+   useEffect(() => {
+     if (operators && !autoDeactivateRan.current) {
+       autoDeactivateRan.current = true;
+       const today = new Date().toISOString().split("T")[0];
+       const hasPending = operators.some((op: any) => op.is_active && op.termination_date && op.termination_date <= today);
+       if (hasPending) {
+         autoDeactivate.mutate();
+       }
+     }
+   }, [operators]);
 
   // Collect all unique shift names for filter
   const availableShifts = useMemo(() => {
@@ -704,6 +719,23 @@ export const OperatorsTab = () => {
                         {getEmployeeTypeLabel(operator.employee_type)}
                       </Badge>
                     </div>
+
+                    {/* Future termination warning */}
+                    {operator.is_active && operator.termination_date && (() => {
+                      const today = new Date().toISOString().split("T")[0];
+                      if (operator.termination_date > today) {
+                        const daysLeft = differenceInCalendarDays(new Date(operator.termination_date), new Date());
+                        return (
+                          <div className="flex items-center gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs">
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
+                            <span className="text-amber-700 dark:text-amber-300">
+                              Увольнение через <strong>{daysLeft} {pluralize(daysLeft, "день", "дня", "дней")}</strong> ({format(new Date(operator.termination_date), "dd.MM.yyyy")})
+                            </span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
 
                     <div className="space-y-2 text-sm">
                       {operator.work_centers && (
