@@ -59,9 +59,7 @@ export const ArchivedOperatorsTab = () => {
     const minDate = operator.termination_date 
       ? addDays(new Date(operator.termination_date), 1) 
       : new Date();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    setReinstateDate(minDate <= today ? minDate : undefined);
+    setReinstateDate(minDate);
     setReinstateDialogOpen(true);
   };
 
@@ -248,11 +246,7 @@ export const ArchivedOperatorsTab = () => {
                         mode="single"
                         selected={reinstateDate}
                         onSelect={setReinstateDate}
-                        disabled={(date) => {
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          return date < getMinReinstateDate() || date > today;
-                        }}
+                        disabled={(date) => date < getMinReinstateDate()}
                         initialFocus
                         className={cn("p-3 pointer-events-auto")}
                       />
