@@ -361,6 +361,19 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
     });
   }, [days, timesheetMap, getPlannedDayMinutes, operators, absences]);
 
+  // Calculate group PLAN total (only plan-reducing absences subtracted)
+  const groupPlanTotal = useMemo(() => {
+    let totalMinutes = 0;
+    operators.forEach(op => {
+      const plan = calculatePlanHours(op);
+      totalMinutes += plan.hours * 60 + plan.minutes;
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  }, [operators, calculatePlanHours]);
+
   // Calculate group fact total (all operators' actual + overtime + compensation)
   const groupFactTotal = useMemo(() => {
     let totalMinutes = 0;
@@ -940,7 +953,6 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
 
                     {/* Year view - Group summary */}
                     {(() => {
-                      const groupYearlyTotal = calculateGroupYearlyTotal(operators);
                       return (
                         <>
                           {months.map((month) => {
@@ -955,8 +967,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             );
                           })}
                           <div className="text-center p-0.5 h-8 flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
-                            <div>{groupYearlyTotal.hours}ч</div>
-                            {groupYearlyTotal.minutes > 0 && !isMobile && <div className="text-[10px]">{groupYearlyTotal.minutes}м</div>}
+                            <div>{groupPlanTotal.hours}ч</div>
+                            {groupPlanTotal.minutes > 0 && !isMobile && <div className="text-[10px]">{groupPlanTotal.minutes}м</div>}
                           </div>
                         </>
                       );
@@ -1713,13 +1725,13 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   <span>{groupFactTotal.hours}ч</span>
                                 </div>
                                 <div className="text-[9px] opacity-80">
-                                  п: {groupStats.totalHours}ч{groupStats.totalMinutes > 0 && !isMobile ? ` ${groupStats.totalMinutes}м` : ''}
+                                  п: {groupPlanTotal.hours}ч{groupPlanTotal.minutes > 0 && !isMobile ? ` ${groupPlanTotal.minutes}м` : ''}
                                 </div>
                               </>
                             ) : (
                               <>
-                                <div>{groupStats.totalHours}ч</div>
-                                {groupStats.totalMinutes > 0 && !isMobile && <div className="text-[10px]">{groupStats.totalMinutes}м</div>}
+                                <div>{groupPlanTotal.hours}ч</div>
+                                {groupPlanTotal.minutes > 0 && !isMobile && <div className="text-[10px]">{groupPlanTotal.minutes}м</div>}
                               </>
                             )}
                           </div>
