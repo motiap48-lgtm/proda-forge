@@ -242,7 +242,7 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh]">
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -279,7 +279,7 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
               <Clock className="h-4 w-4" />
               <span className="text-sm">Всего к отработке</span>
             </div>
-            <div className="text-2xl font-bold">{totalAbsenceHours}ч</div>
+            <div className="text-2xl font-bold">{parseFloat(totalAbsenceHours.toFixed(2))}ч</div>
           </div>
           <div className="p-4 rounded-lg border bg-emerald-50 dark:bg-emerald-900/20">
             <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
@@ -287,7 +287,7 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
               <span className="text-sm">Отработано</span>
             </div>
             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              {totalCompensatedHours}ч
+              {parseFloat(totalCompensatedHours.toFixed(2))}ч
             </div>
           </div>
           <div className="p-4 rounded-lg border bg-amber-50 dark:bg-amber-900/20">
@@ -296,7 +296,7 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
               <span className="text-sm">Осталось</span>
             </div>
             <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-              {totalPendingHours}ч
+              {parseFloat(totalPendingHours.toFixed(2))}ч
             </div>
           </div>
         </div>
@@ -313,7 +313,7 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
         )}
 
         {/* Table */}
-        <ScrollArea className="h-[400px]">
+        <ScrollArea className="flex-1 min-h-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -354,12 +354,12 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
                       <TableCell className="text-muted-foreground text-sm">
                         {row.workScheduleName || "—"}
                       </TableCell>
-                      <TableCell className="text-right">{row.totalAbsenceHours}</TableCell>
+                      <TableCell className="text-right">{parseFloat(row.totalAbsenceHours.toFixed(2))}</TableCell>
                       <TableCell className="text-right text-emerald-600 dark:text-emerald-400">
-                        {row.totalCompensatedHours}
+                        {parseFloat(row.totalCompensatedHours.toFixed(2))}
                       </TableCell>
                       <TableCell className="text-right text-amber-600 dark:text-amber-400 font-medium">
-                        {row.pendingHours}
+                        {parseFloat(row.pendingHours.toFixed(2))}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
