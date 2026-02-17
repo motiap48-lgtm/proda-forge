@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, differenceInCalendarDays, addDays, parseISO, startOfDay } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { type EmploymentPeriodsMap, isDateOutsideEmployment } from "./useEmploymentHistory";
 
 export interface OperatorAbsence {
   id: string;
@@ -542,17 +543,30 @@ export const isDateInAbsence = (
 };
 
 // Helper to check if operator is terminated
-export const isOperatorTerminated = (operator: any, date: Date): boolean => {
+// If employmentPeriodsMap is provided, uses employment history periods (supports multiple cycles)
+// Otherwise falls back to single termination_date check
+export const isOperatorTerminated = (operator: any, date: Date, employmentPeriodsMap?: EmploymentPeriodsMap): boolean => {
+  if (employmentPeriodsMap && employmentPeriodsMap.size > 0) {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return isDateOutsideEmployment(operator.id, dateStr, employmentPeriodsMap);
+  }
+  // Fallback: single termination_date
   if (!operator.termination_date) return false;
-  // Use date-only comparison to avoid timezone edge cases (YYYY-MM-DD parsed as UTC by Date())
   const terminationDate = startOfDay(parseISO(operator.termination_date));
   return startOfDay(date) > terminationDate;
 };
 
 // Helper to check if date is before hire date
-export const isBeforeHireDate = (operator: any, date: Date): boolean => {
+// If employmentPeriodsMap is provided, uses employment history periods (supports multiple cycles)
+// Otherwise falls back to single hire_date check
+export const isBeforeHireDate = (operator: any, date: Date, employmentPeriodsMap?: EmploymentPeriodsMap): boolean => {
+  if (employmentPeriodsMap && employmentPeriodsMap.size > 0) {
+    // Already handled by isOperatorTerminated with periods map - 
+    // isDateOutsideEmployment checks both before first hire and gaps between periods
+    return false; // Don't double-check; isOperatorTerminated covers it
+  }
+  // Fallback: single hire_date
   if (!operator.hire_date) return false;
-  // Use date-only comparison to avoid timezone edge cases
   const hireDate = startOfDay(parseISO(operator.hire_date));
   return startOfDay(date) < hireDate;
 };

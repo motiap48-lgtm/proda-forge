@@ -13,6 +13,94 @@ export interface EmploymentHistoryRecord {
   created_at: string;
 }
 
+export interface EmploymentPeriodSimple {
+  startDate: string; // YYYY-MM-DD
+  endDate: string | null; // null = currently employed
+}
+
+// Map of operator_id -> array of employment periods
+export type EmploymentPeriodsMap = Map<string, EmploymentPeriodSimple[]>;
+
+/**
+ * Build employment periods from history records.
+ * Chains: hired→terminated→reinstated→terminated...
+ */
+export function buildEmploymentPeriodsMap(records: EmploymentHistoryRecord[]): EmploymentPeriodsMap {
+  const map: EmploymentPeriodsMap = new Map();
+  
+  // Group by operator_id
+  const byOperator = new Map<string, EmploymentHistoryRecord[]>();
+  records.forEach(r => {
+    if (!byOperator.has(r.operator_id)) byOperator.set(r.operator_id, []);
+    byOperator.get(r.operator_id)!.push(r);
+  });
+  
+  byOperator.forEach((events, operatorId) => {
+    // Sort by event_date ascending
+    const sorted = [...events].sort((a, b) => a.event_date.localeCompare(b.event_date));
+    const periods: EmploymentPeriodSimple[] = [];
+    let currentStart: string | null = null;
+    
+    for (const event of sorted) {
+      if (event.event_type === "hired" || event.event_type === "reinstated") {
+        currentStart = event.event_date;
+      } else if (event.event_type === "terminated" && currentStart) {
+        periods.push({ startDate: currentStart, endDate: event.event_date });
+        currentStart = null;
+      }
+    }
+    
+    // Open period (currently employed)
+    if (currentStart) {
+      periods.push({ startDate: currentStart, endDate: null });
+    }
+    
+    map.set(operatorId, periods);
+  });
+  
+  return map;
+}
+
+/**
+ * Check if a date falls OUTSIDE all employment periods for an operator.
+ * Returns true if the date is NOT within any active employment period.
+ */
+export function isDateOutsideEmployment(
+  operatorId: string,
+  dateStr: string,
+  periodsMap: EmploymentPeriodsMap
+): boolean {
+  const periods = periodsMap.get(operatorId);
+  if (!periods || periods.length === 0) return false; // No history = don't restrict
+  
+  for (const period of periods) {
+    if (dateStr < period.startDate) continue;
+    if (period.endDate === null || dateStr <= period.endDate) {
+      return false; // Date is within this period
+    }
+  }
+  
+  return true; // Date is outside all periods
+}
+
+/**
+ * Fetch all employment history records for all operators
+ */
+export const useAllEmploymentHistory = () => {
+  return useQuery({
+    queryKey: ["employment-history", "all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employment_history")
+        .select("*")
+        .order("event_date", { ascending: true });
+      
+      if (error) throw error;
+      return data as EmploymentHistoryRecord[];
+    },
+  });
+};
+
 // Helper to sync hire date with employment history
 export const syncHireDateWithHistory = async (
   operatorId: string,

@@ -6,6 +6,7 @@ import { endOfMonth, isBefore, isAfter, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useUpdateOperator, useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useAllOperatorAbsences, isDateInAbsence } from "@/hooks/useOperatorAbsences";
+import { useAllEmploymentHistory, buildEmploymentPeriodsMap } from "@/hooks/useEmploymentHistory";
 import {
   useScheduleOverrides,
   getScheduleOverride,
@@ -49,6 +50,13 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const { data: absences = [] } = useAllOperatorAbsences();
   const { data: calendarExceptions = [] } = useCalendarExceptions();
   const { data: medalSettings } = useOvertimeMedalSettings();
+  const { data: allEmploymentHistory = [] } = useAllEmploymentHistory();
+
+  // Build employment periods map from history
+  const employmentPeriodsMap = useMemo(
+    () => buildEmploymentPeriodsMap(allEmploymentHistory),
+    [allEmploymentHistory]
+  );
 
   // Base set of operators that can appear in the calendar (have schedules)
   // NOTE: We must include terminated operators here too, because they remain visible until the end
@@ -215,6 +223,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     absences,
     scheduleOverrides,
     calendarExceptions,
+    employmentPeriodsMap,
   });
 
   // Fetch timesheets for the period
@@ -560,6 +569,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       calculateTotalHours,
       calculatePlanHours,
       calculateGroupStats,
+      employmentPeriodsMap,
     };
     exportToExcel(data);
   };
@@ -581,8 +591,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       calculateTotalHours,
       calculatePlanHours,
       calculateGroupStats,
+      employmentPeriodsMap,
     };
-    printCalendar(data);
   };
 
   // PDF export
@@ -602,8 +612,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       calculateTotalHours,
       calculatePlanHours,
       calculateGroupStats,
+      employmentPeriodsMap,
     };
-    exportToPdf(data);
   };
 
   const toggleFullscreen = () => {
@@ -770,6 +780,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   getPlannedDayMinutes={getPlannedDayMinutes}
                   printRef={printRef}
                   isFirstGroup={index === 0}
+                  employmentPeriodsMap={employmentPeriodsMap}
                 />
               ))}
 
