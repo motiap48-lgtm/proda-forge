@@ -31,6 +31,7 @@ import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useOperators, useCalendarExceptions } from "@/hooks/useResourcePlanning";
 import { useAllOperatorAbsences, isDateInAbsence, isOperatorTerminated, isBeforeHireDate, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
+import { useAllEmploymentHistory, buildEmploymentPeriodsMap } from "@/hooks/useEmploymentHistory";
 import { useScheduleOverrides } from "@/hooks/useScheduleOverrides";
 import { useOvertimeEntries, createOvertimeMap, OvertimeEntry } from "@/hooks/useOvertimeEntries";
 import { useOperatorTimesheets, createTimesheetMap } from "@/hooks/useOperatorTimesheets";
@@ -85,6 +86,12 @@ export const OperatorHoursReport = () => {
   const { data: operators = [] } = useOperators();
   const { data: absences = [] } = useAllOperatorAbsences();
   const { data: calendarExceptions = [] } = useCalendarExceptions();
+  const { data: allEmploymentHistory = [] } = useAllEmploymentHistory();
+
+  const employmentPeriodsMap = useMemo(
+    () => buildEmploymentPeriodsMap(allEmploymentHistory),
+    [allEmploymentHistory]
+  );
   
   const operatorIds = useMemo(() => operators.filter((op: any) => op.is_active).map((op: any) => op.id), [operators]);
   const { data: scheduleOverrides = [] } = useScheduleOverrides(operatorIds);
@@ -293,7 +300,7 @@ export const OperatorHoursReport = () => {
         const dayOvertimeMinutes = dayOvertimeEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
 
         // Check termination/hire - skip plan/schedule calculations but keep actual hours above
-        if (isOperatorTerminated(operator, day) || isBeforeHireDate(operator, day)) {
+        if (isOperatorTerminated(operator, day, employmentPeriodsMap) || isBeforeHireDate(operator, day, employmentPeriodsMap)) {
           // Still track overtime hours/days even outside hire period
           if (dayOvertimeMinutes > 0) {
             overtimeHours += dayOvertimeMinutes / 60;

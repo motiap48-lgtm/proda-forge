@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay, type ShiftColors, type PeriodType } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, useDeleteOperatorAbsence, type OperatorAbsence, ABSENCE_TYPE_LABELS } from "@/hooks/useOperatorAbsences";
+import { type EmploymentPeriodsMap } from "@/hooks/useEmploymentHistory";
 import { type CompensationRecord, useConfirmCompensationRecord, useUnconfirmCompensationRecord } from "@/hooks/useAbsenceCompensations";
 import { CompensationPendingIcon } from "@/components/resource-planning/CompensationPendingIcon";
 import { OperatorTotalTooltip } from "./OperatorTotalTooltip";
@@ -83,6 +84,7 @@ interface ScheduleGroupProps {
   getPlannedDayMinutes?: (operator: any, day: Date) => number;
   printRef?: React.RefObject<HTMLDivElement>;
   isFirstGroup?: boolean;
+  employmentPeriodsMap?: EmploymentPeriodsMap;
 }
 
 const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
@@ -128,6 +130,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   getPlannedDayMinutes,
   printRef,
   isFirstGroup,
+  employmentPeriodsMap,
 }) => {
   const isMobile = useIsMobile();
   const schedule = operators[0]?.work_schedules;
@@ -339,8 +342,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
       if (isAfter(startOfDay(day), today)) return false;
 
       // Skip days outside employment period (not hired yet / already terminated)
-      if (isOperatorTerminated(operator, day)) return false;
-      if (isBeforeHireDate(operator, day)) return false;
+      if (isOperatorTerminated(operator, day, employmentPeriodsMap)) return false;
+      if (isBeforeHireDate(operator, day, employmentPeriodsMap)) return false;
       
       // Skip days with any absence (vacation, sick leave, etc.) - those are NOT unfilled
       const absence = isDateInAbsence(day, absences, operatorId);
@@ -984,8 +987,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                           {days.map((day) => {
                             // Check for absences, termination, and hire date
                             const absence = isDateInAbsence(day, absences, operator.id);
-                            const terminated = isOperatorTerminated(operator, day);
-                            const beforeHire = isBeforeHireDate(operator, day);
+                            const terminated = isOperatorTerminated(operator, day, employmentPeriodsMap);
+                            const beforeHire = isBeforeHireDate(operator, day, employmentPeriodsMap);
                             
                             // Check for schedule override
                             const override = getScheduleOverride(scheduleOverrides, operator.id, day);

@@ -4,6 +4,7 @@ import { getShiftForDate, getShiftColor, isWorkingDay, type PeriodType, type Shi
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence, isAbsenceReducingPlan } from "@/hooks/useOperatorAbsences";
 import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { type EmploymentPeriodsMap } from "@/hooks/useEmploymentHistory";
 export interface CalendarException {
   id: string;
   exception_date: string;
@@ -23,6 +24,7 @@ interface CalendarCalculationsProps {
   absences?: OperatorAbsence[];
   scheduleOverrides?: ScheduleOverride[];
   calendarExceptions?: CalendarException[];
+  employmentPeriodsMap?: EmploymentPeriodsMap;
 }
 
 export const useCalendarCalculations = ({
@@ -33,6 +35,7 @@ export const useCalendarCalculations = ({
   absences = [],
   scheduleOverrides = [],
   calendarExceptions = [],
+  employmentPeriodsMap,
 }: CalendarCalculationsProps) => {
   const isMobile = useIsMobile();
 
@@ -153,11 +156,11 @@ export const useCalendarCalculations = ({
 
   // Check if operator is available on a specific date (not on leave, not terminated, hired)
   const isOperatorAvailable = (operator: any, date: Date): boolean => {
-    // Check if terminated
-    if (isOperatorTerminated(operator, date)) return false;
+    // Check if outside employment periods
+    if (isOperatorTerminated(operator, date, employmentPeriodsMap)) return false;
     
-    // Check if before hire date
-    if (isBeforeHireDate(operator, date)) return false;
+    // Check if before hire date (only used when no employment periods map)
+    if (isBeforeHireDate(operator, date, employmentPeriodsMap)) return false;
     
     // Check if on leave
     const absence = isDateInAbsence(date, absences, operator.id);
@@ -283,8 +286,8 @@ export const useCalendarCalculations = ({
   // Used for calculating how much would have been worked on absence days
   const getPlannedDayMinutes = (operator: any, day: Date): number => {
     // Skip if terminated or not hired
-    if (isOperatorTerminated(operator, day)) return 0;
-    if (isBeforeHireDate(operator, day)) return 0;
+    if (isOperatorTerminated(operator, day, employmentPeriodsMap)) return 0;
+    if (isBeforeHireDate(operator, day, employmentPeriodsMap)) return 0;
     
     const exception = getExceptionForDate(day);
     const isCyclic = isCyclicSchedule(operator);
@@ -347,8 +350,8 @@ export const useCalendarCalculations = ({
     
     days.forEach(day => {
       // Skip if terminated or not hired
-      if (isOperatorTerminated(operator, day)) return;
-      if (isBeforeHireDate(operator, day)) return;
+      if (isOperatorTerminated(operator, day, employmentPeriodsMap)) return;
+      if (isBeforeHireDate(operator, day, employmentPeriodsMap)) return;
       
       // Check for holiday (non-working calendar exception) - cyclic schedules ignore holidays
       const exception = getExceptionForDate(day);
@@ -395,8 +398,8 @@ export const useCalendarCalculations = ({
     
     days.forEach(day => {
       // Skip if terminated or not hired
-      if (isOperatorTerminated(operator, day)) return;
-      if (isBeforeHireDate(operator, day)) return;
+      if (isOperatorTerminated(operator, day, employmentPeriodsMap)) return;
+      if (isBeforeHireDate(operator, day, employmentPeriodsMap)) return;
       
       // Check for holiday (non-working calendar exception) - cyclic schedules ignore holidays
       const exception = getExceptionForDate(day);
@@ -464,7 +467,7 @@ export const useCalendarCalculations = ({
       
       days.forEach(day => {
         // Skip days outside employment period - they should not be counted in stats at all
-        if (isOperatorTerminated(operator, day) || isBeforeHireDate(operator, day)) {
+        if (isOperatorTerminated(operator, day, employmentPeriodsMap) || isBeforeHireDate(operator, day, employmentPeriodsMap)) {
           return; // Don't count as working or off days
         }
         

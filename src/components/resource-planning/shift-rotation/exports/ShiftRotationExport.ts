@@ -2,6 +2,7 @@ import * as XLSX from "xlsx";
 import { format, getDay, isToday, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly } from "../utils";
+import { type EmploymentPeriodsMap, isDateOutsideEmployment } from "@/hooks/useEmploymentHistory";
 
 export interface CalendarException {
   id: string;
@@ -32,6 +33,7 @@ export interface ExportData {
     totalHours: number; 
     totalMinutes: number; 
   };
+  employmentPeriodsMap?: EmploymentPeriodsMap;
 }
 
 // Absence type labels for export (copied from useOperatorAbsences to avoid circular imports)
@@ -48,7 +50,12 @@ const ABSENCE_LABELS: Record<string, { label: string; icon: string; shortLabel: 
 };
 
 // Helper function to check if operator is terminated on a given date
-const isOperatorTerminatedOnDate = (operator: any, date: Date): boolean => {
+// Uses employment periods map if available, otherwise falls back to single termination_date
+const isOperatorTerminatedOnDate = (operator: any, date: Date, employmentPeriodsMap?: EmploymentPeriodsMap): boolean => {
+  if (employmentPeriodsMap && employmentPeriodsMap.size > 0) {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return isDateOutsideEmployment(operator.id, dateStr, employmentPeriodsMap);
+  }
   if (!operator.termination_date) return false;
   const terminationDate = parseDateOnly(operator.termination_date);
   if (!terminationDate) return false;
@@ -56,7 +63,10 @@ const isOperatorTerminatedOnDate = (operator: any, date: Date): boolean => {
 };
 
 // Helper function to check if date is before hire
-const isBeforeHireDateOnDate = (operator: any, date: Date): boolean => {
+const isBeforeHireDateOnDate = (operator: any, date: Date, employmentPeriodsMap?: EmploymentPeriodsMap): boolean => {
+  if (employmentPeriodsMap && employmentPeriodsMap.size > 0) {
+    return false; // Handled by isOperatorTerminatedOnDate with periods
+  }
   if (!operator.hire_date) return false;
   const hireDate = parseDateOnly(operator.hire_date);
   if (!hireDate) return false;
@@ -203,7 +213,7 @@ const formatMinutes = (minutes: number): string => {
 export const exportToExcel = (data: ExportData) => {
   const { 
     days, operators, groupedBySchedule, timesheets, overtimeEntries, 
-    compensations, absences, calendarExceptions = [], calculatePlanHours 
+    compensations, absences, calendarExceptions = [], calculatePlanHours, employmentPeriodsMap 
   } = data;
   
   const wb = XLSX.utils.book_new();
@@ -266,8 +276,8 @@ export const exportToExcel = (data: ExportData) => {
         const shift = getShiftForDate(operator, day);
         
         // Check employment status
-        const terminatedOnDate = isOperatorTerminatedOnDate(operator, day);
-        const beforeHire = isBeforeHireDateOnDate(operator, day);
+        const terminatedOnDate = isOperatorTerminatedOnDate(operator, day, employmentPeriodsMap);
+        const beforeHire = isBeforeHireDateOnDate(operator, day, employmentPeriodsMap);
         
         // Get absence for this day
         const absence = getAbsenceForDate(operator.id, day, absences);
@@ -409,7 +419,7 @@ export const printCalendar = (data: ExportData) => {
   const { 
     days, operators, groupedBySchedule, timesheets, overtimeEntries, 
     compensations, absences, calendarExceptions = [], shiftColorMap, grandTotal, grandTotalFact,
-    calculateTotalHours, calculatePlanHours, calculateGroupStats 
+    calculateTotalHours, calculatePlanHours, calculateGroupStats, employmentPeriodsMap 
   } = data;
   
   const startDateStr = format(days[0], 'dd.MM.yyyy');
@@ -449,8 +459,8 @@ export const printCalendar = (data: ExportData) => {
         const factM = factMins % 60;
         
         // Check employment status
-        const terminatedOnDate = isOperatorTerminatedOnDate(operator, day);
-        const beforeHire = isBeforeHireDateOnDate(operator, day);
+        const terminatedOnDate = isOperatorTerminatedOnDate(operator, day, employmentPeriodsMap);
+        const beforeHire = isBeforeHireDateOnDate(operator, day, employmentPeriodsMap);
         
         // Get absence for this day
         const absence = getAbsenceForDate(operator.id, day, absences);
@@ -675,7 +685,7 @@ export const exportToPdf = (data: ExportData) => {
   const { 
     days, operators, groupedBySchedule, timesheets, overtimeEntries, 
     compensations, absences, calendarExceptions = [], shiftColorMap, grandTotal, grandTotalFact,
-    calculateTotalHours, calculatePlanHours, calculateGroupStats 
+    calculateTotalHours, calculatePlanHours, calculateGroupStats, employmentPeriodsMap 
   } = data;
   
   const startDateStr = format(days[0], 'dd.MM.yyyy');
@@ -736,8 +746,8 @@ export const exportToPdf = (data: ExportData) => {
         const factM = factMins % 60;
         
         // Check employment status
-        const terminatedOnDate = isOperatorTerminatedOnDate(operator, day);
-        const beforeHire = isBeforeHireDateOnDate(operator, day);
+        const terminatedOnDate = isOperatorTerminatedOnDate(operator, day, employmentPeriodsMap);
+        const beforeHire = isBeforeHireDateOnDate(operator, day, employmentPeriodsMap);
         
         // Get absence for this day
         const absence = getAbsenceForDate(operator.id, day, absences);
