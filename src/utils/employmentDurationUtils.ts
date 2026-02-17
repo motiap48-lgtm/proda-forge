@@ -245,17 +245,34 @@ export function calculateEmploymentSummary(
   // If there's an open period (currently employed)
   if (currentPeriodStart) {
     const now = new Date();
-    const absenceDays = calculateAbsenceDaysInPeriod(currentPeriodStart, now, absences);
-    const duration = calculateDurationBreakdown(currentPeriodStart, now, absenceDays);
+    const isFuturePeriod = currentPeriodStart > now;
 
-    periods.push({
-      startDate: currentPeriodStart,
-      endDate: null,
-      startEventType: currentPeriodStartType,
-      endEventType: null,
-      duration,
-      isCurrent: true,
-    });
+    if (isFuturePeriod) {
+      // Period hasn't started yet — show 0 duration
+      const zeroDuration: DurationBreakdown = {
+        years: 0, months: 0, days: 0, hours: 0, minutes: 0, seconds: 0,
+        totalDays: 0, absenceDays: 0, netDays: 0,
+      };
+      periods.push({
+        startDate: currentPeriodStart,
+        endDate: null,
+        startEventType: currentPeriodStartType,
+        endEventType: null,
+        duration: zeroDuration,
+        isCurrent: true,
+      });
+    } else {
+      const absenceDays = calculateAbsenceDaysInPeriod(currentPeriodStart, now, absences);
+      const duration = calculateDurationBreakdown(currentPeriodStart, now, absenceDays);
+      periods.push({
+        startDate: currentPeriodStart,
+        endDate: null,
+        startEventType: currentPeriodStartType,
+        endEventType: null,
+        duration,
+        isCurrent: true,
+      });
+    }
 
     isCurrentlyEmployed = true;
   }
