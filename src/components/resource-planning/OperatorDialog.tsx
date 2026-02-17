@@ -182,6 +182,16 @@ export const OperatorDialog = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!isEditing) {
+      if (!formData.full_name.trim()) { toast.error("Укажите ФИО"); return; }
+      if (!formData.position.trim()) { toast.error("Укажите должность"); return; }
+      if (!formData.employee_type) { toast.error("Укажите тип сотрудника"); return; }
+      if (!formData.default_work_center_id) { toast.error("Укажите основной участок"); return; }
+      if (!formData.work_schedule_id) { toast.error("Укажите график работы"); return; }
+      if (!formData.phone.trim()) { toast.error("Укажите телефон"); return; }
+      if (!formData.hire_date) { toast.error("Укажите дату приёма"); return; }
+    }
+
     if (cycleStartDateError) {
       toast.error(cycleStartDateError);
       return;
@@ -249,7 +259,7 @@ export const OperatorDialog = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="position">Должность</Label>
+              <Label htmlFor="position">Должность {!isEditing && "*"}</Label>
               <Input
                 id="position"
                 value={formData.position}
@@ -258,7 +268,7 @@ export const OperatorDialog = ({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="employee_type">Тип сотрудника</Label>
+              <Label htmlFor="employee_type">Тип сотрудника {!isEditing && "*"}</Label>
               <Select
                 value={formData.employee_type}
                 onValueChange={(value) => setFormData({ ...formData, employee_type: value })}
@@ -278,7 +288,7 @@ export const OperatorDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="default_work_center_id">Основной участок</Label>
+            <Label htmlFor="default_work_center_id">Основной участок {!isEditing && "*"}</Label>
             <Select
               value={formData.default_work_center_id || "none"}
               onValueChange={(value) => setFormData({ ...formData, default_work_center_id: value === "none" ? "" : value })}
@@ -298,7 +308,7 @@ export const OperatorDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="work_schedule_id">График работы</Label>
+            <Label htmlFor="work_schedule_id">График работы {!isEditing && "*"}</Label>
             <Select
               value={formData.work_schedule_id || "none"}
               onValueChange={(value) => setFormData({ 
@@ -522,7 +532,7 @@ export const OperatorDialog = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="phone">Телефон</Label>
+              <Label htmlFor="phone">Телефон {!isEditing && "*"}</Label>
               <Input
                 id="phone"
                 value={formData.phone}
@@ -531,7 +541,7 @@ export const OperatorDialog = ({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="hire_date">Дата приёма</Label>
+              <Label htmlFor="hire_date">Дата приёма {!isEditing && "*"}</Label>
               <Input
                 id="hire_date"
                 type="date"
