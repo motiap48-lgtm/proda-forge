@@ -142,6 +142,18 @@ export const BulkOperatorDialog = ({
       return;
     }
 
+    // Validate required fields for each operator
+    for (let i = 0; i < validOperators.length; i++) {
+      const op = validOperators[i];
+      const num = i + 1;
+      if (!op.position.trim()) { toast.error(`Оператор ${num}: укажите должность`); return; }
+      if (!op.employee_type) { toast.error(`Оператор ${num}: укажите тип сотрудника`); return; }
+      if (!op.default_work_center_id) { toast.error(`Оператор ${num}: укажите участок`); return; }
+      if (!op.work_schedule_id) { toast.error(`Оператор ${num}: укажите график`); return; }
+      if (!op.phone.trim()) { toast.error(`Оператор ${num}: укажите телефон`); return; }
+      if (!op.hire_date) { toast.error(`Оператор ${num}: укажите дату приёма`); return; }
+    }
+
     setIsSubmitting(true);
     let successCount = 0;
 
@@ -215,7 +227,7 @@ export const BulkOperatorDialog = ({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Должность</Label>
+                          <Label className="text-xs">Должность *</Label>
                           <Input
                             value={operator.position}
                             onChange={(e) => updateOperator(operator.id, "position", e.target.value)}
@@ -229,7 +241,7 @@ export const BulkOperatorDialog = ({
                       <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs">Тип</Label>
+                            <Label className="text-xs">Тип *</Label>
                             {operators.length > 1 && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -265,7 +277,7 @@ export const BulkOperatorDialog = ({
                         </div>
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs">Участок</Label>
+                            <Label className="text-xs">Участок *</Label>
                             {operators.length > 1 && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -302,7 +314,7 @@ export const BulkOperatorDialog = ({
                         </div>
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs">График</Label>
+                            <Label className="text-xs">График *</Label>
                             {operators.length > 1 && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -342,7 +354,7 @@ export const BulkOperatorDialog = ({
                       {/* Row 3: Phone, Email, Hire Date */}
                       <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-xs">Телефон</Label>
+                          <Label className="text-xs">Телефон *</Label>
                           <Input
                             value={operator.phone}
                             onChange={(e) => updateOperator(operator.id, "phone", e.target.value)}
@@ -362,7 +374,7 @@ export const BulkOperatorDialog = ({
                         </div>
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs">Дата приёма</Label>
+                            <Label className="text-xs">Дата приёма *</Label>
                             {operators.length > 1 && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
