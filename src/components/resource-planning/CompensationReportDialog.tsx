@@ -242,7 +242,7 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[90vh] !grid-rows-[auto_1fr] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -312,93 +312,95 @@ export const CompensationReportDialog: React.FC<CompensationReportDialogProps> =
           </div>
         )}
 
-        {/* Table */}
-        <ScrollArea className="flex-1 min-h-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Код</TableHead>
-                <TableHead>ФИО</TableHead>
-                <TableHead>График</TableHead>
-                <TableHead className="text-right">Всего (ч)</TableHead>
-                <TableHead className="text-right">Отработано</TableHead>
-                <TableHead className="text-right">Осталось</TableHead>
-                <TableHead className="text-center">Прогресс</TableHead>
-                <TableHead className="text-center">Статус</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
+        <div className="flex flex-col min-h-0 overflow-hidden gap-4">
+          {/* Table */}
+          <ScrollArea className="flex-1 min-h-0">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
-                    Загрузка...
-                  </TableCell>
+                  <TableHead>Код</TableHead>
+                  <TableHead>ФИО</TableHead>
+                  <TableHead>График</TableHead>
+                  <TableHead className="text-right">Всего (ч)</TableHead>
+                  <TableHead className="text-right">Отработано</TableHead>
+                  <TableHead className="text-right">Осталось</TableHead>
+                  <TableHead className="text-center">Прогресс</TableHead>
+                  <TableHead className="text-center">Статус</TableHead>
                 </TableRow>
-              ) : reportData.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    Нет данных по отработкам
-                  </TableCell>
-                </TableRow>
-              ) : (
-                reportData.map((row) => {
-                  const progress =
-                    row.totalAbsenceHours > 0
-                      ? Math.round((row.totalCompensatedHours / row.totalAbsenceHours) * 100)
-                      : 0;
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      Загрузка...
+                    </TableCell>
+                  </TableRow>
+                ) : reportData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      Нет данных по отработкам
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  reportData.map((row) => {
+                    const progress =
+                      row.totalAbsenceHours > 0
+                        ? Math.round((row.totalCompensatedHours / row.totalAbsenceHours) * 100)
+                        : 0;
 
-                  return (
-                    <TableRow key={row.operatorId}>
-                      <TableCell className="font-mono text-sm">{row.operatorCode}</TableCell>
-                      <TableCell className="font-medium">{row.operatorName}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {row.workScheduleName || "—"}
-                      </TableCell>
-                      <TableCell className="text-right">{parseFloat(row.totalAbsenceHours.toFixed(2))}</TableCell>
-                      <TableCell className="text-right text-emerald-600 dark:text-emerald-400">
-                        {parseFloat(row.totalCompensatedHours.toFixed(2))}
-                      </TableCell>
-                      <TableCell className="text-right text-amber-600 dark:text-amber-400 font-medium">
-                        {parseFloat(row.pendingHours.toFixed(2))}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={progress} className="w-16 h-2" />
-                          <span className="text-xs text-muted-foreground w-8">{progress}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 justify-center">
-                          {row.completedCount > 0 && (
-                            <Badge variant="outline" className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
-                              {row.completedCount}
-                            </Badge>
-                          )}
-                          {row.partialCount > 0 && (
-                            <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-600">
-                              {row.partialCount}
-                            </Badge>
-                          )}
-                          {row.pendingCount > 0 && (
-                            <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/30 text-amber-600">
-                              {row.pendingCount}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+                    return (
+                      <TableRow key={row.operatorId}>
+                        <TableCell className="font-mono text-sm">{row.operatorCode}</TableCell>
+                        <TableCell className="font-medium">{row.operatorName}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {row.workScheduleName || "—"}
+                        </TableCell>
+                        <TableCell className="text-right">{parseFloat(row.totalAbsenceHours.toFixed(2))}</TableCell>
+                        <TableCell className="text-right text-emerald-600 dark:text-emerald-400">
+                          {parseFloat(row.totalCompensatedHours.toFixed(2))}
+                        </TableCell>
+                        <TableCell className="text-right text-amber-600 dark:text-amber-400 font-medium">
+                          {parseFloat(row.pendingHours.toFixed(2))}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={progress} className="w-16 h-2" />
+                            <span className="text-xs text-muted-foreground w-8">{progress}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 justify-center">
+                            {row.completedCount > 0 && (
+                              <Badge variant="outline" className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
+                                {row.completedCount}
+                              </Badge>
+                            )}
+                            {row.partialCount > 0 && (
+                              <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-600">
+                                {row.partialCount}
+                              </Badge>
+                            )}
+                            {row.pendingCount > 0 && (
+                              <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/30 text-amber-600">
+                                {row.pendingCount}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
 
-        <div className="flex justify-end">
-          <Button variant="outline" onClick={handleExportCSV} disabled={reportData.length === 0}>
-            <Download className="h-4 w-4 mr-2" />
-            Экспорт CSV
-          </Button>
+          <div className="flex justify-end flex-shrink-0">
+            <Button variant="outline" onClick={handleExportCSV} disabled={reportData.length === 0}>
+              <Download className="h-4 w-4 mr-2" />
+              Экспорт CSV
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
