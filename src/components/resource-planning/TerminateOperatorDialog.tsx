@@ -224,20 +224,23 @@ export const TerminateOperatorDialog = ({
               />
             </div>
 
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              {editMode && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="text-destructive border-destructive/50 hover:bg-destructive/10"
-                  onClick={() => setCancelDialogOpen(true)}
-                  disabled={cancelTermination.isPending}
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Отменить увольнение
-                </Button>
-              )}
-              <div className="flex gap-2 ml-auto">
+            <DialogFooter className="gap-2 sm:justify-between">
+              <div>
+                {editMode && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive border-destructive/50 hover:bg-destructive/10"
+                    onClick={() => setCancelDialogOpen(true)}
+                    disabled={cancelTermination.isPending}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Отменить увольнение
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
                 <Button
                   type="button"
                   variant="outline"
