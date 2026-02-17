@@ -425,13 +425,26 @@ export const useCalendarCalculations = ({
     };
   };
 
-  // Calculate group total hours
+  // Calculate group total hours (working hours minus ALL absences)
   const calculateGroupTotalHours = (ops: any[]): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     ops.forEach(operator => {
       days.forEach(day => {
         totalMinutes += getDayMinutes(operator, day);
       });
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  };
+
+  // Calculate group PLAN hours (only plan-reducing absences subtracted)
+  const calculateGroupPlanHours = (ops: any[]): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    ops.forEach(operator => {
+      const planHours = calculatePlanHours(operator);
+      totalMinutes += planHours.hours * 60 + planHours.minutes;
     });
     return {
       hours: Math.floor(totalMinutes / 60),
@@ -501,12 +514,27 @@ export const useCalendarCalculations = ({
     };
   };
 
-  // Calculate group yearly total
+  // Calculate group yearly total (working hours minus ALL absences)
   const calculateGroupYearlyTotal = (ops: any[]): { hours: number; minutes: number } => {
     let totalMinutes = 0;
     ops.forEach(operator => {
       const yearlyTotal = calculateYearlyTotal(operator);
       totalMinutes += yearlyTotal.hours * 60 + yearlyTotal.minutes;
+    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  };
+
+  // Calculate group yearly PLAN total (only plan-reducing absences subtracted)
+  const calculateGroupYearlyPlanTotal = (ops: any[]): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    ops.forEach(operator => {
+      // Use calculatePlanHours which already handles all days in the period
+      // For year view, we still use calculatePlanHours since it iterates over all `days`
+      const planHours = calculatePlanHours(operator);
+      totalMinutes += planHours.hours * 60 + planHours.minutes;
     });
     return {
       hours: Math.floor(totalMinutes / 60),
@@ -526,9 +554,11 @@ export const useCalendarCalculations = ({
     calculatePlanHours,
     calculateFullPlanHours,
     calculateGroupTotalHours,
+    calculateGroupPlanHours,
     calculateGroupStats,
     calculateYearlyTotal,
     calculateGroupYearlyTotal,
+    calculateGroupYearlyPlanTotal,
     isOperatorAvailable,
     getExceptionForDate,
     calculateDayMinutes,
