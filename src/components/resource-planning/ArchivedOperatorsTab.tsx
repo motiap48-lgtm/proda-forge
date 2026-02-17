@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Archive, UserCheck, History, X, Calendar as CalendarIcon, Briefcase, Clock, Timer } from "lucide-react";
+import { Search, Archive, UserCheck, History, X, Calendar as CalendarIcon, Briefcase, Timer } from "lucide-react";
 import { 
   useArchivedOperators, 
   useReinstateOperator,
@@ -25,11 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { EmploymentHistoryViewDialog } from "./EmploymentHistoryViewDialog";
 
 export const ArchivedOperatorsTab = () => {
@@ -144,89 +139,75 @@ export const ArchivedOperatorsTab = () => {
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {filteredOperators.map((operator: any) => (
             <Card key={operator.id} className="opacity-75 hover:opacity-100 transition-opacity">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center justify-between">
+              <CardHeader className="pb-2 px-4">
+                <CardTitle className="text-base flex items-center justify-between gap-2">
                   <span className="truncate">{operator.full_name}</span>
                   <Badge variant="outline" className="text-xs shrink-0">{operator.code}</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 px-4">
-                <div className="text-sm text-muted-foreground space-y-1">
+              <CardContent className="space-y-3 px-4 pb-4">
+                <div className="text-sm text-muted-foreground space-y-1.5">
                   {operator.position && (
                     <div className="flex items-center gap-2">
-                      <Briefcase className="h-3.5 w-3.5" />
-                      <span>{operator.position}</span>
+                      <Briefcase className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{operator.position}</span>
                     </div>
                   )}
                   {operator.hire_date && (
                     <div className="flex items-center gap-2">
-                      <Timer className="h-3.5 w-3.5" />
-                      <span>Принят: {format(new Date(operator.hire_date), "d MMMM yyyy", { locale: ru })}</span>
+                      <Timer className="h-3.5 w-3.5 shrink-0" />
+                      <span>Принят: {format(new Date(operator.hire_date), "d MMM yyyy", { locale: ru })}</span>
                     </div>
                   )}
                   {operator.termination_date && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-3.5 w-3.5" />
-                        <span>Уволен: {format(new Date(operator.termination_date), "d MMMM yyyy", { locale: ru })}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <Clock className="h-3 w-3" />
-                        <span className="text-muted-foreground/80" title={(() => {
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        Уволен: {format(new Date(operator.termination_date), "d MMM yyyy", { locale: ru })}
+                        {" · "}
+                        <span className="text-muted-foreground/70" title={(() => {
                           const termDate = new Date(operator.termination_date);
                           const createdAt = new Date(operator.updated_at || operator.created_at);
-                          const isSameDay = termDate.toDateString() === createdAt.toDateString();
-                          const fromDate = isSameDay ? createdAt : operator.termination_date;
-                          return getTimeAgo(fromDate).formatted;
+                          const sameDay = termDate.toDateString() === createdAt.toDateString();
+                          return getTimeAgo(sameDay ? createdAt : operator.termination_date).formatted;
                         })()}>
                           {(() => {
                             const termDate = new Date(operator.termination_date);
                             const createdAt = new Date(operator.updated_at || operator.created_at);
-                            const isSameDay = termDate.toDateString() === createdAt.toDateString();
-                            const fromDate = isSameDay ? createdAt : operator.termination_date;
-                            return getTimeAgo(fromDate).shortFormatted;
+                            const sameDay = termDate.toDateString() === createdAt.toDateString();
+                            return getTimeAgo(sameDay ? createdAt : operator.termination_date).shortFormatted;
                           })()}
                         </span>
-                      </div>
-                    </>
+                      </span>
+                    </div>
                   )}
                   {operator.termination_reason && (
-                    <div className="text-xs bg-muted/50 p-2 rounded mt-2">
+                    <div className="text-xs bg-muted/50 p-2 rounded">
                       {operator.termination_reason}
                     </div>
                   )}
                 </div>
                 
                 <div className="flex gap-2 pt-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleShowHistory(operator)}
-                      >
-                        <History className="h-4 w-4 mr-1" />
-                        История и стаж
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>История занятости и расчет стажа</TooltipContent>
-                  </Tooltip>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleShowHistory(operator)}
+                  >
+                    <History className="h-4 w-4 mr-1" />
+                    История
+                  </Button>
                   
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleReinstate(operator)}
-                      >
-                        <UserCheck className="h-4 w-4 mr-1" />
-                        Восстановить
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Восстановить сотрудника</TooltipContent>
-                  </Tooltip>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleReinstate(operator)}
+                  >
+                    <UserCheck className="h-4 w-4 mr-1" />
+                    Восстановить
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -260,7 +241,7 @@ export const ArchivedOperatorsTab = () => {
                         {reinstateDate ? format(reinstateDate, "d MMMM yyyy", { locale: ru }) : "Выберите дату"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0 z-[9999]" align="start">
                       <Calendar
                         mode="single"
                         selected={reinstateDate}
