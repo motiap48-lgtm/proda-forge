@@ -626,9 +626,13 @@ export const OperatorsTab = () => {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewHistory(operator)} title="История занятости">
                             <History className="h-3 w-3" />
                           </Button>
-                          {operator.is_active ? (
+                          {operator.is_active && !operator.termination_date ? (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleTerminate(operator)} title="Уволить">
                               <UserX className="h-3 w-3 text-orange-500" />
+                            </Button>
+                          ) : operator.is_active && operator.termination_date ? (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" disabled title={`Увольнение назначено на ${operator.termination_date}`}>
+                              <UserX className="h-3 w-3 text-muted-foreground" />
                             </Button>
                           ) : (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleReinstate(operator)} title="Восстановить">
@@ -695,9 +699,13 @@ export const OperatorsTab = () => {
                         <Button variant="ghost" size="icon" onClick={() => handleViewHistory(operator)} title="История занятости">
                           <History className="h-4 w-4" />
                         </Button>
-                        {operator.is_active ? (
+                        {operator.is_active && !operator.termination_date ? (
                           <Button variant="ghost" size="icon" onClick={() => handleTerminate(operator)} title="Уволить">
                             <UserX className="h-4 w-4 text-orange-500" />
+                          </Button>
+                        ) : operator.is_active && operator.termination_date ? (
+                          <Button variant="ghost" size="icon" disabled title={`Увольнение назначено на ${operator.termination_date}`}>
+                            <UserX className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         ) : (
                           <Button variant="ghost" size="icon" onClick={() => handleReinstate(operator)} title="Восстановить">
