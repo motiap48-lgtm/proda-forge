@@ -439,16 +439,15 @@ export const useBulkDeleteEmploymentHistory = () => {
        
        const reinstateDate = hireDate || new Date().toISOString().split("T")[0];
        
-       // Update operator
-       const { error: updateError } = await supabase
-         .from("operators")
-         .update({
-           is_active: true,
-           termination_date: null,
-           termination_reason: null,
-           hire_date: reinstateDate,
-         })
-         .eq("id", operatorId);
+        // Update operator - preserve original hire_date, only clear termination fields
+        const { error: updateError } = await supabase
+          .from("operators")
+          .update({
+            is_active: true,
+            termination_date: null,
+            termination_reason: null,
+          })
+          .eq("id", operatorId);
  
        if (updateError) throw updateError;
  
