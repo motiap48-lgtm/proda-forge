@@ -748,7 +748,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                                       val = Math.max(0, val);
                                       if (basePlanned > 0 && val > basePlanned) {
                                         val = basePlanned;
-                                        toast.info("Время сверх плана необходимо оформлять как переработку");
+                                        toast.info("Время сверх плана необходимо оформлять как переработку", { id: "overtime-limit" });
                                       }
                                       setEdits(prev => ({ ...prev, [dateStr]: val }));
                                       // Remove from bulk-cleared set since user manually edited
