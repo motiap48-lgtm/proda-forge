@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, differenceInCalendarDays, addDays, parseISO, startOfDay } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { type EmploymentPeriodsMap, isDateOutsideEmployment } from "./useEmploymentHistory";
+import { type EmploymentPeriodsMap, isDateOutsideEmployment, isDateBeforeFirstEmployment } from "./useEmploymentHistory";
 
 export interface OperatorAbsence {
   id: string;
@@ -545,9 +545,15 @@ export const isDateInAbsence = (
 // Helper to check if operator is terminated
 // If employmentPeriodsMap is provided, uses employment history periods (supports multiple cycles)
 // Otherwise falls back to single termination_date check
+// NOTE: With periods map, this returns true for gaps BETWEEN periods and AFTER last terminated period,
+// but NOT for dates before the first hire — use isBeforeHireDate for that.
 export const isOperatorTerminated = (operator: any, date: Date, employmentPeriodsMap?: EmploymentPeriodsMap): boolean => {
   if (employmentPeriodsMap && employmentPeriodsMap.size > 0) {
     const dateStr = format(date, "yyyy-MM-dd");
+    // If before first employment, that's "before hire", not "terminated"
+    if (isDateBeforeFirstEmployment(operator.id, dateStr, employmentPeriodsMap)) {
+      return false;
+    }
     return isDateOutsideEmployment(operator.id, dateStr, employmentPeriodsMap);
   }
   // Fallback: single termination_date
@@ -561,9 +567,8 @@ export const isOperatorTerminated = (operator: any, date: Date, employmentPeriod
 // Otherwise falls back to single hire_date check
 export const isBeforeHireDate = (operator: any, date: Date, employmentPeriodsMap?: EmploymentPeriodsMap): boolean => {
   if (employmentPeriodsMap && employmentPeriodsMap.size > 0) {
-    // Already handled by isOperatorTerminated with periods map - 
-    // isDateOutsideEmployment checks both before first hire and gaps between periods
-    return false; // Don't double-check; isOperatorTerminated covers it
+    const dateStr = format(date, "yyyy-MM-dd");
+    return isDateBeforeFirstEmployment(operator.id, dateStr, employmentPeriodsMap);
   }
   // Fallback: single hire_date
   if (!operator.hire_date) return false;

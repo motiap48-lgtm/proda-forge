@@ -84,6 +84,22 @@ export function isDateOutsideEmployment(
 }
 
 /**
+ * Check if a date is BEFORE the first employment period for an operator.
+ * Returns true only if the date is before the very first hire date.
+ */
+export function isDateBeforeFirstEmployment(
+  operatorId: string,
+  dateStr: string,
+  periodsMap: EmploymentPeriodsMap
+): boolean {
+  const periods = periodsMap.get(operatorId);
+  if (!periods || periods.length === 0) return false;
+  
+  // Periods are sorted chronologically, so first period has earliest start
+  return dateStr < periods[0].startDate;
+}
+
+/**
  * Fetch all employment history records for all operators
  */
 export const useAllEmploymentHistory = () => {
