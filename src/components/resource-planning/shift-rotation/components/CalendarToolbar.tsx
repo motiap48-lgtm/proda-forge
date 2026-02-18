@@ -461,41 +461,36 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         </Select>
 
         {/* Navigation buttons */}
-        <div className="flex items-center border rounded-md overflow-hidden">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={goToPreviousPeriod} 
-            title="Предыдущий период"
-            className="rounded-none border-r hover:bg-muted active:bg-primary active:text-primary-foreground transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={goToNextPeriod} 
-            title="Следующий период"
-            className="rounded-none hover:bg-muted active:bg-primary active:text-primary-foreground transition-colors"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Quick presets */}
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" onClick={goToToday} className="text-xs">
-            Сегодня
-          </Button>
-          <Button variant="outline" size="sm" onClick={goToStartOfWeek} className="text-xs">
-            Неделя
-          </Button>
-          <Button variant="outline" size="sm" onClick={goToStartOfMonth} className="text-xs">
-            Месяц
-          </Button>
-          <Button variant="outline" size="sm" onClick={goToStartOfYear} className="text-xs">
-            Год
-          </Button>
+          <div className="flex items-center border rounded-md overflow-hidden">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={goToPreviousPeriod} 
+              title="Предыдущий период"
+              className="rounded-none border-r hover:bg-muted active:bg-primary active:text-primary-foreground transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={goToToday} 
+              title="Перейти к сегодня"
+              className="rounded-none border-r hover:bg-muted text-xs px-3"
+            >
+              Сегодня
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={goToNextPeriod} 
+              title="Следующий период"
+              className="rounded-none hover:bg-muted active:bg-primary active:text-primary-foreground transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
