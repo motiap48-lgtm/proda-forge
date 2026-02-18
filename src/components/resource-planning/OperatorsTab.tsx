@@ -570,7 +570,7 @@ export const OperatorsTab = () => {
       {/* Calendar view */}
       {!showArchive && viewMode === "calendar" && (
         <ShiftRotationCalendar 
-          operators={operators || []} 
+          operators={filteredOperators} 
           onEditOperator={(operator) => {
             setEditingOperator(operator);
             setDialogOpen(true);
