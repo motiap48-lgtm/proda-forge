@@ -140,7 +140,7 @@ export const EmploymentHistoryViewDialog = ({
     // Look for the next reinstated event after this termination
     for (let i = terminationIndex + 1; i < sortedHistory.length; i++) {
       if (sortedHistory[i].event_type === "reinstated") {
-        return sortedHistory[i].created_at;
+        return sortedHistory[i].event_date;
       }
     }
     
