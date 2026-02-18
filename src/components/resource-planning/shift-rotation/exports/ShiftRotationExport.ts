@@ -2,7 +2,7 @@ import * as XLSX from "xlsx";
 import { format, getDay, isToday, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly } from "../utils";
-import { type EmploymentPeriodsMap, isDateOutsideEmployment } from "@/hooks/useEmploymentHistory";
+import { type EmploymentPeriodsMap, isDateOutsideEmployment, isDateBeforeFirstEmployment } from "@/hooks/useEmploymentHistory";
 
 export interface CalendarException {
   id: string;
@@ -54,6 +54,9 @@ const ABSENCE_LABELS: Record<string, { label: string; icon: string; shortLabel: 
 const isOperatorTerminatedOnDate = (operator: any, date: Date, employmentPeriodsMap?: EmploymentPeriodsMap): boolean => {
   if (employmentPeriodsMap && employmentPeriodsMap.size > 0) {
     const dateStr = format(date, "yyyy-MM-dd");
+    if (isDateBeforeFirstEmployment(operator.id, dateStr, employmentPeriodsMap)) {
+      return false;
+    }
     return isDateOutsideEmployment(operator.id, dateStr, employmentPeriodsMap);
   }
   if (!operator.termination_date) return false;
@@ -65,7 +68,8 @@ const isOperatorTerminatedOnDate = (operator: any, date: Date, employmentPeriods
 // Helper function to check if date is before hire
 const isBeforeHireDateOnDate = (operator: any, date: Date, employmentPeriodsMap?: EmploymentPeriodsMap): boolean => {
   if (employmentPeriodsMap && employmentPeriodsMap.size > 0) {
-    return false; // Handled by isOperatorTerminatedOnDate with periods
+    const dateStr = format(date, "yyyy-MM-dd");
+    return isDateBeforeFirstEmployment(operator.id, dateStr, employmentPeriodsMap);
   }
   if (!operator.hire_date) return false;
   const hireDate = parseDateOnly(operator.hire_date);
