@@ -200,6 +200,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   // Local state for deficit notes (reason for working less than plan)
   const [deficitNotes, setDeficitNotes] = useState<Record<string, string>>({});
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  // Track dates that were bulk-cleared (no deficit notes required for these)
+  const [bulkClearedDates, setBulkClearedDates] = useState<Set<string>>(new Set());
   const [showHistory, setShowHistory] = useState(false);
   
   const hasEdits = Object.keys(edits).length > 0;
@@ -282,8 +284,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       const isHolidayOrWeekend = (isNonWorkingDayForEdit && !dayAbsence) || (isCalendarHol && !dayAbsence);
       
       // Only check for deficit notes on past/present working days where actual < plan
-      // Skip when actualMinutes === 0 (full zero-out / clearing) — no reason needed
-      if (!isFuture && !isHolidayOrWeekend && basePlanned > 0 && actualMinutes > 0 && actualMinutes < basePlanned) {
+      // Skip dates that were bulk-cleared (обнулить) — no reason needed for full clear
+      if (!isFuture && !isHolidayOrWeekend && basePlanned > 0 && actualMinutes < basePlanned && !bulkClearedDates.has(dateStr)) {
         // Check if notes are missing
         if (!deficitNotes[dateStr] || deficitNotes[dateStr].trim() === '') {
           // Also check if there's an existing timesheet with notes
@@ -295,7 +297,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       }
     });
     return missing;
-  }, [edits, deficitNotes, plannedMinutesPerDay, isFutureDate, isCalendarHoliday, getAbsenceForDay, editablePlannedMinutesPerDay, timesheetMap, operatorId]);
+  }, [edits, deficitNotes, bulkClearedDates, plannedMinutesPerDay, isFutureDate, isCalendarHoliday, getAbsenceForDay, editablePlannedMinutesPerDay, timesheetMap, operatorId]);
   
   const hasMissingDeficitNotes = missingDeficitNotes.length > 0;
   
@@ -372,6 +374,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       }
     });
     setEdits(newEdits);
+    setBulkClearedDates(new Set(Object.keys(newEdits)));
     setShowClearConfirm(false);
     const clearedCount = Object.keys(newEdits).length;
     if (clearedCount > 0) {
@@ -383,6 +386,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
   
   const handleResetChanges = () => {
     setEdits({});
+    setBulkClearedDates(new Set());
     toast.info("Изменения сброшены");
   };
   
@@ -747,6 +751,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                                         toast.info("Время сверх плана необходимо оформлять как переработку");
                                       }
                                       setEdits(prev => ({ ...prev, [dateStr]: val }));
+                                      // Remove from bulk-cleared set since user manually edited
+                                      setBulkClearedDates(prev => { const next = new Set(prev); next.delete(dateStr); return next; });
                                     }
                                   }}
                                   onKeyDown={(e) => {
