@@ -391,9 +391,24 @@ export const EmploymentHistoryViewDialog = ({
                           {record.event_type === "terminated" && (() => {
                             const endDate = getTerminationEndDate(record);
                             const today = new Date().toISOString().split("T")[0];
-                            const isBackdated = record.event_date < today;
-                            const timeAgo = getTimeAgo(isBackdated ? record.event_date : record.created_at, endDate);
+                            const isFutureTermination = record.event_date > today;
                             const isOngoing = !endDate;
+
+                            if (isFutureTermination) {
+                              // Future termination: show countdown
+                              const countdown = getTimeAgo(today, record.event_date);
+                              return (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span title={countdown.formatted}>
+                                    через {countdown.shortFormatted.replace(" назад", "")}
+                                  </span>
+                                </div>
+                              );
+                            }
+
+                            // Past/today termination: show elapsed time from event_date
+                            const timeAgo = getTimeAgo(record.event_date, endDate);
                             return (
                               <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
                                 <Clock className="h-3 w-3" />
