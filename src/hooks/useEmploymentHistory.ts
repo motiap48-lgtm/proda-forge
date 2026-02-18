@@ -223,6 +223,24 @@ export const syncHireDateWithHistory = async (
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
         
+        // Check if the current employment period has started yet
+        // (e.g. reinstated with a future date — cannot terminate before it starts)
+        const { data: lastHireEvent } = await supabase
+          .from("employment_history")
+          .select("event_date")
+          .eq("operator_id", operatorId)
+          .in("event_type", ["hired", "reinstated"])
+          .order("event_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (lastHireEvent) {
+          const today = new Date().toISOString().split("T")[0];
+          if (lastHireEvent.event_date > today) {
+            throw new Error("Невозможно уволить сотрудника: дата приёма/восстановления ещё не наступила (" + lastHireEvent.event_date + ")");
+          }
+        }
+
         // Check if termination date is in the future
         const today = new Date().toISOString().split("T")[0];
         const isFutureTermination = terminationDate > today;

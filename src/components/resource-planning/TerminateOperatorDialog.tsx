@@ -18,10 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, UserX, XCircle } from "lucide-react";
+import { AlertTriangle, UserX, XCircle, Ban } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
-import { useTerminateOperator, useUpdateTermination, useCancelTermination } from "@/hooks/useEmploymentHistory";
+import { useTerminateOperator, useUpdateTermination, useCancelTermination, useEmploymentHistory } from "@/hooks/useEmploymentHistory";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +67,18 @@ export const TerminateOperatorDialog = ({
   const terminateOperator = useTerminateOperator();
   const updateTermination = useUpdateTermination();
   const cancelTermination = useCancelTermination();
+  const { data: employmentHistory } = useEmploymentHistory(operator?.id || null);
+
+  // Check if the last hire/reinstatement date is in the future
+  const isFutureHireDate = (() => {
+    if (!employmentHistory || employmentHistory.length === 0) return false;
+    const lastHireEvent = [...employmentHistory]
+      .filter(e => e.event_type === "hired" || e.event_type === "reinstated")
+      .sort((a, b) => b.event_date.localeCompare(a.event_date))[0];
+    if (!lastHireEvent) return false;
+    const today = format(new Date(), "yyyy-MM-dd");
+    return lastHireEvent.event_date > today;
+  })();
 
   const [formData, setFormData] = useState({
     termination_date: format(new Date(), "yyyy-MM-dd"),
@@ -175,6 +187,15 @@ export const TerminateOperatorDialog = ({
               </AlertDescription>
             </Alert>
 
+            {isFutureHireDate && !editMode && (
+              <Alert variant="destructive">
+                <Ban className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  Невозможно уволить сотрудника: дата приёма/восстановления ещё не наступила. Дождитесь наступления даты начала работы.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="termination_date">Дата увольнения *</Label>
               <Input
@@ -248,7 +269,7 @@ export const TerminateOperatorDialog = ({
                 >
                   Закрыть
                 </Button>
-                <Button type="submit" variant="destructive" disabled={isPending}>
+                <Button type="submit" variant="destructive" disabled={isPending || (isFutureHireDate && !editMode)}>
                   {isPending
                     ? "Сохранение..."
                     : editMode
