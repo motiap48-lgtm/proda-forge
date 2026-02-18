@@ -282,7 +282,8 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
       const isHolidayOrWeekend = (isNonWorkingDayForEdit && !dayAbsence) || (isCalendarHol && !dayAbsence);
       
       // Only check for deficit notes on past/present working days where actual < plan
-      if (!isFuture && !isHolidayOrWeekend && basePlanned > 0 && actualMinutes < basePlanned) {
+      // Skip when actualMinutes === 0 (full zero-out / clearing) — no reason needed
+      if (!isFuture && !isHolidayOrWeekend && basePlanned > 0 && actualMinutes > 0 && actualMinutes < basePlanned) {
         // Check if notes are missing
         if (!deficitNotes[dateStr] || deficitNotes[dateStr].trim() === '') {
           // Also check if there's an existing timesheet with notes
