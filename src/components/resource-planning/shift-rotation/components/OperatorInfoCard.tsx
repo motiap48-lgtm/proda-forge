@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall, UserX, Clock, History, FileText } from "lucide-react";
 import { parseDateOnly } from "../utils";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import { CompensationBalanceBadge } from "../../CompensationBalanceBadge";
 import { OperatorScheduleHistoryDialog } from "../../OperatorScheduleHistoryDialog";
 import { EmploymentHistoryViewDialog } from "../../EmploymentHistoryViewDialog";
@@ -39,6 +41,10 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
   
   // For non-cyclic schedules with multiple shifts: show rotation badge
   const showShiftRotationBadge = !isCyclic && hasMultipleShifts && operator.shift_rotation_enabled;
+
+  // Check if today is the termination date
+  const today = new Date().toISOString().split('T')[0];
+  const isTerminationToday = operator.termination_date && operator.termination_date === today;
 
   const handleCopyPhone = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -82,6 +88,16 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
   
   return (
     <div className="space-y-3">
+      {/* Termination today alert */}
+      {isTerminationToday && (
+        <Alert variant="destructive" className="py-2">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-xs font-medium">
+            Сегодня последний рабочий день (увольнение)
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Employee name and code at the top */}
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
