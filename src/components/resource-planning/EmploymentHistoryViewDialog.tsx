@@ -286,7 +286,7 @@ export const EmploymentHistoryViewDialog = ({
                             >
                               <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground font-mono text-xs">
-                                  #{employmentSummary.periods.length - index}
+                                  #{index + 1}
                                 </span>
                                 <div>
                                   <div className="flex items-center gap-1">
