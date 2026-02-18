@@ -531,7 +531,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                         size="sm" 
                         onClick={() => setShowClearConfirm(true)} 
                         className="h-7 px-2 text-xs"
-                        disabled={isPeriodLocked}
+                        disabled={isPeriodLocked || bulkClearedDates.size > 0}
                       >
                         <RotateCcw className="h-3 w-3 mr-1" />
                         Обнулить
