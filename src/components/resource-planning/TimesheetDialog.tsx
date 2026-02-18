@@ -823,7 +823,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                           {(() => {
                             // Calculate deficit for this row
                             const currentActual = edits[dateStr] ?? ts?.actual_minutes ?? 0;
-                            const hasDeficit = !isFuture && !isHolidayOrWeekend && basePlanned > 0 && currentActual < basePlanned;
+                            const hasDeficit = !isFuture && !isHolidayOrWeekend && basePlanned > 0 && currentActual < basePlanned && !bulkClearedDates.has(dateStr);
                             const deficitMinutes = basePlanned - currentActual;
                             const hasDeficitNote = deficitNotes[dateStr]?.trim() || ts?.notes?.trim();
                             const needsNote = hasDeficit && hasEdit && !hasDeficitNote;
@@ -878,7 +878,7 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                     {/* Deficit reason row - shown when editing with deficit */}
                     {(() => {
                       const currentActual = edits[dateStr] ?? ts?.actual_minutes ?? 0;
-                      const hasDeficit = !isFuture && !isHolidayOrWeekend && basePlanned > 0 && currentActual < basePlanned && hasEdit;
+                      const hasDeficit = !isFuture && !isHolidayOrWeekend && basePlanned > 0 && currentActual < basePlanned && hasEdit && !bulkClearedDates.has(dateStr);
                       const existingNote = ts?.notes || '';
                       
                       if (hasDeficit) {
