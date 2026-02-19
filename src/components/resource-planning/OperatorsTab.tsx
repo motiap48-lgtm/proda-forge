@@ -11,7 +11,7 @@ import { BulkOperatorDialog } from "./BulkOperatorDialog";
 import { ShiftRotationCalendar } from "./ShiftRotationCalendar";
 import { CompensationReportDialog } from "./CompensationReportDialog";
 import { TerminateOperatorDialog } from "./TerminateOperatorDialog";
-import { useReinstateOperator, useAutoDeactivateOperators } from "@/hooks/useEmploymentHistory";
+import { useReinstateOperator, useAutoDeactivateOperators, useAutoReinstateOperators } from "@/hooks/useEmploymentHistory";
 import { ArchivedOperatorsTab } from "./ArchivedOperatorsTab";
 import { EmploymentHistoryViewDialog } from "./EmploymentHistoryViewDialog";
 import { exportOperatorsToExcel, printOperators } from "./OperatorsPrintExport";
@@ -113,7 +113,9 @@ export const OperatorsTab = () => {
  
    const reinstateOperator = useReinstateOperator();
    const autoDeactivate = useAutoDeactivateOperators();
+   const autoReinstate = useAutoReinstateOperators();
    const autoDeactivateRan = useRef(false);
+   const autoReinstateRan = useRef(false);
 
    const { data: archivedOperators } = useArchivedOperators();
    const archivedCount = archivedOperators?.length || 0;
@@ -129,6 +131,17 @@ export const OperatorsTab = () => {
        }
      }
    }, [operators]);
+
+   // Auto-reinstate operators with past reinstatement dates on mount
+   useEffect(() => {
+     if (archivedOperators && !autoReinstateRan.current) {
+       autoReinstateRan.current = true;
+       // Check if any archived operators might have pending reinstatements
+       if (archivedOperators.length > 0) {
+         autoReinstate.mutate();
+       }
+     }
+   }, [archivedOperators]);
 
   // Collect all unique shift names for filter
   const availableShifts = useMemo(() => {
