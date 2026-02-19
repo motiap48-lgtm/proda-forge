@@ -407,8 +407,12 @@ export const EmploymentHistoryViewDialog = ({
                               );
                             }
 
-                            // Past/today termination: show elapsed time from event_date
-                            const timeAgo = getTimeAgo(record.event_date, endDate);
+                            // Past/today termination: show elapsed time
+                            // For same-day terminations, use created_at for precise time; otherwise use event_date
+                            const termDate = new Date(record.event_date);
+                            const createdAt = new Date(record.created_at);
+                            const isSameDay = termDate.toDateString() === createdAt.toDateString();
+                            const timeAgo = getTimeAgo(isSameDay ? createdAt : record.event_date, endDate);
                             return (
                               <div className="flex items-center gap-1 text-xs text-muted-foreground/80 mt-1">
                                 <Clock className="h-3 w-3" />
