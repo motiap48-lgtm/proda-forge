@@ -54,13 +54,13 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   
   // Mobile-optimized column width
   const mobileEmployeeWidth = isMobile ? Math.min(employeeColumnWidth, 120) : employeeColumnWidth;
-  const cellHeight = isMobile ? "h-[26px]" : "h-[44px]";
+  const cellHeight = isMobile ? "h-[32px]" : "h-[44px]";
 
   return (
     <div 
       className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate"
       style={{
-        ["--sr-row-h" as any]: isMobile ? "26px" : "44px"
+        ["--sr-row-h" as any]: isMobile ? "32px" : "44px"
       }}
     >
       {/* Fixed label column - matches ScheduleGroup employee column */}
