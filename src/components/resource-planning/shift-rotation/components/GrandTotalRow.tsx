@@ -65,10 +65,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
     >
       {/* Fixed label column - matches ScheduleGroup employee column */}
       <div 
-        className={cn(
-          "flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-50",
-          isMobile ? "h-[32px]" : ""
-        )}
+        className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center relative z-50"
         style={{ width: `${mobileEmployeeWidth}px` }}
       >
         <div className={cn(
