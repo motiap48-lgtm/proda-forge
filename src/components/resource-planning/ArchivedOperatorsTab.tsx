@@ -4,14 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Archive, UserCheck, History, X, Calendar as CalendarIcon, Briefcase, Timer } from "lucide-react";
+import { Search, Archive, UserCheck, History, X, Calendar as CalendarIcon, Briefcase, Timer, RotateCcw } from "lucide-react";
 import { 
   useArchivedOperators, 
   useReinstateOperator,
+  useAllEmploymentHistory,
 } from "@/hooks/useEmploymentHistory";
-import { format, addDays, isSameDay } from "date-fns";
+import { format, addDays, differenceInCalendarDays } from "date-fns";
 import { ru } from "date-fns/locale";
-import { getTimeAgo } from "@/utils/timeAgoUtils";
+import { getTimeAgo, pluralize } from "@/utils/timeAgoUtils";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -29,6 +30,7 @@ import { EmploymentHistoryViewDialog } from "./EmploymentHistoryViewDialog";
 
 export const ArchivedOperatorsTab = () => {
   const { data: operators, isLoading } = useArchivedOperators();
+  const { data: allHistory } = useAllEmploymentHistory();
   const reinstateOperator = useReinstateOperator();
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,6 +55,21 @@ export const ArchivedOperatorsTab = () => {
       return matchesSearch;
     }) || [];
   }, [operators, searchQuery]);
+
+  // Get pending reinstatement dates from employment history
+  const pendingReinstatements = useMemo(() => {
+    if (!allHistory) return new Map<string, string>();
+    const today = new Date().toISOString().split("T")[0];
+    const map = new Map<string, string>();
+    // Sort descending to get latest first
+    const sorted = [...allHistory].sort((a, b) => b.event_date.localeCompare(a.event_date));
+    for (const record of sorted) {
+      if (record.event_type === "reinstated" && record.event_date > today && !map.has(record.operator_id)) {
+        map.set(record.operator_id, record.event_date);
+      }
+    }
+    return map;
+  }, [allHistory]);
 
   const handleReinstate = (operator: any) => {
     setOperatorToReinstate(operator);
@@ -186,6 +203,21 @@ export const ArchivedOperatorsTab = () => {
                       {operator.termination_reason}
                     </div>
                   )}
+                  {/* Pending reinstatement info */}
+                  {(() => {
+                    const reinstateDate = pendingReinstatements.get(operator.id);
+                    if (!reinstateDate) return null;
+                    const days = differenceInCalendarDays(new Date(reinstateDate), new Date());
+                    if (days <= 0) return null;
+                    return (
+                      <div className="flex items-center gap-2 text-xs bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-2 rounded text-emerald-700 dark:text-emerald-300">
+                        <RotateCcw className="h-3.5 w-3.5 shrink-0" />
+                        <span>
+                          Восстановление {format(new Date(reinstateDate), "d MMM yyyy", { locale: ru })} (через {days} {pluralize(days, "день", "дня", "дней")})
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
                 
                 <div className="flex gap-2 pt-1">

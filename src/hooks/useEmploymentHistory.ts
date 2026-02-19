@@ -542,58 +542,146 @@ export const useBulkDeleteEmploymentHistory = () => {
   });
 };
 
- // Reinstate operator
- export const useReinstateOperator = () => {
-   const queryClient = useQueryClient();
- 
-   return useMutation({
-     mutationFn: async ({
-       operatorId,
-       hireDate,
-       notes,
-     }: {
-       operatorId: string;
-       hireDate?: string;
-       notes?: string;
-     }) => {
-       // Get current user
-       const { data: { user } } = await supabase.auth.getUser();
-       
-       const reinstateDate = hireDate || new Date().toISOString().split("T")[0];
-       
-        // Update operator - preserve original hire_date, only clear termination fields
+  // Reinstate operator
+  export const useReinstateOperator = () => {
+    const queryClient = useQueryClient();
+  
+    return useMutation({
+      mutationFn: async ({
+        operatorId,
+        hireDate,
+        notes,
+      }: {
+        operatorId: string;
+        hireDate?: string;
+        notes?: string;
+      }) => {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        const reinstateDate = hireDate || new Date().toISOString().split("T")[0];
+        const today = new Date().toISOString().split("T")[0];
+        const isFutureReinstatement = reinstateDate > today;
+        
+         // Update operator - preserve original hire_date, only clear termination fields
+         // If reinstatement is in the future, keep is_active=false until that date
+         const { error: updateError } = await supabase
+           .from("operators")
+           .update({
+             is_active: isFutureReinstatement ? false : true,
+             termination_date: isFutureReinstatement ? null : null,
+             termination_reason: isFutureReinstatement ? null : null,
+           })
+           .eq("id", operatorId);
+  
+        if (updateError) throw updateError;
+  
+        // Add history record
+        const { error: historyError } = await supabase
+          .from("employment_history")
+          .insert({
+            operator_id: operatorId,
+            event_type: "reinstated",
+            event_date: reinstateDate,
+            reason: "Восстановление на работу",
+            notes,
+            created_by: user?.id,
+          });
+  
+        if (historyError) throw historyError;
+      },
+      onSuccess: (_, variables) => {
+        const today = new Date().toISOString().split("T")[0];
+        const reinstateDate = variables.hireDate || today;
+        queryClient.invalidateQueries({ queryKey: ["operators"] });
+        queryClient.invalidateQueries({ queryKey: ["operators", "archived"] });
+        queryClient.invalidateQueries({ queryKey: ["employment-history"] });
+        if (reinstateDate > today) {
+          toast.success(`Восстановление запланировано на ${reinstateDate}`);
+        } else {
+          toast.success("Сотрудник восстановлен");
+        }
+      },
+      onError: (error: any) => {
+        toast.error("Ошибка: " + error.message);
+      },
+    });
+  };
+
+  // Auto-reinstate operators with past reinstatement dates
+  export const useAutoReinstateOperators = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+      mutationFn: async () => {
+        const today = new Date().toISOString().split("T")[0];
+        
+        // Find inactive operators with a future "reinstated" event that has now arrived
+        const { data: pendingReinstatements, error: fetchError } = await supabase
+          .from("employment_history")
+          .select("operator_id, event_date")
+          .eq("event_type", "reinstated")
+          .lte("event_date", today)
+          .order("event_date", { ascending: false });
+
+        if (fetchError) throw fetchError;
+        if (!pendingReinstatements || pendingReinstatements.length === 0) return [];
+
+        // Get unique operator IDs
+        const operatorIds = [...new Set(pendingReinstatements.map(r => r.operator_id))];
+
+        // Check which of these operators are still inactive
+        const { data: inactiveOps, error: opsError } = await supabase
+          .from("operators")
+          .select("id, full_name")
+          .eq("is_active", false)
+          .is("termination_date", null)
+          .in("id", operatorIds);
+
+        if (opsError) throw opsError;
+        if (!inactiveOps || inactiveOps.length === 0) return [];
+
+        // Activate them
+        const ids = inactiveOps.map(op => op.id);
         const { error: updateError } = await supabase
           .from("operators")
-          .update({
-            is_active: true,
-            termination_date: null,
-            termination_reason: null,
-          })
-          .eq("id", operatorId);
- 
-       if (updateError) throw updateError;
- 
-       // Add history record
-       const { error: historyError } = await supabase
-         .from("employment_history")
-         .insert({
-           operator_id: operatorId,
-           event_type: "reinstated",
-           event_date: reinstateDate,
-           reason: "Восстановление на работу",
-           notes,
-           created_by: user?.id,
-         });
- 
-       if (historyError) throw historyError;
-     },
-     onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["operators"] });
-       queryClient.invalidateQueries({ queryKey: ["employment-history"] });
-       toast.success("Сотрудник восстановлен");
-     },
-     onError: (error: any) => {
-       toast.error("Ошибка: " + error.message);
-     },
-   });
- };
+          .update({ is_active: true })
+          .in("id", ids);
+
+        if (updateError) throw updateError;
+        return inactiveOps;
+      },
+      onSuccess: (reinstated) => {
+        if (reinstated && reinstated.length > 0) {
+          queryClient.invalidateQueries({ queryKey: ["operators"] });
+          queryClient.invalidateQueries({ queryKey: ["operators", "archived"] });
+          toast.info(`Автоматически восстановлено: ${reinstated.map(o => o.full_name).join(", ")}`);
+        }
+      },
+    });
+  };
+
+  // Get pending reinstatement date for an operator from employment history
+  export const usePendingReinstatement = (operatorId: string | null) => {
+    return useQuery({
+      queryKey: ["pending-reinstatement", operatorId],
+      queryFn: async () => {
+        if (!operatorId) return null;
+        const today = new Date().toISOString().split("T")[0];
+        
+        const { data, error } = await supabase
+          .from("employment_history")
+          .select("event_date")
+          .eq("operator_id", operatorId)
+          .eq("event_type", "reinstated")
+          .gt("event_date", today)
+          .order("event_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) throw error;
+        return data?.event_date || null;
+      },
+      enabled: !!operatorId,
+    });
+  };

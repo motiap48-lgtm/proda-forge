@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { format } from "date-fns";
+import { format, differenceInCalendarDays } from "date-fns";
+import { pluralize } from "@/utils/timeAgoUtils";
 import { ru } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall, UserX, Clock, History, FileText } from "lucide-react";
+import { User, RefreshCw, Briefcase, Calendar, Building2, Phone, Mail, CalendarCheck, Pencil, Copy, PhoneCall, UserX, Clock, History, FileText, RotateCcw } from "lucide-react";
 import { parseDateOnly } from "../utils";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -11,6 +12,7 @@ import { AlertTriangle } from "lucide-react";
 import { CompensationBalanceBadge } from "../../CompensationBalanceBadge";
 import { OperatorScheduleHistoryDialog } from "../../OperatorScheduleHistoryDialog";
 import { EmploymentHistoryViewDialog } from "../../EmploymentHistoryViewDialog";
+import { usePendingReinstatement } from "@/hooks/useEmploymentHistory";
 
 interface OperatorInfoCardProps {
   operator: any;
@@ -29,6 +31,14 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
 }) => {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showEmploymentHistoryDialog, setShowEmploymentHistoryDialog] = useState(false);
+  
+  // Check for pending reinstatement
+  const { data: pendingReinstateDate } = usePendingReinstatement(
+    !operator.is_active ? operator.id : null
+  );
+  const daysUntilReinstate = pendingReinstateDate 
+    ? differenceInCalendarDays(new Date(pendingReinstateDate), new Date()) 
+    : null;
   
   const schedule = operator.work_schedules;
   const isCyclic = schedule?.schedule_type === 'cyclic';
@@ -94,6 +104,16 @@ export const OperatorInfoCard: React.FC<OperatorInfoCardProps> = ({
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-xs font-medium">
             Сегодня последний рабочий день (увольнение)
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Pending reinstatement info */}
+      {pendingReinstateDate && daysUntilReinstate !== null && daysUntilReinstate > 0 && (
+        <Alert className="py-2 border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20">
+          <RotateCcw className="h-4 w-4 text-emerald-600" />
+          <AlertDescription className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+            Восстановление {format(new Date(pendingReinstateDate), "d MMM yyyy", { locale: ru })} (через {daysUntilReinstate} {pluralize(daysUntilReinstate, "день", "дня", "дней")})
           </AlertDescription>
         </Alert>
       )}
