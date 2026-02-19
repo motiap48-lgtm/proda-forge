@@ -713,8 +713,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
               isMobile ? "max-h-[50vh]" : "max-h-[60vh]"
             )}
             style={{ 
-              ["--sr-header-h" as any]: isMobile ? "50px" : "76px",
-              ["--sr-row-h" as any]: isMobile ? "40px" : "52px"
+              ["--sr-header-h" as any]: isMobile ? "40px" : "76px",
+              ["--sr-row-h" as any]: isMobile ? "32px" : "52px"
             }}
           >
             {/* Employee column */}
@@ -758,7 +758,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                         <div 
                           className={cn(
                             "flex items-center gap-1 group border-b border-border/50 mb-1",
-                            isMobile ? "px-1 h-[40px]" : "px-2 h-[52px] gap-2",
+                            isMobile ? "px-1 h-[32px]" : "px-2 h-[52px] gap-2",
                             onEditOperator && "hover:bg-muted/50 cursor-pointer"
                           )}
                           onClick={() => onEditOperator?.(operator)}
@@ -819,7 +819,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                 {/* Group summary row */}
                 <div className={cn(
                   "bg-muted/30 flex items-center text-xs text-muted-foreground border-t border-border",
-                  isMobile ? "px-1 h-8" : "px-2 h-[44px]"
+                  isMobile ? "px-1 h-[26px]" : "px-2 h-[44px]"
                 )}>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="flex items-center gap-1 text-emerald-600" title="Рабочие дни"><CalendarCheck className="h-3 w-3" />{groupStats.workingDays}</span>
@@ -1013,7 +1013,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             return (
                               <div 
                                 key={month.toISOString()} 
-                                className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-900/50 text-blue-700 dark:text-blue-300"
+                                className={cn("text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-900/50 text-blue-700 dark:text-blue-300 overflow-hidden", isMobile ? "text-[9px]" : "text-xs")}
                               >
                                 <div className="font-medium">{monthPlan.hours}ч</div>
                                 {hasMonthFact && (
@@ -1033,7 +1033,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const yearFactH = Math.floor(yearFactMinutes / 60);
                             const hasYearFact = yearFactMinutes > 0;
                             return (
-                              <div className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
+                              <div className={cn("text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium overflow-hidden", isMobile ? "text-[9px]" : "text-xs")}>
                                 <div>{yearlyTotal.hours}ч</div>
                                 {hasYearFact && (
                                   <div className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">
@@ -1208,7 +1208,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               return (
                                 <div 
                                   key={day.toISOString()} 
-                                  className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-amber-100 to-amber-200 dark:from-amber-900/30 dark:to-amber-900/50 text-amber-700 dark:text-amber-400 border border-dashed border-amber-400"
+                                  className={cn("text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-amber-100 to-amber-200 dark:from-amber-900/30 dark:to-amber-900/50 text-amber-700 dark:text-amber-400 border border-dashed border-amber-400 overflow-hidden", isMobile ? "text-[9px]" : "text-xs")}
                                   title={`Уволен: ${operator.termination_date ? format(new Date(operator.termination_date), "dd.MM.yyyy") : ''}${operator.termination_reason ? `\nПричина: ${operator.termination_reason}` : ''}`}
                                 >
                                   <DoorOpen className={cn(isMobile ? "h-2.5 w-2.5" : "h-3.5 w-3.5")} />
@@ -1221,7 +1221,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               return (
                                 <div 
                                   key={day.toISOString()} 
-                                  className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900 text-gray-400 dark:text-gray-500"
+                                  className={cn("text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900 text-gray-400 dark:text-gray-500 overflow-hidden", isMobile ? "text-[9px]" : "text-xs")}
                                   title="До приёма на работу"
                                 >
                                   <span className="text-[10px]">—</span>
@@ -1255,7 +1255,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     setEditingCellAbsence({ absence, operatorName: operator.full_name });
                                   }}
                                   className={cn(
-                                    "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden cursor-grab active:cursor-grabbing group outline-none",
+                                    "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md transition-all relative overflow-hidden cursor-grab active:cursor-grabbing group outline-none",
+                                    isMobile ? "text-[9px]" : "text-xs",
                                     isSelected && "ring-2 ring-primary z-20",
                                     isHovered && !isSelected && "ring-2 ring-primary/60 z-10",
                                     !isHovered && !isSelected && !hasOvertime && "hover:ring-2 hover:ring-primary/50",
@@ -1416,7 +1417,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 onMouseLeave={() => isToday(day) && onTodayColumnHover(false)}
                                 onContextMenu={handleContextMenu}
                                 className={cn(
-                                  "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs transition-all relative overflow-hidden select-none",
+                                  "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md transition-all relative overflow-hidden select-none",
+                                  isMobile ? "text-[9px]" : "text-xs",
                                   canCreateAbsence && !inPreview && !isDraggingSelection && "cursor-pointer hover:ring-2 hover:ring-primary/30 hover:bg-primary/5",
                                   isDraggingSelection && canCreateAbsence && "cursor-crosshair",
                                   isDropTarget(day, operator.id) && "ring-2 ring-primary bg-primary/10",
@@ -1608,7 +1610,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     <div className="font-medium truncate text-[10px] px-0.5 w-full" title={effectiveShift.shift_name}>
                                       {daysCount > 14 ? effectiveShift.shift_name.charAt(0) : effectiveShift.shift_name}
                                     </div>
-                                    {daysCount <= 14 && (
+                                    {!isMobile && daysCount <= 14 && (
                                       <div className={cn(
                                         "text-[9px] opacity-80 truncate w-full",
                                         isShortenedDay && "text-orange-600 dark:text-orange-400 font-medium",
@@ -1621,7 +1623,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                         {hasPendingCompensation && <span className="text-amber-500 dark:text-amber-400"> (~{Math.round(pendingHoursToday * 100) / 100}ч)</span>}
                                       </div>
                                     )}
-                                    {cycleInfo && <div className="text-[8px] opacity-70 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
+                                    {cycleInfo && !isMobile && <div className="text-[8px] opacity-70 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
                                   </div>
                                 ) : hasCompensation ? (
                                   // Day with compensation only (no regular shift - e.g., off day with compensation work)
@@ -1693,7 +1695,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     <span className={cn("text-sm", hasOverride ? "text-amber-600 dark:text-amber-400" : isWeekend ? "text-rose-400 dark:text-rose-500" : "text-muted-foreground")}>
                                       {hasOverride ? "⚡" : "—"}
                                     </span>
-                                    {cycleInfo && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
+                                    {cycleInfo && !isMobile && <div className="text-[8px] opacity-60 font-semibold whitespace-nowrap">Д{cycleInfo.dayInCycle}</div>}
                                   </div>
                                 )}
                               </div>
@@ -1748,51 +1750,63 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 <TooltipTrigger asChild>
                                   <div 
                                     className={cn(
-                                      "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs font-medium cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
+                                      "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md font-medium cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 overflow-hidden",
+                                      isMobile ? "text-[9px]" : "text-xs",
                                       getCellColorClass()
                                     )}
                                     onClick={() => setTimesheetOperator({ id: operator.id, name: operator.full_name })}
                                   >
                                     {/* Если есть данные табеля - показываем факт сверху, план снизу */}
                                     {hasActual ? (
-                                      <>
-                                        <div className="flex items-center gap-0.5">
-                                          {hasUnfilled && (
-                                            <AlertCircle className={cn(isMobile ? "h-2 w-2" : "h-3 w-3", "text-amber-500 animate-pulse")} />
-                                          )}
-                                          <ClipboardCheck className={cn(isMobile ? "h-2 w-2" : "h-3 w-3", "-ml-[3px]")} />
-                                          {hasOvertimeTotal && <Clock className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} />}
-                                          {/* Факт = фактические часы + подтвержденные переработки */}
-                                          <span className={cn(isMobile && "text-[10px]")}>{Math.floor(factMinutes / 60)}ч{!isMobile && factMinutes % 60 > 0 ? ` ${factMinutes % 60}м` : ''}</span>
-                                        </div>
-                                        <div className={cn(isMobile ? "text-[8px]" : "text-[9px]", "opacity-80")}>
-                                          п: {reducedPlanData.hours}ч{!isMobile && reducedPlanData.minutes > 0 ? ` ${reducedPlanData.minutes}м` : ''}
-                                        </div>
-                                      </>
+                                      isMobile ? (
+                                        <>
+                                          <div className="flex items-center gap-px leading-none">
+                                            <ClipboardCheck className="h-2 w-2 flex-shrink-0" />
+                                            <span>{Math.floor(factMinutes / 60)}ч</span>
+                                          </div>
+                                          <div className="text-[7px] opacity-70 leading-none">п:{reducedPlanData.hours}ч</div>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <div className="flex items-center gap-0.5">
+                                            {hasUnfilled && (
+                                              <AlertCircle className="h-3 w-3 text-amber-500 animate-pulse" />
+                                            )}
+                                            <ClipboardCheck className="h-3 w-3 -ml-[3px]" />
+                                            {hasOvertimeTotal && <Clock className="h-3 w-3" />}
+                                            <span>{Math.floor(factMinutes / 60)}ч{factMinutes % 60 > 0 ? ` ${factMinutes % 60}м` : ''}</span>
+                                          </div>
+                                          <div className="text-[9px] opacity-80">
+                                            п: {reducedPlanData.hours}ч{reducedPlanData.minutes > 0 ? ` ${reducedPlanData.minutes}м` : ''}
+                                          </div>
+                                        </>
+                                      )
                                     ) : (
-                                      <>
-                                        <div className="flex items-center gap-0.5">
-                                          {hasUnfilled && (
-                                            <AlertCircle className={cn(isMobile ? "h-2 w-2" : "h-3 w-3", "text-amber-500 animate-pulse")} />
+                                      isMobile ? (
+                                        <span className="leading-none">{reducedPlanData.hours}ч</span>
+                                      ) : (
+                                        <>
+                                          <div className="flex items-center gap-0.5">
+                                            {hasUnfilled && (
+                                              <AlertCircle className="h-3 w-3 text-amber-500 animate-pulse" />
+                                            )}
+                                            {hasCompensationTotal && <Hammer className="h-3 w-3" />}
+                                            {hasOvertimeTotal && <Clock className="h-3 w-3" />}
+                                            <span>{reducedPlanData.hours}ч</span>
+                                          </div>
+                                          {hasOvertimeTotal ? (
+                                            <div className="text-[9px] text-purple-700 dark:text-purple-300 font-medium">
+                                              +{overtimeHours.hours}ч{overtimeHours.minutes > 0 ? ` ${overtimeHours.minutes}м` : ''} перераб
+                                            </div>
+                                          ) : hasCompensationTotal ? (
+                                            <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                              +{compensationHours.hours}ч{compensationHours.minutes > 0 ? ` ${compensationHours.minutes}м` : ''} отр
+                                            </div>
+                                          ) : (
+                                            reducedPlanData.minutes > 0 && <div className="text-[10px] opacity-80">{reducedPlanData.minutes}м</div>
                                           )}
-                                          {hasCompensationTotal && <Hammer className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} />}
-                                          {hasOvertimeTotal && <Clock className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} />}
-                                          {/* Без данных табеля показываем план с вычетом отсутствий */}
-                                          <span className={cn(isMobile && "text-[10px]")}>{reducedPlanData.hours}ч</span>
-                                        </div>
-                                        {hasOvertimeTotal ? (
-                                          <div className="text-[9px] text-purple-700 dark:text-purple-300 font-medium">
-                                            +{overtimeHours.hours}ч{overtimeHours.minutes > 0 ? ` ${overtimeHours.minutes}м` : ''} перераб
-                                          </div>
-                                        ) : hasCompensationTotal ? (
-                                          <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">
-                                            +{compensationHours.hours}ч{compensationHours.minutes > 0 ? ` ${compensationHours.minutes}м` : ''} отр
-                                          </div>
-                                        ) : (
-                                          /* Показываем минуты только если они есть - НЕ дублируя */
-                                          reducedPlanData.minutes > 0 && <div className="text-[10px] opacity-80">{reducedPlanData.minutes}м</div>
-                                        )}
-                                      </>
+                                        </>
+                                      )
                                     )}
                                   </div>
                                 </TooltipTrigger>
