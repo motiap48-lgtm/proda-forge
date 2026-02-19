@@ -989,10 +989,25 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               </div>
                             );
                           })}
-                          <div className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
-                            <div>{yearlyTotal.hours}ч</div>
-                            {yearlyTotal.minutes > 0 && !isMobile && <div className="text-[10px]">{yearlyTotal.minutes}м</div>}
-                          </div>
+                          {(() => {
+                            let yearFactMinutes = 0;
+                            months.forEach(month => {
+                              const mf = calculateMonthFactHours(operator.id, month);
+                              yearFactMinutes += mf.hours * 60 + mf.minutes;
+                            });
+                            const yearFactH = Math.floor(yearFactMinutes / 60);
+                            const hasYearFact = yearFactMinutes > 0;
+                            return (
+                              <div className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
+                                <div>{yearlyTotal.hours}ч</div>
+                                {hasYearFact && (
+                                  <div className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">
+                                    ф:{yearFactH}ч
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </React.Fragment>
                       );
                     })}
@@ -1023,10 +1038,25 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               </div>
                             );
                           })}
-                          <div className="text-center p-0.5 h-8 flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
-                            <div>{groupPlanTotal.hours}ч</div>
-                            {groupPlanTotal.minutes > 0 && !isMobile && <div className="text-[10px]">{groupPlanTotal.minutes}м</div>}
-                          </div>
+                          {(() => {
+                            let groupYearFactMinutes = 0;
+                            operators.forEach(op => {
+                              months.forEach(month => {
+                                const mf = calculateMonthFactHours(op.id, month);
+                                groupYearFactMinutes += mf.hours * 60 + mf.minutes;
+                              });
+                            });
+                            const groupYearFactH = Math.floor(groupYearFactMinutes / 60);
+                            const hasGroupYearFact = groupYearFactMinutes > 0;
+                            return (
+                              <div className="text-center p-0.5 h-8 flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
+                                <div>{groupPlanTotal.hours}ч</div>
+                                {hasGroupYearFact && (
+                                  <div className="text-[9px] text-blue-600 dark:text-blue-400">ф:{groupYearFactH}ч</div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </>
                       );
                     })()}
