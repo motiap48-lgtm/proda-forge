@@ -17,6 +17,7 @@ interface GrandTotalRowProps {
   registerScrollContainer: (key: string) => (el: HTMLDivElement | null) => void;
   handleSyncScroll: (sourceKey: string) => (event: React.UIEvent<HTMLDivElement>) => void;
   calculateMonthHours: (operator: any, month: Date) => { hours: number; minutes: number };
+  calculateMonthPlanHours: (operator: any, month: Date) => { hours: number; minutes: number };
   calculateGroupPlanHours: (ops: any[]) => { hours: number; minutes: number };
   calculateGroupYearlyPlanTotal: (ops: any[]) => { hours: number; minutes: number };
   grandTotalFact?: { hours: number; minutes: number };
@@ -34,6 +35,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   registerScrollContainer,
   handleSyncScroll,
   calculateMonthHours,
+  calculateMonthPlanHours,
   calculateGroupPlanHours,
   calculateGroupYearlyPlanTotal,
   grandTotalFact,
@@ -98,18 +100,18 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
           {period === "year" ? (
             <>
               {months.map((month) => {
-                let monthTotal = 0;
+                let monthPlanTotal = 0;
                 filteredOperators.forEach(op => {
-                  const mh = calculateMonthHours(op, month);
-                  monthTotal += mh.hours * 60 + mh.minutes;
+                  const mh = calculateMonthPlanHours(op, month);
+                  monthPlanTotal += mh.hours * 60 + mh.minutes;
                 });
-                const h = Math.floor(monthTotal / 60);
-                const m = monthTotal % 60;
+                const h = Math.floor(monthPlanTotal / 60);
+                const m = monthPlanTotal % 60;
                 return (
                   <div 
                     key={month.toISOString()} 
                     className={cn(
-                      "text-center font-medium flex items-center justify-center rounded-md bg-gradient-to-b from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-900/50 text-emerald-700 dark:text-emerald-300",
+                      "text-center font-medium flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-900/50 text-emerald-700 dark:text-emerald-300",
                       cellHeight,
                       isMobile ? "text-[10px]" : "text-xs"
                     )}

@@ -328,6 +328,47 @@ export const useCalendarCalculations = ({
     };
   };
 
+  // Calculate PLAN hours for a specific month (only plan-reducing absences subtracted)
+  const calculateMonthPlanHours = (operator: any, month: Date): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    const schedule = operator.work_schedules;
+    const isCyclic = isCyclicSchedule(operator);
+    const monthStart = startOfMonth(month);
+    const monthDaysCount = getDaysInMonth(month);
+    
+    for (let i = 0; i < monthDaysCount; i++) {
+      const day = addDays(monthStart, i);
+      
+      if (isOperatorTerminated(operator, day, employmentPeriodsMap)) continue;
+      if (isBeforeHireDate(operator, day, employmentPeriodsMap)) continue;
+      
+      const exception = getExceptionForDate(day);
+      if (exception && !exception.is_working_day && !isCyclic) continue;
+      
+      const absence = isDateInAbsence(day, absences, operator.id);
+      if (absence && isAbsenceReducingPlan(absence.absence_type)) continue;
+      
+      const shift = getShiftForDateWithOverride(operator, day);
+      if (!shift) continue;
+      
+      const normalNetMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
+      
+      if (exception && exception.exception_type === "shortened_day") {
+        const scheduleReductionHours = schedule?.reduction_hours;
+        const reductionHours = scheduleReductionHours ?? exception.reduction_hours ?? 1;
+        const reductionMinutes = reductionHours * 60;
+        totalMinutes += Math.max(0, normalNetMinutes - reductionMinutes);
+      } else {
+        totalMinutes += normalNetMinutes;
+      }
+    }
+    
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  };
+
   // Calculate total working hours for an operator over the period (subtracts absences)
   const calculateTotalHours = (operator: any): { hours: number; minutes: number } => {
     let totalMinutes = 0;
@@ -553,6 +594,7 @@ export const useCalendarCalculations = ({
     columnWidth,
     calendarGridStyle,
     calculateMonthHours,
+    calculateMonthPlanHours,
     calculateTotalHours,
     calculatePlanHours,
     calculateFullPlanHours,
