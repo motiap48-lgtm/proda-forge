@@ -563,15 +563,16 @@ export const useBulkDeleteEmploymentHistory = () => {
         const today = new Date().toISOString().split("T")[0];
         const isFutureReinstatement = reinstateDate > today;
         
-         // Update operator - preserve original hire_date, only clear termination fields
-         // If reinstatement is in the future, keep is_active=false until that date
+         // Update operator - preserve original hire_date
+         // If reinstatement is in the future, keep is_active=false and preserve termination fields
+         // so the operator stays visible in archive until reinstatement date
+         const updateData = isFutureReinstatement
+           ? { is_active: false as const }
+           : { is_active: true as const, termination_date: null, termination_reason: null };
+         
          const { error: updateError } = await supabase
            .from("operators")
-           .update({
-             is_active: isFutureReinstatement ? false : true,
-             termination_date: isFutureReinstatement ? null : null,
-             termination_reason: isFutureReinstatement ? null : null,
-           })
+           .update(updateData)
            .eq("id", operatorId);
   
         if (updateError) throw updateError;
@@ -635,17 +636,16 @@ export const useBulkDeleteEmploymentHistory = () => {
           .from("operators")
           .select("id, full_name")
           .eq("is_active", false)
-          .is("termination_date", null)
           .in("id", operatorIds);
 
         if (opsError) throw opsError;
         if (!inactiveOps || inactiveOps.length === 0) return [];
 
-        // Activate them
+        // Activate them and clear termination fields
         const ids = inactiveOps.map(op => op.id);
         const { error: updateError } = await supabase
           .from("operators")
-          .update({ is_active: true })
+          .update({ is_active: true, termination_date: null, termination_reason: null })
           .in("id", ids);
 
         if (updateError) throw updateError;
