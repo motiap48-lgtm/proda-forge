@@ -58,7 +58,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
 
   return (
     <div 
-      className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate"
+      className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate bg-emerald-50 dark:bg-emerald-950/30"
       style={{
         ["--sr-row-h" as any]: isMobile ? "32px" : "44px"
       }}
@@ -100,7 +100,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
       >
         <div style={calendarGridStyle} className={cn(
           "items-center",
-          isMobile ? "pl-1 pr-0.5 py-1" : "pl-2 pr-0.5 py-1.5"
+          isMobile ? "pl-1 pr-0.5 py-0.5" : "pl-2 pr-0.5 py-1.5"
         )}>
           {period === "year" ? (
             <>
@@ -147,8 +147,8 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
                     cellHeight,
                     isMobile ? "text-[8px]" : "text-xs",
                     isWeekend 
-                      ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
-                      : "bg-gradient-to-b from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30",
+                      ? "bg-rose-100/60 dark:bg-rose-900/20" 
+                      : "",
                     isToday(day) && "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)] hover:animate-pulse-glow"
                   )}
                   onMouseEnter={() => isToday(day) && onTodayColumnHover(true)}
