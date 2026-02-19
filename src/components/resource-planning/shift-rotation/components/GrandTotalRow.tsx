@@ -66,7 +66,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
       {/* Fixed label column - matches ScheduleGroup employee column */}
       <div 
         className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center relative z-50"
-        style={{ width: `${mobileEmployeeWidth}px` }}
+        style={{ width: `${mobileEmployeeWidth}px`, boxShadow: '2px 0 4px -2px hsl(var(--foreground) / 0.1)' }}
       >
         <div className={cn(
           "flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-300 overflow-hidden",
@@ -140,7 +140,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
                 <div 
                   key={day.toISOString()} 
                   className={cn(
-                    "text-center text-muted-foreground flex items-center justify-center rounded-md overflow-hidden",
+                    "text-center p-0.5 text-muted-foreground flex items-center justify-center rounded-md overflow-hidden",
                     cellHeight,
                     isMobile ? "text-[8px]" : "text-xs",
                     isWeekend 
