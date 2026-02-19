@@ -54,13 +54,13 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   
   // Mobile-optimized column width
   const mobileEmployeeWidth = isMobile ? Math.min(employeeColumnWidth, 120) : employeeColumnWidth;
-  const cellHeight = isMobile ? "h-8" : "h-[44px]";
+  const cellHeight = isMobile ? "h-[26px]" : "h-[44px]";
 
   return (
     <div 
       className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate"
       style={{
-        ["--sr-row-h" as any]: isMobile ? "32px" : "44px"
+        ["--sr-row-h" as any]: isMobile ? "26px" : "44px"
       }}
     >
       {/* Fixed label column - matches ScheduleGroup employee column */}
@@ -120,9 +120,9 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
                   <div 
                     key={month.toISOString()} 
                     className={cn(
-                      "text-center font-medium flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-900/50 text-emerald-700 dark:text-emerald-300",
+                      "text-center font-medium flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-900/50 text-emerald-700 dark:text-emerald-300 overflow-hidden",
                       cellHeight,
-                      isMobile ? "text-[10px]" : "text-xs"
+                      isMobile ? "text-[8px]" : "text-xs"
                     )}
                   >
                     <div>{h}ч{m > 0 && !isMobile ? ` ${m}м` : ''}</div>
@@ -140,9 +140,9 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
                 <div 
                   key={day.toISOString()} 
                   className={cn(
-                    "text-center text-muted-foreground flex items-center justify-center rounded-md",
+                    "text-center text-muted-foreground flex items-center justify-center rounded-md overflow-hidden",
                     cellHeight,
-                    isMobile ? "text-[10px]" : "text-xs",
+                    isMobile ? "text-[8px]" : "text-xs",
                     isWeekend 
                       ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                       : "bg-gradient-to-b from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30",
@@ -156,23 +156,30 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
           )}
           {/* Grand total cell - shows fact if available, otherwise plan */}
           <div className={cn(
-            "text-center flex flex-col items-center justify-center rounded-md font-bold",
+            "text-center flex flex-col items-center justify-center rounded-md font-bold overflow-hidden",
             hasFactData 
               ? "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-700 dark:to-blue-800 text-blue-900 dark:text-blue-100"
               : "bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100",
             cellHeight,
-            isMobile ? "text-[10px] p-0.5" : "text-xs p-1.5"
+            isMobile ? "text-[8px] p-0" : "text-xs p-1.5"
           )}>
             {hasFactData ? (
-              <>
-                <div className="flex items-center gap-0.5">
-                  <ClipboardCheck className="h-3 w-3" />
-                  <span>{grandTotalFact.hours}ч</span>
-                </div>
-                <div className="text-[9px] opacity-80">
-                  п: {grandTotalCalc.hours}ч{grandTotalCalc.minutes > 0 && !isMobile ? ` ${grandTotalCalc.minutes}м` : ''}
-                </div>
-              </>
+              isMobile ? (
+                <>
+                  <div className="leading-none">{grandTotalFact.hours}ч</div>
+                  <div className="text-[7px] opacity-70 leading-none">п:{grandTotalCalc.hours}ч</div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-0.5">
+                    <ClipboardCheck className="h-3 w-3" />
+                    <span>{grandTotalFact.hours}ч</span>
+                  </div>
+                  <div className="text-[9px] opacity-80">
+                    п: {grandTotalCalc.hours}ч{grandTotalCalc.minutes > 0 ? ` ${grandTotalCalc.minutes}м` : ''}
+                  </div>
+                </>
+              )
             ) : (
               <>
                 <div>{grandTotalCalc.hours}ч</div>
