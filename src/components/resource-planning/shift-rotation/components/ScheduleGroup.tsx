@@ -757,40 +757,42 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                       <HoverCardTrigger asChild>
                         <div 
                           className={cn(
-                            "flex items-center gap-1 group border-b border-border/50 mb-1",
+                            "flex items-center gap-1 group border-b border-border/50 mb-1 overflow-hidden",
                             isMobile ? "px-1 h-[32px]" : "px-2 h-[52px] gap-2",
                             onEditOperator && "hover:bg-muted/50 cursor-pointer"
                           )}
                           onClick={() => onEditOperator?.(operator)}
                         >
-                          <span className={cn("font-medium truncate flex-1", isMobile ? "text-xs" : "text-sm")}>{operator.full_name}</span>
-                          {medalsEnabled && (
+                          <span className={cn("font-medium truncate flex-1 min-w-0", isMobile ? "text-[11px] leading-tight" : "text-sm")}>{operator.full_name}</span>
+                          {!isMobile && medalsEnabled && (
                             <OvertimeMedalBadge 
                               medalType={getOperatorMedal(overtimeRankings, operator.id)}
                               totalMinutes={overtimeRankings?.find(r => r.operatorId === operator.id)?.totalMinutes}
                               size="sm"
                             />
                           )}
-                          {currentAbsence && absenceInfo && (
+                          {!isMobile && currentAbsence && absenceInfo && (
                             <span title={absenceInfo.label} className="flex-shrink-0">
                               <span className="text-sm">{absenceInfo.icon}</span>
                             </span>
                           )}
-                          <CompensationPendingIcon 
-                            operatorId={operator.id} 
-                            dateRange={days.length > 0 ? { startDate: days[0], endDate: days[days.length - 1] } : undefined}
-                          />
-                          {hasPersonalCycleDate && (
+                          {!isMobile && (
+                            <CompensationPendingIcon 
+                              operatorId={operator.id} 
+                              dateRange={days.length > 0 ? { startDate: days[0], endDate: days[days.length - 1] } : undefined}
+                            />
+                          )}
+                          {!isMobile && hasPersonalCycleDate && (
                             <span title="Персональная дата цикла">
                               <CalendarCheck className="h-3 w-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                             </span>
                           )}
-                          {showShiftRotationIcon && (
+                          {!isMobile && showShiftRotationIcon && (
                             <span title="Ротация смен">
                               <RefreshCw className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                             </span>
                           )}
-                          {onEditOperator && (
+                          {!isMobile && onEditOperator && (
                             <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => { e.stopPropagation(); onEditOperator(operator); }}>
                               <Pencil className="h-3 w-3" />
                             </Button>
@@ -818,14 +820,14 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                 
                 {/* Group summary row */}
                 <div className={cn(
-                  "bg-muted/30 flex items-center text-xs text-muted-foreground border-t border-border",
-                  isMobile ? "px-1 h-[26px]" : "px-2 h-[44px]"
+                  "bg-muted/30 flex items-center text-muted-foreground border-t border-border overflow-hidden",
+                  isMobile ? "px-1 h-[26px] text-[9px] gap-1" : "px-2 h-[44px] text-xs"
                 )}>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="flex items-center gap-1 text-emerald-600" title="Рабочие дни"><CalendarCheck className="h-3 w-3" />{groupStats.workingDays}</span>
-                    <span className="flex items-center gap-1 text-rose-500" title="Выходные"><CalendarX className="h-3 w-3" />{groupStats.offDays}</span>
+                  <div className={cn("flex items-center flex-wrap", isMobile ? "gap-1" : "gap-2")}>
+                    <span className="flex items-center gap-0.5 text-emerald-600" title="Рабочие дни"><CalendarCheck className={cn(isMobile ? "h-2.5 w-2.5" : "h-3 w-3")} />{groupStats.workingDays}</span>
+                    <span className="flex items-center gap-0.5 text-rose-500" title="Выходные"><CalendarX className={cn(isMobile ? "h-2.5 w-2.5" : "h-3 w-3")} />{groupStats.offDays}</span>
                     {groupStats.absenceDays > 0 && (
-                      <span className="flex items-center gap-1 text-orange-500" title="Дни отсутствий"><Plane className="h-3 w-3" />{groupStats.absenceDays}</span>
+                      <span className="flex items-center gap-0.5 text-orange-500" title="Дни отсутствий"><Plane className={cn(isMobile ? "h-2.5 w-2.5" : "h-3 w-3")} />{groupStats.absenceDays}</span>
                     )}
                   </div>
                 </div>
