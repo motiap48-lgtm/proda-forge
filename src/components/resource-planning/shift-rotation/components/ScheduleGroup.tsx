@@ -1211,8 +1211,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-amber-100 to-amber-200 dark:from-amber-900/30 dark:to-amber-900/50 text-amber-700 dark:text-amber-400 border border-dashed border-amber-400"
                                   title={`Уволен: ${operator.termination_date ? format(new Date(operator.termination_date), "dd.MM.yyyy") : ''}${operator.termination_reason ? `\nПричина: ${operator.termination_reason}` : ''}`}
                                 >
-                                  <DoorOpen className="h-3.5 w-3.5" />
-                                  <span className="text-[8px] mt-0.5 opacity-75">Увол.</span>
+                                  <DoorOpen className={cn(isMobile ? "h-2.5 w-2.5" : "h-3.5 w-3.5")} />
+                                  <span className={cn(isMobile ? "text-[7px]" : "text-[8px]", "mt-0.5 opacity-75")}>Увол.</span>
                                 </div>
                               );
                             }
@@ -1301,7 +1301,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     </div>
                                   )}
                                   
-                                  <GripVertical className="h-2.5 w-2.5 absolute top-0.5 right-0.5 opacity-40 group-hover:opacity-0" />
+                                  <GripVertical className={cn("absolute top-0.5 right-0.5 opacity-40 group-hover:opacity-0", isMobile ? "h-2 w-2" : "h-2.5 w-2.5")} />
                                   
                                   {/* Overtime indicator on absence cell - same as regular cell */}
                                   {hasOvertime && (
@@ -1314,7 +1314,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           )}
                                         >
                                           <Clock className={cn(
-                                            "h-2.5 w-2.5 transition-colors",
+                                            isMobile ? "h-2 w-2" : "h-2.5 w-2.5", "transition-colors",
                                             hasApprovedOvertime ? "text-purple-600 dark:text-purple-400" : "text-purple-400 dark:text-purple-500"
                                           )} />
                                         </div>
@@ -1326,9 +1326,9 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     </Tooltip>
                                   )}
                                   
-                                  <AbsenceIcon className="h-3.5 w-3.5 mb-0.5" />
-                                  <div className="text-[9px] font-medium truncate w-full px-0.5">
-                                    {daysCount > 14 ? absenceInfo.icon : absenceInfo.label.split(' ')[0]}
+                                  <AbsenceIcon className={cn(isMobile ? "h-2.5 w-2.5" : "h-3.5 w-3.5 mb-0.5")} />
+                                  <div className={cn("font-medium truncate w-full px-0.5", isMobile ? "text-[8px]" : "text-[9px]")}>
+                                    {isMobile || daysCount > 14 ? absenceInfo.icon : absenceInfo.label.split(' ')[0]}
                                   </div>
                                 </div>
                               );
@@ -1455,21 +1455,21 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 {/* Shortened day indicator */}
                                 {isShortenedDay && !hasOverride && (
                                   <div className="absolute top-0.5 left-0.5">
-                                    <Timer className="h-2.5 w-2.5 text-orange-500 dark:text-orange-400" />
+                                    <Timer className={cn(isMobile ? "h-2 w-2" : "h-2.5 w-2.5", "text-orange-500 dark:text-orange-400")} />
                                   </div>
                                 )}
                                 
                                 {/* Override indicator */}
                                 {hasOverride && (
                                   <div className="absolute top-0.5 right-0.5">
-                                    <ArrowRightLeft className="h-2.5 w-2.5 text-amber-600 dark:text-amber-400" />
+                                    <ArrowRightLeft className={cn(isMobile ? "h-2 w-2" : "h-2.5 w-2.5", "text-amber-600 dark:text-amber-400")} />
                                   </div>
                                 )}
                                 
                                 {/* Shortened day indicator when override exists - show on left */}
                                 {isShortenedDay && hasOverride && (
                                   <div className="absolute top-0.5 left-0.5">
-                                    <Timer className="h-2.5 w-2.5 text-orange-500 dark:text-orange-400" />
+                                    <Timer className={cn(isMobile ? "h-2 w-2" : "h-2.5 w-2.5", "text-orange-500 dark:text-orange-400")} />
                                   </div>
                                 )}
                                 
@@ -1493,7 +1493,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <div className="absolute bottom-0 left-0 p-0.5 z-20">
-                                        <TrendingDown className="h-2.5 w-2.5 text-red-500 dark:text-red-400" />
+                                        <TrendingDown className={cn(isMobile ? "h-2 w-2" : "h-2.5 w-2.5", "text-red-500 dark:text-red-400")} />
                                       </div>
                                     </TooltipTrigger>
                                     <TooltipContent side="top" className="text-xs max-w-xs">
@@ -1522,7 +1522,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                         )}
                                       >
                                         <Clock className={cn(
-                                          "h-2.5 w-2.5 transition-colors",
+                                          isMobile ? "h-2 w-2" : "h-2.5 w-2.5", "transition-colors",
                                           hasApprovedOvertime ? "text-purple-600 dark:text-purple-400" : "text-purple-400 dark:text-purple-500"
                                         )} />
                                       </div>
@@ -1578,7 +1578,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           }}
                                         >
                                           <Hammer className={cn(
-                                            "h-2.5 w-2.5 transition-colors duration-300 hover:scale-150",
+                                            isMobile ? "h-2 w-2" : "h-2.5 w-2.5", "transition-colors duration-300 hover:scale-150",
                                             isAnimating ? "text-emerald-500 dark:text-emerald-300" : 
                                               hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : 
                                               "text-amber-500 dark:text-amber-400"
@@ -1586,7 +1586,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                           {/* Success checkmark animation */}
                                           {isAnimating && (
                                             <div className="absolute inset-0 flex items-center justify-center bg-emerald-500 rounded-full animate-scale-in">
-                                              <Check className="h-2.5 w-2.5 text-white" />
+                                              <Check className={cn(isMobile ? "h-2 w-2" : "h-2.5 w-2.5", "text-white")} />
                                             </div>
                                           )}
                                         </div>
@@ -1666,7 +1666,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                             }}
                                           >
                                             <Hammer className={cn(
-                                              "h-3.5 w-3.5 transition-colors duration-300 hover:scale-125",
+                                              isMobile ? "h-2.5 w-2.5" : "h-3.5 w-3.5", "transition-colors duration-300 hover:scale-125",
                                               isAnimating ? "text-emerald-500 dark:text-emerald-300" :
                                                 hasConfirmedCompensation ? "text-emerald-600 dark:text-emerald-400" : 
                                                 "text-amber-500 dark:text-amber-400"
@@ -1674,7 +1674,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                             {/* Success checkmark animation */}
                                             {isAnimating && (
                                               <div className="absolute inset-0 flex items-center justify-center bg-emerald-500 rounded-full animate-scale-in">
-                                                <Check className="h-3 w-3 text-white" />
+                                                <Check className={cn(isMobile ? "h-2 w-2" : "h-3 w-3", "text-white")} />
                                               </div>
                                             )}
                                           </div>
@@ -1758,28 +1758,27 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                       <>
                                         <div className="flex items-center gap-0.5">
                                           {hasUnfilled && (
-                                            <AlertCircle className="h-3 w-3 text-amber-500 animate-pulse" />
+                                            <AlertCircle className={cn(isMobile ? "h-2 w-2" : "h-3 w-3", "text-amber-500 animate-pulse")} />
                                           )}
-                                          <ClipboardCheck className="h-3 w-3 -ml-[3px]" />
-                                          {hasOvertimeTotal && <Clock className="h-3 w-3" />}
+                                          <ClipboardCheck className={cn(isMobile ? "h-2 w-2" : "h-3 w-3", "-ml-[3px]")} />
+                                          {hasOvertimeTotal && <Clock className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} />}
                                           {/* Факт = фактические часы + подтвержденные переработки */}
-                                          <span>{Math.floor(factMinutes / 60)}ч{factMinutes % 60 > 0 ? ` ${factMinutes % 60}м` : ''}</span>
+                                          <span className={cn(isMobile && "text-[10px]")}>{Math.floor(factMinutes / 60)}ч{!isMobile && factMinutes % 60 > 0 ? ` ${factMinutes % 60}м` : ''}</span>
                                         </div>
-                                        <div className="text-[9px] opacity-80">
-                                          {/* План = план с вычетом отсутствий */}
-                                          п: {reducedPlanData.hours}ч{reducedPlanData.minutes > 0 ? ` ${reducedPlanData.minutes}м` : ''}
+                                        <div className={cn(isMobile ? "text-[8px]" : "text-[9px]", "opacity-80")}>
+                                          п: {reducedPlanData.hours}ч{!isMobile && reducedPlanData.minutes > 0 ? ` ${reducedPlanData.minutes}м` : ''}
                                         </div>
                                       </>
                                     ) : (
                                       <>
                                         <div className="flex items-center gap-0.5">
                                           {hasUnfilled && (
-                                            <AlertCircle className="h-3 w-3 text-amber-500 animate-pulse" />
+                                            <AlertCircle className={cn(isMobile ? "h-2 w-2" : "h-3 w-3", "text-amber-500 animate-pulse")} />
                                           )}
-                                          {hasCompensationTotal && <Hammer className="h-3 w-3" />}
-                                          {hasOvertimeTotal && <Clock className="h-3 w-3" />}
+                                          {hasCompensationTotal && <Hammer className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} />}
+                                          {hasOvertimeTotal && <Clock className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} />}
                                           {/* Без данных табеля показываем план с вычетом отсутствий */}
-                                          <span>{reducedPlanData.hours}ч</span>
+                                          <span className={cn(isMobile && "text-[10px]")}>{reducedPlanData.hours}ч</span>
                                         </div>
                                         {hasOvertimeTotal ? (
                                           <div className="text-[9px] text-purple-700 dark:text-purple-300 font-medium">
@@ -1843,8 +1842,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             {groupFactTotal.hasData ? (
                               <>
                                 <div className="flex items-center gap-0.5">
-                                  <ClipboardCheck className="h-3 w-3" />
-                                  <span>{groupFactTotal.hours}ч</span>
+                                  <ClipboardCheck className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} />
+                                  <span className={cn(isMobile && "text-[10px]")}>{groupFactTotal.hours}ч</span>
                                 </div>
                                 <div className="text-[9px] opacity-80">
                                   п: {groupPlanTotal.hours}ч{groupPlanTotal.minutes > 0 && !isMobile ? ` ${groupPlanTotal.minutes}м` : ''}
