@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { startOfMonth, getDaysInMonth, addDays as addDaysUtil } from "date-fns";
 import { format, getDay, isToday, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getShiftForDate, getCycleDayNumber, parseDateOnly } from "../utils";
@@ -15,6 +16,8 @@ export interface CalendarException {
 
 export interface ExportData {
   days: Date[];
+  months?: Date[];
+  period?: string;
   operators: any[];
   groupedBySchedule: Map<string, any[]>;
   timesheets: any[];
@@ -33,6 +36,7 @@ export interface ExportData {
     totalHours: number; 
     totalMinutes: number; 
   };
+  calculateMonthPlanHours?: (operator: any, month: Date) => { hours: number; minutes: number };
   employmentPeriodsMap?: EmploymentPeriodsMap;
 }
 
@@ -214,15 +218,142 @@ const formatMinutes = (minutes: number): string => {
   return `${h}ч${m > 0 ? ` ${m}м` : ''}`;
 };
 
+// Get operator fact total for a specific month
+const getOperatorMonthFactTotal = (
+  operatorId: string,
+  month: Date,
+  timesheets: any[],
+  overtimeEntries: any[],
+  compensations: any[]
+) => {
+  let totalMinutes = 0;
+  const monthStart = startOfMonth(month);
+  const monthDays = getDaysInMonth(month);
+  
+  for (let i = 0; i < monthDays; i++) {
+    const day = addDaysUtil(monthStart, i);
+    const dateStr = format(day, "yyyy-MM-dd");
+    totalMinutes += getFactMinutesForDay(operatorId, dateStr, timesheets, overtimeEntries, compensations);
+  }
+  
+  return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+};
 export const exportToExcel = (data: ExportData) => {
   const { 
-    days, operators, groupedBySchedule, timesheets, overtimeEntries, 
-    compensations, absences, calendarExceptions = [], calculatePlanHours, employmentPeriodsMap 
+    days, months = [], period, operators, groupedBySchedule, timesheets, overtimeEntries, 
+    compensations, absences, calendarExceptions = [], calculatePlanHours, calculateMonthPlanHours, employmentPeriodsMap 
   } = data;
   
   const wb = XLSX.utils.book_new();
   const exportData: any[] = [];
   
+  if (period === 'year' && months.length > 0 && calculateMonthPlanHours) {
+    // YEAR MODE: Monthly columns
+    const headerRow1 = ['Сотрудник', 'График'];
+    const headerRow2 = ['', ''];
+    months.forEach(month => {
+      headerRow1.push(format(month, 'LLLL yyyy', { locale: ru }));
+      headerRow1.push('');
+      headerRow2.push('План');
+      headerRow2.push('Факт');
+    });
+    headerRow1.push('Итого');
+    headerRow1.push('');
+    headerRow2.push('План');
+    headerRow2.push('Факт');
+    
+    exportData.push(headerRow1);
+    exportData.push(headerRow2);
+    
+    let grandTotalPlanMin = 0;
+    let grandTotalFactMin = 0;
+
+    Array.from(groupedBySchedule.entries()).forEach(([scheduleName, ops]) => {
+      exportData.push([`--- ${scheduleName} (${ops.length}) ---`]);
+      
+      let groupPlanMin = 0;
+      let groupFactMin = 0;
+
+      ops.forEach(operator => {
+        const isTerminated = operator.termination_date != null;
+        const operatorName = isTerminated 
+          ? `${operator.full_name} (уволен ${format(parseDateOnly(operator.termination_date)!, 'dd.MM.yy')})`
+          : operator.full_name;
+        
+        let opPlanMin = 0;
+        let opFactMin = 0;
+        const monthValues: string[] = [];
+        
+        months.forEach(month => {
+          const mp = calculateMonthPlanHours(operator, month);
+          const mf = getOperatorMonthFactTotal(operator.id, month, timesheets, overtimeEntries, compensations);
+          const planMin = mp.hours * 60 + mp.minutes;
+          const factMin = mf.hours * 60 + mf.minutes;
+          opPlanMin += planMin;
+          opFactMin += factMin;
+          monthValues.push(formatMinutes(planMin));
+          monthValues.push(factMin > 0 ? formatMinutes(factMin) : '—');
+        });
+
+        groupPlanMin += opPlanMin;
+        groupFactMin += opFactMin;
+
+        exportData.push([
+          operatorName,
+          operator.work_schedules?.name || 'Без графика',
+          ...monthValues,
+          formatMinutes(opPlanMin),
+          opFactMin > 0 ? formatMinutes(opFactMin) : '—'
+        ]);
+      });
+
+      grandTotalPlanMin += groupPlanMin;
+      grandTotalFactMin += groupFactMin;
+      
+      const emptyMonthCells = months.flatMap(() => ['', '']);
+      exportData.push([
+        `Итого по группе "${scheduleName}":`,
+        '',
+        ...emptyMonthCells,
+        formatMinutes(groupPlanMin),
+        groupFactMin > 0 ? formatMinutes(groupFactMin) : '—'
+      ]);
+      exportData.push([]);
+    });
+
+    const emptyMonthCells = months.flatMap(() => ['', '']);
+    exportData.push([]);
+    exportData.push([
+      'ОБЩИЙ ИТОГ:',
+      '',
+      ...emptyMonthCells,
+      formatMinutes(grandTotalPlanMin),
+      grandTotalFactMin > 0 ? formatMinutes(grandTotalFactMin) : '—'
+    ]);
+    
+    const ws = XLSX.utils.aoa_to_sheet(exportData);
+    
+    const merges: XLSX.Range[] = [];
+    for (let i = 0; i < months.length; i++) {
+      merges.push({ s: { r: 0, c: 2 + i * 2 }, e: { r: 0, c: 3 + i * 2 } });
+    }
+    merges.push({ s: { r: 0, c: 2 + months.length * 2 }, e: { r: 0, c: 3 + months.length * 2 } });
+    ws['!merges'] = merges;
+    
+    ws['!cols'] = [
+      { wch: 35 },
+      { wch: 25 },
+      ...months.flatMap(() => [{ wch: 10 }, { wch: 10 }]),
+      { wch: 12 },
+      { wch: 12 }
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'График ротации (год)');
+    XLSX.writeFile(wb, `График_ротации_${format(months[0], 'yyyy')}.xlsx`);
+    return;
+  }
+  
+  // DAY MODE (original logic)
   // Header rows with Plan/Fact for each day
   const headerRow1 = ['Сотрудник', 'График'];
   const headerRow2 = ['', ''];
@@ -231,7 +362,6 @@ export const exportToExcel = (data: ExportData) => {
     const holidayEx = getHolidayException(dateStr, calendarExceptions);
     const shortenedEx = getShortenedDayException(dateStr, calendarExceptions);
     
-    // Add holiday/shortened indicator to header
     let dateHeader = format(day, 'dd.MM.yyyy');
     if (holidayEx) {
       dateHeader += ' 🎉';
@@ -266,61 +396,50 @@ export const exportToExcel = (data: ExportData) => {
       let operatorTotalFactMinutes = 0;
       const dayValues: string[] = [];
       
-      // Check if operator is terminated
       const isTerminated = operator.termination_date != null;
       const operatorName = isTerminated 
         ? `${operator.full_name} (уволен ${format(parseDateOnly(operator.termination_date)!, 'dd.MM.yy')})`
         : operator.full_name;
       
-      // Check if 5/2 schedule (affected by holidays)
       const is52 = is52ScheduleType(operator);
       
       days.forEach(day => {
         const dateStr = format(day, "yyyy-MM-dd");
         const shift = getShiftForDate(operator, day);
         
-        // Check employment status
         const terminatedOnDate = isOperatorTerminatedOnDate(operator, day, employmentPeriodsMap);
         const beforeHire = isBeforeHireDateOnDate(operator, day, employmentPeriodsMap);
         
-        // Get absence for this day
         const absence = getAbsenceForDate(operator.id, day, absences);
         const absenceInfo = absence ? ABSENCE_LABELS[absence.absence_type] : null;
         
-        // Get holiday/shortened day exceptions
         const holidayEx = getHolidayException(dateStr, calendarExceptions);
         const shortenedEx = getShortenedDayException(dateStr, calendarExceptions);
         const isHolidayForSchedule = is52 && !!holidayEx;
         
-        // Get planned minutes
         let planMinutes = 0;
         let planText = '—';
         let factText = '—';
         
         if (terminatedOnDate) {
-          planText = '🚪';  // Terminated
+          planText = '🚪';
           factText = '—';
         } else if (beforeHire) {
           planText = '—';
           factText = '—';
         } else if (absence) {
-          // Show absence icon
           planText = absenceInfo?.icon || '📝';
           
-          // Check if absence reduces plan
           const nonCompensableTypes = ['annual_leave', 'unpaid_leave', 'maternity_leave', 'administrative_leave_without_compensation'];
           if (!nonCompensableTypes.includes(absence.absence_type) && shift) {
-            // Plan remains for sick leave, business trip, etc.
             planMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
           }
         } else if (isHolidayForSchedule) {
-          // Holiday for 5/2 schedule - no work
           planText = '🎉';
           planMinutes = 0;
         } else if (shift) {
           let netMinutes = shift.net_work_minutes ?? (shift.gross_work_minutes - shift.break_minutes);
           
-          // Apply shortened day reduction
           if (shortenedEx) {
             const scheduleReductionHours = operator.work_schedules?.reduction_hours;
             const reductionHours = scheduleReductionHours ?? shortenedEx.reduction_hours ?? 1;
@@ -335,7 +454,6 @@ export const exportToExcel = (data: ExportData) => {
         
         operatorTotalMinutes += planMinutes;
         
-        // Get actual minutes
         const factMinutes = getFactMinutesForDay(operator.id, dateStr, timesheets, overtimeEntries, compensations);
         operatorTotalFactMinutes += factMinutes;
         factText = factMinutes > 0 ? formatMinutes(factMinutes) : '—';
@@ -347,7 +465,6 @@ export const exportToExcel = (data: ExportData) => {
       groupTotalMinutes += operatorTotalMinutes;
       groupTotalFactMinutes += operatorTotalFactMinutes;
 
-      // Use calculatePlanHours for accurate totals that match UI
       const opPlan = calculatePlanHours(operator);
       const opPlanFormatted = formatMinutes(opPlan.hours * 60 + opPlan.minutes);
 
@@ -364,7 +481,6 @@ export const exportToExcel = (data: ExportData) => {
     grandTotalMinutes += groupTotalMinutes;
     grandTotalFactMinutes += groupTotalFactMinutes;
     
-    // Group total row
     const emptyDayCells = days.flatMap(() => ['', '']);
     exportData.push([
       `Итого по группе "${scheduleName}":`,
@@ -376,7 +492,6 @@ export const exportToExcel = (data: ExportData) => {
     exportData.push([]);
   });
 
-  // Grand total row
   const emptyDayCells = days.flatMap(() => ['', '']);
   exportData.push([]);
   exportData.push([
@@ -387,7 +502,6 @@ export const exportToExcel = (data: ExportData) => {
     formatMinutes(grandTotalFactMinutes)
   ]);
   
-  // Add legend
   exportData.push([]);
   exportData.push(['ЛЕГЕНДА:']);
   exportData.push(['🏖️ - Отпуск', '🏥 - Больничный', '✈️ - Командировка', '📋 - Административный']);
@@ -396,7 +510,6 @@ export const exportToExcel = (data: ExportData) => {
   
   const ws = XLSX.utils.aoa_to_sheet(exportData);
   
-  // Merge header cells for dates
   const merges: XLSX.Range[] = [];
   for (let i = 0; i < days.length; i++) {
     merges.push({ s: { r: 0, c: 2 + i * 2 }, e: { r: 0, c: 3 + i * 2 } });
@@ -421,9 +534,9 @@ export const exportToExcel = (data: ExportData) => {
 
 export const printCalendar = (data: ExportData) => {
   const { 
-    days, operators, groupedBySchedule, timesheets, overtimeEntries, 
+    days, months = [], period, operators, groupedBySchedule, timesheets, overtimeEntries, 
     compensations, absences, calendarExceptions = [], shiftColorMap, grandTotal, grandTotalFact,
-    calculateTotalHours, calculatePlanHours, calculateGroupStats, employmentPeriodsMap 
+    calculateTotalHours, calculatePlanHours, calculateGroupStats, calculateMonthPlanHours, employmentPeriodsMap 
   } = data;
   
   const startDateStr = format(days[0], 'dd.MM.yyyy');
@@ -687,9 +800,9 @@ export const printCalendar = (data: ExportData) => {
 
 export const exportToPdf = (data: ExportData) => {
   const { 
-    days, operators, groupedBySchedule, timesheets, overtimeEntries, 
+    days, months = [], period, operators, groupedBySchedule, timesheets, overtimeEntries, 
     compensations, absences, calendarExceptions = [], shiftColorMap, grandTotal, grandTotalFact,
-    calculateTotalHours, calculatePlanHours, calculateGroupStats, employmentPeriodsMap 
+    calculateTotalHours, calculatePlanHours, calculateGroupStats, calculateMonthPlanHours, employmentPeriodsMap 
   } = data;
   
   const startDateStr = format(days[0], 'dd.MM.yyyy');

@@ -501,6 +501,41 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     };
   }, [filteredOperators, timesheets, overtimeEntries, compensations, days]);
 
+  // Calculate fact hours for a specific month (for grand total row in year view)
+  const calculateMonthFactHoursForGrandTotal = useMemo(() => {
+    return (operatorId: string, month: Date): { hours: number; minutes: number } => {
+      let totalMinutes = 0;
+      const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
+      const monthDaysCount = getDaysInMonth(month);
+      
+      for (let i = 0; i < monthDaysCount; i++) {
+        const day = addDays(monthStart, i);
+        const dateStr = format(day, "yyyy-MM-dd");
+        
+        // Timesheet
+        const dayTs = timesheets.find(ts => ts.operator_id === operatorId && ts.work_date === dateStr);
+        if (dayTs) totalMinutes += dayTs.actual_minutes || 0;
+        
+        // Approved overtime
+        overtimeEntries.filter(
+          oe => oe.operator_id === operatorId && oe.work_date === dateStr && oe.status === 'approved'
+        ).forEach(oe => { totalMinutes += oe.duration_minutes || 0; });
+        
+        // Confirmed compensation
+        compensations.forEach(comp => {
+          if (comp.status === 'cancelled') return;
+          comp.compensation_records?.forEach(record => {
+            if (record.operator_id === operatorId && record.compensation_date === dateStr && record.status === 'confirmed') {
+              totalMinutes += (record.hours_worked || 0) * 60;
+            }
+          });
+        });
+      }
+      
+      return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+    };
+  }, [timesheets, overtimeEntries, compensations]);
+
   // Calculate comparison period total
   const comparisonTotal = useMemo(() => {
     if (!comparisonPeriod) return null;
@@ -557,6 +592,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const handleExportToExcel = () => {
     const data: ExportData = {
       days,
+      months,
+      period,
       operators: filteredOperators,
       groupedBySchedule,
       timesheets,
@@ -570,6 +607,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       calculateTotalHours,
       calculatePlanHours,
       calculateGroupStats,
+      calculateMonthPlanHours,
       employmentPeriodsMap,
     };
     exportToExcel(data);
@@ -579,6 +617,8 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   const handlePrint = () => {
     const data: ExportData = {
       days,
+      months,
+      period,
       operators: filteredOperators,
       groupedBySchedule,
       timesheets,
@@ -592,14 +632,18 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       calculateTotalHours,
       calculatePlanHours,
       calculateGroupStats,
+      calculateMonthPlanHours,
       employmentPeriodsMap,
     };
+    printCalendar(data);
   };
 
   // PDF export
   const handleExportToPdf = () => {
     const data: ExportData = {
       days,
+      months,
+      period,
       operators: filteredOperators,
       groupedBySchedule,
       timesheets,
@@ -613,8 +657,10 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       calculateTotalHours,
       calculatePlanHours,
       calculateGroupStats,
+      calculateMonthPlanHours,
       employmentPeriodsMap,
     };
+    exportToPdf(data);
   };
 
   const toggleFullscreen = () => {
@@ -802,6 +848,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 calculateGroupPlanHours={calculateGroupPlanHours}
                 calculateGroupYearlyPlanTotal={calculateGroupYearlyPlanTotal}
                 grandTotalFact={grandTotalFact}
+                calculateMonthFactHours={calculateMonthFactHoursForGrandTotal}
               />
             </div>
           </div>

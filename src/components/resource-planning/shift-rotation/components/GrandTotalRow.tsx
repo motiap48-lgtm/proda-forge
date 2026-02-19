@@ -21,6 +21,7 @@ interface GrandTotalRowProps {
   calculateGroupPlanHours: (ops: any[]) => { hours: number; minutes: number };
   calculateGroupYearlyPlanTotal: (ops: any[]) => { hours: number; minutes: number };
   grandTotalFact?: { hours: number; minutes: number };
+  calculateMonthFactHours?: (operatorId: string, month: Date) => { hours: number; minutes: number };
 }
 
 const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
@@ -39,6 +40,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   calculateGroupPlanHours,
   calculateGroupYearlyPlanTotal,
   grandTotalFact,
+  calculateMonthFactHours,
 }) => {
   const isMobile = useIsMobile();
   
@@ -101,12 +103,19 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
             <>
               {months.map((month) => {
                 let monthPlanTotal = 0;
+                let monthFactTotal = 0;
                 filteredOperators.forEach(op => {
                   const mh = calculateMonthPlanHours(op, month);
                   monthPlanTotal += mh.hours * 60 + mh.minutes;
+                  if (calculateMonthFactHours) {
+                    const mf = calculateMonthFactHours(op.id, month);
+                    monthFactTotal += mf.hours * 60 + mf.minutes;
+                  }
                 });
                 const h = Math.floor(monthPlanTotal / 60);
                 const m = monthPlanTotal % 60;
+                const fh = Math.floor(monthFactTotal / 60);
+                const hasMonthFact = monthFactTotal > 0;
                 return (
                   <div 
                     key={month.toISOString()} 
@@ -116,7 +125,10 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
                       isMobile ? "text-[10px]" : "text-xs"
                     )}
                   >
-                    {h}ч{m > 0 && !isMobile ? ` ${m}м` : ''}
+                    <div>{h}ч{m > 0 && !isMobile ? ` ${m}м` : ''}</div>
+                    {hasMonthFact && (
+                      <div className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">ф:{fh}ч</div>
+                    )}
                   </div>
                 );
               })}
