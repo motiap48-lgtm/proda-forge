@@ -501,7 +501,42 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     };
   }, [filteredOperators, timesheets, overtimeEntries, compensations, days]);
 
-  // Calculate fact hours for a specific month (for grand total row in year view)
+  // Pre-build lookup maps for fast grand total fact calculation
+  const timesheetLookup = useMemo(() => {
+    const map = new Map<string, number>();
+    timesheets.forEach(ts => {
+      const key = `${ts.operator_id}_${ts.work_date}`;
+      map.set(key, (map.get(key) || 0) + (ts.actual_minutes || 0));
+    });
+    return map;
+  }, [timesheets]);
+
+  const overtimeLookup = useMemo(() => {
+    const map = new Map<string, number>();
+    overtimeEntries.forEach(oe => {
+      if (oe.status === 'approved') {
+        const key = `${oe.operator_id}_${oe.work_date}`;
+        map.set(key, (map.get(key) || 0) + (oe.duration_minutes || 0));
+      }
+    });
+    return map;
+  }, [overtimeEntries]);
+
+  const compensationLookup = useMemo(() => {
+    const map = new Map<string, number>();
+    compensations.forEach(comp => {
+      if (comp.status === 'cancelled') return;
+      comp.compensation_records?.forEach(record => {
+        if (record.status === 'confirmed') {
+          const key = `${record.operator_id}_${record.compensation_date}`;
+          map.set(key, (map.get(key) || 0) + (record.hours_worked || 0) * 60);
+        }
+      });
+    });
+    return map;
+  }, [compensations]);
+
+  // Calculate fact hours for a specific month using fast map lookups
   const calculateMonthFactHoursForGrandTotal = useMemo(() => {
     return (operatorId: string, month: Date): { hours: number; minutes: number } => {
       let totalMinutes = 0;
@@ -511,30 +546,16 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       for (let i = 0; i < monthDaysCount; i++) {
         const day = addDays(monthStart, i);
         const dateStr = format(day, "yyyy-MM-dd");
+        const key = `${operatorId}_${dateStr}`;
         
-        // Timesheet
-        const dayTs = timesheets.find(ts => ts.operator_id === operatorId && ts.work_date === dateStr);
-        if (dayTs) totalMinutes += dayTs.actual_minutes || 0;
-        
-        // Approved overtime
-        overtimeEntries.filter(
-          oe => oe.operator_id === operatorId && oe.work_date === dateStr && oe.status === 'approved'
-        ).forEach(oe => { totalMinutes += oe.duration_minutes || 0; });
-        
-        // Confirmed compensation
-        compensations.forEach(comp => {
-          if (comp.status === 'cancelled') return;
-          comp.compensation_records?.forEach(record => {
-            if (record.operator_id === operatorId && record.compensation_date === dateStr && record.status === 'confirmed') {
-              totalMinutes += (record.hours_worked || 0) * 60;
-            }
-          });
-        });
+        totalMinutes += timesheetLookup.get(key) || 0;
+        totalMinutes += overtimeLookup.get(key) || 0;
+        totalMinutes += compensationLookup.get(key) || 0;
       }
       
       return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
     };
-  }, [timesheets, overtimeEntries, compensations]);
+  }, [timesheetLookup, overtimeLookup, compensationLookup]);
 
   // Calculate comparison period total
   const comparisonTotal = useMemo(() => {

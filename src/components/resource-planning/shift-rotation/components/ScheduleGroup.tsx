@@ -88,6 +88,9 @@ interface ScheduleGroupProps {
   employmentPeriodsMap?: EmploymentPeriodsMap;
 }
 
+const EMPTY_MAP = new Map();
+const EMPTY_ARRAY: any[] = [];
+
 const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   scheduleName,
   operators,
@@ -95,13 +98,13 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   onToggleCollapse,
   onEditOperator,
   onManageAbsences,
-  absences = [],
-  scheduleOverrides = [],
-  calendarExceptions = [],
-  timesheets = [],
-  compensationRecordsMap = new Map(),
-  overtimeMap = new Map(),
-  overtimeRankings = [],
+  absences = EMPTY_ARRAY,
+  scheduleOverrides = EMPTY_ARRAY,
+  calendarExceptions = EMPTY_ARRAY,
+  timesheets = EMPTY_ARRAY,
+  compensationRecordsMap = EMPTY_MAP as any,
+  overtimeMap = EMPTY_MAP as any,
+  overtimeRankings = EMPTY_ARRAY,
   medalsEnabled = false,
   days,
   months,
@@ -398,8 +401,49 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
     };
   }, [operators, calculateActualHours, calculateOvertimeHours, calculateCompensationHours]);
   
-  // Calculate fact hours for a specific month (timesheets + overtime + compensations)
+  // Pre-compute all month fact hours for year view (memoized cache)
+  const monthFactCache = useMemo(() => {
+    if (period !== "year") return new Map<string, { hours: number; minutes: number }>();
+    const cache = new Map<string, { hours: number; minutes: number }>();
+    
+    operators.forEach(op => {
+      months.forEach(month => {
+        let totalMinutes = 0;
+        const monthStart = startOfMonth(month);
+        const monthDaysCount = getDaysInMonth(month);
+        
+        for (let i = 0; i < monthDaysCount; i++) {
+          const day = addDays(monthStart, i);
+          
+          const ts = getTimesheetForDate(timesheetMap, op.id, day);
+          if (ts) totalMinutes += ts.actual_minutes;
+          
+          const overtimeEntries = getOvertimeForDate(op.id, day);
+          overtimeEntries.forEach(entry => {
+            if (entry.status === "approved") totalMinutes += entry.duration_minutes || 0;
+          });
+          
+          const compRecords = getCompensationRecordsForDate(op.id, day);
+          compRecords.forEach(record => {
+            if (record.status === "confirmed") totalMinutes += Math.round(record.hours_worked * 60);
+          });
+        }
+        
+        const key = `${op.id}_${month.getFullYear()}_${month.getMonth()}`;
+        cache.set(key, { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 });
+      });
+    });
+    
+    return cache;
+  }, [period, operators, months, timesheetMap, getOvertimeForDate, getCompensationRecordsForDate]);
+
+  // Calculate fact hours for a specific month (uses cache for year view, computes for other views)
   const calculateMonthFactHours = useCallback((operatorId: string, month: Date): { hours: number; minutes: number } => {
+    const key = `${operatorId}_${month.getFullYear()}_${month.getMonth()}`;
+    const cached = monthFactCache.get(key);
+    if (cached) return cached;
+    
+    // Fallback computation for non-year views
     let totalMinutes = 0;
     const monthStart = startOfMonth(month);
     const monthDaysCount = getDaysInMonth(month);
@@ -408,30 +452,21 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
       const day = addDays(monthStart, i);
       
       const ts = getTimesheetForDate(timesheetMap, operatorId, day);
-      if (ts) {
-        totalMinutes += ts.actual_minutes;
-      }
+      if (ts) totalMinutes += ts.actual_minutes;
       
       const overtimeEntries = getOvertimeForDate(operatorId, day);
       overtimeEntries.forEach(entry => {
-        if (entry.status === "approved") {
-          totalMinutes += entry.duration_minutes || 0;
-        }
+        if (entry.status === "approved") totalMinutes += entry.duration_minutes || 0;
       });
       
       const compRecords = getCompensationRecordsForDate(operatorId, day);
       compRecords.forEach(record => {
-        if (record.status === "confirmed") {
-          totalMinutes += Math.round(record.hours_worked * 60);
-        }
+        if (record.status === "confirmed") totalMinutes += Math.round(record.hours_worked * 60);
       });
     }
     
-    return {
-      hours: Math.floor(totalMinutes / 60),
-      minutes: totalMinutes % 60
-    };
-  }, [timesheetMap, getOvertimeForDate, getCompensationRecordsForDate]);
+    return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+  }, [monthFactCache, timesheetMap, getOvertimeForDate, getCompensationRecordsForDate]);
 
   // Drag and drop functionality with resize support
   const {
@@ -899,7 +934,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                               isTodayDate
                                 ? cn(
                                     "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
-                                    isTodayColumnHovered && "animate-pulse-glow",
+                                    "hover:animate-pulse-glow",
                                   )
                                 : isHoliday
                                   ? "bg-gradient-to-b from-red-300 to-red-400 dark:from-red-700 dark:to-red-800 text-red-900 dark:text-red-100"
@@ -2082,7 +2117,6 @@ export const ScheduleGroup = memo(ScheduleGroupComponent, (prevProps, nextProps)
     prevProps.period === nextProps.period &&
     prevProps.daysCount === nextProps.daysCount &&
     prevProps.employeeColumnWidth === nextProps.employeeColumnWidth &&
-    prevProps.isTodayColumnHovered === nextProps.isTodayColumnHovered &&
     prevProps.isResizing === nextProps.isResizing &&
     prevProps.syncingScheduleId === nextProps.syncingScheduleId &&
 
