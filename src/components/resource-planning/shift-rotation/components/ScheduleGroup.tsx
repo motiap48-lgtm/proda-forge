@@ -713,7 +713,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
               isMobile ? "max-h-[50vh]" : "max-h-[60vh]"
             )}
             style={{ 
-              ["--sr-header-h" as any]: isMobile ? "40px" : "76px",
+              ["--sr-header-h" as any]: isMobile ? "32px" : "76px",
               ["--sr-row-h" as any]: isMobile ? "32px" : "52px"
             }}
           >
@@ -721,12 +721,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             <div className="flex-shrink-0 border-r border-border bg-background flex flex-col relative z-50" style={{ width: `${mobileEmployeeWidth}px`, boxShadow: '2px 0 4px -2px hsl(var(--foreground) / 0.1)' }}>
               <div
                 className={cn(
-                  "flex-shrink-0 bg-muted/30 font-semibold text-foreground py-2 h-[var(--sr-header-h)] flex items-center gap-2 border-b border-border mb-1",
-                  isMobile ? "text-xs px-2" : "text-base px-3"
+                  "flex-shrink-0 bg-muted/30 font-semibold text-foreground h-[var(--sr-header-h)] flex items-center gap-2 border-b border-border mb-1",
+                  isMobile ? "text-[10px] px-1 py-0" : "text-base px-3 py-2"
                 )}
                 style={{ boxShadow: "0 4px 12px -4px hsl(var(--foreground) / 0.15), 0 2px 6px -2px hsl(var(--foreground) / 0.1)" }}
               >
-                <Users className={cn(isMobile ? "h-4 w-4" : "h-5 w-5", "text-muted-foreground")} />
+                <Users className={cn(isMobile ? "h-3 w-3" : "h-5 w-5", "text-muted-foreground")} />
                 {!isMobile && "Сотрудники"}
               </div>
               
@@ -890,7 +890,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                 <div
                   className={cn(
                     "relative bg-background h-[var(--sr-header-h)]",
-                    isMobile ? "pl-1 pr-0.5 py-1" : "pl-2 pr-0.5 py-2"
+                    isMobile ? "pl-1 pr-0.5 py-0" : "pl-2 pr-0.5 py-2"
                   )}
                   style={{
                     ...calendarGridStyle,
@@ -930,7 +930,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             key={day.toISOString()}
                             className={cn(
                               "text-center flex flex-col items-center justify-center rounded-md relative",
-                              isMobile ? "text-xs p-0.5 h-[var(--sr-header-h)]" : "text-sm p-1.5 h-[60px]",
+                              isMobile ? "text-[10px] p-0 h-[var(--sr-header-h)]" : "text-sm p-1.5 h-[60px]",
                               isTodayDate
                                 ? cn(
                                     "bg-gradient-to-b from-cyan-400 to-teal-500 text-white font-semibold shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
