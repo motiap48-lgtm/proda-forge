@@ -502,13 +502,14 @@ export const TimesheetDialog: React.FC<TimesheetDialogProps> = ({
                 </span>
               </div>
               <div className="flex gap-1 flex-wrap justify-end">
-                <Tooltip>
+                <Tooltip delayDuration={300}>
                   <TooltipTrigger asChild>
                     <Button 
                       variant="ghost" 
                       size="sm" 
                       onClick={() => setShowHistory(true)} 
                       className="h-7 px-2 text-xs"
+                      tabIndex={-1}
                     >
                       <History className="h-3 w-3" />
                     </Button>
