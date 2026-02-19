@@ -146,10 +146,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
                     isWeekend 
                       ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                       : "bg-gradient-to-b from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30",
-                    isToday(day) && cn(
-                      "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)]",
-                      isTodayColumnHovered && "animate-pulse-glow"
-                    )
+                    isToday(day) && "shadow-[0_0_4px_1px_rgba(6,182,212,0.25)] hover:animate-pulse-glow"
                   )}
                   onMouseEnter={() => isToday(day) && onTodayColumnHover(true)}
                   onMouseLeave={() => isToday(day) && onTodayColumnHover(false)}
@@ -196,7 +193,6 @@ export const GrandTotalRow = memo(GrandTotalRowComponent, (prevProps, nextProps)
     prevProps.period === nextProps.period &&
     prevProps.days.length === nextProps.days.length &&
     prevProps.employeeColumnWidth === nextProps.employeeColumnWidth &&
-    prevProps.isTodayColumnHovered === nextProps.isTodayColumnHovered &&
     prevProps.filteredOperators === nextProps.filteredOperators &&
     prevProps.grandTotalFact?.hours === nextProps.grandTotalFact?.hours &&
     prevProps.grandTotalFact?.minutes === nextProps.grandTotalFact?.minutes
