@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useState, useCallback, useEffect } from "react";
-import { format, getDay, isToday, isSameMonth, differenceInCalendarDays, startOfDay, isAfter } from "date-fns";
+import { format, getDay, isToday, isSameMonth, differenceInCalendarDays, startOfDay, isAfter, startOfMonth, endOfMonth, isWithinInterval, addDays, getDaysInMonth } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +77,7 @@ interface ScheduleGroupProps {
   calculatePlanHours: (operator: any) => { hours: number; minutes: number };
   calculateFullPlanHours: (operator: any) => { hours: number; minutes: number };
   calculateMonthHours: (operator: any, month: Date) => { hours: number; minutes: number };
+  calculateMonthPlanHours: (operator: any, month: Date) => { hours: number; minutes: number };
   calculateGroupStats: (ops: any[]) => { workingDays: number; offDays: number; absenceDays: number; totalHours: number; totalMinutes: number };
   calculateYearlyTotal: (operator: any) => { hours: number; minutes: number };
   calculateGroupYearlyTotal: (ops: any[]) => { hours: number; minutes: number };
@@ -123,6 +124,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   calculatePlanHours,
   calculateFullPlanHours,
   calculateMonthHours,
+  calculateMonthPlanHours,
   calculateGroupStats,
   calculateYearlyTotal,
   calculateGroupYearlyTotal,
@@ -396,6 +398,41 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
     };
   }, [operators, calculateActualHours, calculateOvertimeHours, calculateCompensationHours]);
   
+  // Calculate fact hours for a specific month (timesheets + overtime + compensations)
+  const calculateMonthFactHours = useCallback((operatorId: string, month: Date): { hours: number; minutes: number } => {
+    let totalMinutes = 0;
+    const monthStart = startOfMonth(month);
+    const monthDaysCount = getDaysInMonth(month);
+    
+    for (let i = 0; i < monthDaysCount; i++) {
+      const day = addDays(monthStart, i);
+      
+      const ts = getTimesheetForDate(timesheetMap, operatorId, day);
+      if (ts) {
+        totalMinutes += ts.actual_minutes;
+      }
+      
+      const overtimeEntries = getOvertimeForDate(operatorId, day);
+      overtimeEntries.forEach(entry => {
+        if (entry.status === "approved") {
+          totalMinutes += entry.duration_minutes || 0;
+        }
+      });
+      
+      const compRecords = getCompensationRecordsForDate(operatorId, day);
+      compRecords.forEach(record => {
+        if (record.status === "confirmed") {
+          totalMinutes += Math.round(record.hours_worked * 60);
+        }
+      });
+    }
+    
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
+  }, [timesheetMap, getOvertimeForDate, getCompensationRecordsForDate]);
+
   // Drag and drop functionality with resize support
   const {
     dragPreview,
@@ -935,14 +972,20 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                       return (
                         <React.Fragment key={operator.id}>
                           {months.map((month) => {
-                            const monthHours = calculateMonthHours(operator, month);
+                            const monthPlan = calculateMonthPlanHours(operator, month);
+                            const monthFact = calculateMonthFactHours(operator.id, month);
+                            const hasMonthFact = monthFact.hours > 0 || monthFact.minutes > 0;
                             return (
                               <div 
                                 key={month.toISOString()} 
                                 className="text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-900/50 text-blue-700 dark:text-blue-300"
                               >
-                                <div className="font-medium">{monthHours.hours}ч</div>
-                                {monthHours.minutes > 0 && !isMobile && <div className="text-[10px] opacity-80">{monthHours.minutes}м</div>}
+                                <div className="font-medium">{monthPlan.hours}ч</div>
+                                {hasMonthFact && (
+                                  <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                    ф:{monthFact.hours}ч
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -959,13 +1002,24 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                       return (
                         <>
                           {months.map((month) => {
-                            let monthTotal = 0;
-                            operators.forEach(op => { const mh = calculateMonthHours(op, month); monthTotal += mh.hours * 60 + mh.minutes; });
-                            const h = Math.floor(monthTotal / 60);
-                            const m = monthTotal % 60;
+                            let monthPlanTotal = 0;
+                            let monthFactTotal = 0;
+                            operators.forEach(op => {
+                              const mh = calculateMonthPlanHours(op, month);
+                              monthPlanTotal += mh.hours * 60 + mh.minutes;
+                              const mf = calculateMonthFactHours(op.id, month);
+                              monthFactTotal += mf.hours * 60 + mf.minutes;
+                            });
+                            const h = Math.floor(monthPlanTotal / 60);
+                            const m = monthPlanTotal % 60;
+                            const fh = Math.floor(monthFactTotal / 60);
+                            const hasGroupMonthFact = monthFactTotal > 0;
                             return (
-                              <div key={month.toISOString()} className="text-center h-8 flex items-center justify-center text-[10px] text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">
-                                {h}ч{m > 0 && !isMobile ? ` ${m}м` : ''}
+                              <div key={month.toISOString()} className="text-center h-8 flex flex-col items-center justify-center text-[10px] text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">
+                                <div>{h}ч{m > 0 && !isMobile ? ` ${m}м` : ''}</div>
+                                {hasGroupMonthFact && (
+                                  <div className="text-[9px] text-emerald-600 dark:text-emerald-400">ф:{fh}ч</div>
+                                )}
                               </div>
                             );
                           })}
