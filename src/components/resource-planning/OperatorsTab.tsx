@@ -570,7 +570,25 @@ export const OperatorsTab = () => {
       {/* Calendar view */}
       {!showArchive && viewMode === "calendar" && (
         <ShiftRotationCalendar 
-          operators={filteredOperators} 
+          operators={(() => {
+            // Include recently terminated operators (current month) even when status filter is "active"
+            // They should remain visible in the calendar until end of termination month
+            if (statusFilter === "active") {
+              const now = new Date();
+              const currentYear = now.getFullYear();
+              const currentMonth = now.getMonth();
+              const recentlyTerminated = (operators || []).filter((op: any) => {
+                if (op.is_active || !op.termination_date) return false;
+                const termDate = new Date(op.termination_date + 'T00:00:00');
+                // Show if terminated in current month or later (future terminations)
+                return termDate.getFullYear() === currentYear && termDate.getMonth() === currentMonth;
+              });
+              // Merge, avoiding duplicates
+              const ids = new Set(filteredOperators.map((op: any) => op.id));
+              return [...filteredOperators, ...recentlyTerminated.filter((op: any) => !ids.has(op.id))];
+            }
+            return filteredOperators;
+          })()} 
           onEditOperator={(operator) => {
             setEditingOperator(operator);
             setDialogOpen(true);
