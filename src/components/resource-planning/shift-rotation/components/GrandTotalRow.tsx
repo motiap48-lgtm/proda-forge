@@ -65,15 +65,18 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
     >
       {/* Fixed label column - matches ScheduleGroup employee column */}
       <div 
-        className="flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-50" 
+        className={cn(
+          "flex-shrink-0 border-r border-border bg-emerald-50 dark:bg-emerald-950/30 flex items-center relative z-50",
+          isMobile ? "h-[32px]" : ""
+        )}
         style={{ width: `${mobileEmployeeWidth}px` }}
       >
         <div className={cn(
-          "flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-300",
-          isMobile ? "px-1.5 text-xs" : "px-3 text-sm"
+          "flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-300 overflow-hidden",
+          isMobile ? "px-1 text-[10px]" : "px-3 text-sm gap-2"
         )}>
-          <Clock className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
-          {isMobile ? "ИТОГО" : "ОБЩИЙ ИТОГ:"}
+          <Clock className={cn(isMobile ? "h-2.5 w-2.5 flex-shrink-0" : "h-4 w-4")} />
+          <span className="truncate">{isMobile ? "ИТОГО" : "ОБЩИЙ ИТОГ:"}</span>
         </div>
       </div>
       
