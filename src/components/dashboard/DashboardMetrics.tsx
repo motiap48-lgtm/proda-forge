@@ -39,7 +39,7 @@ export const DashboardMetrics = ({
     : 0;
   const onTimeRate = activeOrders > 0 
     ? Math.round((onTimeOrders / activeOrders) * 100) 
-    : 100;
+    : 0;
 
   if (isLoading) {
     return (
