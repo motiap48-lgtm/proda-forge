@@ -873,8 +873,10 @@ export const useCancelAbsenceCompensation = () => {
       return { success: true, compensation: updated };
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
-      await queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      await queryClient.refetchQueries({ queryKey: ["absence-compensations"], type: "all" });
+      await queryClient.refetchQueries({ queryKey: ["operator-compensation-balance"], type: "all" });
+      await queryClient.refetchQueries({ queryKey: ["operator-compensation-balance-range"], type: "all" });
+      await queryClient.refetchQueries({ queryKey: ["operator-compensation-balance-by-period"], type: "all" });
       await queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
       await queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
       await queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
@@ -927,8 +929,10 @@ export const useRestoreAbsenceCompensation = () => {
       return { success: true, compensation };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
-      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.refetchQueries({ queryKey: ["absence-compensations"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance-range"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance-by-period"], type: "all" });
       queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
@@ -985,8 +989,10 @@ export const useForceDeleteAbsenceCompensation = () => {
       return { success: true, compensation };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
-      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.refetchQueries({ queryKey: ["absence-compensations"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance-range"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance-by-period"], type: "all" });
       queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["operator-timesheets"] });
@@ -1023,8 +1029,10 @@ export const useDeleteAllOperatorCompensations = () => {
       return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["absence-compensations"] });
-      queryClient.invalidateQueries({ queryKey: ["operator-compensation-balance"] });
+      queryClient.refetchQueries({ queryKey: ["absence-compensations"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance-range"], type: "all" });
+      queryClient.refetchQueries({ queryKey: ["operator-compensation-balance-by-period"], type: "all" });
       queryClient.invalidateQueries({ queryKey: ["operator-absences"] });
       queryClient.invalidateQueries({ queryKey: ["all-operator-absences"] });
       toast.success("Все записи отработки удалены");
