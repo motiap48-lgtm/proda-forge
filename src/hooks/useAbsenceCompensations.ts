@@ -136,7 +136,7 @@ export const useOperatorCompensationBalance = (operatorId: string, year?: number
       const startOfYear = `${currentYear}-01-01`;
       const endOfYear = `${currentYear}-12-31`;
       
-      // 1. Fetch absence compensations
+      // 1. Fetch absence compensations (non-cancelled only for balance calculation)
       const { data: compensations, error: compError } = await supabase
         .from("absence_compensations")
         .select(`*, compensation_records (*)`)
@@ -146,6 +146,16 @@ export const useOperatorCompensationBalance = (operatorId: string, year?: number
         .lte("absence_date", endOfYear);
 
       if (compError) throw compError;
+
+      // 1b. Fetch ALL absence compensation dates (including cancelled) to exclude from timesheet deficit
+      const { data: allCompensations, error: allCompError } = await supabase
+        .from("absence_compensations")
+        .select("absence_date")
+        .eq("operator_id", operatorId)
+        .gte("absence_date", startOfYear)
+        .lte("absence_date", endOfYear);
+
+      if (allCompError) throw allCompError;
 
       // 2. Fetch timesheets for the year to calculate deficit
       const { data: timesheets, error: tsError } = await supabase
@@ -186,8 +196,9 @@ export const useOperatorCompensationBalance = (operatorId: string, year?: number
       });
 
       // 3. Calculate timesheet deficit: sum of (planned - actual) where actual < planned
-      // Exclude dates that already have absence_compensations (to avoid double counting)
-      const compensationDates = new Set(absenceCompensations.map(c => c.absence_date));
+      // Exclude dates that have ANY absence_compensation record (including cancelled)
+      // This prevents double-counting when a compensation is cancelled
+      const compensationDates = new Set((allCompensations || []).map((c: { absence_date: string }) => c.absence_date));
       
       let timesheetDeficitMinutes = 0;
       (timesheets || []).forEach((ts: { work_date: string; planned_minutes: number; actual_minutes: number }) => {
@@ -241,7 +252,7 @@ export const useOperatorCompensationBalanceByDateRange = (
         return null;
       }
       
-      // 1. Fetch absence compensations for the date range
+      // 1. Fetch absence compensations for the date range (non-cancelled for balance)
       const { data: compensations, error: compError } = await supabase
         .from("absence_compensations")
         .select(`*, compensation_records (*)`)
@@ -251,6 +262,16 @@ export const useOperatorCompensationBalanceByDateRange = (
         .lte("absence_date", endDateStr);
 
       if (compError) throw compError;
+
+      // 1b. Fetch ALL absence compensation dates (including cancelled) to exclude from timesheet deficit
+      const { data: allCompensations, error: allCompError } = await supabase
+        .from("absence_compensations")
+        .select("absence_date")
+        .eq("operator_id", operatorId)
+        .gte("absence_date", startDateStr)
+        .lte("absence_date", endDateStr);
+
+      if (allCompError) throw allCompError;
 
       // 2. Fetch timesheets for the date range to calculate deficit
       const { data: timesheets, error: tsError } = await supabase
@@ -291,8 +312,8 @@ export const useOperatorCompensationBalanceByDateRange = (
       });
 
       // 3. Calculate timesheet deficit: sum of (planned - actual) where actual < planned
-      // Exclude dates that already have absence_compensations (to avoid double counting)
-      const compensationDates = new Set(absenceCompensations.map(c => c.absence_date));
+      // Exclude dates that have ANY absence_compensation (including cancelled) to avoid double-counting
+      const compensationDates = new Set((allCompensations || []).map((c: { absence_date: string }) => c.absence_date));
       
       let timesheetDeficitMinutes = 0;
       (timesheets || []).forEach((ts: { work_date: string; planned_minutes: number; actual_minutes: number }) => {
