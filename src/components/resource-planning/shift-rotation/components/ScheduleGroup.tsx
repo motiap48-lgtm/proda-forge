@@ -714,7 +714,8 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
             )}
             style={{ 
               ["--sr-header-h" as any]: isMobile ? "32px" : "76px",
-              ["--sr-row-h" as any]: isMobile ? "32px" : "52px"
+              ["--sr-row-h" as any]: isMobile ? "32px" : "52px",
+              ["--sr-summary-h" as any]: isMobile ? "26px" : "44px",
             }}
           >
             {/* Employee column */}
@@ -821,7 +822,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                 {/* Group summary row */}
                 <div className={cn(
                   "bg-muted/30 flex items-center text-muted-foreground border-t border-border overflow-hidden",
-                  isMobile ? "px-1 h-[26px] text-[9px] gap-1" : "px-2 h-[44px] text-xs"
+                  isMobile ? "px-1 h-[var(--sr-summary-h)] text-[9px] gap-1" : "px-2 h-[var(--sr-summary-h)] text-xs"
                 )}>
                   <div className={cn("flex items-center flex-wrap", isMobile ? "gap-1" : "gap-2")}>
                     <span className="flex items-center gap-0.5 text-emerald-600" title="Рабочие дни"><CalendarCheck className={cn(isMobile ? "h-2.5 w-2.5" : "h-3 w-3")} />{groupStats.workingDays}</span>
@@ -904,12 +905,12 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                       {months.map((month) => (
                         <div
                           key={month.toISOString()}
-                          className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-gradient-to-b from-muted to-secondary"
+                          className="text-center text-sm p-1 h-[var(--sr-header-h)] flex flex-col items-center justify-center rounded-md text-muted-foreground bg-gradient-to-b from-muted to-secondary"
                         >
                           <div className="font-medium text-xs">{format(month, "LLL", { locale: ru })}</div>
                         </div>
                       ))}
-                      <div className="text-center text-sm p-1 h-[60px] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
+                      <div className="text-center text-sm p-1 h-[var(--sr-header-h)] flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">
                         <Clock className="h-3 w-3 mb-0.5" />
                         <div className="text-[10px]">Год</div>
                       </div>
@@ -986,7 +987,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                       })}
                       <div className={cn(
                         "text-center p-1 flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium",
-                        isMobile ? "text-xs h-[var(--sr-header-h)]" : "text-sm h-[60px]"
+                        isMobile ? "text-xs h-[var(--sr-header-h)]" : "text-sm h-[var(--sr-header-h)]"
                       )}>
                         <Clock className={cn(isMobile ? "h-2.5 w-2.5" : "h-3 w-3 mb-0.5")} />
                         {!isMobile && <div className="text-[10px]">Итого</div>}
@@ -1067,7 +1068,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const fh = Math.floor(monthFactTotal / 60);
                             const hasGroupMonthFact = monthFactTotal > 0;
                             return (
-                              <div key={month.toISOString()} className="text-center h-8 flex flex-col items-center justify-center text-[10px] text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">
+                              <div key={month.toISOString()} className="text-center h-[var(--sr-summary-h)] flex flex-col items-center justify-center text-[10px] text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">
                                 <div>{h}ч{m > 0 && !isMobile ? ` ${m}м` : ''}</div>
                                 {hasGroupMonthFact && (
                                   <div className="text-[9px] text-emerald-600 dark:text-emerald-400">ф:{fh}ч</div>
@@ -1086,7 +1087,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                             const groupYearFactH = Math.floor(groupYearFactMinutes / 60);
                             const hasGroupYearFact = groupYearFactMinutes > 0;
                             return (
-                              <div className="text-center p-0.5 h-8 flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
+                              <div className="text-center p-0.5 h-[var(--sr-summary-h)] flex flex-col items-center justify-center rounded-md text-xs bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold border-t border-border">
                                 <div>{groupPlanTotal.hours}ч</div>
                                 {hasGroupYearFact && (
                                   <div className="text-[9px] text-blue-600 dark:text-blue-400">ф:{groupYearFactH}ч</div>
@@ -1847,10 +1848,10 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                       return (
                         <>
                           {days.map((day) => (
-                            <div key={day.toISOString()} className="text-center h-8 flex items-center justify-center text-xs text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">—</div>
+                            <div key={day.toISOString()} className="text-center h-[var(--sr-summary-h)] flex items-center justify-center text-xs text-muted-foreground bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border">—</div>
                           ))}
                           <div className={cn(
-                            "text-center p-0.5 h-8 flex flex-col items-center justify-center rounded-md text-xs font-bold border-t border-border",
+                            "text-center p-0.5 h-[var(--sr-summary-h)] flex flex-col items-center justify-center rounded-md text-xs font-bold border-t border-border",
                             groupFactTotal.hasData 
                               ? "bg-gradient-to-b from-blue-200 to-blue-300 dark:from-blue-700 dark:to-blue-800 text-blue-900 dark:text-blue-100"
                               : "bg-gradient-to-b from-emerald-300 to-emerald-400 dark:from-emerald-700 dark:to-emerald-800 text-emerald-900 dark:text-emerald-100"
