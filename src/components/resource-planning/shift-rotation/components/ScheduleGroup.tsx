@@ -1158,7 +1158,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                       <div
                         className={cn(
                           "text-center p-1 flex flex-col items-center justify-center rounded-md bg-gradient-to-b from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium",
-                          isMobile ? "text-xs h-[60px]" : "text-sm h-[60px]",
+                          isMobile ? "text-xs h-[var(--sr-header-h)]" : "text-sm h-[60px]",
                         )}
                       >
                         <Clock className={cn(isMobile ? "h-2.5 w-2.5" : "h-3 w-3 mb-0.5")} />
