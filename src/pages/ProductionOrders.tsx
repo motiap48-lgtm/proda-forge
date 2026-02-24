@@ -491,51 +491,51 @@ const ProductionOrdersContent = () => {
               <>
                 <Button
                   variant={selectionMode ? "default" : "outline"}
-                  size="default"
+                  size="sm"
                   onClick={toggleSelectionMode}
                 >
-                  {selectionMode ? <CheckSquare className="mr-2 h-5 w-5" /> : <Square className="mr-2 h-5 w-5" />}
-                  {selectionMode ? "Отмена" : "Выбор"}
+                  {selectionMode ? <CheckSquare className="mr-2 h-4 w-4" /> : <Square className="mr-2 h-4 w-4" />}
+                  <span className="hidden sm:inline">{selectionMode ? "Отмена" : "Выбор"}</span>
                 </Button>
                 {selectionMode && selectedOrders.size > 0 && (
                   <>
                     <Button
                       variant="outline"
-                      size="default"
+                      size="sm"
                       onClick={() => setShowBulkCustomerDialog(true)}
                     >
-                      <Users className="mr-2 h-5 w-5" />
-                      Назначить клиента ({selectedOrders.size})
+                      <Users className="mr-2 h-4 w-4" />
+                      <span className="hidden sm:inline">Клиент</span> ({selectedOrders.size})
                     </Button>
                     <Button
                       variant="destructive"
-                      size="default"
+                      size="sm"
                       onClick={() => setShowDeleteSelectedDialog(true)}
                     >
-                      <Trash2 className="mr-2 h-5 w-5" />
-                      Удалить ({selectedOrders.size})
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      ({selectedOrders.size})
                     </Button>
                   </>
                 )}
                 {!selectionMode && (
                   <Button
                     variant="destructive"
-                    size="default"
+                    size="sm"
                     onClick={() => setShowDeleteDialog(true)}
                   >
-                    <Trash2 className="mr-2 h-5 w-5" />
-                    Удалить все
+                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Удалить все</span>
                   </Button>
                 )}
               </>
             )}
             <Button
-              size="default"
+              size="sm"
               className="bg-gradient-to-r from-primary to-primary-glow shadow-lg hover:shadow-xl"
               onClick={() => navigate("/production-orders/new")}
             >
-              <Plus className="mr-2 h-5 w-5" />
-              Создать заказ
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Создать заказ</span>
             </Button>
           </div>
         </div>
@@ -779,8 +779,8 @@ const ProductionOrdersContent = () => {
                   }
                 }}
               >
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex gap-4">
+                <CardContent className="p-3 sm:p-6">
+                  <div className="flex gap-2 sm:gap-4">
                     {selectionMode && (
                       <div className="flex items-start pt-1">
                         <Checkbox
@@ -790,7 +790,7 @@ const ProductionOrdersContent = () => {
                         />
                       </div>
                     )}
-                    <div className="flex-1 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="flex-1 grid gap-2 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                       {/* Order Info */}
                       <div className="min-w-0">
                         <div className="mb-2 flex flex-wrap items-center gap-1.5 sm:gap-2">

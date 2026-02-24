@@ -142,6 +142,23 @@ All colors MUST be HSL.
   }
 }
 
+@layer base {
+  /* Mobile touch targets */
+  @media (max-width: 640px) {
+    .container {
+      @apply px-3;
+    }
+    
+    button, [role="button"], a {
+      min-height: 36px;
+    }
+    
+    input, select, textarea {
+      font-size: 16px; /* Prevent iOS zoom on focus */
+    }
+  }
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
