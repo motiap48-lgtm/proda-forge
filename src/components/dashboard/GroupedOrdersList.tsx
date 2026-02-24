@@ -149,18 +149,18 @@ export const GroupedOrdersList = ({ orders, groupBy }: GroupedOrdersListProps) =
           <Collapsible key={groupName} defaultOpen>
             <Card>
               <CollapsibleTrigger className="w-full">
-                <CardHeader className="py-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <GroupIcon className="h-5 w-5 text-muted-foreground" />
-                      <CardTitle className="text-base font-medium">
+                <CardHeader className="py-2 sm:py-3 px-3 sm:px-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <GroupIcon className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
+                      <CardTitle className="text-sm sm:text-base font-medium truncate">
                         {groupName}
                       </CardTitle>
-                      <Badge variant="secondary">{groupOrders.length}</Badge>
+                      <Badge variant="secondary" className="text-xs shrink-0">{groupOrders.length}</Badge>
                       {overdueCount > 0 && (
-                        <Badge variant="destructive" className="text-xs">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          {overdueCount} просроч.
+                        <Badge variant="destructive" className="text-[10px] sm:text-xs shrink-0">
+                          <AlertTriangle className="h-3 w-3 mr-0.5 sm:mr-1" />
+                          {overdueCount}
                         </Badge>
                       )}
                     </div>
@@ -177,7 +177,7 @@ export const GroupedOrdersList = ({ orders, groupBy }: GroupedOrdersListProps) =
                 </CardHeader>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <CardContent className="pt-0">
+                <CardContent className="pt-0 px-3 sm:px-6">
                   <div className="space-y-2">
                     {groupOrders.map((order) => {
                       const orderProgress = (order.completed_quantity / order.quantity) * 100;
@@ -186,7 +186,7 @@ export const GroupedOrdersList = ({ orders, groupBy }: GroupedOrdersListProps) =
                       return (
                         <div
                           key={order.id}
-                          className={`group flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border bg-card p-3 transition-all hover:border-primary/50 hover:shadow-sm cursor-pointer ${
+                          className={`group flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border bg-card p-2.5 sm:p-3 transition-all hover:border-primary/50 hover:shadow-sm cursor-pointer ${
                             orderOverdue ? "border-destructive/50 bg-destructive/5" : ""
                           }`}
                           onClick={() => navigate(`/production-orders/${order.order_number}`)}

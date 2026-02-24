@@ -43,7 +43,7 @@ export const DashboardMetrics = ({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 sm:gap-3">
         {[...Array(8)].map((_, i) => (
           <Card key={i}>
             <CardContent className="p-4 flex items-center justify-center">
@@ -108,20 +108,20 @@ export const DashboardMetrics = ({
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 sm:gap-3">
       {metrics.map((metric) => (
         <Card key={metric.label}>
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2">
-              <metric.icon className={`h-4 w-4 ${metric.color}`} />
-              <span className="text-xs text-muted-foreground truncate">
+          <CardContent className="p-2.5 sm:p-3">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <metric.icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${metric.color}`} />
+              <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
                 {metric.label}
               </span>
             </div>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="text-xl font-bold">{metric.value}</span>
+            <div className="mt-0.5 sm:mt-1 flex items-center gap-1.5 sm:gap-2">
+              <span className="text-lg sm:text-xl font-bold">{metric.value}</span>
               {metric.badge && (
-                <Badge variant={metric.badge as "destructive"} className="text-xs px-1">
+                <Badge variant={metric.badge as "destructive"} className="text-[10px] sm:text-xs px-1">
                   !
                 </Badge>
               )}
