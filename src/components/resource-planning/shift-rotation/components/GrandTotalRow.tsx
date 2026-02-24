@@ -52,15 +52,15 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   
   const hasFactData = grandTotalFact && (grandTotalFact.hours > 0 || grandTotalFact.minutes > 0);
   
-  // Mobile-optimized column width
+  // Use consistent cell heights matching ScheduleGroup
+  const cellHeight = "h-[var(--sr-row-h)]";
   const mobileEmployeeWidth = isMobile ? Math.min(employeeColumnWidth, 120) : employeeColumnWidth;
-  const cellHeight = isMobile ? "h-[32px]" : "h-[44px]";
 
   return (
     <div 
       className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate bg-emerald-50 dark:bg-emerald-950/30"
       style={{
-        ["--sr-row-h" as any]: isMobile ? "32px" : "44px"
+        ["--sr-row-h" as any]: isMobile ? "32px" : "44px",
       }}
     >
       {/* Fixed label column - matches ScheduleGroup employee column */}
