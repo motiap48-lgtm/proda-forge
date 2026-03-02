@@ -142,7 +142,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
                   className={cn(
                     "text-center p-0.5 text-muted-foreground flex items-center justify-center rounded-md overflow-hidden",
                     cellHeight,
-                    isMobile ? "text-[8px]" : "text-xs",
+                    isMobile ? "text-[9px]" : "text-xs",
                     isWeekend 
                       ? "bg-gradient-to-b from-rose-100 to-rose-200 dark:from-rose-900/30 dark:to-rose-900/50" 
                       : "bg-gradient-to-b from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30",
