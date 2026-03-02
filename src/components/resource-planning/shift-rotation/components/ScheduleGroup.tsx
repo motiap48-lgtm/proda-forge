@@ -732,7 +732,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
     <div>
       {/* Group header */}
       <div className="mb-2">
-        <div className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center gap-2 border border-border/40">
+        <div className="text-left text-sm font-medium text-muted-foreground px-2 py-1.5 bg-muted/50 rounded flex items-center flex-wrap gap-1.5 sm:gap-2 border border-border/40">
           <button
             className="flex items-center gap-2 hover:bg-muted/70 rounded px-1 py-0.5 transition-colors flex-1 min-w-0"
             onClick={onToggleCollapse}
