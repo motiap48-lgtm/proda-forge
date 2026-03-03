@@ -1477,7 +1477,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                     setEditingCellAbsence({ absence, operatorName: operator.full_name });
                                   }}
                                   className={cn(
-                                    "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md transition-all relative overflow-hidden cursor-grab active:cursor-grabbing group outline-none",
+                                    "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md transition-colors duration-150 relative overflow-hidden cursor-grab active:cursor-grabbing group outline-none",
                                     isMobile ? "text-[9px]" : "text-xs",
                                     isSelected && "ring-2 ring-primary z-20",
                                     isHovered && !isSelected && "ring-2 ring-primary/60 z-10",
@@ -1682,7 +1682,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 onMouseLeave={() => isToday(day) && onTodayColumnHover(false)}
                                 onContextMenu={handleContextMenu}
                                 className={cn(
-                                  "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md transition-all relative overflow-hidden select-none",
+                                  "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md transition-colors duration-150 relative overflow-hidden select-none",
                                   isMobile ? "text-[9px]" : "text-xs",
                                   canCreateAbsence &&
                                     !inPreview &&
@@ -2121,7 +2121,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
                                 <TooltipTrigger asChild>
                                   <div
                                     className={cn(
-                                      "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md font-medium cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 overflow-hidden",
+                                      "text-center p-0.5 h-[var(--sr-row-h)] flex flex-col items-center justify-center rounded-md font-medium cursor-pointer transition-colors duration-150 hover:ring-2 hover:ring-primary/50 overflow-hidden",
                                       isMobile ? "text-[9px]" : "text-xs",
                                       getCellColorClass(),
                                     )}
