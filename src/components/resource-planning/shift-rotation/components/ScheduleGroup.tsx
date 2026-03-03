@@ -57,7 +57,6 @@ import {
 } from "lucide-react";
 import { DoorOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { OperatorInfoCard } from "./OperatorInfoCard";
 import {
   getShiftForDate,
@@ -129,6 +128,7 @@ interface ScheduleGroupProps {
   shiftColorMap: Map<string, ShiftColors>;
   calendarGridStyle: React.CSSProperties;
   employeeColumnWidth: number;
+  isMobile: boolean;
   isResizing: boolean;
   onResizeMouseDown: (e: React.MouseEvent) => void;
   isTodayColumnHovered: boolean;
@@ -185,6 +185,7 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   shiftColorMap,
   calendarGridStyle,
   employeeColumnWidth,
+  isMobile,
   isResizing,
   onResizeMouseDown,
   isTodayColumnHovered,
@@ -209,7 +210,6 @@ const ScheduleGroupComponent: React.FC<ScheduleGroupProps> = ({
   isFirstGroup,
   employmentPeriodsMap,
 }) => {
-  const isMobile = useIsMobile();
   const schedule = operators[0]?.work_schedules;
   const isCyclicSchedule = schedule?.schedule_type === "cyclic";
   const scheduleId = schedule?.id;
@@ -2523,6 +2523,7 @@ export const ScheduleGroup = memo(ScheduleGroupComponent, (prevProps, nextProps)
     prevProps.period === nextProps.period &&
     prevProps.daysCount === nextProps.daysCount &&
     prevProps.employeeColumnWidth === nextProps.employeeColumnWidth &&
+    prevProps.isMobile === nextProps.isMobile &&
     prevProps.isResizing === nextProps.isResizing &&
     prevProps.syncingScheduleId === nextProps.syncingScheduleId &&
     // Data that affects icons/indicators and totals

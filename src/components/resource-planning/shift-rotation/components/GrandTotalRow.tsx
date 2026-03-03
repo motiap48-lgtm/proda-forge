@@ -2,7 +2,6 @@ import React, { memo } from "react";
 import { getDay, isToday } from "date-fns";
 import { Clock, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
 import type { PeriodType } from "../utils";
 
 interface GrandTotalRowProps {
@@ -11,6 +10,7 @@ interface GrandTotalRowProps {
   period: PeriodType;
   filteredOperators: any[];
   employeeColumnWidth: number;
+  isMobile: boolean;
   calendarGridStyle: React.CSSProperties;
   isTodayColumnHovered: boolean;
   onTodayColumnHover: (hovered: boolean) => void;
@@ -30,6 +30,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   period,
   filteredOperators,
   employeeColumnWidth,
+  isMobile,
   calendarGridStyle,
   isTodayColumnHovered,
   onTodayColumnHover,
@@ -42,7 +43,6 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
   grandTotalFact,
   calculateMonthFactHours,
 }) => {
-  const isMobile = useIsMobile();
   
   if (filteredOperators.length === 0) return null;
 
@@ -200,6 +200,7 @@ export const GrandTotalRow = memo(GrandTotalRowComponent, (prevProps, nextProps)
     prevProps.period === nextProps.period &&
     prevProps.days.length === nextProps.days.length &&
     prevProps.employeeColumnWidth === nextProps.employeeColumnWidth &&
+    prevProps.isMobile === nextProps.isMobile &&
     prevProps.filteredOperators === nextProps.filteredOperators &&
     prevProps.grandTotalFact?.hours === nextProps.grandTotalFact?.hours &&
     prevProps.grandTotalFact?.minutes === nextProps.grandTotalFact?.minutes

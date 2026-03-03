@@ -3,7 +3,6 @@ import { addDays, getDaysInMonth, differenceInDays, startOfMonth, format } from 
 import { getShiftForDate, getShiftColor, isWorkingDay, type PeriodType, type ShiftColors } from "../utils";
 import { isDateInAbsence, isOperatorTerminated, isBeforeHireDate, type OperatorAbsence, isAbsenceReducingPlan } from "@/hooks/useOperatorAbsences";
 import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { type EmploymentPeriodsMap } from "@/hooks/useEmploymentHistory";
 export interface CalendarException {
   id: string;
@@ -25,6 +24,7 @@ interface CalendarCalculationsProps {
   scheduleOverrides?: ScheduleOverride[];
   calendarExceptions?: CalendarException[];
   employmentPeriodsMap?: EmploymentPeriodsMap;
+  isMobile: boolean;
 }
 
 export const useCalendarCalculations = ({
@@ -36,8 +36,8 @@ export const useCalendarCalculations = ({
   scheduleOverrides = [],
   calendarExceptions = [],
   employmentPeriodsMap,
+  isMobile,
 }: CalendarCalculationsProps) => {
-  const isMobile = useIsMobile();
 
   // Calculate days count based on period type
   const daysCount = useMemo(() => {
