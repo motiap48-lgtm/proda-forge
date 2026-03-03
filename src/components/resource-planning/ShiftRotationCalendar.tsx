@@ -18,6 +18,7 @@ import { useOvertimeEntries, createOvertimeMap, type OvertimeEntry } from "@/hoo
 import { useOvertimeMedalSettings, useCurrentOvertimeRankings } from "@/hooks/useOvertimeMedals";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import {
   useScrollSync,
@@ -109,6 +110,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
   // Overtime medals
   const currentYear = getYear(startDate);
   const currentMonth = getMonth(startDate);
+  const isMobile = useIsMobile();
   const { data: overtimeRankings = [] } = useCurrentOvertimeRankings(
     currentYear, 
     currentMonth, 
@@ -225,6 +227,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
     scheduleOverrides,
     calendarExceptions,
     employmentPeriodsMap,
+    isMobile,
   });
 
   // Fetch timesheets for the period
@@ -827,6 +830,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                   shiftColorMap={shiftColorMap}
                   calendarGridStyle={calendarGridStyle}
                   employeeColumnWidth={employeeColumnWidth}
+                  isMobile={isMobile}
                   isResizing={isResizing}
                   onResizeMouseDown={handleResizeMouseDown}
                   isTodayColumnHovered={isTodayColumnHovered}
@@ -859,6 +863,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
                 period={period}
                 filteredOperators={filteredOperators}
                 employeeColumnWidth={employeeColumnWidth}
+                isMobile={isMobile}
                 calendarGridStyle={calendarGridStyle}
                 isTodayColumnHovered={isTodayColumnHovered}
                 onTodayColumnHover={setIsTodayColumnHovered}
