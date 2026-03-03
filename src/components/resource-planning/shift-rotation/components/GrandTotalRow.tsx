@@ -60,7 +60,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
     <div 
       className="mt-2 border border-border rounded-lg flex w-full min-w-0 overflow-hidden relative isolate bg-emerald-50 dark:bg-emerald-950/30"
       style={{
-        ["--sr-row-h" as any]: isMobile ? "32px" : "44px",
+        ["--sr-row-h" as any]: isMobile ? "32px" : "52px",
       }}
     >
       {/* Fixed label column - matches ScheduleGroup employee column */}
@@ -93,7 +93,7 @@ const GrandTotalRowComponent: React.FC<GrandTotalRowProps> = ({
       <div 
         ref={registerScrollContainer('grand-total')}
         onScroll={handleSyncScroll('grand-total')}
-        className="flex-1 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-overlay relative isolate bg-emerald-50 dark:bg-emerald-950/30"
+        className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden scrollbar-overlay relative isolate bg-emerald-50 dark:bg-emerald-950/30"
       >
         <div style={calendarGridStyle} className={cn(
           "pt-1 pb-1",
