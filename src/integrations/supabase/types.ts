@@ -519,6 +519,42 @@ export type Database = {
         }
         Relationships: []
       }
+      defect_types: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          severity: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          severity?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          severity?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       distribution_history: {
         Row: {
           components_distributed: number
@@ -1965,6 +2001,108 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quality_inspections: {
+        Row: {
+          corrective_action: string | null
+          created_at: string
+          created_by: string | null
+          defect_description: string | null
+          defect_type_id: string | null
+          id: string
+          inspected_quantity: number
+          inspection_date: string
+          inspection_number: string
+          inspector_id: string | null
+          notes: string | null
+          passed_quantity: number
+          production_order_id: string
+          production_order_operation_id: string | null
+          rejected_quantity: number
+          result: string
+          rework_quantity: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          corrective_action?: string | null
+          created_at?: string
+          created_by?: string | null
+          defect_description?: string | null
+          defect_type_id?: string | null
+          id?: string
+          inspected_quantity?: number
+          inspection_date?: string
+          inspection_number: string
+          inspector_id?: string | null
+          notes?: string | null
+          passed_quantity?: number
+          production_order_id: string
+          production_order_operation_id?: string | null
+          rejected_quantity?: number
+          result?: string
+          rework_quantity?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          corrective_action?: string | null
+          created_at?: string
+          created_by?: string | null
+          defect_description?: string | null
+          defect_type_id?: string | null
+          id?: string
+          inspected_quantity?: number
+          inspection_date?: string
+          inspection_number?: string
+          inspector_id?: string | null
+          notes?: string | null
+          passed_quantity?: number
+          production_order_id?: string
+          production_order_operation_id?: string | null
+          rejected_quantity?: number
+          result?: string
+          rework_quantity?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_inspections_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_inspections_defect_type_id_fkey"
+            columns: ["defect_type_id"]
+            isOneToOne: false
+            referencedRelation: "defect_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_inspections_inspector_id_fkey"
+            columns: ["inspector_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_inspections_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_inspections_production_order_operation_id_fkey"
+            columns: ["production_order_operation_id"]
+            isOneToOne: false
+            referencedRelation: "production_order_operations"
             referencedColumns: ["id"]
           },
         ]
