@@ -16,6 +16,7 @@ import {
   Users,
   Menu,
   X,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -57,6 +58,7 @@ const navigationItems = [
       { name: "Выдача материалов", path: "/warehouse/issues", icon: Warehouse },
     ]
   },
+  { name: "Качество", path: "/quality", icon: ClipboardCheck },
   { 
     name: "Аналитика", 
     icon: BarChart3,

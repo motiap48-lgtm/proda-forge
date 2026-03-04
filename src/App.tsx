@@ -33,6 +33,7 @@ import NotFound from "./pages/NotFound";
 import ProductionReports from "./pages/ProductionReports";
 import ResourcePlanning from "./pages/ResourcePlanning";
 import Features from "./pages/Features";
+import QualityControl from "./pages/QualityControl";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const AppRoutes = () => {
         <Route path="/warehouse/reservations" element={<ProtectedRoute><MaterialReservations /></ProtectedRoute>} />
         <Route path="/warehouse/issues" element={<ProtectedRoute><MaterialIssues /></ProtectedRoute>} />
         <Route path="/analytics/production-reports" element={<ProtectedRoute><ProductionReports /></ProtectedRoute>} />
+        <Route path="/quality" element={<ProtectedRoute><QualityControl /></ProtectedRoute>} />
         <Route path="/planning/resources" element={<ProtectedRoute><ResourcePlanning /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
