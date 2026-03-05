@@ -109,8 +109,8 @@ const defaultChangelog: Omit<ChangelogEntry, 'id' | 'created_at' | 'updated_at' 
 ];
 
 // Get latest version from changelog (by semantic version comparison)
-export const getLatestVersion = (changelog: ChangelogEntry[]): string => {
-  if (!changelog || changelog.length === 0) return "0.9.6";
+export const getLatestVersion = (changelog: ChangelogEntry[]): string | null => {
+  if (!changelog || changelog.length === 0) return null;
   
   // Sort by semantic version to get the highest
   const sorted = [...changelog].sort((a, b) => {
@@ -125,7 +125,7 @@ export const getLatestVersion = (changelog: ChangelogEntry[]): string => {
     return 0;
   });
   
-  return sorted[0]?.version || "0.9.6";
+  return sorted[0]?.version || null;
 };
 
 export type VersionIncrementType = 'patch' | 'minor' | 'major';
