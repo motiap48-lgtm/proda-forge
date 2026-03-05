@@ -34,7 +34,7 @@ import {
   Building2
 } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 import { format } from "date-fns";
 
 interface CustomerStats {

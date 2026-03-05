@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSpecifications } from "@/hooks/useSpecifications";
 import { useProducts } from "@/hooks/useProducts";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 
 interface FlattenedSpecificationDialogProps {
   open: boolean;

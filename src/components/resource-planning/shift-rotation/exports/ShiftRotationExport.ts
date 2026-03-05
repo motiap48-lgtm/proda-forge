@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 import { startOfMonth, getDaysInMonth, addDays as addDaysUtil } from "date-fns";
 import { format, getDay, isToday, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -333,12 +333,12 @@ export const exportToExcel = (data: ExportData) => {
     
     const ws = XLSX.utils.aoa_to_sheet(exportData);
     
-    const merges: XLSX.Range[] = [];
+    const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
     for (let i = 0; i < months.length; i++) {
       merges.push({ s: { r: 0, c: 2 + i * 2 }, e: { r: 0, c: 3 + i * 2 } });
     }
     merges.push({ s: { r: 0, c: 2 + months.length * 2 }, e: { r: 0, c: 3 + months.length * 2 } });
-    ws['!merges'] = merges;
+    (ws as any)['!merges'] = merges;
     
     ws['!cols'] = [
       { wch: 35 },
@@ -510,12 +510,12 @@ export const exportToExcel = (data: ExportData) => {
   
   const ws = XLSX.utils.aoa_to_sheet(exportData);
   
-  const merges: XLSX.Range[] = [];
+  const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
   for (let i = 0; i < days.length; i++) {
     merges.push({ s: { r: 0, c: 2 + i * 2 }, e: { r: 0, c: 3 + i * 2 } });
   }
   merges.push({ s: { r: 0, c: 2 + days.length * 2 }, e: { r: 0, c: 3 + days.length * 2 } });
-  ws['!merges'] = merges;
+  (ws as any)['!merges'] = merges;
   
   ws['!cols'] = [
     { wch: 35 },

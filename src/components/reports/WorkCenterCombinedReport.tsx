@@ -55,7 +55,7 @@ import { WorkCenterReportPrintView } from "@/components/reports/WorkCenterReport
 import { useReactToPrint } from "react-to-print";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 
 interface WorkCenterCombinedReportProps {
   startDate?: string;

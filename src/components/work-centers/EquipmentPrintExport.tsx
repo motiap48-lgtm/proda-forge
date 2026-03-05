@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Printer, FileSpreadsheet } from "lucide-react";
 import { useEquipment } from "@/hooks/useEquipment";
 import { useWorkCenters } from "@/hooks/useWorkCenters";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 

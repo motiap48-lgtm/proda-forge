@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import XLSX from "@/lib/excel";
 import { WorkCenterReportData, WorkCenterProductItem } from '@/hooks/useWorkCenterReports';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
