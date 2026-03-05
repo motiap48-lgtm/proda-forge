@@ -411,20 +411,22 @@ const Features = () => {
   };
 
   const totalFeatures = featureModules.reduce((acc, m) => acc + m.features.length, 0);
-  const doneFeatures = featureModules.reduce(
+  
+  // Only compute stats from DB statuses after they're loaded to prevent "jumping"
+  const doneFeatures = statusesLoading ? null : featureModules.reduce(
     (acc, m) => acc + m.features.filter(f => getFeatureStatus(f) === "done").length, 
     0
   );
-  const inProgressFeatures = featureModules.reduce(
+  const inProgressFeatures = statusesLoading ? null : featureModules.reduce(
     (acc, m) => acc + m.features.filter(f => getFeatureStatus(f) === "in-progress").length, 
     0
   );
-  const plannedFeatures = featureModules.reduce(
+  const plannedFeatures = statusesLoading ? null : featureModules.reduce(
     (acc, m) => acc + m.features.filter(f => getFeatureStatus(f) === "planned").length, 
     0
   );
 
-  const progressPercent = Math.round((doneFeatures / totalFeatures) * 100);
+  const progressPercent = doneFeatures !== null ? Math.round((doneFeatures / totalFeatures) * 100) : null;
 
   // Filter features based on search and status
   const filteredModules = featureModules.map(module => ({
@@ -542,15 +544,15 @@ const Features = () => {
                     <div className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Всего</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-green-600">{doneFeatures}</div>
+                    <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-green-600">{doneFeatures ?? "–"}</div>
                     <div className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Готово</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-amber-600">{inProgressFeatures}</div>
+                    <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-amber-600">{inProgressFeatures ?? "–"}</div>
                     <div className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">В работе</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-blue-600">{plannedFeatures}</div>
+                    <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-blue-600">{plannedFeatures ?? "–"}</div>
                     <div className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">План</div>
                   </div>
                 </div>
@@ -558,12 +560,12 @@ const Features = () => {
                 <div className="space-y-1.5 sm:space-y-2">
                   <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-muted-foreground">Прогресс</span>
-                    <span className="font-medium">{progressPercent}%</span>
+                    <span className="font-medium">{progressPercent !== null ? `${progressPercent}%` : "–"}</span>
                   </div>
                   <div className="h-1.5 sm:h-2 bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-500"
-                      style={{ width: `${progressPercent}%` }}
+                      style={{ width: `${progressPercent ?? 0}%` }}
                     />
                   </div>
                 </div>
