@@ -346,7 +346,7 @@ const Features = () => {
   const isAdmin = userRoles.includes('admin');
   
   const { changelog, isLoading: changelogLoading, createEntry, updateEntry, deleteEntry } = useChangelog();
-  const { getStatus, updateStatus } = useFeatureStatuses();
+  const { getStatus, updateStatus, isLoading: statusesLoading } = useFeatureStatuses();
   const { getCommentsCount } = useFeatureComments();
   
    const [activeTab, setActiveTab] = useTabPersistence("features");
@@ -404,8 +404,9 @@ const Features = () => {
     updateStatus.mutate({ featureId, status: newStatus });
   };
 
-  // Apply database statuses to features
+  // Apply database statuses to features - only after statuses are loaded
   const getFeatureStatus = (feature: Feature): FeatureStatus => {
+    if (statusesLoading) return feature.status; // Use hardcoded defaults while loading
     return getStatus(feature.id, feature.status);
   };
 
