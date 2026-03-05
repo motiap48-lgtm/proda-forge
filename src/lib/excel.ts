@@ -2,8 +2,18 @@
  * Excel compatibility layer using ExcelJS instead of vulnerable xlsx (SheetJS).
  * Provides the same API surface as `import * as XLSX from 'xlsx'` so migration
  * is limited to changing the import line.
+ * 
+ * ExcelJS is loaded LAZILY (dynamic import) to avoid bloating the initial bundle.
  */
-import ExcelJS from 'exceljs';
+
+let _ExcelJS: typeof import('exceljs') | null = null;
+
+async function getExcelJS() {
+  if (!_ExcelJS) {
+    _ExcelJS = await import('exceljs');
+  }
+  return _ExcelJS;
+}
 
 // ---- Internal types --------------------------------------------------------
 interface ColInfo {
@@ -16,60 +26,56 @@ interface MergeRange {
 }
 
 interface SheetProxy {
-  /** Column widths – set after creation, applied when the sheet is finalised */
   '!cols'?: ColInfo[];
-  /** Cell merges */
   '!merges'?: MergeRange[];
-  /** @internal – backing ExcelJS worksheet */
-  _ws: ExcelJS.Worksheet;
-  /** @internal – workbook reference needed for json_to_sheet standalone use */
-  _wb: ExcelJS.Workbook;
+  _ws: any;
+  _wb: any;
 }
 
 interface BookProxy {
-  _wb: ExcelJS.Workbook;
+  _wb: any;
 }
 
 // ---- Public API (drop-in replacement for XLSX.*) ----------------------------
 
 const utils = {
   book_new(): BookProxy {
-    return { _wb: new ExcelJS.Workbook() };
+    // Lazy: we create a real workbook only when needed (in book_append_sheet / writeFile)
+    return { _wb: null };
   },
 
-  /** Create a sheet from an array-of-arrays */
   aoa_to_sheet(data: any[][]): SheetProxy {
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Sheet');
-    data.forEach((row) => {
-      ws.addRow(row);
-    });
-    return { _ws: ws, _wb: wb, '!cols': undefined };
+    // Store raw data; actual ExcelJS objects created lazily in book_append_sheet
+    return { _ws: { __raw_aoa: data }, _wb: null, '!cols': undefined };
   },
 
-  /** Create a sheet from an array of objects (keys become header row) */
   json_to_sheet(data: Record<string, any>[]): SheetProxy {
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Sheet');
-    if (data.length === 0) {
-      return { _ws: ws, _wb: wb, '!cols': undefined };
-    }
-    const keys = Object.keys(data[0]);
-    ws.addRow(keys);
-    data.forEach((obj) => {
-      ws.addRow(keys.map((k) => obj[k]));
-    });
-    return { _ws: ws, _wb: wb, '!cols': undefined };
+    return { _ws: { __raw_json: data }, _wb: null, '!cols': undefined };
   },
 
-  /** Append a sheet to the workbook */
   book_append_sheet(book: BookProxy, sheet: SheetProxy, name: string) {
-    // Copy rows from the temporary worksheet into the real workbook
-    const targetWs = book._wb.addWorksheet(name);
+    // Store sheets for lazy processing during writeFile
+    if (!book._wb) {
+      book._wb = { __sheets: [] };
+    }
+    if (!book._wb.__sheets) {
+      book._wb.__sheets = [];
+    }
+    book._wb.__sheets.push({ sheet, name });
+  },
+};
+
+async function buildWorkbook(book: BookProxy) {
+  const ExcelJS = await getExcelJS();
+  const wb = new ExcelJS.Workbook();
+
+  const sheets = book._wb?.__sheets || [];
+  for (const { sheet, name } of sheets) {
+    const targetWs = wb.addWorksheet(name);
 
     // Apply column widths
     if (sheet['!cols']) {
-      sheet['!cols'].forEach((col, idx) => {
+      sheet['!cols'].forEach((col: ColInfo, idx: number) => {
         if (col && col.wch) {
           targetWs.getColumn(idx + 1).width = col.wch;
         }
@@ -78,29 +84,45 @@ const utils = {
 
     // Apply merges
     if (sheet['!merges']) {
-      sheet['!merges'].forEach((merge) => {
-        const startRow = merge.s.r + 1;
-        const startCol = merge.s.c + 1;
-        const endRow = merge.e.r + 1;
-        const endCol = merge.e.c + 1;
-        targetWs.mergeCells(startRow, startCol, endRow, endCol);
+      sheet['!merges'].forEach((merge: MergeRange) => {
+        targetWs.mergeCells(merge.s.r + 1, merge.s.c + 1, merge.e.r + 1, merge.e.c + 1);
       });
     }
 
-    // Copy all rows
-    sheet._ws.eachRow({ includeEmpty: true }, (row, rowNumber) => {
-      const newRow = targetWs.getRow(rowNumber);
-      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-        newRow.getCell(colNumber).value = cell.value;
+    // Populate rows from raw data
+    const raw = sheet._ws;
+    if (raw.__raw_aoa) {
+      raw.__raw_aoa.forEach((row: any[]) => {
+        targetWs.addRow(row);
       });
-      newRow.commit();
-    });
-  },
-};
+    } else if (raw.__raw_json) {
+      const data = raw.__raw_json;
+      if (data.length > 0) {
+        const keys = Object.keys(data[0]);
+        targetWs.addRow(keys);
+        data.forEach((obj: Record<string, any>) => {
+          targetWs.addRow(keys.map((k) => obj[k]));
+        });
+      }
+    } else if (raw.eachRow) {
+      // Already an ExcelJS worksheet (shouldn't happen with lazy approach, but fallback)
+      raw.eachRow({ includeEmpty: true }, (row: any, rowNumber: number) => {
+        const newRow = targetWs.getRow(rowNumber);
+        row.eachCell({ includeEmpty: true }, (cell: any, colNumber: number) => {
+          newRow.getCell(colNumber).value = cell.value;
+        });
+        newRow.commit();
+      });
+    }
+  }
+
+  return wb;
+}
 
 /** Write workbook to a file (triggers browser download) */
 async function writeFile(book: BookProxy, filename: string) {
-  const buffer = await book._wb.xlsx.writeBuffer();
+  const wb = await buildWorkbook(book);
+  const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
@@ -114,14 +136,12 @@ async function writeFile(book: BookProxy, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Synchronous-looking wrapper kept for call-site compatibility.
- *  Internally it fires-and-forgets the async write. */
+/** Synchronous-looking wrapper kept for call-site compatibility. */
 function writeFileSync(book: BookProxy, filename: string) {
   void writeFile(book, filename);
 }
 
 export { utils, writeFile, writeFileSync as writeFileCompat };
 
-// Default export mimics `import * as XLSX from 'xlsx'`
 const XLSX = { utils, writeFile: writeFileSync };
 export default XLSX;
