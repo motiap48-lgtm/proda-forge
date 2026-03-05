@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import XLSX from "@/lib/excel";
 import { ProductionReportData } from '@/hooks/useProductionReports';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';

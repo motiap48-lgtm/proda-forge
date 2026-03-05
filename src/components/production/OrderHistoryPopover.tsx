@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 import { toast } from "sonner";
 import { FileSpreadsheet, History, Loader2 } from "lucide-react";
 

@@ -24,7 +24,7 @@ import { DistributionStrategy } from "@/hooks/useSmartDistribution";
 import { supabase } from "@/integrations/supabase/client";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 import {
   DropdownMenu,
   DropdownMenuContent,

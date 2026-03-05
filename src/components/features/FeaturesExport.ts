@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 
 interface Feature {
   id: string;

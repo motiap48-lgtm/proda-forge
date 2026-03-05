@@ -45,7 +45,7 @@ import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 import {
   useOvertimeEntries,
   useApproveOvertimeEntry,

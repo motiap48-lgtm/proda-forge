@@ -42,7 +42,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useReactToPrint } from "react-to-print";

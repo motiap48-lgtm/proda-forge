@@ -42,7 +42,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useReactToPrint } from "react-to-print";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 import {
   AreaChart,
   Area,

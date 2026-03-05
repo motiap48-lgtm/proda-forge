@@ -27,7 +27,7 @@ import { useAbsenceCompensations } from "@/hooks/useAbsenceCompensations";
 import { getShiftForDate, isWorkingDay } from "./shift-rotation/utils";
 import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
 import { isAbsenceReducingPlan } from "@/hooks/useOperatorAbsences";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 import { useReactToPrint } from "react-to-print";
 
 type PeriodType = "month" | "quarter" | "year";

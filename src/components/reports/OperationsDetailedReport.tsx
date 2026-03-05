@@ -45,7 +45,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
-import * as XLSX from "xlsx";
+import XLSX from "@/lib/excel";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
