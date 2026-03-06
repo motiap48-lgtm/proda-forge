@@ -73,8 +73,8 @@ export const DefectTypeDialog = ({ open, onOpenChange, onSubmit, defectType, isL
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Код *</Label>
-              <Input value={form.code} onChange={e => update("code", e.target.value)} required placeholder="DEF-001" />
+              <Label>Код</Label>
+              <Input value={form.code} onChange={e => update("code", e.target.value)} placeholder="Генерируется автоматически" />
             </div>
             <div className="space-y-2">
               <Label>Название *</Label>

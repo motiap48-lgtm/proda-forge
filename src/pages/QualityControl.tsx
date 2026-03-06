@@ -56,7 +56,6 @@ const QualityControl = () => {
   const [defectDialogOpen, setDefectDialogOpen] = useState(false);
   const [editingInspection, setEditingInspection] = useState<QualityInspection | null>(null);
   const [editingDefectType, setEditingDefectType] = useState<DefectType | null>(null);
-  const [defaultInspNum, setDefaultInspNum] = useState("");
 
   const { hasRole } = useAuth();
   const canManage = hasRole("admin") || hasRole("production_manager");
@@ -66,7 +65,6 @@ const QualityControl = () => {
     defectTypes, isLoadingDefectTypes,
     createInspection, updateInspection, deleteInspection,
     createDefectType, updateDefectType, deleteDefectType,
-    generateInspectionNumber,
   } = useQualityInspections();
 
   const { data: orders } = useProductionOrders();
@@ -83,9 +81,7 @@ const QualityControl = () => {
     d.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleNewInspection = async () => {
-    const num = await generateInspectionNumber();
-    setDefaultInspNum(num);
+  const handleNewInspection = () => {
     setEditingInspection(null);
     setInspectionDialogOpen(true);
   };
@@ -299,7 +295,6 @@ const QualityControl = () => {
         defectTypes={defectTypes}
         productionOrders={productionOrdersList}
         isLoading={createInspection.isPending || updateInspection.isPending}
-        defaultInspectionNumber={defaultInspNum}
       />
 
       <DefectTypeDialog
