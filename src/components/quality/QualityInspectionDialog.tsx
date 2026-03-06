@@ -114,7 +114,11 @@ export const QualityInspectionDialog = ({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Номер акта</Label>
-              <Input value={form.inspection_number} onChange={e => update("inspection_number", e.target.value)} placeholder="Генерируется автоматически" />
+              {inspection ? (
+                <Input value={form.inspection_number} readOnly className="bg-muted cursor-default" />
+              ) : (
+                <Input value="" readOnly placeholder="Генерируется автоматически" className="bg-muted cursor-default" tabIndex={-1} />
+              )}
             </div>
             <div className="space-y-2">
               <Label>Дата проверки *</Label>
