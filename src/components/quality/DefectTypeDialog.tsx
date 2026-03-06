@@ -74,7 +74,11 @@ export const DefectTypeDialog = ({ open, onOpenChange, onSubmit, defectType, isL
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Код</Label>
-              <Input value={form.code} onChange={e => update("code", e.target.value)} placeholder="Генерируется автоматически" />
+              {defectType ? (
+                <Input value={form.code} readOnly className="bg-muted cursor-default" />
+              ) : (
+                <Input value="" readOnly placeholder="Генерируется автоматически" className="bg-muted cursor-default" tabIndex={-1} />
+              )}
             </div>
             <div className="space-y-2">
               <Label>Название *</Label>
