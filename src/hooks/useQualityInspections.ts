@@ -164,14 +164,6 @@ export const useQualityInspections = () => {
     onError: (error: any) => toast.error("Ошибка: " + error.message),
   });
 
-  const generateInspectionNumber = async (): Promise<string> => {
-    const { count } = await supabase
-      .from("quality_inspections")
-      .select("*", { count: "exact", head: true });
-    const num = (count || 0) + 1;
-    return `QC-${String(num).padStart(5, "0")}`;
-  };
-
   return {
     inspections: inspectionsQuery.data || [],
     isLoadingInspections: inspectionsQuery.isLoading,
@@ -183,6 +175,5 @@ export const useQualityInspections = () => {
     createDefectType,
     updateDefectType,
     deleteDefectType,
-    generateInspectionNumber,
   };
 };

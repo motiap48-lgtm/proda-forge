@@ -17,7 +17,6 @@ interface Props {
   defectTypes: DefectType[];
   productionOrders: { id: string; order_number: string }[];
   isLoading?: boolean;
-  defaultInspectionNumber?: string;
 }
 
 const RESULT_OPTIONS = [
@@ -35,7 +34,7 @@ const STATUS_OPTIONS = [
 ];
 
 export const QualityInspectionDialog = ({
-  open, onOpenChange, onSubmit, inspection, defectTypes, productionOrders, isLoading, defaultInspectionNumber,
+  open, onOpenChange, onSubmit, inspection, defectTypes, productionOrders, isLoading,
 }: Props) => {
   const [form, setForm] = useState({
     inspection_number: "",
@@ -73,7 +72,7 @@ export const QualityInspectionDialog = ({
         });
       } else {
         setForm({
-          inspection_number: defaultInspectionNumber || "",
+          inspection_number: "",
           production_order_id: "",
           inspection_date: new Date().toISOString().slice(0, 10),
           status: "pending",
@@ -89,7 +88,7 @@ export const QualityInspectionDialog = ({
         });
       }
     }
-  }, [open, inspection, defaultInspectionNumber]);
+  }, [open, inspection]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,8 +113,8 @@ export const QualityInspectionDialog = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Номер акта *</Label>
-              <Input value={form.inspection_number} onChange={e => update("inspection_number", e.target.value)} required />
+              <Label>Номер акта</Label>
+              <Input value={form.inspection_number} onChange={e => update("inspection_number", e.target.value)} placeholder="Генерируется автоматически" />
             </div>
             <div className="space-y-2">
               <Label>Дата проверки *</Label>
