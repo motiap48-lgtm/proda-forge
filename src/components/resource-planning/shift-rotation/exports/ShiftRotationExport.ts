@@ -452,7 +452,7 @@ export const exportToExcel = (data: ExportData) => {
       
       days.forEach(day => {
         const dateStr = format(day, "yyyy-MM-dd");
-        const shift = getShiftForDate(operator, day);
+        const shift = getShiftWithOverride(operator, day, scheduleOverrides, calendarExceptions);
         
         const terminatedOnDate = isOperatorTerminatedOnDate(operator, day, employmentPeriodsMap);
         const beforeHire = isBeforeHireDateOnDate(operator, day, employmentPeriodsMap);
