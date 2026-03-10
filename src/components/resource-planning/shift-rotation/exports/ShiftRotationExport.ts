@@ -2,7 +2,8 @@ import XLSX from "@/lib/excel";
 import { startOfMonth, getDaysInMonth, addDays as addDaysUtil } from "date-fns";
 import { format, getDay, isToday, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
-import { getShiftForDate, getCycleDayNumber, parseDateOnly } from "../utils";
+import { getShiftForDate, getCycleDayNumber, parseDateOnly, isWorkingDay } from "../utils";
+import { type ScheduleOverride } from "@/hooks/useScheduleOverrides";
 import { type EmploymentPeriodsMap, isDateOutsideEmployment, isDateBeforeFirstEmployment } from "@/hooks/useEmploymentHistory";
 
 export interface CalendarException {
@@ -25,6 +26,7 @@ export interface ExportData {
   compensations: any[];
   absences: any[];
   calendarExceptions?: CalendarException[];
+  scheduleOverrides?: ScheduleOverride[];
   shiftColorMap: Map<string, any>;
   grandTotal: { hours: number; minutes: number };
   grandTotalFact: { hours: number; minutes: number };
@@ -128,6 +130,51 @@ const getShortenedDayException = (dateStr: string, calendarExceptions: CalendarE
          ex.is_working_day
   ) || null;
 };
+
+// Helper to get shift for date considering schedule overrides and extra working day exceptions
+// This mirrors the logic in useCalendarCalculations.getShiftForDateWithOverride
+const getShiftWithOverride = (
+  operator: any, 
+  day: Date, 
+  scheduleOverrides: ScheduleOverride[], 
+  calendarExceptions: CalendarException[]
+): any => {
+  const dateStr = format(day, "yyyy-MM-dd");
+  const override = scheduleOverrides.find(
+    (o) => o.operator_id === operator.id && o.override_date === dateStr
+  );
+
+  if (override) {
+    if (!override.is_working_day) return null;
+    const schedule = operator.work_schedules;
+    const shifts = schedule?.work_schedule_shifts;
+    if (!shifts || shifts.length === 0) return null;
+    if (override.shift_number) {
+      return shifts.find((s: any) => s.shift_number === override.shift_number) || shifts[0];
+    }
+    return getShiftForDate(operator, day) || shifts[0];
+  }
+
+  // Handle extra_working_day exceptions for non-cyclic schedules
+  const isCyclic = operator.work_schedules?.schedule_type === 'cyclic';
+  if (!isCyclic) {
+    const exception = calendarExceptions.find(ex => ex.exception_date === dateStr);
+    if (exception && exception.is_working_day && exception.exception_type === 'extra_working_day') {
+      const normallyWorking = isWorkingDay(operator.work_schedules, day, operator);
+      if (!normallyWorking) {
+        const shifts = operator.work_schedules?.work_schedule_shifts;
+        if (shifts && shifts.length > 0) {
+          if (operator.assigned_shift_number) {
+            return shifts.find((s: any) => s.shift_number === operator.assigned_shift_number) || shifts[0];
+          }
+          return shifts[0];
+        }
+      }
+    }
+  }
+
+  return getShiftForDate(operator, day);
+}
 
 // Helper function to get fact minutes for a specific operator and date
 const getFactMinutesForDay = (
@@ -241,7 +288,7 @@ const getOperatorMonthFactTotal = (
 export const exportToExcel = (data: ExportData) => {
   const { 
     days, months = [], period, operators, groupedBySchedule, timesheets, overtimeEntries, 
-    compensations, absences, calendarExceptions = [], calculatePlanHours, calculateMonthPlanHours, employmentPeriodsMap 
+    compensations, absences, calendarExceptions = [], scheduleOverrides = [], calculatePlanHours, calculateMonthPlanHours, employmentPeriodsMap 
   } = data;
   
   const wb = XLSX.utils.book_new();
@@ -405,7 +452,7 @@ export const exportToExcel = (data: ExportData) => {
       
       days.forEach(day => {
         const dateStr = format(day, "yyyy-MM-dd");
-        const shift = getShiftForDate(operator, day);
+        const shift = getShiftWithOverride(operator, day, scheduleOverrides, calendarExceptions);
         
         const terminatedOnDate = isOperatorTerminatedOnDate(operator, day, employmentPeriodsMap);
         const beforeHire = isBeforeHireDateOnDate(operator, day, employmentPeriodsMap);
@@ -462,11 +509,13 @@ export const exportToExcel = (data: ExportData) => {
         dayValues.push(factText);
       });
 
-      groupTotalMinutes += operatorTotalMinutes;
+      // Use calculatePlanHours for consistent totals (matches calendar view)
+      const opPlan = calculatePlanHours(operator);
+      const opPlanMinutes = opPlan.hours * 60 + opPlan.minutes;
+      groupTotalMinutes += opPlanMinutes;
       groupTotalFactMinutes += operatorTotalFactMinutes;
 
-      const opPlan = calculatePlanHours(operator);
-      const opPlanFormatted = formatMinutes(opPlan.hours * 60 + opPlan.minutes);
+      const opPlanFormatted = formatMinutes(opPlanMinutes);
 
       const row = [
         operatorName,
@@ -535,7 +584,7 @@ export const exportToExcel = (data: ExportData) => {
 export const printCalendar = (data: ExportData) => {
   const { 
     days, months = [], period, operators, groupedBySchedule, timesheets, overtimeEntries, 
-    compensations, absences, calendarExceptions = [], shiftColorMap, grandTotal, grandTotalFact,
+    compensations, absences, calendarExceptions = [], scheduleOverrides = [], shiftColorMap, grandTotal, grandTotalFact,
     calculateTotalHours, calculatePlanHours, calculateGroupStats, calculateMonthPlanHours, employmentPeriodsMap 
   } = data;
   
@@ -566,7 +615,7 @@ export const printCalendar = (data: ExportData) => {
       const is52 = is52ScheduleType(operator);
       
       const daysHtml = days.map(day => {
-        const shift = getShiftForDate(operator, day);
+        const shift = getShiftWithOverride(operator, day, scheduleOverrides, calendarExceptions);
         const isWeekend = getDay(day) === 0 || getDay(day) === 6;
         const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
         const cycleInfo = getCycleDayNumber(operator.work_schedules, day, operator);
@@ -801,7 +850,7 @@ export const printCalendar = (data: ExportData) => {
 export const exportToPdf = (data: ExportData) => {
   const { 
     days, months = [], period, operators, groupedBySchedule, timesheets, overtimeEntries, 
-    compensations, absences, calendarExceptions = [], shiftColorMap, grandTotal, grandTotalFact,
+    compensations, absences, calendarExceptions = [], scheduleOverrides = [], shiftColorMap, grandTotal, grandTotalFact,
     calculateTotalHours, calculatePlanHours, calculateGroupStats, calculateMonthPlanHours, employmentPeriodsMap 
   } = data;
   
@@ -854,7 +903,7 @@ export const exportToPdf = (data: ExportData) => {
       const is52 = is52ScheduleType(operator);
       
       const daysHtml = days.map(day => {
-        const shift = getShiftForDate(operator, day);
+        const shift = getShiftWithOverride(operator, day, scheduleOverrides, calendarExceptions);
         const isWeekend = getDay(day) === 0 || getDay(day) === 6;
         const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
         const dateStr = format(day, "yyyy-MM-dd");
