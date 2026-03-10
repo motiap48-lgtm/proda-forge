@@ -26,6 +26,7 @@ export interface ExportData {
   compensations: any[];
   absences: any[];
   calendarExceptions?: CalendarException[];
+  scheduleOverrides?: ScheduleOverride[];
   shiftColorMap: Map<string, any>;
   grandTotal: { hours: number; minutes: number };
   grandTotalFact: { hours: number; minutes: number };
