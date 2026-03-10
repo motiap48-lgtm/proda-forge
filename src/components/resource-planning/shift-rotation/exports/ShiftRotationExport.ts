@@ -598,6 +598,15 @@ export const printCalendar = (data: ExportData) => {
     const groupStats = calculateGroupStats(ops);
     const groupFact = getGroupFactTotal(ops, days, timesheets, overtimeEntries, compensations);
     
+    // Calculate group plan total using calculatePlanHours (matches calendar logic)
+    let groupPlanMinutes = 0;
+    ops.forEach(op => {
+      const opPlan = calculatePlanHours(op);
+      groupPlanMinutes += opPlan.hours * 60 + opPlan.minutes;
+    });
+    const groupPlanHours = Math.floor(groupPlanMinutes / 60);
+    const groupPlanMins = groupPlanMinutes % 60;
+    
     const operatorsHtml = ops.map(operator => {
       const shiftNameToIndex = new Map<string, number>();
       Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
