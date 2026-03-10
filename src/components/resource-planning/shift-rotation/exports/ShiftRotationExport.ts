@@ -1035,7 +1035,7 @@ export const exportToPdf = (data: ExportData) => {
             <td style="text-align: left;"><strong>Итого:</strong></td>
             <td colspan="${days.length}">✅ Рабочих: ${groupStats.workingDays} | ⛔ Выходных: ${groupStats.offDays}</td>
             <td class="total-col">
-              <span class="plan">${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? groupStats.totalMinutes + 'м' : ''}</span>
+              <span class="plan">${groupPlanHours}ч${groupPlanMins > 0 ? groupPlanMins + 'м' : ''}</span>
               <br/>
               <span class="fact">${groupFact.hours}ч${groupFact.minutes > 0 ? groupFact.minutes + 'м' : ''}</span>
             </td>
