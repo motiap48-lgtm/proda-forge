@@ -903,7 +903,7 @@ export const exportToPdf = (data: ExportData) => {
       const is52 = is52ScheduleType(operator);
       
       const daysHtml = days.map(day => {
-        const shift = getShiftForDate(operator, day);
+        const shift = getShiftWithOverride(operator, day, scheduleOverrides, calendarExceptions);
         const isWeekend = getDay(day) === 0 || getDay(day) === 6;
         const shiftIdx = shift ? (shiftNameToIndex.get(shift.shift_name) || 0) + 1 : 0;
         const dateStr = format(day, "yyyy-MM-dd");
