@@ -131,6 +131,51 @@ const getShortenedDayException = (dateStr: string, calendarExceptions: CalendarE
   ) || null;
 };
 
+// Helper to get shift for date considering schedule overrides and extra working day exceptions
+// This mirrors the logic in useCalendarCalculations.getShiftForDateWithOverride
+const getShiftWithOverride = (
+  operator: any, 
+  day: Date, 
+  scheduleOverrides: ScheduleOverride[], 
+  calendarExceptions: CalendarException[]
+): any => {
+  const dateStr = format(day, "yyyy-MM-dd");
+  const override = scheduleOverrides.find(
+    (o) => o.operator_id === operator.id && o.override_date === dateStr
+  );
+
+  if (override) {
+    if (!override.is_working_day) return null;
+    const schedule = operator.work_schedules;
+    const shifts = schedule?.work_schedule_shifts;
+    if (!shifts || shifts.length === 0) return null;
+    if (override.shift_number) {
+      return shifts.find((s: any) => s.shift_number === override.shift_number) || shifts[0];
+    }
+    return getShiftForDate(operator, day) || shifts[0];
+  }
+
+  // Handle extra_working_day exceptions for non-cyclic schedules
+  const isCyclic = operator.work_schedules?.schedule_type === 'cyclic';
+  if (!isCyclic) {
+    const exception = calendarExceptions.find(ex => ex.exception_date === dateStr);
+    if (exception && exception.is_working_day && exception.exception_type === 'extra_working_day') {
+      const normallyWorking = isWorkingDay(operator.work_schedules, day, operator);
+      if (!normallyWorking) {
+        const shifts = operator.work_schedules?.work_schedule_shifts;
+        if (shifts && shifts.length > 0) {
+          if (operator.assigned_shift_number) {
+            return shifts.find((s: any) => s.shift_number === operator.assigned_shift_number) || shifts[0];
+          }
+          return shifts[0];
+        }
+      }
+    }
+  }
+
+  return getShiftForDate(operator, day);
+}
+
 // Helper function to get fact minutes for a specific operator and date
 const getFactMinutesForDay = (
   operatorId: string, 
