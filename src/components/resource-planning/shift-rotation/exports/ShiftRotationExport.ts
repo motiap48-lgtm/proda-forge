@@ -850,7 +850,7 @@ export const printCalendar = (data: ExportData) => {
 export const exportToPdf = (data: ExportData) => {
   const { 
     days, months = [], period, operators, groupedBySchedule, timesheets, overtimeEntries, 
-    compensations, absences, calendarExceptions = [], shiftColorMap, grandTotal, grandTotalFact,
+    compensations, absences, calendarExceptions = [], scheduleOverrides = [], shiftColorMap, grandTotal, grandTotalFact,
     calculateTotalHours, calculatePlanHours, calculateGroupStats, calculateMonthPlanHours, employmentPeriodsMap 
   } = data;
   
