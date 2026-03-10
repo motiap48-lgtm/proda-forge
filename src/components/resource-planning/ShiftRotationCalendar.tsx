@@ -677,6 +677,7 @@ export const ShiftRotationCalendar = ({ operators, onEditOperator }: ShiftRotati
       compensations,
       absences,
       calendarExceptions,
+      scheduleOverrides,
       shiftColorMap,
       grandTotal,
       grandTotalFact,
