@@ -875,6 +875,15 @@ export const exportToPdf = (data: ExportData) => {
     const schedule = ops[0]?.work_schedules;
     const isCyclic = schedule?.schedule_type === 'cyclic';
     
+    // Calculate group plan total using calculatePlanHours (matches calendar logic)
+    let groupPlanMinutes = 0;
+    ops.forEach(op => {
+      const opPlan = calculatePlanHours(op);
+      groupPlanMinutes += opPlan.hours * 60 + opPlan.minutes;
+    });
+    const groupPlanHours = Math.floor(groupPlanMinutes / 60);
+    const groupPlanMins = groupPlanMinutes % 60;
+    
     const daysHeaderHtml = days.map(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
       const holidayEx = getHolidayException(dateStr, calendarExceptions);
