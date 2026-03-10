@@ -288,7 +288,7 @@ const getOperatorMonthFactTotal = (
 export const exportToExcel = (data: ExportData) => {
   const { 
     days, months = [], period, operators, groupedBySchedule, timesheets, overtimeEntries, 
-    compensations, absences, calendarExceptions = [], calculatePlanHours, calculateMonthPlanHours, employmentPeriodsMap 
+    compensations, absences, calendarExceptions = [], scheduleOverrides = [], calculatePlanHours, calculateMonthPlanHours, employmentPeriodsMap 
   } = data;
   
   const wb = XLSX.utils.book_new();
