@@ -509,11 +509,13 @@ export const exportToExcel = (data: ExportData) => {
         dayValues.push(factText);
       });
 
-      groupTotalMinutes += operatorTotalMinutes;
+      // Use calculatePlanHours for consistent totals (matches calendar view)
+      const opPlan = calculatePlanHours(operator);
+      const opPlanMinutes = opPlan.hours * 60 + opPlan.minutes;
+      groupTotalMinutes += opPlanMinutes;
       groupTotalFactMinutes += operatorTotalFactMinutes;
 
-      const opPlan = calculatePlanHours(operator);
-      const opPlanFormatted = formatMinutes(opPlan.hours * 60 + opPlan.minutes);
+      const opPlanFormatted = formatMinutes(opPlanMinutes);
 
       const row = [
         operatorName,
