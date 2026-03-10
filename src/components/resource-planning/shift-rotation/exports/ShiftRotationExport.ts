@@ -598,6 +598,15 @@ export const printCalendar = (data: ExportData) => {
     const groupStats = calculateGroupStats(ops);
     const groupFact = getGroupFactTotal(ops, days, timesheets, overtimeEntries, compensations);
     
+    // Calculate group plan total using calculatePlanHours (matches calendar logic)
+    let groupPlanMinutes = 0;
+    ops.forEach(op => {
+      const opPlan = calculatePlanHours(op);
+      groupPlanMinutes += opPlan.hours * 60 + opPlan.minutes;
+    });
+    const groupPlanHours = Math.floor(groupPlanMinutes / 60);
+    const groupPlanMins = groupPlanMinutes % 60;
+    
     const operatorsHtml = ops.map(operator => {
       const shiftNameToIndex = new Map<string, number>();
       Array.from(shiftColorMap.keys()).forEach((name, idx) => shiftNameToIndex.set(name, idx));
@@ -714,7 +723,7 @@ export const printCalendar = (data: ExportData) => {
         </td>
         <td colspan="${days.length}"></td>
         <td class="total-cell">
-          <span class="total-plan">${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? groupStats.totalMinutes + 'м' : ''}</span>
+          <span class="total-plan">${groupPlanHours}ч${groupPlanMins > 0 ? groupPlanMins + 'м' : ''}</span>
           <br/>
           <span class="total-fact">${groupFact.hours}ч${groupFact.minutes > 0 ? groupFact.minutes + 'м' : ''}</span>
         </td>
@@ -865,6 +874,15 @@ export const exportToPdf = (data: ExportData) => {
     const groupFact = getGroupFactTotal(ops, days, timesheets, overtimeEntries, compensations);
     const schedule = ops[0]?.work_schedules;
     const isCyclic = schedule?.schedule_type === 'cyclic';
+    
+    // Calculate group plan total using calculatePlanHours (matches calendar logic)
+    let groupPlanMinutes = 0;
+    ops.forEach(op => {
+      const opPlan = calculatePlanHours(op);
+      groupPlanMinutes += opPlan.hours * 60 + opPlan.minutes;
+    });
+    const groupPlanHours = Math.floor(groupPlanMinutes / 60);
+    const groupPlanMins = groupPlanMinutes % 60;
     
     const daysHeaderHtml = days.map(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
@@ -1017,7 +1035,7 @@ export const exportToPdf = (data: ExportData) => {
             <td style="text-align: left;"><strong>Итого:</strong></td>
             <td colspan="${days.length}">✅ Рабочих: ${groupStats.workingDays} | ⛔ Выходных: ${groupStats.offDays}</td>
             <td class="total-col">
-              <span class="plan">${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? groupStats.totalMinutes + 'м' : ''}</span>
+              <span class="plan">${groupPlanHours}ч${groupPlanMins > 0 ? groupPlanMins + 'м' : ''}</span>
               <br/>
               <span class="fact">${groupFact.hours}ч${groupFact.minutes > 0 ? groupFact.minutes + 'м' : ''}</span>
             </td>
