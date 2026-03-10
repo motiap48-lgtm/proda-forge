@@ -723,7 +723,7 @@ export const printCalendar = (data: ExportData) => {
         </td>
         <td colspan="${days.length}"></td>
         <td class="total-cell">
-          <span class="total-plan">${groupStats.totalHours}ч${groupStats.totalMinutes > 0 ? groupStats.totalMinutes + 'м' : ''}</span>
+          <span class="total-plan">${groupPlanHours}ч${groupPlanMins > 0 ? groupPlanMins + 'м' : ''}</span>
           <br/>
           <span class="total-fact">${groupFact.hours}ч${groupFact.minutes > 0 ? groupFact.minutes + 'м' : ''}</span>
         </td>
