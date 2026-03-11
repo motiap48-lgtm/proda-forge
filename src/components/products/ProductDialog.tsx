@@ -62,7 +62,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
   const updateMutation = useUpdateProduct();
   const { data: categories } = useMaterialCategories();
   const batchRowsEndRef = useRef<HTMLDivElement>(null);
-  const checkTimeoutRef = useRef<NodeJS.Timeout>();
+  const checkTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
     if (open && product) {
       setMode("single");
