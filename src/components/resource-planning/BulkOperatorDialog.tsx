@@ -49,7 +49,7 @@ interface OperatorEntry {
 }
 
 const createEmptyOperator = (): OperatorEntry => ({
-  id: crypto.randomUUID(),
+  id: generateUUID(),
   full_name: "",
   position: "",
   employee_type: "operator",
