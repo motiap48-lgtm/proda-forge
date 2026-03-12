@@ -88,7 +88,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
         category: "",
       });
       setBatchProducts([
-        { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
+        { id: generateUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
       ]);
       setOriginalProductType("");
       setShowTypeChangeWarning(false);
