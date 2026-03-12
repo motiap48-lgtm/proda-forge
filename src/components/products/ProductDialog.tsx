@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { generateUUID } from "@/lib/uuid";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
     category: "",
   });
   const [batchProducts, setBatchProducts] = useState<BatchProduct[]>([
-    { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
+    { id: generateUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
   ]);
   const [isCreating, setIsCreating] = useState(false);
   const [nameDuplicate, setNameDuplicate] = useState(false);
@@ -87,7 +88,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
         category: "",
       });
       setBatchProducts([
-        { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
+        { id: generateUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
       ]);
       setOriginalProductType("");
       setShowTypeChangeWarning(false);
@@ -102,7 +103,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
         category: "",
       });
       setBatchProducts([
-        { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
+        { id: generateUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
       ]);
       setOriginalProductType("");
       setShowTypeChangeWarning(false);
@@ -312,7 +313,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
   const addBatchRow = () => {
     const lastProductType = batchProducts[batchProducts.length - 1]?.product_type || "finished";
     setBatchProducts([...batchProducts, { 
-      id: crypto.randomUUID(), 
+      id: generateUUID(), 
       code: "AUTO", 
       name: "", 
       product_type: lastProductType, 
