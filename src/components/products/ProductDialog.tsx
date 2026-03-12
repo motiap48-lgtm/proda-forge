@@ -313,7 +313,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
   const addBatchRow = () => {
     const lastProductType = batchProducts[batchProducts.length - 1]?.product_type || "finished";
     setBatchProducts([...batchProducts, { 
-      id: crypto.randomUUID(), 
+      id: generateUUID(), 
       code: "AUTO", 
       name: "", 
       product_type: lastProductType, 

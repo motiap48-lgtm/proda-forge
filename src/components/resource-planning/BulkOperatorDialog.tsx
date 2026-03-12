@@ -90,7 +90,7 @@ export const BulkOperatorDialog = ({
   const addOperator = () => {
     const lastOp = operators[operators.length - 1];
     const newOp: OperatorEntry = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       full_name: "",
       position: "",
       employee_type: lastOp.employee_type,
