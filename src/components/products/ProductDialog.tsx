@@ -51,7 +51,7 @@ export const ProductDialog = ({ open, onOpenChange, product, onProductCreated }:
     category: "",
   });
   const [batchProducts, setBatchProducts] = useState<BatchProduct[]>([
-    { id: crypto.randomUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
+    { id: generateUUID(), code: "AUTO", name: "", product_type: "finished", unit: "шт" }
   ]);
   const [isCreating, setIsCreating] = useState(false);
   const [nameDuplicate, setNameDuplicate] = useState(false);
