@@ -218,9 +218,20 @@ const Auth = () => {
                     disabled={loading}
                     minLength={8}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Минимум 8 символов, заглавная и строчная буква, цифра
-                  </p>
+                  <div className="space-y-1 text-xs">
+                    <p className={signupPassword.length >= 8 ? "text-green-600" : "text-muted-foreground"}>
+                      {signupPassword.length >= 8 ? "✓" : "○"} Минимум 8 символов
+                    </p>
+                    <p className={/[A-ZА-ЯЁ]/.test(signupPassword) ? "text-green-600" : "text-muted-foreground"}>
+                      {/[A-ZА-ЯЁ]/.test(signupPassword) ? "✓" : "○"} Заглавная буква
+                    </p>
+                    <p className={/[a-zа-яё]/.test(signupPassword) ? "text-green-600" : "text-muted-foreground"}>
+                      {/[a-zа-яё]/.test(signupPassword) ? "✓" : "○"} Строчная буква
+                    </p>
+                    <p className={/[0-9]/.test(signupPassword) ? "text-green-600" : "text-muted-foreground"}>
+                      {/[0-9]/.test(signupPassword) ? "✓" : "○"} Цифра
+                    </p>
+                  </div>
                 </div>
                 <Button
                   type="submit" 
